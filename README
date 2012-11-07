@@ -26,4 +26,9 @@ Here is a quick overview of what you'll find there:
 You can also point your browser at:
   http://crosstool-ng.org/
 
+This fork is for Yann Diorcet and Ray Donnelly to
+integrate Ray's Darwin toolchain, the original of which
+can be found at:
+https://github.com/mingwandroid/toolchain4
+
 Aloha!
