@@ -19,6 +19,7 @@ ARCH_CONFIG_FILES     = $(patsubst $(CT_LIB_DIR)/%,%,$(wildcard $(CT_LIB_DIR)/co
 ARCH_CONFIG_FILES_2   = $(patsubst $(CT_LIB_DIR)/%,%,$(wildcard $(CT_LIB_DIR)/config/arch/*.in.2))
 KERNEL_CONFIG_FILES   = $(patsubst $(CT_LIB_DIR)/%,%,$(wildcard $(CT_LIB_DIR)/config/kernel/*.in))
 KERNEL_CONFIG_FILES_2 = $(patsubst $(CT_LIB_DIR)/%,%,$(wildcard $(CT_LIB_DIR)/config/kernel/*.in.2))
+BINUTILS_CONFIG_FILES = $(patsubst $(CT_LIB_DIR)/%,%,$(wildcard $(CT_LIB_DIR)/config/binutils/*.in))
 CC_CONFIG_FILES       = $(patsubst $(CT_LIB_DIR)/%,%,$(wildcard $(CT_LIB_DIR)/config/cc/*.in))
 CC_CONFIG_FILES_2     = $(patsubst $(CT_LIB_DIR)/%,%,$(wildcard $(CT_LIB_DIR)/config/cc/*.in.2))
 LIBC_CONFIG_FILES     = $(patsubst $(CT_LIB_DIR)/%,%,$(wildcard $(CT_LIB_DIR)/config/libc/*.in))
@@ -28,6 +29,7 @@ DEBUG_CONFIG_FILES    = $(patsubst $(CT_LIB_DIR)/%,%,$(wildcard $(CT_LIB_DIR)/co
 # Build the list of generated config files
 GEN_CONFIG_FILES = config.gen/arch.in     \
                    config.gen/kernel.in   \
+                   config.gen/binutils.in \
                    config.gen/cc.in       \
                    config.gen/libc.in     \
                    config.gen/debug.in
@@ -58,11 +60,12 @@ config.gen:
 #-----------------------------------------------------------
 # Build list of per-component-type items to easily build generated files
 
-ARCHS   = $(patsubst config/arch/%.in,%,$(ARCH_CONFIG_FILES))
-KERNELS = $(patsubst config/kernel/%.in,%,$(KERNEL_CONFIG_FILES))
-CCS     = $(patsubst config/cc/%.in,%,$(CC_CONFIG_FILES))
-LIBCS   = $(patsubst config/libc/%.in,%,$(LIBC_CONFIG_FILES))
-DEBUGS  = $(patsubst config/debug/%.in,%,$(DEBUG_CONFIG_FILES))
+ARCHS    = $(patsubst config/arch/%.in,%,$(ARCH_CONFIG_FILES))
+KERNELS  = $(patsubst config/kernel/%.in,%,$(KERNEL_CONFIG_FILES))
+BINUTILS = $(patsubst config/binutils/%.in,%,$(BINUTILS_CONFIG_FILES))
+CCS      = $(patsubst config/cc/%.in,%,$(CC_CONFIG_FILES))
+LIBCS    = $(patsubst config/libc/%.in,%,$(LIBC_CONFIG_FILES))
+DEBUGS   = $(patsubst config/debug/%.in,%,$(DEBUG_CONFIG_FILES))
 
 #-----------------------------------------------------------
 # The rules for the generated config files
@@ -76,6 +79,10 @@ config.gen/arch.in: $(ARCH_CONFIG_FILES) $(ARCH_CONFIG_FILES_2)
 config.gen/kernel.in: $(KERNEL_CONFIG_FILES) $(KERNEL_CONFIG_FILES_2)
 	@$(ECHO) '  IN    $(@)'
 	$(SILENT)$(CT_LIB_DIR)/scripts/gen_in_frags.sh choice "$@" "Target OS" "KERNEL" "config/kernel" "Y" $(KERNELS)
+
+config.gen/binutils.in: $(BINUTILS_CONFIG_FILES)
+	@$(ECHO) '  IN    $(@)'
+	$(SILENT)$(CT_LIB_DIR)/scripts/gen_in_frags.sh choice "$@" "Binary utilities" "BINUTILS" "config/binutils" "Y" $(BINUTILS)
 
 config.gen/cc.in: $(CC_CONFIG_FILES) $(CC_CONFIG_FILES_2)
 	@$(ECHO) '  IN    $(@)'

@@ -1,9 +1,13 @@
 # Configuration file for sstrip tool facility
 
-if OBSOLETE && ! BACKEND && ARCH_BINFMT_ELF
+## depends on OBSOLETE && ! BACKEND && (ARCH_USE_MMU || BARE_METAL)
+##
 
 comment "sstrip"
 
+choice
+    bool
+    prompt "sstrip version"
 config SSTRIP
     bool
     prompt "sstrip (OBSOLETE)"
@@ -20,4 +24,4 @@ config SSTRIP
         shortcomings. For example: it breaks for PPC targets, it
         does not build on non-ELF hosts (eg. mingw32, MacOS-X...).
 
-endif
+endchoice

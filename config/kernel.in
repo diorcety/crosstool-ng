@@ -10,6 +10,9 @@ config BARE_METAL
 config MINGW32
     bool
 
+config DARWIN
+    bool
+
 # Each target OS (aka kernel) that support shared libraries can select
 # this, so the user can decide whether or not to build a shared library
 # enabled toolchain

@@ -41,6 +41,10 @@ config COMP_TOOLS_libtool
     bool
     prompt "libtool"
 
+config COMP_TOOLS_utillinux
+    bool
+    prompt "utillinux"
+
 endif
 
 endmenu

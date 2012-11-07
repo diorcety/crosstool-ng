@@ -12,6 +12,8 @@
 ## help gcc supports many languages, a powerful code parser, optimised binary
 ## help output, and lots of other features.
 
+if ! DARWIN
+
 config CC_GCC_SHOW_LINARO
     bool
     prompt "Show Linaro versions (EXPERIMENTAL)"
@@ -30,11 +32,21 @@ config CC_GCC_SHOW_LINARO
       
       Linaro: http://www.linaro.org/
 
+endif
+
 choice
     bool
     prompt "gcc version"
 # Don't remove next line
 # CT_INSERT_VERSION_BELOW
+
+config CC_V_apple_5666_3
+    bool
+    prompt "apple-5666.3"
+    depends on EXPERIMENTAL && DARWIN
+    select CC_GCC_APPLE
+    
+#if ! DARWIN
 
 config CC_V_linaro_4_7_2012_07
     bool
@@ -226,6 +238,8 @@ config CC_V_3_4_6
     prompt "3.4.6 (OBSOLETE)"
     depends on OBSOLETE
 
+#endif
+
 endchoice
 
 config CC_GCC_4_2
@@ -301,6 +315,9 @@ config CC_GCC_4_7_or_later
     bool
     select CC_GCC_4_6_or_later
 
+config CC_GCC_APPLE
+    bool
+
 config CC_GCC_HAS_GRAPHITE
     bool
 
@@ -364,6 +381,7 @@ config CC_VERSION
     string
 # Don't remove next line
 # CT_INSERT_VERSION_STRING_BELOW
+    default "5666.3" if CC_V_apple_5666_3 
     default "linaro-4.7-2012.07" if CC_V_linaro_4_7_2012_07
     default "4.7.1" if CC_V_4_7_1
     default "4.7.0" if CC_V_4_7_0

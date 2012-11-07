@@ -2,44 +2,12 @@
 
 menu "Binary utilities"
 
-choice
-    bool
-    prompt "Binary format:"
+config BINUTILS
+    string
 
-if ARCH_USE_MMU || BARE_METAL
+config BINUTILS_VERSION
+    string
 
-config ARCH_BINFMT_ELF
-    bool
-    prompt "ELF"
-    help
-      This will make your system build ELF executables,
-      suitable for architectures with an MMU.
-
-endif # ARCH_USE_MMU
-
-if ! ARCH_USE_MMU
-
-config ARCH_BINFMT_FLAT
-    bool
-    prompt "Flat"
-    help
-      This will build flat binaries, suitable for
-      MMU-less architectures.
-
-config ARCH_BINFMT_FDPIC
-    bool
-    prompt "FD_PIC ELF"
-    help
-      This will build FD_PIC ELF binaries, suitable for
-      MMU-less architectures that still require to use
-      shared libraries (FIXME).
-
-endif # ! ARCH_USE_MMU
-
-endchoice
-
-source "config/binutils/binutils.in"
-source "config/binutils/elf2flt.in"
-source "config/binutils/sstrip.in"
+source "config.gen/binutils.in"
 
 endmenu

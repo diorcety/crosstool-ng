@@ -1,0 +1,24 @@
+# cctools options
+
+## depends on (ARCH_USE_MMU || BARE_METAL) && DARWIN
+##
+
+comment "Apple cctools"
+
+choice
+    bool
+    prompt "cctols version"
+# Don't remove next line
+# CT_INSERT_VERSION_BELOW
+
+config CCTOOLS_V_806
+    bool
+    prompt "806"
+
+endchoice
+
+config BINUTILS_VERSION
+    string
+# Don't remove next line
+# CT_INSERT_VERSION_STRING_BELOW
+    default "806" if CCTOOLS_V_806

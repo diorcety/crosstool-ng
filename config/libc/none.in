@@ -1,6 +1,6 @@
 # Dummy config file to not use a C library *at all*
 
-## depends on BARE_METAL
+## depends on BARE_METAL || DARWIN
 ##
 ## help Do not use a C library.
 ## help

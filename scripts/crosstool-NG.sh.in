@@ -121,7 +121,7 @@ CT_DoLog INFO "Building environment variables"
 . "${CT_LIB_DIR}/scripts/build/companion_libs/cloog.sh"
 . "${CT_LIB_DIR}/scripts/build/companion_libs/mpc.sh"
 . "${CT_LIB_DIR}/scripts/build/companion_libs/libelf.sh"
-. "${CT_LIB_DIR}/scripts/build/binutils/binutils.sh"
+. "${CT_LIB_DIR}/scripts/build/binutils/${CT_BINUTILS}.sh"
 . "${CT_LIB_DIR}/scripts/build/binutils/elf2flt.sh"
 . "${CT_LIB_DIR}/scripts/build/binutils/sstrip.sh"
 . "${CT_LIB_DIR}/scripts/build/libc/${CT_LIBC}.sh"
@@ -485,7 +485,14 @@ if [ -z "${CT_RESTART}" ]; then
     # Help gcc
     CT_CFLAGS_FOR_HOST=
     [ "${CT_USE_PIPES}" = "y" ] && CT_CFLAGS_FOR_HOST+=" -pipe"
-    CT_CFLAGS_FOR_HOST+=" ${CT_EXTRA_FLAGS_FOR_HOST}"
+    CT_CFLAGS_FOR_HOST+=" ${CT_EXTRA_CFLAGS_FOR_HOST}"
+    CT_LDFLAGS_FOR_HOST=
+    CT_LDFLAGS_FOR_HOST+=" ${CT_EXTRA_LDFLAGS_FOR_HOST}"
+
+    CT_CFLAGS_FOR_BUILD=
+    CT_CFLAGS_FOR_BUILD+=" ${CT_EXTRA_CFLAGS_FOR_BUILD}"
+    CT_LDFLAGS_FOR_BUILD=
+    CT_LDFLAGS_FOR_BUILD+=" ${CT_EXTRA_LDFLAGS_FOR_BUILD}"
 
     # Set the shell to be used by ./configure scripts and by Makefiles (those
     # that support it!).

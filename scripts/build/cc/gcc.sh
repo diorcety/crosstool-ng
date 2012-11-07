@@ -23,11 +23,16 @@ do_cc_get() {
     # Arrgghh! Some of those versions does not follow this convention:
     # gcc-3.3.3 lives in releases/gcc-3.3.3, while gcc-2.95.* isn't in a
     # subdirectory! You bastard!
-    CT_GetFile "gcc-${CT_CC_VERSION}"                                                       \
-               {ftp,http}://ftp.gnu.org/gnu/gcc{,{,/releases}/gcc-${CT_CC_VERSION}}         \
-               ftp://ftp.irisa.fr/pub/mirrors/gcc.gnu.org/gcc/releases/gcc-${CT_CC_VERSION} \
-               ftp://ftp.uvsq.fr/pub/gcc/snapshots/${CT_CC_VERSION}                         \
-               "${linaro_base_url}/${linaro_series}/${linaro_version}/+download"
+    if [ "${CT_CC_GCC_APPLE}" = "y" ]; then
+    	CT_GetFile "gcc-${CT_CC_VERSION}" \
+                   http://opensource.apple.com/tarballs/gcc/
+    else
+    	CT_GetFile "gcc-${CT_CC_VERSION}"                                                       \
+        	       {ftp,http}://ftp.gnu.org/gnu/gcc{,{,/releases}/gcc-${CT_CC_VERSION}}         \
+        	       ftp://ftp.irisa.fr/pub/mirrors/gcc.gnu.org/gcc/releases/gcc-${CT_CC_VERSION} \
+        	       ftp://ftp.uvsq.fr/pub/gcc/snapshots/${CT_CC_VERSION}                         \
+        	       "${linaro_base_url}/${linaro_series}/${linaro_version}/+download"
+    fi
 
     # Starting with GCC 4.3, ecj is used for Java, and will only be
     # built if the configure script finds ecj.jar at the top of the
@@ -75,11 +80,16 @@ cc_gcc_lang_list() {
 do_cc_core_pass_1() {
     local -a core_opts
 
+    if [ "${CT_CC_GCC_APPLE}" = "y" ]; then
+        return 0
+    fi
+
     core_opts+=( "mode=static" )
     core_opts+=( "host=${CT_BUILD}" )
     core_opts+=( "complibs=${CT_BUILDTOOLS_PREFIX_DIR}" )
     core_opts+=( "prefix=${CT_BUILDTOOLS_PREFIX_DIR}" )
     core_opts+=( "cflags=${CT_CFLAGS_FOR_HOST}" )
+    core_opts+=( "ldflags=${CT_LDFLAGS_FOR_HOST}" )
     core_opts+=( "lang_list=c" )
 
     CT_DoStep INFO "Installing pass-1 core C compiler"
@@ -95,11 +105,16 @@ do_cc_core_pass_1() {
 do_cc_core_pass_2() {
     local -a core_opts
 
+    if [ "${CT_CC_GCC_APPLE}" = "y" ]; then
+        return 0
+    fi
+
     # Common options:
     core_opts+=( "host=${CT_BUILD}" )
     core_opts+=( "prefix=${CT_BUILDTOOLS_PREFIX_DIR}" )
     core_opts+=( "complibs=${CT_BUILDTOOLS_PREFIX_DIR}" )
     core_opts+=( "cflags=${CT_CFLAGS_FOR_HOST}" )
+    core_opts+=( "ldflags=${CT_LDFLAGS_FOR_HOST}" )
     core_opts+=( "lang_list=c" )
 
     # Different conditions are at stake here:
@@ -148,6 +163,7 @@ do_cc_core_pass_2() {
 #   build_staticlinked  : build statically linked or not            : bool      : no
 #   build_manuals       : whether to build manuals or not           : bool      : no
 #   cflags              : host CFLAGS to use                        : string    : (empty)
+#   ldflags             : host LDFLAGS to use                       : string    : (empty)
 # Usage: do_cc_core_backend mode=[static|shared|baremetal] build_libgcc=[yes|no] build_staticlinked=[yes|no]
 do_cc_core_backend() {
     local mode
@@ -160,6 +176,7 @@ do_cc_core_backend() {
     local complibs
     local lang_list
     local cflags
+    local ldflags
     local tmp
     local -a host_libstdcxx_flags
     local -a extra_config
@@ -170,6 +187,9 @@ do_cc_core_backend() {
     for arg in "$@"; do
         eval "${arg// /\\ }"
     done
+
+    # Add host ldflags
+    core_LDFLAGS+=("${ldflags}")
 
     CT_DoLog EXTRA "Configuring core C compiler"
 
@@ -343,6 +363,7 @@ do_cc_core_backend() {
     CT_DoExecLog CFG                                \
     CC_FOR_BUILD="${CT_BUILD}-gcc"                  \
     CFLAGS="${cflags}"                              \
+    CXXFLAGS="${cflags}"                            \
     LDFLAGS="${core_LDFLAGS[*]}"                    \
     "${CT_SRC_DIR}/gcc-${CT_CC_VERSION}/configure"  \
         --build=${CT_BUILD}                         \
@@ -508,6 +529,7 @@ do_cc_for_host() {
     final_opts+=( "prefix=${CT_PREFIX_DIR}" )
     final_opts+=( "complibs=${CT_HOST_COMPLIBS_DIR}" )
     final_opts+=( "cflags=${CT_CFLAGS_FOR_HOST}" )
+    final_opts+=( "ldflags=${CT_LDFLAGS_FOR_HOST}" )
     final_opts+=( "lang_list=$( cc_gcc_lang_list )" )
     if [ "${CT_BUILD_MANUALS}" = "y" ]; then
         final_opts+=( "build_manuals=yes" )
@@ -541,6 +563,7 @@ do_cc_for_host() {
 #   prefix        : the runtime prefix                  : dir       : (none)
 #   complibs      : the companion libraries prefix      : dir       : (none)
 #   cflags        : the host CFLAGS                     : string    : (empty)
+#   ldflags       : the host LDFLAGS                    : string    : (empty)
 #   lang_list     : the list of languages to build      : string    : (empty)
 #   build_manuals : whether to build manuals or not     : bool      : no
 do_cc_backend() {
@@ -548,6 +571,7 @@ do_cc_backend() {
     local prefix
     local complibs
     local cflags
+    local ldflags
     local lang_list
     local build_manuals
     local -a host_libstdcxx_flags
@@ -559,6 +583,9 @@ do_cc_backend() {
     for arg in "$@"; do
         eval "${arg// /\\ }"
     done
+
+    # Add host ldflags
+    final_LDFLAGS+=("${ldflags}")
 
     CT_DoLog EXTRA "Configuring final compiler"
 
@@ -756,6 +783,7 @@ do_cc_backend() {
     CT_DoExecLog CFG                                \
     CC_FOR_BUILD="${CT_BUILD}-gcc"                  \
     CFLAGS="${cflags}"                              \
+    CXXFLAGS="${cflags}"                            \
     LDFLAGS="${final_LDFLAGS[*]}"                   \
     CFLAGS_FOR_TARGET="${CT_TARGET_CFLAGS}"         \
     CXXFLAGS_FOR_TARGET="${CT_TARGET_CFLAGS}"       \
