@@ -18,6 +18,11 @@ do_companion_tools_openssl_build() {
     CT_DoStep EXTRA "Installing openssl"
     CT_mkdir_pushd "${CT_BUILD_DIR}/build-openssl"
     
+    if [ "${CT_STATIC_TOOLCHAIN}" = "y" ]; then
+        extra_config+=("-no-shared")
+        extra_config+=("-no-zlib-dynamic")
+    fi
+    
     if echo "${CT_BUILD}" | "${grep}" -E 'mingw' >/dev/null 2>&1; then
         extra_config+=("mingw")
     elif echo "${CT_BUILD}" | "${grep}" -E 'linux' >/dev/null 2>&1; then
@@ -40,7 +45,7 @@ do_companion_tools_openssl_build() {
     LDFLAGS="${CT_LDFLAGS_FOR_BUILD}"          \
     "./Configure"                              \
         --prefix="${CT_BUILDTOOLS_PREFIX_DIR}" \
-        -no-shared -no-zlib-dynamic -no-test   \
+        -no-test                               \
         "${extra_config[@]}"                   \
     
     CT_DoExecLog ALL make CC="${CT_CC} ${CT_CFLAGS_FOR_BUILD}"
