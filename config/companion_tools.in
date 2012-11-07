@@ -45,6 +45,10 @@ config COMP_TOOLS_utillinux
     bool
     prompt "utillinux"
 
+config COMP_TOOLS_openssl
+    bool
+    prompt "openssl"
+
 endif
 
 endmenu
