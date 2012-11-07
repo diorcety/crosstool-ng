@@ -13,6 +13,10 @@ choice
 
 # Don't remove next line
 # CT_INSERT_VERSION_BELOW
+config DARWIN_MAC_OSX_V_10_7
+    bool
+    prompt "Mac OSX 10.7"
+
 config DARWIN_MAC_OSX_V_10_6
     bool
     prompt "Mac OSX 10.6"
@@ -32,5 +36,6 @@ config DARWIN_SDK
     string
 # Don't remove next line
 # CT_INSERT_VERSION_STRING_BELOW
+    default "MacOSX10.7.sdk" if DARWIN_MAC_OSX_V_10_7
     default "MacOSX10.6.sdk" if DARWIN_MAC_OSX_V_10_6
     default "iPhoneOS5.0.sdk" if DARWIN_IOS_V_5_0
