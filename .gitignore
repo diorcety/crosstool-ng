@@ -1,2 +1,5 @@
+.build
+.config*
 autom4te.cache/*
 config.log
+kconfig/*
