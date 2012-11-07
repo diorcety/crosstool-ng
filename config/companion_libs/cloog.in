@@ -1,0 +1,53 @@
+# CLooG options
+
+choice
+    bool
+    prompt "CLooG/ppl version"
+# Don't remove next line
+# CT_INSERT_VERSION_BELOW
+
+config CLOOG_V_0_15_11
+    bool
+    prompt "0.15.11"
+    select CLOOG_0_15_1x
+
+config CLOOG_V_0_15_10
+    bool
+    prompt "0.15.10"
+    select CLOOG_0_15_1x
+
+config CLOOG_V_0_15_9
+    bool
+    prompt "0.15.9"
+
+config CLOOG_V_0_15_8
+    bool
+    prompt "0.15.8"
+
+config CLOOG_V_0_15_7
+    bool
+    prompt "0.15.7"
+
+config CLOOG_V_0_15_6
+    bool
+    prompt "0.15.6"
+
+endchoice
+
+config CLOOG_VERSION
+    string
+# Don't remove next line
+# CT_INSERT_VERSION_STRING_BELOW
+    default "0.15.11" if CLOOG_V_0_15_11
+    default "0.15.10" if CLOOG_V_0_15_10
+    default "0.15.9" if CLOOG_V_0_15_9
+    default "0.15.8" if CLOOG_V_0_15_8
+    default "0.15.7" if CLOOG_V_0_15_7
+    default "0.15.6" if CLOOG_V_0_15_6
+
+config CLOOG_0_15_1x
+    bool
+    select CLOOG_NEEDS_AUTORECONF
+
+config CLOOG_NEEDS_AUTORECONF
+    bool

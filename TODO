@@ -1,0 +1,35 @@
+This is a somewhat ordered TODO list:
+
+Recurring tasks:
+
+- update versions for every tools...
+
+- update and/or upgrade all samples
+
+
+Non-recurring tasks:
+
+- update newlib (for enhanced bare metal)
+  - confirm existing implementation on targets other than AVR32
+  - try to make it generic, will help for uClibc++
+
+- multilib
+
+- Cygwin target (needs newlib)
+  - so we can build toolchains that generate code for Windows/Cygwin
+
+- Cygwin host
+  - so we can build toolchains that run natively under Windows/Cygwin
+
+- mingw32 target
+  - so we can build toolchains that generate code for Windows/Win32
+
+- mingw32 host
+  - so we can build toolchains that run natively under Windows/Win32
+    (without requiring Cygwin)
+
+- uClibc++
+  - see newlib, above
+
+- uClinux
+  - check whether we can use newlib under uClinux (?)

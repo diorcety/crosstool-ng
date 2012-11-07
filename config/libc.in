@@ -1,0 +1,104 @@
+# C library options
+
+menu "C-library"
+
+config LIBC
+    string
+
+config LIBC_VERSION
+    string
+    help
+      Enter the date of the snapshot you want to use in the form: YYYYMMDD
+      where YYYY is the 4-digit year, MM the 2-digit month and DD the 2-digit
+      day in the month.
+      
+      Please note:
+      - glibc has snapshots done every monday, and only the last ten are kept.
+      - uClibc has daily snapshots, and only the last 30-or-so are kept.
+      
+      So if you want to be able to re-build your toolchain later, you will
+      have to save your C library tarball by yourself.
+
+source "config.gen/libc.in"
+
+config LIBC_SUPPORT_THREADS_ANY
+    bool
+
+config LIBC_SUPPORT_NPTL
+    bool
+    select LIBC_SUPPORT_THREADS_ANY
+
+config LIBC_SUPPORT_LINUXTHREADS
+    bool
+    select LIBC_SUPPORT_THREADS_ANY
+
+config LIBC_SUPPORT_WIN32THREADS
+    bool
+    select LIBC_SUPPORT_THREADS_ANY
+
+config LIBC_SUPPORT_THREADS_NONE
+    bool
+
+config THREADS
+    string
+    default "nptl"          if THREADS_NPTL
+    default "linuxthreads"  if THREADS_LINUXTHREADS
+    default "win32"         if THREADS_WIN32THREADS
+    default "none"          if THREADS_NONE || LIBC_none
+#                              No C library, no threads!
+
+if ! LIBC_none
+
+comment "Common C library options"
+
+choice
+    bool
+    prompt "Threading implementation to use:"
+    default THREADS_NPTL           if LIBC_SUPPORT_NPTL
+    default THREADS_LINUXTHREADS   if LIBC_SUPPORT_LINUXTHREADS && ! LIBC_SUPPORT_NPTL
+    default THREADS_WIN32          if LIBC_SUPPORT_WIN32THREADS
+    default THREADS_NONE           if ! LIBC_SUPPORT_THREADS_ANY
+
+config THREADS_NPTL
+    bool
+    prompt "nptl"
+    depends on LIBC_SUPPORT_NPTL
+
+config THREADS_LINUXTHREADS
+    bool
+    prompt "linuxthreads"
+    depends on LIBC_SUPPORT_LINUXTHREADS
+
+config THREADS_WIN32THREADS
+    bool
+    prompt "win32"
+    depends on LIBC_SUPPORT_WIN32THREADS
+
+config THREADS_NONE
+    bool
+    prompt "none"
+    depends on LIBC_SUPPORT_THREADS_NONE
+
+endchoice
+
+config LIBC_XLDD
+    bool
+    prompt "Install a cross ldd-like helper"
+    depends on SHARED_LIBS
+    depends on ! BARE_METAL
+    default y
+    help
+      Say 'Y' here if you want to have a ldd-like helper that
+      you can run on your build system, and that will (try to)
+      resolve shared libraries dependencies as if run on the
+      target.
+      
+      Note that the cross-ldd helper is not a full replacement
+      for the native ldd. Please see the help, by running it
+      with '--help' for more explanations.
+
+source "config.gen/libc.in.2"
+
+endif # ! LIBC_none
+
+endmenu

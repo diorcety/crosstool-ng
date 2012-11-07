@@ -1,0 +1,132 @@
+# glibc options
+
+## depends on ! MINGW32 && ! BARE_METAL && ARCH_USE_MMU
+##
+## select LIBC_SUPPORT_NPTL
+##
+## help The de-facto standard for Linux distributions.
+## help Feature-rich, but large...  Most usefull for desktop-like systems.
+
+choice
+    bool
+    prompt "Retrieval method"
+    default LIBC_GLIBC_TARBALL
+
+config LIBC_GLIBC_TARBALL
+    bool
+    prompt "Released tarball"
+    help
+      Until end of Februrary 2009, there was no tarball for glibc releases
+      2.8 and later. This was intentional.
+      
+      Then, all of a sudden, tarballs for those releases have appeared at the
+      traditional download place (ftp.gnu.org).
+      
+      Some of the glibc people argue that fixes are committed to the maintenance
+      branch, and thus it is the best plac e to retrieve the glibc from.
+      On the other hand, it might be preferable to always generate a toolchain
+      using a known code-base, so the toolchain can be reproducible.
+      
+      For version prior to 2.8, tarballs were readily available.
+      
+      If you want your toolchain to really be reproducible, say 'Y' here.
+      If you can live with a moving code-base, look at the other choice
+      entries, below.
+
+endchoice
+
+choice
+    bool
+    prompt "glibc version"
+# Don't remove next line
+# CT_INSERT_VERSION_BELOW
+
+config LIBC_GLIBC_V_2_14_1
+    bool
+    prompt "2.14.1"
+
+config LIBC_GLIBC_V_2_14
+    bool
+    prompt "2.14"
+
+config LIBC_GLIBC_V_2_13
+    bool
+    prompt "2.13"
+
+config LIBC_GLIBC_V_2_12_2
+    bool
+    prompt "2.12.2"
+
+config LIBC_GLIBC_V_2_12_1
+    bool
+    prompt "2.12.1"
+
+config LIBC_GLIBC_V_2_11_1
+    bool
+    prompt "2.11.1"
+
+config LIBC_GLIBC_V_2_11
+    bool
+    prompt "2.11"
+
+config LIBC_GLIBC_V_2_10_1
+    bool
+    prompt "2.10.1"
+    select LIBC_GLIBC_USE_PORTS
+
+config LIBC_GLIBC_V_2_9
+    bool
+    prompt "2.9"
+
+config LIBC_GLIBC_V_2_8
+    bool
+    prompt "2.8"
+
+config LIBC_GLIBC_V_2_7
+    bool
+    prompt "2.7 (OBSOLETE)"
+    depends on OBSOLETE
+
+config LIBC_GLIBC_V_2_6_1
+    bool
+    prompt "2.6.1 (OBSOLETE)"
+    depends on OBSOLETE
+
+config LIBC_GLIBC_V_2_6
+    bool
+    prompt "2.6 (OBSOLETE)"
+    depends on OBSOLETE
+
+config LIBC_GLIBC_V_2_5_1
+    bool
+    prompt "2.5.1 (OBSOLETE)"
+    depends on OBSOLETE
+    select LIBC_SUPPORT_LINUXTHREADS
+
+config LIBC_GLIBC_V_2_5
+    bool
+    prompt "2.5 (OBSOLETE)"
+    depends on OBSOLETE
+    select LIBC_SUPPORT_LINUXTHREADS
+
+endchoice
+
+config LIBC_VERSION
+    string
+# Don't remove next line
+# CT_INSERT_VERSION_STRING_BELOW
+    default "2.14.1" if LIBC_GLIBC_V_2_14_1
+    default "2.14" if LIBC_GLIBC_V_2_14
+    default "2.13" if LIBC_GLIBC_V_2_13
+    default "2.12.2" if LIBC_GLIBC_V_2_12_2
+    default "2.12.1" if LIBC_GLIBC_V_2_12_1
+    default "2.11.1" if LIBC_GLIBC_V_2_11_1
+    default "2.11" if LIBC_GLIBC_V_2_11
+    default "2.10.1" if LIBC_GLIBC_V_2_10_1
+    default "2.9" if LIBC_GLIBC_V_2_9
+    default "2.8" if LIBC_GLIBC_V_2_8
+    default "2.7" if LIBC_GLIBC_V_2_7
+    default "2.6.1" if LIBC_GLIBC_V_2_6_1
+    default "2.6" if LIBC_GLIBC_V_2_6
+    default "2.5.1" if LIBC_GLIBC_V_2_5_1
+    default "2.5" if LIBC_GLIBC_V_2_5
