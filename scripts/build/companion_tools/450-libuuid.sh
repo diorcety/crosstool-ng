@@ -2,19 +2,19 @@
 
 CT_UTILLINUX_VERSION=2.20.1
 
-do_companion_tools_utillinux_get() {
+do_companion_tools_libuuid_get() {
     CT_GetFile "util-linux-${CT_UTILLINUX_VERSION}" \
                http://www.kernel.org/pub/linux/utils/util-linux/v2.20/
 }
 
-do_companion_tools_utillinux_extract() {
+do_companion_tools_libuuid_extract() {
     CT_Extract "util-linux-${CT_UTILLINUX_VERSION}"
     CT_Patch "util-linux" "${CT_UTILLINUX_VERSION}"
 }
 
-do_companion_tools_utillinux_build() {
-    CT_DoStep EXTRA "Installing util-linux"
-    CT_mkdir_pushd "${CT_BUILD_DIR}/build-util-linux"
+do_companion_tools_libuuid_build() {
+    CT_DoStep EXTRA "Installing libuuid"
+    CT_mkdir_pushd "${CT_BUILD_DIR}/build-libuuid"
     
     CT_DoExecLog CFG \
     CFLAGS="${CT_CFLAGS_FOR_BUILD}" \
@@ -25,9 +25,12 @@ do_companion_tools_utillinux_build() {
         --target=${CT_TARGET} \
         --without-ncurses \
         --disable-makeinstall-chown
-        
+    
+    CT_Pushd libuuid    
     CT_DoExecLog ALL make
     CT_DoExecLog ALL make install
+    CT_Popd
+    
     CT_Popd
     CT_EndStep
 }

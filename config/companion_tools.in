@@ -41,9 +41,9 @@ config COMP_TOOLS_libtool
     bool
     prompt "libtool"
 
-config COMP_TOOLS_utillinux
+config COMP_TOOLS_libuuid
     bool
-    prompt "utillinux"
+    prompt "libuuid"
 
 config COMP_TOOLS_openssl
     bool
