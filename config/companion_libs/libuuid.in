@@ -1,0 +1,56 @@
+# LIBUUID options
+
+choice
+    bool
+    prompt "libuuid source"
+# Don't remove next line
+# CT_INSERT_VERSION_BELOW
+
+config LIBUUID_E2FSPROGSLIBS
+    bool
+    prompt "e2fsprogs-libs"
+
+config LIBUUID_UTILLINUX
+    bool
+    prompt "util-linux"
+
+endchoice
+
+choice
+    bool
+    depends on LIBUUID_UTILLINUX
+    prompt "util-linux version"
+# Don't remove next line
+# CT_INSERT_VERSION_BELOW
+
+config LIBUUID_UTILLINUX_V_2_20_1
+    bool
+    prompt "2.20.1"
+
+endchoice
+
+config LIBUUID_UTILLINUX_VERSION
+    string
+# Don't remove next line
+# CT_INSERT_VERSION_STRING_BELOW
+    default "2.20.1" if LIBUUID_UTILLINUX_V_2_20_1
+
+choice
+    bool
+    depends on LIBUUID_E2FSPROGSLIBS
+    prompt "e2fsprogs-libs version"
+# Don't remove next line
+# CT_INSERT_VERSION_BELOW
+
+config LIBUUID_E2FSPROGSLIBS_V_1_41_14
+    bool
+    prompt "1.41.14"
+
+endchoice
+
+config LIBUUID_E2FSPROGSLIBS_VERSION
+    string
+# Don't remove next line
+# CT_INSERT_VERSION_STRING_BELOW
+    default "1.41.14" if LIBUUID_E2FSPROGSLIBS_V_1_41_14
+

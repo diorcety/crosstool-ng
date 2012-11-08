@@ -1,6 +1,7 @@
 # cctools options
 
 ## depends on (ARCH_USE_MMU || BARE_METAL) && DARWIN
+## select LIBUUID_NEEDED
 ##
 
 comment "Apple cctools"

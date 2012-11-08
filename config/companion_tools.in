@@ -41,14 +41,6 @@ config COMP_TOOLS_libtool
     bool
     prompt "libtool"
 
-config COMP_TOOLS_libuuid
-    bool
-    prompt "libuuid"
-
-config COMP_TOOLS_openssl
-    bool
-    prompt "openssl"
-
 endif
 
 endmenu

@@ -1,0 +1,24 @@
+# OPENSSL options
+
+choice
+    bool
+    prompt "OpenSSL version"
+# Don't remove next line
+# CT_INSERT_VERSION_BELOW
+
+config OPENSSL_V_1_0_1_C
+    bool
+    prompt "1.0.1c"
+
+config OPENSSL_V_1_0_1_B
+    bool
+    prompt "1.0.1b"
+
+endchoice
+
+config OPENSSL_VERSION
+    string
+# Don't remove next line
+# CT_INSERT_VERSION_STRING_BELOW
+    default "1.0.1c" if OPENSSL_V_1_0_1_C
+    default "1.0.1b" if OPENSSL_V_1_0_1_B
