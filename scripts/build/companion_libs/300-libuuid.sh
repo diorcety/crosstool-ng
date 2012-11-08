@@ -9,8 +9,9 @@ if [ "${CT_LIBUUID}" = "y" ]; then
 
 do_libuuid_get() {
     if [ "${CT_LIBUUID_UTILLINUX}" = "y" ]; then
+        short_version=$(echo ${CT_LIBUUID_UTILLINUX_VERSION} | sed -e 's/^\([0-9]\+.[0-9]\+\)\(.*\)/\1/g')
         CT_GetFile "util-linux-${CT_LIBUUID_UTILLINUX_VERSION}" \
-                   http://www.kernel.org/pub/linux/utils/util-linux/v2.20
+                   http://www.kernel.org/pub/linux/utils/util-linux/v${short_version}
     elif [ "${CT_LIBUUID_E2FSPROGSLIBS}" = "y" ]; then
         CT_GetFile "e2fsprogs-libs-${CT_LIBUUID_E2FSPROGSLIBS_VERSION}" \
                    http://downloads.sourceforge.net/project/e2fsprogs/e2fsprogs/${CT_LIBUUID_E2FSPROGSLIBS_VERSION}
@@ -29,7 +30,7 @@ do_libuuid_extract() {
 
 # Build libuuid for running on build
 do_libuuid_for_build() {
-     local -a libuuid_opts
+    local -a libuuid_opts
 
     case "${CT_TOOLCHAIN_TYPE}" in
         native|cross)   return 0;;
