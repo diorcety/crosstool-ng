@@ -36,6 +36,11 @@ config LIBELF_NEEDED
     bool
     select LIBELF
     select COMPLIBS_NEEDED
+    
+config LLVM_NEEDED
+    bool
+    select LLVM
+    select COMPLIBS_NEEDED
 
 config COMPLIBS
     bool
@@ -72,6 +77,10 @@ config LIBELF
 
 config LIBELF_TARGET
     bool
+    
+config LLVM
+    bool
+    select COMPLIBS
 
 if GMP
 source "config/companion_libs/gmp.in"
@@ -92,6 +101,10 @@ if LIBELF || LIBELF_TARGET
 comment "libelf version needed to build for target"
     depends on !LIBELF
 source "config/companion_libs/libelf.in"
+endif
+
+if LLVM
+source "config/companion_libs/llvm.in"
 endif
 
 config FOO
