@@ -5,9 +5,6 @@ menu "C compiler"
 config CC
     string
 
-config CC_VERSION
-    string
-
 source "config.gen/cc.in"
 
 config CC_SUPPORT_CXX

@@ -79,7 +79,7 @@ config.gen/kernel.in: $(KERNEL_CONFIG_FILES) $(KERNEL_CONFIG_FILES_2)
 
 config.gen/cc.in: $(CC_CONFIG_FILES) $(CC_CONFIG_FILES_2)
 	@$(ECHO) '  IN    $(@)'
-	$(SILENT)$(CT_LIB_DIR)/scripts/gen_in_frags.sh choice "$@" "C compiler" "CC" "config/cc" "N" $(CCS)
+	$(SILENT)$(CT_LIB_DIR)/scripts/gen_in_frags.sh menu "$@" "C compiler" "CC" "config/cc" $(CCS)
 
 config.gen/libc.in: $(LIBC_CONFIG_FILES) $(LIBC_CONFIG_FILES_2)
 	@$(ECHO) '  IN    $(@)'

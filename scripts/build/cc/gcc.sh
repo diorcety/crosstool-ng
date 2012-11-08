@@ -3,14 +3,14 @@
 # Licensed under the GPL v2. See COPYING in the root of this package
 
 # Download gcc
-do_cc_get() {
+do_gcc_get() {
     local linaro_version
     local linaro_series
     local linaro_base_url="http://launchpad.net/gcc-linaro"
 
 
     # Account for the Linaro versioning
-    linaro_version="$( echo "${CT_CC_VERSION}"      \
+    linaro_version="$( echo "${CT_CC_GCC_VERSION}"      \
                        |sed -r -e 's/^linaro-//;'   \
                      )"
     linaro_series="$( echo "${linaro_version}"      \
@@ -23,10 +23,10 @@ do_cc_get() {
     # Arrgghh! Some of those versions does not follow this convention:
     # gcc-3.3.3 lives in releases/gcc-3.3.3, while gcc-2.95.* isn't in a
     # subdirectory! You bastard!
-    CT_GetFile "gcc-${CT_CC_VERSION}"                                                       \
-               {ftp,http}://ftp.gnu.org/gnu/gcc{,{,/releases}/gcc-${CT_CC_VERSION}}         \
-               ftp://ftp.irisa.fr/pub/mirrors/gcc.gnu.org/gcc/releases/gcc-${CT_CC_VERSION} \
-               ftp://ftp.uvsq.fr/pub/gcc/snapshots/${CT_CC_VERSION}                         \
+    CT_GetFile "gcc-${CT_CC_GCC_VERSION}"                                                       \
+               {ftp,http}://ftp.gnu.org/gnu/gcc{,{,/releases}/gcc-${CT_CC_GCC_VERSION}}         \
+               ftp://ftp.irisa.fr/pub/mirrors/gcc.gnu.org/gcc/releases/gcc-${CT_CC_GCC_VERSION} \
+               ftp://ftp.uvsq.fr/pub/gcc/snapshots/${CT_CC_GCC_VERSION}                         \
                "${linaro_base_url}/${linaro_series}/${linaro_version}/+download"
 
     # Starting with GCC 4.3, ecj is used for Java, and will only be
@@ -40,15 +40,15 @@ do_cc_get() {
 }
 
 # Extract gcc
-do_cc_extract() {
-    CT_Extract "gcc-${CT_CC_VERSION}"
-    CT_Patch "gcc" "${CT_CC_VERSION}"
+do_gcc_extract() {
+    CT_Extract "gcc-${CT_CC_GCC_VERSION}"
+    CT_Patch "gcc" "${CT_CC_GCC_VERSION}"
 
     # Copy ecj-latest.jar to ecj.jar at the top of the GCC source tree
     if [ "${CT_CC_LANG_JAVA_USE_ECJ}" = "y"                     \
-         -a ! -f "${CT_SRC_DIR}/gcc-${CT_CC_VERSION}/ecj.jar"   \
+         -a ! -f "${CT_SRC_DIR}/gcc-${CT_CC_GCC_VERSION}/ecj.jar"   \
        ]; then
-        CT_DoExecLog ALL cp -v "${CT_TARBALLS_DIR}/ecj-latest.jar" "${CT_SRC_DIR}/gcc-${CT_CC_VERSION}/ecj.jar"
+        CT_DoExecLog ALL cp -v "${CT_TARBALLS_DIR}/ecj-latest.jar" "${CT_SRC_DIR}/gcc-${CT_CC_GCC_VERSION}/ecj.jar"
     fi
 }
 
@@ -72,7 +72,7 @@ cc_gcc_lang_list() {
 
 #------------------------------------------------------------------------------
 # Core gcc pass 1
-do_cc_core_pass_1() {
+do_gcc_core_pass_1() {
     local -a core_opts
 
     core_opts+=( "mode=static" )
@@ -85,14 +85,14 @@ do_cc_core_pass_1() {
     CT_DoStep INFO "Installing pass-1 core C compiler"
     CT_mkdir_pushd "${CT_BUILD_DIR}/build-cc-core-pass-1"
 
-    do_cc_core_backend "${core_opts[@]}"
+    do_gcc_core_backend "${core_opts[@]}"
 
     CT_Popd
     CT_EndStep
 }
 
 # Core gcc pass 2
-do_cc_core_pass_2() {
+do_gcc_core_pass_2() {
     local -a core_opts
 
     # Common options:
@@ -127,7 +127,7 @@ do_cc_core_pass_2() {
     CT_DoStep INFO "Installing pass-2 core C compiler"
     CT_mkdir_pushd "${CT_BUILD_DIR}/build-cc-core-pass-2"
 
-    do_cc_core_backend "${core_opts[@]}"
+    do_gcc_core_backend "${core_opts[@]}"
 
     CT_Popd
     CT_EndStep
@@ -136,7 +136,7 @@ do_cc_core_pass_2() {
 #------------------------------------------------------------------------------
 # Build core gcc
 # This function is used to build the core C compiler.
-# Usage: do_cc_core_backend param=value [...]
+# Usage: do_gcc_core_backend param=value [...]
 #   Parameter           : Definition                                : Type      : Default
 #   mode                : build a 'static', 'shared' or 'baremetal' : string    : (none)
 #   host                : the machine the core will run on          : tuple     : (none)
@@ -148,8 +148,8 @@ do_cc_core_pass_2() {
 #   build_staticlinked  : build statically linked or not            : bool      : no
 #   build_manuals       : whether to build manuals or not           : bool      : no
 #   cflags              : host CFLAGS to use                        : string    : (empty)
-# Usage: do_cc_core_backend mode=[static|shared|baremetal] build_libgcc=[yes|no] build_staticlinked=[yes|no]
-do_cc_core_backend() {
+# Usage: do_gcc_core_backend mode=[static|shared|baremetal] build_libgcc=[yes|no] build_staticlinked=[yes|no]
+do_gcc_core_backend() {
     local mode
     local build_libgcc=no
     local build_libstdcxx=no
@@ -221,7 +221,7 @@ do_cc_core_backend() {
 
     # *** WARNING ! ***
     # Keep this full if-else-if-elif-fi-fi block in sync
-    # with the same block in do_cc, below.
+    # with the same block in do_gcc, below.
     if [ "${build_staticlinked}" = "yes" ]; then
         core_LDFLAGS+=("-static")
         host_libstdcxx_flags+=("-static-libgcc")
@@ -344,7 +344,7 @@ do_cc_core_backend() {
     CC_FOR_BUILD="${CT_BUILD}-gcc"                  \
     CFLAGS="${cflags}"                              \
     LDFLAGS="${core_LDFLAGS[*]}"                    \
-    "${CT_SRC_DIR}/gcc-${CT_CC_VERSION}/configure"  \
+    "${CT_SRC_DIR}/gcc-${CT_CC_GCC_VERSION}/configure"  \
         --build=${CT_BUILD}                         \
         --host=${host}                              \
         --target=${CT_TARGET}                       \
@@ -373,7 +373,7 @@ do_cc_core_backend() {
         # so we configure then build it.
         # Next we have to configure gcc, create libgcc.mk then edit it...
         # So much easier if we just edit the source tree, but hey...
-        if [ ! -f "${CT_SRC_DIR}/gcc-${CT_CC_VERSION}/gcc/BASE-VER" ]; then
+        if [ ! -f "${CT_SRC_DIR}/gcc-${CT_CC_GCC_VERSION}/gcc/BASE-VER" ]; then
             CT_DoExecLog CFG make ${JOBSFLAGS} configure-libiberty
             CT_DoExecLog ALL make ${JOBSFLAGS} -C libiberty libiberty.a
             CT_DoExecLog CFG make ${JOBSFLAGS} configure-gcc configure-libcpp
@@ -383,7 +383,7 @@ do_cc_core_backend() {
             CT_DoExecLog ALL make ${JOBSFLAGS} all-libcpp all-build-libiberty
         fi
         # HACK: gcc-4.2 uses libdecnumber to build libgcc.mk, so build it here.
-        if [ -d "${CT_SRC_DIR}/gcc-${CT_CC_VERSION}/libdecnumber" ]; then
+        if [ -d "${CT_SRC_DIR}/gcc-${CT_CC_GCC_VERSION}/libdecnumber" ]; then
             CT_DoExecLog CFG make ${JOBSFLAGS} configure-libdecnumber
             CT_DoExecLog ALL make ${JOBSFLAGS} -C libdecnumber libdecnumber.a
         fi
@@ -460,7 +460,7 @@ do_cc_core_backend() {
 
 #------------------------------------------------------------------------------
 # Build complete gcc to run on build
-do_cc_for_build() {
+do_gcc_for_build() {
     local -a build_final_opts
     local build_final_backend
 
@@ -484,9 +484,9 @@ do_cc_for_build() {
         if [ "${CT_STATIC_TOOLCHAIN}" = "y" ]; then
             build_final_opts+=( "build_staticlinked=yes" )
         fi
-        build_final_backend=do_cc_core_backend
+        build_final_backend=do_gcc_core_backend
     else
-        build_final_backend=do_cc_backend
+        build_final_backend=do_gcc_backend
     fi
 
     CT_DoStep INFO "Installing final compiler for build"
@@ -500,7 +500,7 @@ do_cc_for_build() {
 
 #------------------------------------------------------------------------------
 # Build final gcc to run on host
-do_cc_for_host() {
+do_gcc_for_host() {
     local -a final_opts
     local final_backend
 
@@ -519,9 +519,9 @@ do_cc_for_host() {
         if [ "${CT_STATIC_TOOLCHAIN}" = "y" ]; then
             final_opts+=( "build_staticlinked=yes" )
         fi
-        final_backend=do_cc_core_backend
+        final_backend=do_gcc_core_backend
     else
-        final_backend=do_cc_backend
+        final_backend=do_gcc_backend
     fi
 
     CT_DoStep INFO "Installing final compiler"
@@ -535,7 +535,7 @@ do_cc_for_host() {
 
 #------------------------------------------------------------------------------
 # Build the final gcc
-# Usage: do_cc_backend param=value [...]
+# Usage: do_gcc_backend param=value [...]
 #   Parameter     : Definition                          : Type      : Default
 #   host          : the host we run onto                : tuple     : (none)
 #   prefix        : the runtime prefix                  : dir       : (none)
@@ -543,7 +543,7 @@ do_cc_for_host() {
 #   cflags        : the host CFLAGS                     : string    : (empty)
 #   lang_list     : the list of languages to build      : string    : (empty)
 #   build_manuals : whether to build manuals or not     : bool      : no
-do_cc_backend() {
+do_gcc_backend() {
     local host
     local prefix
     local complibs
@@ -617,7 +617,7 @@ do_cc_backend() {
 
     # *** WARNING ! ***
     # Keep this full if-else-if-elif-fi-fi block in sync
-    # with the same block in do_cc_core, above.
+    # with the same block in do_gcc_core, above.
     if [ "${CT_STATIC_TOOLCHAIN}" = "y" ]; then
         final_LDFLAGS+=("-static")
         host_libstdcxx_flags+=("-static-libgcc")
@@ -760,7 +760,7 @@ do_cc_backend() {
     CFLAGS_FOR_TARGET="${CT_TARGET_CFLAGS}"         \
     CXXFLAGS_FOR_TARGET="${CT_TARGET_CFLAGS}"       \
     LDFLAGS_FOR_TARGET="${CT_TARGET_LDFLAGS}"       \
-    "${CT_SRC_DIR}/gcc-${CT_CC_VERSION}/configure"  \
+    "${CT_SRC_DIR}/gcc-${CT_CC_GCC_VERSION}/configure"  \
         --build=${CT_BUILD}                         \
         --host=${host}                              \
         --target=${CT_TARGET}                       \
