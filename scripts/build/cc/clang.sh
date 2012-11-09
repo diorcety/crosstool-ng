@@ -4,12 +4,17 @@
 
 # Download clang
 do_clang_get() {
-    :
+    CT_GetFile "clang-${CT_CC_CLANG_VERSION}.src" \
+               http://llvm.org/releases/${CT_LLVM_VERSION}
 }
 
 # Extract clang
 do_clang_extract() {
-    :
+    CT_Extract "clang-${CT_CC_CLANG_VERSION}.src"
+    
+    CT_Pushd "${CT_SRC_DIR}/clang-${CT_CC_CLANG_VERSION}.src"
+    CT_Patch nochdir "clang" "${CT_CC_CLANG_VERSION}"
+    CT_Popd
 }
 
 #------------------------------------------------------------------------------
