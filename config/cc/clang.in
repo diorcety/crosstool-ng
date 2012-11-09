@@ -55,3 +55,5 @@ config CC_CLANG_VERSION
     default "2.9" if CC_CLANG_V_2_9
     default "2.8" if CC_CLANG_V_2_8
     default "2.7" if CC_CLANG_V_2_7
+
+source "config/cc/clang.in.2"
