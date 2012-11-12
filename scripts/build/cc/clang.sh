@@ -15,6 +15,9 @@ do_clang_extract() {
     CT_Pushd "${CT_SRC_DIR}/clang-${CT_CC_CLANG_VERSION}.src"
     CT_Patch nochdir "clang" "${CT_CC_CLANG_VERSION}"
     CT_Popd
+    
+    CT_DoExecLog ALL \
+    cp -aT "${CT_SRC_DIR}/clang-${CT_CC_CLANG_VERSION}.src" "${CT_SRC_DIR}/llvm-${CT_LLVM_VERSION}.src/tools/clang"
 }
 
 #------------------------------------------------------------------------------

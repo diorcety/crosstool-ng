@@ -6,6 +6,7 @@
 ## select CC_SUPPORT_ADA
 ## select CC_SUPPORT_OBJC
 ## select CC_SUPPORT_OBJCXX
+## select CC_gcc
 ##
 ## help gcc is the full-blown GNU compiler. This is what most people will choose.
 ## help
@@ -22,26 +23,31 @@ choice
 config CC_CLANG_V_3_1
     bool
     select LLVM_NEEDED
+    select LLVM_COMPILER_RT_NEEDED
     prompt "3.1"
 
 config CC_CLANG_V_3_0
     bool
     select LLVM_NEEDED
+    select LLVM_COMPILER_RT_NEEDED
     prompt "3.0"
 
 config CC_CLANG_V_2_9
     bool
     select LLVM_NEEDED
+    select LLVM_COMPILER_RT_NEEDED
     prompt "2.9"
 
 config CC_CLANG_V_2_8
     bool
     select LLVM_NEEDED
+    select LLVM_COMPILER_RT_NEEDED
     prompt "2.8"
     
 config CC_CLANG_V_2_7
     bool
     select LLVM_NEEDED
+    select LLVM_COMPILER_RT_NEEDED
     prompt "2.7"
     
 endchoice

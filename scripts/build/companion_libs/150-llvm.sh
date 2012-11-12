@@ -55,7 +55,7 @@ do_llvm_for_host() {
     CT_mkdir_pushd "${CT_BUILD_DIR}/build-LLVM-host-${CT_HOST}"
 
     llvm_opts+=( "host=${CT_HOST}" )
-    llvm_opts+=( "prefix=${CT_HOST_COMPLIBS_DIR}" )
+    llvm_opts+=( "prefix=${CT_PREFIX_DIR}" )
     llvm_opts+=( "cflags=${CT_CFLAGS_FOR_HOST}" )
     do_llvm_backend "${llvm_opts[@]}"
 
@@ -86,6 +86,7 @@ do_llvm_backend() {
         --build=${CT_BUILD}                               \
         --host=${host}                                    \
         --prefix="${prefix}"                              \
+        --target=${CT_TARGET}                             \
 
     CT_DoLog EXTRA "Building LLVM"
     CT_DoExecLog ALL make ${JOBSFLAGS}
