@@ -86,8 +86,7 @@ do_gmp_backend() {
         --enable-mpbsd                              \
         --enable-cxx                                \
         --disable-shared                            \
-        --enable-static				  \
-        ABI=32
+        --enable-static
 
     CT_DoLog EXTRA "Building GMP"
     CT_DoExecLog ALL make ${JOBSFLAGS}
