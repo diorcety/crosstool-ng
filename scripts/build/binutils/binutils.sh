@@ -28,6 +28,8 @@ do_binutils_for_build() {
 
     binutils_opts+=( "host=${CT_BUILD}" )
     binutils_opts+=( "prefix=${CT_BUILDTOOLS_PREFIX_DIR}" )
+    binutils_opts+=( "cflags=${CT_CFLAGS_FOR_BUILD}" )
+    binutils_opts+=( "ldflags=${CT_LDFLAGS_FOR_BUILD}" )
 
     do_binutils_backend "${binutils_opts[@]}"
 
@@ -47,6 +49,7 @@ do_binutils_for_host() {
     binutils_opts+=( "prefix=${CT_PREFIX_DIR}" )
     binutils_opts+=( "static_build=${CT_STATIC_TOOLCHAIN}" )
     binutils_opts+=( "cflags=${CT_CFLAGS_FOR_HOST}" )
+    binutils_opts+=( "ldflags=${CT_LDFLAGS_FOR_HOST}" )
     binutils_opts+=( "build_manuals=${CT_BUILD_MANUALS}" )
 
     do_binutils_backend "${binutils_opts[@]}"
@@ -88,13 +91,15 @@ do_binutils_for_host() {
 #     host          : machine to run on         : tuple     : (none)
 #     prefix        : prefix to install into    : dir       : (none)
 #     static_build  : build statcially          : bool      : no
-#     cflags        : host cflags to use        : string    : (empty)
+#     cflags        : cflags to use             : string    : (empty)
+#     ldflags       : ldflags to use            : string    : (empty)
 #     build_manuals : whether to build manuals  : bool      : no
 do_binutils_backend() {
     local host
     local prefix
     local static_build
     local cflags
+    local ldflags
     local build_manuals=no
     local -a extra_config
     local -a extra_make_flags
@@ -147,6 +152,7 @@ do_binutils_backend() {
     CT_DoExecLog CFG                                            \
     CFLAGS="${cflags}"                                          \
     CXXFLAGS="${cflags}"                                        \
+    LDFLAGS="${ldflags}"                                        \
     "${CT_SRC_DIR}/binutils-${CT_BINUTILS_VERSION}/configure"   \
         --build=${CT_BUILD}                                     \
         --host=${host}                                          \
