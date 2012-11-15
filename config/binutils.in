@@ -8,6 +8,8 @@ choice
 
 if ARCH_USE_MMU || BARE_METAL
 
+if ! MINGW32 
+
 config ARCH_BINFMT_ELF
     bool
     prompt "ELF"
@@ -15,17 +17,30 @@ config ARCH_BINFMT_ELF
       This will make your system build ELF executables,
       suitable for architectures with an MMU.
 
+endif # ! MINGW32 
+
+if MINGW32 
+
+config ARCH_BINFMT_PE
+    bool
+    prompt "PE"
+    help
+      This will make your system build PE executables.
+
+endif # MINGW32 
+
 endif # ARCH_USE_MMU
 
 if ! ARCH_USE_MMU
 
 config ARCH_BINFMT_FLAT
     bool
+    depends on ! ARCH_USE_MMU
     prompt "Flat"
     help
       This will build flat binaries, suitable for
       MMU-less architectures.
-
+      
 config ARCH_BINFMT_FDPIC
     bool
     prompt "FD_PIC ELF"
@@ -33,13 +48,14 @@ config ARCH_BINFMT_FDPIC
       This will build FD_PIC ELF binaries, suitable for
       MMU-less architectures that still require to use
       shared libraries (FIXME).
-
 endif # ! ARCH_USE_MMU
 
 endchoice
 
-source "config/binutils/binutils.in"
-source "config/binutils/elf2flt.in"
-source "config/binutils/sstrip.in"
+config BINUTILS
+    string
+
+source "config.gen/binutils.in"
+source "config.gen/binutils.in.2"
 
 endmenu

@@ -1,5 +1,8 @@
 # binutils options
 
+## depends on ARCH_BINFMT_ELF || ARCH_BINFMT_PE || ARCH_BINFMT_FLAT || ARCH_BINFMT_FDPIC
+##
+
 comment "GNU binutils"
 
 choice
@@ -98,19 +101,14 @@ config BINUTILS_HAS_GOLD
 
 config BINUTILS_GOLD_SUPPORTS_ARCH
     bool
+    default y if ARCH_arm
+    default y if ARCH_x86
 
 config BINUTILS_HAS_PLUGINS
     bool
 
 config BINUTILS_HAS_PKGVERSION_BUGURL
     bool
-
-# Only these architectures have support in gold
-config ARCH_arm
-    select BINUTILS_GOLD_SUPPORTS_ARCH
-
-config ARCH_x86
-    select BINUTILS_GOLD_SUPPORTS_ARCH
 
 # Force using the BFD linker if needed
 # This is the case for some C libraries (eg. glibc and
