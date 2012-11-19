@@ -21,11 +21,12 @@ if ! ARCH_USE_MMU
 
 config ARCH_BINFMT_FLAT
     bool
+    depends on ! ARCH_USE_MMU
     prompt "Flat"
     help
       This will build flat binaries, suitable for
       MMU-less architectures.
-
+      
 config ARCH_BINFMT_FDPIC
     bool
     prompt "FD_PIC ELF"
@@ -33,12 +34,14 @@ config ARCH_BINFMT_FDPIC
       This will build FD_PIC ELF binaries, suitable for
       MMU-less architectures that still require to use
       shared libraries (FIXME).
-
 endif # ! ARCH_USE_MMU
 
 endchoice
 
-source "config/binutils/binutils.in"
-source "config/binutils/elf2flt.in"
+config BINUTILS
+    string
+
+source "config.gen/binutils.in"
+source "config.gen/binutils.in.2"
 
 endmenu
