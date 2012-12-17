@@ -1,0 +1,26 @@
+--- gcc-5666.3/gcc/config/t-slibgcc-darwin.orig	Thu Oct 14 21:27:53 2010
++++ gcc-5666.3/gcc/config/t-slibgcc-darwin	Sun Jun 10 00:06:27 2012
+@@ -51,12 +51,6 @@
+ 	# libraries are expected to exist in the multilib directory.
+ 	MLIBS=`$(GCC_FOR_TARGET) --print-multi-lib \
+ 		| sed -e 's/;.*$$//' -e '/^\.$$/d'` ; \
+-	for mlib in $$MLIBS ; do \
+-	  rm -f $${mlib}/$@ || exit 1 ; \
+-	  $(LN_S) ../$@ $${mlib}/$@ || exit 1 ; \
+-	done
+-	MLIBS=`$(GCC_FOR_TARGET) --print-multi-lib \
+-		| sed -e 's/;.*$$//' -e '/^\.$$/d'` ; \
+ 	for mlib in '' $$MLIBS ; do \
+ 	  $(STRIP_FOR_TARGET) -o $(@)_T$${mlib} \
+ 	    -s $(SHLIB_VERPFX).$(*).ver -c -u \
+@@ -64,6 +58,10 @@
+ 	done
+ 	$(LIPO_FOR_TARGET) -output $@ -create $(@)_T*
+ 	rm $(@)_T*
++	for mlib in $$MLIBS ; do \
++	  rm -f $${mlib}/$@ || exit 1 ; \
++	  $(LN_S) ../$@ $${mlib}/$@ || exit 1 ; \
++	done
+ 
+ libgcc_s.$(SHLIB_SOVERSION)$(SHLIB_EXT): stmp-multilib libgcc_s.10.4.dylib \
+ 	libgcc_s.10.5.dylib

@@ -1,0 +1,11 @@
+--- gcc-5666.3/gcc/Makefile.in-orig	2011-12-30 16:45:21.141699972 +0000
++++ gcc-5666.3/gcc/Makefile.in	2011-12-30 16:46:03.641167678 +0000
+@@ -387,7 +387,7 @@
+     fi; \
+   fi)
+ # APPLE LOCAL mainline
+-STRIP_FOR_TARGET = strip
++STRIP_FOR_TARGET = $(target)-strip
+ 
+ # --------
+ # UNSORTED

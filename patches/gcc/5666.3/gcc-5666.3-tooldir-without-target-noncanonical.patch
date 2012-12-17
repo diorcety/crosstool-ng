@@ -1,0 +1,22 @@
+--- gcc-5666.3/gcc/configure.orig	2012-03-14 02:06:50.538747841 +0000
++++ gcc-5666.3/gcc/configure	2012-03-14 02:07:42.458095127 +0000
+@@ -16635,7 +16635,7 @@
+ # make and thus we'd get different behavior depending on where we built the
+ # sources.
+ if test x$exec_prefix = xNONE -o x$exec_prefix = x$prefix; then
+-    gcc_tooldir='$(libsubdir)/$(unlibsubdir)/../$(target_noncanonical)'
++    gcc_tooldir='$(libsubdir)/$(unlibsubdir)/..'
+ else
+ # An explanation of the sed strings:
+ #  -e 's|^\$(prefix)||'   matches and eliminates 'prefix' from 'exec_prefix'
+--- ../../gcc-5666.3/gcc/configure.ac.orig	2012-03-14 02:06:44.954818041 +0000
++++ ../../gcc-5666.3/gcc/configure.ac	2012-03-14 02:07:28.198274397 +0000
+@@ -3534,7 +3534,7 @@
+ # make and thus we'd get different behavior depending on where we built the
+ # sources.
+ if test x$exec_prefix = xNONE -o x$exec_prefix = x$prefix; then
+-    gcc_tooldir='$(libsubdir)/$(unlibsubdir)/../$(target_noncanonical)'
++    gcc_tooldir='$(libsubdir)/$(unlibsubdir)/..'
+ else
+ changequote(<<, >>)dnl
+ # An explanation of the sed strings:
