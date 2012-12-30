@@ -9,27 +9,22 @@ choice
 config LLVM_V_3_1
     bool
     prompt "3.1"
-    depends on ! CC_clang || CC_CLANG_V_3_1
 
 config LLVM_V_3_0
     bool
     prompt "3.0"
-    depends on ! CC_clang || CC_CLANG_V_3_0
 
 config LLVM_V_2_9
     bool
     prompt "2.9"
-    depends on ! CC_clang || CC_CLANG_V_2_9
 
 config LLVM_V_2_8
     bool
     prompt "2.8"
-    depends on ! CC_clang || CC_CLANG_V_2_8
     
 config LLVM_V_2_7
     bool
     prompt "2.7"
-    depends on ! CC_clang || CC_CLANG_V_2_7
     
 endchoice
 

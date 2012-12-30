@@ -10,17 +10,23 @@ do_llvm_for_host() { :; }
 # Overide functions depending on configuration
 if [ "${CT_LLVM}" = "y" ]; then
 
+if [ "${CC_CLANG_V_3_1}" = "y" ]; then
+	LLVM_SUFFIX=".src"
+else
+	LLVM_SUFFIX=""
+fi
+	
 # Download LLVM
 do_llvm_get() {
-    CT_GetFile "llvm-${CT_LLVM_VERSION}.src" \
+    CT_GetFile "llvm-${CT_LLVM_VERSION}${LLVM_SUFFIX}" \
                http://llvm.org/releases/${CT_LLVM_VERSION}
 }
 
 # Extract LLVM
 do_llvm_extract() {
-    CT_Extract "llvm-${CT_LLVM_VERSION}.src"
+    CT_Extract "llvm-${CT_LLVM_VERSION}${LLVM_SUFFIX}"
     
-    CT_Pushd "${CT_SRC_DIR}/llvm-${CT_LLVM_VERSION}.src"
+    CT_Pushd "${CT_SRC_DIR}/llvm-${CT_LLVM_VERSION}${LLVM_SUFFIX}"
     CT_Patch nochdir "llvm" "${CT_LLVM_VERSION}"
     CT_Popd
 }
@@ -82,7 +88,7 @@ do_llvm_backend() {
 
     CT_DoExecLog CFG                                      \
     CFLAGS="${cflags}"                                    \
-    "${CT_SRC_DIR}/llvm-${CT_LLVM_VERSION}.src/configure" \
+    "${CT_SRC_DIR}/llvm-${CT_LLVM_VERSION}${LLVM_SUFFIX}/configure" \
         --build=${CT_BUILD}                               \
         --host=${host}                                    \
         --prefix="${prefix}"                              \

@@ -2,54 +2,27 @@
 # Copyright 2007 Yann E. MORIN
 # Licensed under the GPL v2. See COPYING in the root of this package
 
+CC_LLVMGCC_SUFFIX=".source"
+
 # Download gcc
-do_gcc_get() {
-    local linaro_version
-    local linaro_series
-    local linaro_base_url="http://launchpad.net/gcc-linaro"
-
-
-    # Account for the Linaro versioning
-    linaro_version="$( echo "${CT_CC_GCC_VERSION}"      \
-                       |sed -r -e 's/^linaro-//;'   \
-                     )"
-    linaro_series="$( echo "${linaro_version}"      \
-                      |sed -r -e 's/-.*//;'         \
-                    )"
-
+do_llvmgcc_get() {
     # Ah! gcc folks are kind of 'different': they store the tarballs in
     # subdirectories of the same name! That's because gcc is such /crap/ that
     # it is such /big/ that it needs being splitted for distribution! Sad. :-(
     # Arrgghh! Some of those versions does not follow this convention:
     # gcc-3.3.3 lives in releases/gcc-3.3.3, while gcc-2.95.* isn't in a
     # subdirectory! You bastard!
-    CT_GetFile "gcc-${CT_CC_GCC_VERSION}"                                                       \
-               {ftp,http}://ftp.gnu.org/gnu/gcc{,{,/releases}/gcc-${CT_CC_GCC_VERSION}}         \
-               ftp://ftp.irisa.fr/pub/mirrors/gcc.gnu.org/gcc/releases/gcc-${CT_CC_GCC_VERSION} \
-               ftp://ftp.uvsq.fr/pub/gcc/snapshots/${CT_CC_GCC_VERSION}                         \
-               "${linaro_base_url}/${linaro_series}/${linaro_version}/+download"
+    CT_GetFile "llvm-gcc-4.2-${CT_CC_LLVMGCC_VERSION}${CC_LLVMGCC_SUFFIX}"     \
+               http://llvm.org/releases/${CT_CC_LLVMGCC_VERSION}/  
 
-    # Starting with GCC 4.3, ecj is used for Java, and will only be
-    # built if the configure script finds ecj.jar at the top of the
-    # GCC source tree, which will not be there unless we get it and
-    # put it there ourselves
-    if [ "${CT_CC_LANG_JAVA_USE_ECJ}" = "y" ]; then
-        CT_GetFile ecj-latest .jar ftp://gcc.gnu.org/pub/java   \
-                                   ftp://sourceware.org/pub/java
-    fi
 }
 
 # Extract gcc
-do_gcc_extract() {
-    CT_Extract "gcc-${CT_CC_GCC_VERSION}"
-    CT_Patch "gcc" "${CT_CC_GCC_VERSION}"
-
-    # Copy ecj-latest.jar to ecj.jar at the top of the GCC source tree
-    if [ "${CT_CC_LANG_JAVA_USE_ECJ}" = "y"                     \
-         -a ! -f "${CT_SRC_DIR}/gcc-${CT_CC_GCC_VERSION}/ecj.jar"   \
-       ]; then
-        CT_DoExecLog ALL cp -v "${CT_TARBALLS_DIR}/ecj-latest.jar" "${CT_SRC_DIR}/gcc-${CT_CC_GCC_VERSION}/ecj.jar"
-    fi
+do_llvmgcc_extract() {
+    CT_Extract "llvm-gcc-4.2-${CT_CC_LLVMGCC_VERSION}${CC_LLVMGCC_SUFFIX}"
+    CT_Pushd "${CT_SRC_DIR}/llvm-gcc-4.2-${CT_CC_LLVMGCC_VERSION}${CC_LLVMGCC_SUFFIX}"
+    CT_Patch nochdir "llvm" "llvm-gcc" "4.2-${CT_CC_LLVMGCC_VERSION}"
+    CT_Popd
 }
 
 #------------------------------------------------------------------------------
@@ -72,71 +45,19 @@ cc_gcc_lang_list() {
 
 #------------------------------------------------------------------------------
 # Core gcc pass 1
-do_gcc_core_pass_1() {
-    local -a core_opts
-
-    core_opts+=( "mode=static" )
-    core_opts+=( "host=${CT_BUILD}" )
-    core_opts+=( "complibs=${CT_BUILDTOOLS_PREFIX_DIR}" )
-    core_opts+=( "prefix=${CT_BUILDTOOLS_PREFIX_DIR}" )
-    core_opts+=( "cflags=${CT_CFLAGS_FOR_HOST}" )
-    core_opts+=( "lang_list=c" )
-
-    CT_DoStep INFO "Installing pass-1 core C compiler"
-    CT_mkdir_pushd "${CT_BUILD_DIR}/build-cc-gcc-core-pass-1"
-
-    do_gcc_core_backend "${core_opts[@]}"
-
-    CT_Popd
-    CT_EndStep
+do_llvmgcc_core_pass_1() {
+	:
 }
 
 # Core gcc pass 2
-do_gcc_core_pass_2() {
-    local -a core_opts
-
-    # Common options:
-    core_opts+=( "host=${CT_BUILD}" )
-    core_opts+=( "prefix=${CT_BUILDTOOLS_PREFIX_DIR}" )
-    core_opts+=( "complibs=${CT_BUILDTOOLS_PREFIX_DIR}" )
-    core_opts+=( "cflags=${CT_CFLAGS_FOR_HOST}" )
-    core_opts+=( "lang_list=c" )
-
-    # Different conditions are at stake here:
-    #   - In case the threading model is NPTL, we need a shared-capable core
-    #     gcc; in all other cases, we need a static-only core gcc.
-    #   - In case the threading model is NPTL or win32, or gcc is 4.3 or
-    #     later, we need to build libgcc
-    case "${CT_THREADS}" in
-        nptl)
-            core_opts+=( "mode=shared" )
-            core_opts+=( "build_libgcc=yes" )
-            ;;
-        win32)
-            core_opts+=( "mode=static" )
-            core_opts+=( "build_libgcc=yes" )
-            ;;
-        *)
-            core_opts+=( "mode=static" )
-            if [ "${CT_CC_GCC_4_3_or_later}" = "y" ]; then
-                core_opts+=( "build_libgcc=yes" )
-            fi
-            ;;
-    esac
-
-    CT_DoStep INFO "Installing pass-2 core C compiler"
-    CT_mkdir_pushd "${CT_BUILD_DIR}/build-cc-gcc-core-pass-2"
-
-    do_gcc_core_backend "${core_opts[@]}"
-
-    CT_Popd
-    CT_EndStep
+do_llvmgcc_core_pass_2() {
+	:
 }
 
 #------------------------------------------------------------------------------
 # Build core gcc
 # This function is used to build the core C compiler.
-# Usage: do_gcc_core_backend param=value [...]
+# Usage: do_llvmgcc_core_backend param=value [...]
 #   Parameter           : Definition                                : Type      : Default
 #   mode                : build a 'static', 'shared' or 'baremetal' : string    : (none)
 #   host                : the machine the core will run on          : tuple     : (none)
@@ -148,8 +69,8 @@ do_gcc_core_pass_2() {
 #   build_staticlinked  : build statically linked or not            : bool      : no
 #   build_manuals       : whether to build manuals or not           : bool      : no
 #   cflags              : host CFLAGS to use                        : string    : (empty)
-# Usage: do_gcc_core_backend mode=[static|shared|baremetal] build_libgcc=[yes|no] build_staticlinked=[yes|no]
-do_gcc_core_backend() {
+# Usage: do_llvmgcc_core_backend mode=[static|shared|baremetal] build_libgcc=[yes|no] build_staticlinked=[yes|no]
+do_llvmgcc_core_backend() {
     local mode
     local build_libgcc=no
     local build_libstdcxx=no
@@ -344,12 +265,15 @@ do_gcc_core_backend() {
     CC_FOR_BUILD="${CT_BUILD}-gcc"                  \
     CFLAGS="${cflags}"                              \
     LDFLAGS="${core_LDFLAGS[*]}"                    \
-    "${CT_SRC_DIR}/gcc-${CT_CC_GCC_VERSION}/configure"  \
+    "${CT_SRC_DIR}/llvm-gcc-4.2-${CT_CC_LLVMGCC_VERSION}${CC_LLVMGCC_SUFFIX}/configure"  \
         --build=${CT_BUILD}                         \
         --host=${host}                              \
         --target=${CT_TARGET}                       \
         --prefix="${prefix}"                        \
         --with-local-prefix="${CT_SYSROOT_DIR}"     \
+        --program-prefix=llvm-                      \
+		--disable-bootstrap                         \
+        --enable-llvm=${CT_BUILD_DIR}/build-LLVM-host-${CT_HOST} \
         --disable-libmudflap                        \
         ${CC_CORE_SYSROOT_ARG}                      \
         "${extra_config[@]}"                        \
@@ -373,7 +297,7 @@ do_gcc_core_backend() {
         # so we configure then build it.
         # Next we have to configure gcc, create libgcc.mk then edit it...
         # So much easier if we just edit the source tree, but hey...
-        if [ ! -f "${CT_SRC_DIR}/gcc-${CT_CC_GCC_VERSION}/gcc/BASE-VER" ]; then
+        if [ ! -f "${CT_SRC_DIR}/llvm-gcc-4.2-${CT_CC_LLVMGCC_VERSION}${CC_LLVMGCC_SUFFIX}/gcc/BASE-VER" ]; then
             CT_DoExecLog CFG make ${JOBSFLAGS} configure-libiberty
             CT_DoExecLog ALL make ${JOBSFLAGS} -C libiberty libiberty.a
             CT_DoExecLog CFG make ${JOBSFLAGS} configure-gcc configure-libcpp
@@ -383,21 +307,13 @@ do_gcc_core_backend() {
             CT_DoExecLog ALL make ${JOBSFLAGS} all-libcpp all-build-libiberty
         fi
         # HACK: gcc-4.2 uses libdecnumber to build libgcc.mk, so build it here.
-        if [ -d "${CT_SRC_DIR}/gcc-${CT_CC_GCC_VERSION}/libdecnumber" ]; then
+        if [ -d "${CT_SRC_DIR}/llvm-gcc-4.2-${CT_CC_LLVMGCC_VERSION}${CC_LLVMGCC_SUFFIX}/libdecnumber" ]; then
             CT_DoExecLog CFG make ${JOBSFLAGS} configure-libdecnumber
             CT_DoExecLog ALL make ${JOBSFLAGS} -C libdecnumber libdecnumber.a
         fi
 
-        # Starting with GCC 4.3, libgcc.mk is no longer built,
-        # and libgcc.mvars is used instead.
-
-        if [ "${CT_CC_GCC_4_3_or_later}" = "y" ]; then
-            libgcc_rule="libgcc.mvars"
-            core_targets=( gcc target-libgcc )
-        else
-            libgcc_rule="libgcc.mk"
-            core_targets=( gcc )
-        fi
+        libgcc_rule="libgcc.mk"
+        core_targets=( gcc )
 
         # On bare metal and canadian build the host-compiler is used when
         # actually the build-system compiler is required. Choose the correct
@@ -460,7 +376,7 @@ do_gcc_core_backend() {
 
 #------------------------------------------------------------------------------
 # Build complete gcc to run on build
-do_gcc_for_build() {
+do_llvmgcc_for_build() {
     local -a build_final_opts
     local build_final_backend
 
@@ -484,13 +400,13 @@ do_gcc_for_build() {
         if [ "${CT_STATIC_TOOLCHAIN}" = "y" ]; then
             build_final_opts+=( "build_staticlinked=yes" )
         fi
-        build_final_backend=do_gcc_core_backend
+        build_final_backend=do_llvmgcc_core_backend
     else
-        build_final_backend=do_gcc_backend
+        build_final_backend=do_llvmgcc_backend
     fi
 
     CT_DoStep INFO "Installing final compiler for build"
-    CT_mkdir_pushd "${CT_BUILD_DIR}/build-cc-gcc-final-build-${CT_BUILD}"
+    CT_mkdir_pushd "${CT_BUILD_DIR}/build-cc-llvmgcc-final-build-${CT_BUILD}"
 
     "${build_final_backend}" "${build_final_opts[@]}"
 
@@ -500,7 +416,7 @@ do_gcc_for_build() {
 
 #------------------------------------------------------------------------------
 # Build final gcc to run on host
-do_gcc_for_host() {
+do_llvmgcc_for_host() {
     local -a final_opts
     local final_backend
 
@@ -519,13 +435,13 @@ do_gcc_for_host() {
         if [ "${CT_STATIC_TOOLCHAIN}" = "y" ]; then
             final_opts+=( "build_staticlinked=yes" )
         fi
-        final_backend=do_gcc_core_backend
+        final_backend=do_llvmgcc_core_backend
     else
-        final_backend=do_gcc_backend
+        final_backend=do_llvmgcc_backend
     fi
 
     CT_DoStep INFO "Installing final compiler"
-    CT_mkdir_pushd "${CT_BUILD_DIR}/build-cc-gcc-final"
+    CT_mkdir_pushd "${CT_BUILD_DIR}/build-cc-llvmgcc-final"
 
     "${final_backend}" "${final_opts[@]}"
 
@@ -535,7 +451,7 @@ do_gcc_for_host() {
 
 #------------------------------------------------------------------------------
 # Build the final gcc
-# Usage: do_gcc_backend param=value [...]
+# Usage: do_llvmgcc_backend param=value [...]
 #   Parameter     : Definition                          : Type      : Default
 #   host          : the host we run onto                : tuple     : (none)
 #   prefix        : the runtime prefix                  : dir       : (none)
@@ -543,7 +459,7 @@ do_gcc_for_host() {
 #   cflags        : the host CFLAGS                     : string    : (empty)
 #   lang_list     : the list of languages to build      : string    : (empty)
 #   build_manuals : whether to build manuals or not     : bool      : no
-do_gcc_backend() {
+do_llvmgcc_backend() {
     local host
     local prefix
     local complibs
@@ -617,7 +533,7 @@ do_gcc_backend() {
 
     # *** WARNING ! ***
     # Keep this full if-else-if-elif-fi-fi block in sync
-    # with the same block in do_gcc_core, above.
+    # with the same block in do_llvmgcc_core, above.
     if [ "${CT_STATIC_TOOLCHAIN}" = "y" ]; then
         final_LDFLAGS+=("-static")
         host_libstdcxx_flags+=("-static-libgcc")
@@ -760,11 +676,14 @@ do_gcc_backend() {
     CFLAGS_FOR_TARGET="${CT_TARGET_CFLAGS}"         \
     CXXFLAGS_FOR_TARGET="${CT_TARGET_CFLAGS}"       \
     LDFLAGS_FOR_TARGET="${CT_TARGET_LDFLAGS}"       \
-    "${CT_SRC_DIR}/gcc-${CT_CC_GCC_VERSION}/configure"  \
+    "${CT_SRC_DIR}/llvm-gcc-4.2-${CT_CC_LLVMGCC_VERSION}${CC_LLVMGCC_SUFFIX}/configure"  \
         --build=${CT_BUILD}                         \
         --host=${host}                              \
         --target=${CT_TARGET}                       \
         --prefix="${prefix}"                        \
+        --program-prefix=llvm-                      \
+		--disable-bootstrap                         \
+        --enable-llvm=${CT_BUILD_DIR}/build-LLVM-host-${CT_HOST} \
         ${CC_SYSROOT_ARG}                           \
         "${extra_config[@]}"                        \
         --with-local-prefix="${CT_SYSROOT_DIR}"     \
