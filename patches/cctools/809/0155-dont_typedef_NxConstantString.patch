@@ -1,0 +1,17 @@
+diff -urN a/otool/print_objc.c b/otool/print_objc.c
+--- a/otool/print_objc.c	2013-01-07 08:19:30.183080534 +0000
++++ b/otool/print_objc.c	2013-01-07 08:19:30.335002622 +0000
+@@ -144,7 +144,13 @@
+     uint32_t characters;	/* char * (32-bit pointer) */
+     uint32_t _length;
+ };
++/*
++ * On Ubuntu GCC 4.5.32, this fails. It seems NXConstantString is baked into the
++ * compiler (i.e. changing it to NXConstantString2 allows it to compile)
++ */
++/*
+ typedef struct objc_string_object_t NXConstantString;
++*/
+ 
+ #define SIZEHASHTABLE 821
+ struct _hashEntry_t {

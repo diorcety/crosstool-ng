@@ -1,0 +1,13 @@
+diff -urN a/libstuff/errors.c b/libstuff/errors.c
+--- a/libstuff/errors.c	2013-01-07 08:19:33.685284483 +0000
++++ b/libstuff/errors.c	2013-01-07 08:19:33.781235277 +0000
+@@ -56,6 +56,9 @@
+  * indication.
+  */
+ __private_extern__
++#ifndef __MINGW32__
++__attribute__((weak))
++#endif
+ void
+ error(
+ const char *format,

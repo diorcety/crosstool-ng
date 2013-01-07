@@ -1,0 +1,347 @@
+diff -urN a/as/write_object.c b/as/write_object.c
+--- a/as/write_object.c	2013-01-07 08:19:36.199994854 +0000
++++ b/as/write_object.c	2013-01-07 08:19:36.539820579 +0000
+@@ -633,7 +633,7 @@
+ 	    if(stat_buf.st_mode & S_IFREG)
+ 		(void)unlink(out_file_name);
+ 	}
+-	if((fd = open(out_file_name, O_WRONLY | O_CREAT | O_TRUNC | O_BINARY, 0666)) == -1)
++	if((fd = open(out_file_name, O_WRONLY | O_CREAT | O_TRUNC | O_BINARY, FIO_READ_WRITE)) == -1)
+ 	    as_fatal("can't create output file: %s", out_file_name);
+ 	if(write(fd, output_addr, output_size) != (int)output_size)
+ 	    as_fatal("can't write output file");
+diff -urN a/dyld/launch-cache/dsc_extractor.cpp b/dyld/launch-cache/dsc_extractor.cpp
+--- a/dyld/launch-cache/dsc_extractor.cpp	2013-01-07 08:19:36.195996904 +0000
++++ b/dyld/launch-cache/dsc_extractor.cpp	2013-01-07 08:19:36.535822629 +0000
+@@ -395,7 +395,7 @@
+             make_dirs(dylib_path);
+             
+             // open file, create if does not already exist
+-            int fd = ::open(dylib_path, O_CREAT | O_EXLOCK | O_RDWR | O_BINARY, 0644);
++            int fd = ::open(dylib_path, O_CREAT | O_EXLOCK | O_RDWR | O_BINARY, FIO_READ_WRITE);
+             if ( fd == -1 ) {
+                 fprintf(stderr, "can't open or create dylib file %s, errnor=%d\n", dylib_path, errno);
+                 cumulativeResult    = -1;
+diff -urN a/dyld/launch-cache/update_dyld_shared_cache.cpp b/dyld/launch-cache/update_dyld_shared_cache.cpp
+--- a/dyld/launch-cache/update_dyld_shared_cache.cpp	2013-01-07 08:19:36.195996904 +0000
++++ b/dyld/launch-cache/update_dyld_shared_cache.cpp	2013-01-07 08:19:36.535822629 +0000
+@@ -2732,7 +2732,7 @@
+ 				}
+ 				
+ 				// create temp file for cache
+-				int fd = ::open(tempCachePath, O_CREAT | O_RDWR | O_TRUNC | O_BINARY | O_BINARY, 0644);	
++				int fd = ::open(tempCachePath, O_CREAT | O_RDWR | O_TRUNC | O_BINARY | O_BINARY, FIO_READ_WRITE);	
+ 				if ( fd == -1 )
+ 					throwf("can't create temp file %s, errnor=%d", tempCachePath, errno);
+ 					
+diff -urN a/dyld/src/dyld.cpp b/dyld/src/dyld.cpp
+--- a/dyld/src/dyld.cpp	2013-01-07 08:19:36.199994854 +0000
++++ b/dyld/src/dyld.cpp	2013-01-07 08:19:36.535822629 +0000
+@@ -3926,10 +3926,10 @@
+ 			++shortProgName;
+ 	}
+ 	mysprintf(bindingsLogPath, "/tmp/bindings/%d-%s", getpid(), shortProgName);
+-	sBindingsLogfile = open(bindingsLogPath, O_WRONLY | O_CREAT, 0666);
++	sBindingsLogfile = open(bindingsLogPath, O_WRONLY | O_CREAT, FIO_READ_WRITE);
+ 	if ( sBindingsLogfile == -1 ) {
+-		::mkdir("/tmp/bindings", 0777);
+-		sBindingsLogfile = open(bindingsLogPath, O_WRONLY | O_CREAT, 0666);
++		::mkdir("/tmp/bindings", FIO_READ_WRITE_EXEC);
++		sBindingsLogfile = open(bindingsLogPath, O_WRONLY | O_CREAT, FIO_READ_WRITE);
+ 	}
+ 	//dyld::log("open(%s) => %d, errno = %d\n", bindingsLogPath, sBindingsLogfile, errno);
+ #endif	
+diff -urN a/efitools/makerelocs.c b/efitools/makerelocs.c
+--- a/efitools/makerelocs.c	2013-01-07 08:19:36.199994854 +0000
++++ b/efitools/makerelocs.c	2013-01-07 08:19:36.535822629 +0000
+@@ -440,7 +440,7 @@
+ 	       (nbase_reloc + 1) * sizeof(struct base_relocation_entry);
+ 	fb = malloc(size);
+ 	
+-	f = open(out, O_WRONLY|O_CREAT|O_TRUNC|O_BINARY, 0644);
++	f = open(out, O_WRONLY|O_CREAT|O_TRUNC|O_BINARY, FIO_READ_WRITE);
+ 	if(f == -1){
+ 	    fatal("open output file");
+ 	}
+diff -urN a/efitools/mtoc.c b/efitools/mtoc.c
+--- a/efitools/mtoc.c	2013-01-07 08:19:36.199994854 +0000
++++ b/efitools/mtoc.c	2013-01-07 08:19:36.535822629 +0000
+@@ -1625,7 +1625,7 @@
+ 	/*
+ 	 * Create the pecoff file and write the buffer to the file.
+ 	 */
+-	f = open(out, O_WRONLY|O_CREAT|O_TRUNC|O_BINARY, 0644);
++	f = open(out, O_WRONLY|O_CREAT|O_TRUNC|O_BINARY, FIO_READ_WRITE);
+ 	if(f == -1)
+ 	    system_fatal("Can't create output file: %s", out);
+ 
+diff -urN a/ld/ld.c b/ld/ld.c
+--- a/ld/ld.c	2013-01-07 08:19:36.164013304 +0000
++++ b/ld/ld.c	2013-01-07 08:19:36.503839032 +0000
+@@ -3530,7 +3530,7 @@
+ 
+ 	if(trace_file == -1){
+ 		if(trace_file_path != NULL){
+-			trace_file = open(trace_file_path, O_WRONLY | O_APPEND | O_CREAT, 0666);
++			trace_file = open(trace_file_path, O_WRONLY | O_APPEND | O_CREAT, FIO_READ_WRITE);
+ 			if(trace_file == -1)
+ 				fatal("Could not open or create trace file: %s\n", trace_file_path);
+ 		}
+diff -urN a/ld/pass2.c b/ld/pass2.c
+--- a/ld/pass2.c	2013-01-07 08:19:36.168011254 +0000
++++ b/ld/pass2.c	2013-01-07 08:19:36.503839032 +0000
+@@ -147,7 +147,7 @@
+ 	 * of the unlink() is ignored).
+ 	 */
+ 	(void)unlink(outputfile);
+-	if((fd = open(outputfile, O_WRONLY | O_CREAT | O_TRUNC, 0777)) == -1)
++	if((fd = open(outputfile, O_WRONLY | O_CREAT | O_TRUNC, FIO_READ_WRITE_EXEC)) == -1)
+ 	    system_fatal("can't create output file: %s", outputfile);
+ #ifdef F_NOCACHE
+         /* tell filesystem to NOT cache the file when reading or writing */
+@@ -163,9 +163,9 @@
+ 	 */
+ 	if(output_mach_header.flags & MH_NOUNDEFS ||
+ 	   (has_dynamic_linker_command && output_for_dyld))
+-	    mode = (stat_buf.st_mode & 0777) | (0111 & ~umask(0));
++	    mode = (stat_buf.st_mode & FIO_READ_WRITE_EXEC) | (0111 & ~umask(0));
+ 	else
+-	    mode = (stat_buf.st_mode & 0777) & ~0111;
++	    mode = (stat_buf.st_mode & FIO_READ_WRITE_EXEC) & ~0111;
+ 	if(fchmod(fd, mode) == -1)
+ 	    system_fatal("can't set execution permissions output file: %s",
+ 			 outputfile);
+diff -urN a/ld/rld.c b/ld/rld.c
+--- a/ld/rld.c	2013-01-07 08:19:36.168011254 +0000
++++ b/ld/rld.c	2013-01-07 08:19:36.503839032 +0000
+@@ -630,7 +630,7 @@
+ 			  output_symtab_info.symtab_command.strsize;
+ 	    (void)unlink(output_filename);
+ 	    if((fd = open(output_filename, O_WRONLY | O_CREAT | O_TRUNC | O_BINARY,
+-			  0666)) == -1){
++			  FIO_READ_WRITE)) == -1){
+ 		system_error("can't create output file: %s", output_filename);
+ #ifdef KLD
+ 		internal_kld_unload(TRUE);
+@@ -1677,7 +1677,7 @@
+ 		      output_symtab_info.symtab_command.strsize;
+ 	(void)unlink(output_filename);
+ 	if((fd = open(output_filename, O_WRONLY | O_CREAT | O_TRUNC | O_BINARY,
+-		      0666)) == -1){
++		      FIO_READ_WRITE)) == -1){
+ 	    system_error("can't create output file: %s", output_filename);
+ 	    return_value = 0;
+ 	    goto deallocate_and_return;
+diff -urN a/ld64/src/ld/InputFiles.cpp b/ld64/src/ld/InputFiles.cpp
+--- a/ld64/src/ld/InputFiles.cpp	2013-01-07 08:19:36.152019456 +0000
++++ b/ld64/src/ld/InputFiles.cpp	2013-01-07 08:19:36.487847232 +0000
+@@ -370,7 +370,7 @@
+ 	if ( trace_file == -1 ) {
+ 		const char *trace_file_path = _options.traceOutputFile();
+ 		if ( trace_file_path != NULL ) {
+-			trace_file = open(trace_file_path, O_WRONLY | O_APPEND | O_CREAT, 0666);
++			trace_file = open(trace_file_path, O_WRONLY | O_APPEND | O_CREAT, FIO_READ_WRITE);
+ 			if ( trace_file == -1 )
+ 				throwf("Could not open or create trace file: %s", trace_file_path);
+ 		}
+diff -urN a/ld64/src/ld/lto_file.hpp b/ld64/src/ld/lto_file.hpp
+--- a/ld64/src/ld/lto_file.hpp	2013-01-07 08:19:36.148021507 +0000
++++ b/ld64/src/ld/lto_file.hpp	2013-01-07 08:19:36.483849282 +0000
+@@ -547,7 +547,7 @@
+         char tempMachoPath[MAXPATHLEN];
+         strcpy(tempMachoPath, outputFilePath);
+         strcat(tempMachoPath, ".lto.o");
+-        int fd = ::open(tempMachoPath, O_CREAT | O_WRONLY | O_TRUNC | O_BINARY, 0666);
++        int fd = ::open(tempMachoPath, O_CREAT | O_WRONLY | O_TRUNC | O_BINARY, FIO_READ_WRITE);
+ 		if ( fd != -1) {
+ 			::write(fd, machOFile, machOFileLen);
+ 			::close(fd);
+diff -urN a/ld64/src/ld/OutputFile.cpp b/ld64/src/ld/OutputFile.cpp
+--- a/ld64/src/ld/OutputFile.cpp	2013-01-07 08:19:36.148021507 +0000
++++ b/ld64/src/ld/OutputFile.cpp	2013-01-07 08:19:36.483849282 +0000
+@@ -1591,9 +1591,9 @@
+ 	if ( (access(_options.outputFilePath(), F_OK) == 0) && (access(_options.outputFilePath(), W_OK) == -1) )
+ 		throwf("can't write output file: %s", _options.outputFilePath());
+ 
+-	int permissions = 0777;
++	int permissions = FIO_READ_WRITE_EXEC;
+ 	if ( _options.outputKind() == Options::kObjectFile )
+-		permissions = 0666;
++		permissions = FIO_READ_WRITE;
+ 	// Calling unlink first assures the file is gone so that open creates it with correct permissions
+ 	// It also handles the case where __options.outputFilePath() file is not writable but its directory is
+ 	// And it means we don't have to truncate the file when done writing (in case new is smaller than old)
+diff -urN a/ld64/src/ld/parsers/lto_file.cpp b/ld64/src/ld/parsers/lto_file.cpp
+--- a/ld64/src/ld/parsers/lto_file.cpp	2013-01-07 08:19:36.148021507 +0000
++++ b/ld64/src/ld/parsers/lto_file.cpp	2013-01-07 08:19:36.483849282 +0000
+@@ -649,7 +649,7 @@
+         char tempMachoPath[MAXPATHLEN];
+         strcpy(tempMachoPath, options.outputFilePath);
+         strcat(tempMachoPath, ".lto.o");
+-        int fd = ::open(tempMachoPath, O_CREAT | O_WRONLY | O_TRUNC | O_BINARY, 0666);
++        int fd = ::open(tempMachoPath, O_CREAT | O_WRONLY | O_TRUNC | O_BINARY, FIO_READ_WRITE);
+ 		if ( fd != -1) {
+ 			::write(fd, machOFile, machOFileLen);
+ 			::close(fd);
+@@ -663,7 +663,7 @@
+ 
+ 	// if needed, save temp mach-o file to specific location
+ 	if ( options.tmpObjectFilePath != NULL ) {
+-		int fd = ::open(options.tmpObjectFilePath, O_CREAT | O_WRONLY | O_TRUNC | O_BINARY, 0666);
++		int fd = ::open(options.tmpObjectFilePath, O_CREAT | O_WRONLY | O_TRUNC | O_BINARY, FIO_READ_WRITE);
+ 		if ( fd != -1) {
+ 			::write(fd, machOFile, machOFileLen);
+ 			::close(fd);
+diff -urN a/misc/codesign_allocate.c b/misc/codesign_allocate.c
+--- a/misc/codesign_allocate.c	2013-01-07 08:19:36.164013304 +0000
++++ b/misc/codesign_allocate.c	2013-01-07 08:19:36.499841082 +0000
+@@ -200,7 +200,7 @@
+ 		      arch_signs[i].arch_flag.name, arch_signs[i].datasize);
+ 	}
+ 
+-	writeout(archs, narchs, output, 0777, TRUE, FALSE, FALSE, NULL);
++	writeout(archs, narchs, output, FIO_READ_WRITE_EXEC, TRUE, FALSE, FALSE, NULL);
+ 
+ 	if(errors)
+ 	    return(EXIT_FAILURE);
+diff -urN a/misc/ctf_insert.c b/misc/ctf_insert.c
+--- a/misc/ctf_insert.c	2013-01-07 08:19:36.164013304 +0000
++++ b/misc/ctf_insert.c	2013-01-07 08:19:36.499841082 +0000
+@@ -174,7 +174,7 @@
+ 		      arch_ctfs[i].arch_flag.name, arch_ctfs[i].filename);
+ 	}
+ 
+-	writeout(archs, narchs, output, 0777, TRUE, FALSE, FALSE, NULL);
++	writeout(archs, narchs, output, FIO_READ_WRITE_EXEC, TRUE, FALSE, FALSE, NULL);
+ 
+ 	if(errors)
+ 	    return(EXIT_FAILURE);
+diff -urN a/misc/inout.c b/misc/inout.c
+--- a/misc/inout.c	2013-01-07 08:19:36.164013304 +0000
++++ b/misc/inout.c	2013-01-07 08:19:36.499841082 +0000
+@@ -89,7 +89,7 @@
+ 
+ 	process(archs, narchs);
+ 
+-	writeout(archs, narchs, output, 0777, TRUE, FALSE, FALSE, NULL);
++	writeout(archs, narchs, output, FIO_READ_WRITE_EXEC, TRUE, FALSE, FALSE, NULL);
+ 
+ 	if(errors)
+ 	    return(EXIT_FAILURE);
+diff -urN a/misc/install_name_tool.c b/misc/install_name_tool.c
+--- a/misc/install_name_tool.c	2013-01-07 08:19:36.164013304 +0000
++++ b/misc/install_name_tool.c	2013-01-07 08:19:36.499841082 +0000
+@@ -333,7 +333,7 @@
+ 	    exit(EXIT_FAILURE);
+ 
+ 	if(output != NULL)
+-	    writeout(archs, narchs, output, 0777, TRUE, FALSE, FALSE, NULL);
++	    writeout(archs, narchs, output, FIO_READ_WRITE_EXEC, TRUE, FALSE, FALSE, NULL);
+ 	else
+ 	    write_on_input(archs, narchs, input);
+ 
+diff -urN a/misc/libtool.c b/misc/libtool.c
+--- a/misc/libtool.c	2013-01-07 08:19:36.164013304 +0000
++++ b/misc/libtool.c	2013-01-07 08:19:36.499841082 +0000
+@@ -87,7 +87,7 @@
+ static enum bool zero_ar_date = FALSE;
+ 
+ /*
+- * The mode of the table of contents member (S_IFREG | (0666 & ~umask))
++ * The mode of the table of contents member (S_IFREG | (FIO_READ_WRITE & ~umask))
+  */
+ static u_short toc_mode = 0;
+ 
+@@ -365,7 +365,7 @@
+ 
+ 	numask = 0;
+ 	oumask = umask(numask);
+-	toc_mode = S_IFREG | (0666 & ~oumask);
++	toc_mode = S_IFREG | (FIO_READ_WRITE & ~oumask);
+ 	(void)umask(oumask);
+ 
+ 	/* see if this is being run as ranlib */
+@@ -2414,7 +2414,7 @@
+ 	 * of the unlink() is ignored).
+ 	 */
+ 	(void)unlink(output);
+-	if((fd = open(output, O_WRONLY | O_BINARY | O_CREAT | O_TRUNC, 0666)) == -1){
++	if((fd = open(output, O_WRONLY | O_BINARY | O_CREAT | O_TRUNC, FIO_READ_WRITE)) == -1){
+ 	    system_error("can't create output file: %s", output);
+ 	    return;
+ 	}
+@@ -3975,7 +3975,7 @@
+ 
+ 	if(trace_file == -1){
+ 		if(cmd_flags.trace_file_path != NULL){
+-			trace_file = open(cmd_flags.trace_file_path, O_WRONLY | O_BINARY | O_APPEND | O_CREAT, 0666);
++			trace_file = open(cmd_flags.trace_file_path, O_WRONLY | O_BINARY | O_APPEND | O_CREAT, FIO_READ_WRITE);
+ 			if(trace_file == -1)
+ 				error("Could not open or create trace file: %s\n", cmd_flags.trace_file_path);
+ 		}
+diff -urN a/misc/lipo.c b/misc/lipo.c
+--- a/misc/lipo.c	2013-01-07 08:19:36.164013304 +0000
++++ b/misc/lipo.c	2013-01-07 08:19:36.499841082 +0000
+@@ -955,7 +955,7 @@
+ 	    system_fatal("Can't stat input file: %s", input->name);
+ 	size = stat_buf.st_size;
+ 	/* pick up set uid, set gid and sticky text bits */
+-	output_filemode = stat_buf.st_mode & 07777;
++	output_filemode = stat_buf.st_mode & FIO_MASK_ALL_4;
+ 	/*
+ 	 * Select the eariliest modifiy time so that if the output file
+ 	 * contains archives with table of contents lipo will not make them
+diff -urN a/misc/redo_prebinding.c b/misc/redo_prebinding.c
+--- a/misc/redo_prebinding.c	2013-01-07 08:19:36.164013304 +0000
++++ b/misc/redo_prebinding.c	2013-01-07 08:19:36.499841082 +0000
+@@ -906,7 +906,7 @@
+ 		exit(1);
+ 	    if(stat(input_file, &stat_buf) == -1)
+ 		system_error("can't stat input file: %s", input_file);
+-	    mode = stat_buf.st_mode & 07777;
++	    mode = stat_buf.st_mode & FIO_MASK_ALL_4;
+ 	    uid = stat_buf.st_uid;
+             gid = stat_buf.st_gid;
+ 
+diff -urN a/misc/segedit.c b/misc/segedit.c
+--- a/misc/segedit.c	2013-01-07 08:19:36.164013304 +0000
++++ b/misc/segedit.c	2013-01-07 08:19:36.499841082 +0000
+@@ -460,7 +460,7 @@
+ 			  "end of the file) in: %s", segname,
+ 			  sectname, input);
+ 		 if((fd = open(ep->filename, O_WRONLY | O_CREAT |
+-			       O_TRUNC | O_BINARY, 0666)) == -1)
++			       O_TRUNC | O_BINARY, FIO_READ_WRITE)) == -1)
+ 		    system_fatal("can't create: %s", ep->filename);
+ 		 if(write(fd, (char *)input_addr + offset,
+ 			 size) != (int)size)
+diff -urN a/misc/strip.c b/misc/strip.c
+--- a/misc/strip.c	2013-01-07 08:19:36.164013304 +0000
++++ b/misc/strip.c	2013-01-07 08:19:36.499841082 +0000
+@@ -652,7 +652,7 @@
+ 	if(stat(input_file, &stat_buf) == -1)
+ 	    system_error("can't stat input file: %s", input_file);
+ 	if(output_file != NULL){
+-	    writeout(archs, narchs, output_file, stat_buf.st_mode & 0777,
++	    writeout(archs, narchs, output_file, stat_buf.st_mode & FIO_READ_WRITE_EXEC,
+ 		     TRUE, FALSE, FALSE, NULL);
+ 	}
+ 	else{
+@@ -704,7 +704,7 @@
+ 		output_file = mktemp(output_file);
+ 	    }
+ #endif /* NMEDIT */
+-	    writeout(archs, narchs, output_file, stat_buf.st_mode & 0777,
++	    writeout(archs, narchs, output_file, stat_buf.st_mode & FIO_READ_WRITE_EXEC,
+ 		     TRUE, FALSE, FALSE, NULL);
+ 	    if(rename_file != NULL){
+ 		if(rename(output_file, rename_file) == -1)
+@@ -3798,7 +3798,7 @@
+ 	input_file = makestr("/tmp/strip.XXXXXX", NULL);
+ 	input_file = mktemp(input_file);
+ 
+-	if((fd = open(input_file, O_WRONLY|O_CREAT|O_BINARY, 0600)) < 0)
++	if((fd = open(input_file, O_WRONLY|O_CREAT|O_BINARY, FIO_READ_WRITE_ME)) < 0)
+ 	    system_fatal("can't open temporary file: %s", input_file);
+ 
+ 	if(write(fd, object->object_addr, object->object_size) !=

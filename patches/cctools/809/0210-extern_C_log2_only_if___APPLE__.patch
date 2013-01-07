@@ -1,0 +1,14 @@
+diff -urN a/ld64/src/ld/ld.cpp b/ld64/src/ld/ld.cpp
+--- a/ld64/src/ld/ld.cpp	2013-01-07 08:19:34.740743207 +0000
++++ b/ld64/src/ld/ld.cpp	2013-01-07 08:19:34.836694000 +0000
+@@ -23,7 +23,10 @@
+  */
+  
+ // start temp HACK for cross builds
++#ifdef __APPLE__
+ extern "C" double log2 ( double );
++#endif
++#include <libc.h>
+ //#define __MATH__
+ // end temp HACK for cross builds
+ 

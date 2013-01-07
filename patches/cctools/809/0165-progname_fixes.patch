@@ -1,0 +1,28 @@
+diff -urN a/as/driver.c b/as/driver.c
+--- a/as/driver.c	2013-01-07 08:19:31.094613068 +0000
++++ b/as/driver.c	2013-01-07 08:19:31.266524905 +0000
+@@ -53,6 +53,9 @@
+ 	 */
+ 	bufsize = MAXPATHLEN;
+ 	p = buf;
++	if(progname != NULL){
++	    strcpy(p, progname);
++	}
+ 	i = _NSGetExecutablePath(p, &bufsize);
+ 	if(i == -1){
+ 	    p = allocate(bufsize);
+diff -urN a/libstuff/execute.c b/libstuff/execute.c
+--- a/libstuff/execute.c	2013-01-07 08:19:31.058631521 +0000
++++ b/libstuff/execute.c	2013-01-07 08:19:31.226545409 +0000
+@@ -161,7 +161,11 @@
+ 	    p = allocate(bufsize);
+ 	    _NSGetExecutablePath(p, &bufsize);
+ 	}
++	strcpy(resolved_name,p);
+ 	prefix = realpath(p, resolved_name);
++	if(prefix == NULL){
++        prefix = resolved_name;
++	}
+ 	p = rindex(prefix, '/');
+ 	if(p != NULL)
+ 	    p[1] = '\0';

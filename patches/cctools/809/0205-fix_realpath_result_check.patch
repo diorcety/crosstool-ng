@@ -1,0 +1,12 @@
+diff -urN a/as/driver.c b/as/driver.c
+--- a/as/driver.c	2013-01-07 08:19:34.432901080 +0000
++++ b/as/driver.c	2013-01-07 08:19:34.536847771 +0000
+@@ -62,7 +62,7 @@
+ 	    _NSGetExecutablePath(p, &bufsize);
+ 	}
+ 	prefix = realpath(p, resolved_name);
+-	if(realpath == NULL)
++if(prefix == NULL)
+ 	    system_fatal("realpath(3) for %s failed", p);
+ 	p = rindex(prefix, '/');
+ 	if(p != NULL)

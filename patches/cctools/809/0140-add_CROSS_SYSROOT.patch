@@ -1,0 +1,44 @@
+diff -urN a/ld/ld.c b/ld/ld.c
+--- a/ld/ld.c	2013-01-07 08:19:28.883746876 +0000
++++ b/ld/ld.c	2013-01-07 08:19:29.075648463 +0000
+@@ -1909,6 +1909,11 @@
+ 	else{
+ 	    next_root = p;
+ 	}
++       if(next_root == NULL) {
++#ifdef CROSS_SYSROOT
++         next_root = CROSS_SYSROOT;
++#endif
++       }
+ 	if(next_root != NULL){
+ 	    for(i = 0; standard_dirs[i] != NULL; i++){
+ 		p = allocate(strlen(next_root) +
+diff -urN a/ld64/src/ld/Options.cpp b/ld64/src/ld/Options.cpp
+--- a/ld64/src/ld/Options.cpp	2013-01-07 08:19:28.867755076 +0000
++++ b/ld64/src/ld/Options.cpp	2013-01-07 08:19:29.059656663 +0000
+@@ -2790,6 +2790,10 @@
+ 	}
+ 	int standardLibraryPathsStartIndex = libraryPaths.size();
+ 	int standardFrameworkPathsStartIndex = frameworkPaths.size();
++#ifdef CROSS_SYSROOT
++	if(fSDKPaths.size() == 0) {
++		fSDKPaths.push_back(CROSS_SYSROOT);
++#endif
+ 	if ( addStandardLibraryDirectories ) {
+ 		libraryPaths.push_back("/usr/lib");
+ 		libraryPaths.push_back("/usr/local/lib");
+diff -urN a/misc/libtool.c b/misc/libtool.c
+--- a/misc/libtool.c	2013-01-07 08:19:28.879748926 +0000
++++ b/misc/libtool.c	2013-01-07 08:19:29.071650513 +0000
+@@ -1081,6 +1081,11 @@
+ 	else{
+ 	    next_root = getenv("NEXT_ROOT");
+ 	}
++	if(next_root == NULL) {
++#ifdef CROSS_SYSROOT
++          next_root = CROSS_SYSROOT;
++#endif
++	}
+ 	if(next_root != NULL){
+ 	    for(i = 0; standard_dirs[i] != NULL; i++){
+ 		p = allocate(strlen(next_root) +

@@ -1,5 +1,5 @@
 # This file adds functions to build cctools
-# Copyright 2012 Yann Diorcet
+# Copyright 2012 Yann Diorcet, Ray Donnelly.
 # Licensed under the GPL v2. See COPYING in the root of this package
 
 CT_ODCCTOOLS_VERSION=9.2
@@ -7,22 +7,24 @@ CT_ODCCTOOLS_VERSION=9.2
 do_binutils_get() {
     CT_GetFile "cctools-${CT_BINUTILS_VERSION}" \
                http://opensource.apple.com/tarballs/cctools/
-               
-    CT_GetGit  "odcctools-${CT_ODCCTOOLS_VERSION}" \
-               https://github.com/Tatsh/xchain/
+    if [ "${CT_BINUTILS_VERSIOIN}" = "806" ]; then
+        CT_GetGit  "odcctools-${CT_ODCCTOOLS_VERSION}" \
+                   https://github.com/Tatsh/xchain/
+    else
+    fi
 }
 
 do_binutils_extract() {
     CT_Extract "cctools-${CT_BINUTILS_VERSION}"
     CT_Patch "cctools" "${CT_BINUTILS_VERSION}"
-    
+
     chmod +x "${CT_SRC_DIR}/cctools-${CT_BINUTILS_VERSION}/configure"
-    
+
     rm -rf "${CT_SRC_DIR}/odcctools-${CT_ODCCTOOLS_VERSION}/"
     rm -rf "${CT_SRC_DIR}/.odcctools-${CT_ODCCTOOLS_VERSION}"*
     CT_Extract "odcctools-${CT_ODCCTOOLS_VERSION}"
     CT_Patch "odcctools" "${CT_ODCCTOOLS_VERSION}"
-    
+
     chmod +x "${CT_SRC_DIR}/odcctools-${CT_ODCCTOOLS_VERSION}/odcctools-9.2-ld/configure"
 }
 
@@ -30,11 +32,11 @@ do_binutils_extract() {
 do_binutils_for_build() {
     local -a cctools_opts
     local -a odcctools_opts
-    
+
     case "${CT_TOOLCHAIN_TYPE}" in
         native|cross)   return 0;;
     esac
-    
+
     CT_DoStep INFO "Installing cctools for build"
     CT_mkdir_pushd "${CT_BUILD_DIR}/build-cctools-build"
 
@@ -57,7 +59,7 @@ do_binutils_for_build() {
     do_odcctools_backend "${odcctools_opts[@]}"
 
     CT_Popd
-	
+
     CT_EndStep
 }
 
@@ -65,7 +67,7 @@ do_binutils_for_build() {
 do_binutils_for_host() {
     local -a cctools_opts
     local -a odcctools_opts
-    
+
     CT_DoStep INFO "Installing cctools for host"
     CT_mkdir_pushd "${CT_BUILD_DIR}/build-cctools-host-${CT_HOST}"
 
@@ -90,7 +92,7 @@ do_binutils_for_host() {
     do_odcctools_backend "${odcctools_opts[@]}"
 
     CT_Popd
-    
+
     # Make those new tools available to the core C compilers to come.
     # Note: some components want the ${TARGET}-{ar,as,ld,strip} commands as
     # well. Create that.
@@ -135,17 +137,17 @@ do_cctools_backend() {
     local cflags
     local ldflags
     local -a extra_config
-    
+
     for arg in "$@"; do
         eval "${arg// /\\ }"
     done
-    
+
     if [ "${CT_MULTILIB}" = "y" ]; then
         extra_config+=("--enable-multilib")
     else
         extra_config+=("--disable-multilib")
     fi
-    
+
     CT_DoLog EXTRA "Configuring cctools"
     CT_DoExecLog CFG \
     CFLAGS="${cflags} -isystem ${CT_BUILDTOOLS_PREFIX_DIR}/include/" 	\
@@ -159,14 +161,14 @@ do_cctools_backend() {
         --disable-werror                                                \
         "${extra_config[@]}"                                            \
         ${CT_ARCH_WITH_FLOAT}                                           \
-        ${BINUTILS_SYSROOT_ARG}                                         \   
-   
+        ${BINUTILS_SYSROOT_ARG}                                         \
+
     CT_DoLog EXTRA "Building cctools"
     CT_DoExecLog ALL make
-    
+
     CT_DoLog EXTRA "Installing cctools"
     CT_DoExecLog ALL make install
-    
+
     mkdir -p "${prefix}/${CT_TARGET}/bin"
 }
 
@@ -182,17 +184,17 @@ do_odcctools_backend() {
     local cflags
     local ldflags
     local -a extra_config
-    
+
     for arg in "$@"; do
         eval "${arg// /\\ }"
     done
-    
+
     if [ "${CT_MULTILIB}" = "y" ]; then
         extra_config+=("--enable-multilib")
     else
         extra_config+=("--disable-multilib")
     fi
-    
+
     CT_DoLog EXTRA "Configuring odcctools"
     CT_DoExecLog CFG \
     CFLAGS="${cflags} -isystem ${CT_BUILDTOOLS_PREFIX_DIR}/include/" 		 \
@@ -207,15 +209,15 @@ do_odcctools_backend() {
         "${extra_config[@]}"                                    \
         ${CT_ARCH_WITH_FLOAT}                                   \
         ${BINUTILS_SYSROOT_ARG}                                 \
-        --enable-ld64                                                            
-        
+        --enable-ld64
+
     CT_DoLog EXTRA "Building odcctools"
     CT_Pushd libstuff
     CT_DoExecLog ALL make
     CT_Popd
     CT_Pushd ld64
     CT_DoExecLog ALL make
-    
+
     CT_DoLog EXTRA "Installing odcctools"
     CT_DoExecLog ALL make install
 
@@ -228,7 +230,7 @@ do_odcctools_backend() {
     -o $prefix/bin/${CT_TARGET}-dsymutil
 
     mv "${prefix}/bin/${CT_TARGET}-ld" "${prefix}/bin/${CT_TARGET}-ld_classic"
-    ln -sv "${prefix}/bin/${CT_TARGET}-ld64" "${prefix}/bin/${CT_TARGET}-ld"    
+    ln -sv "${prefix}/bin/${CT_TARGET}-ld64" "${prefix}/bin/${CT_TARGET}-ld"
 
     CT_Popd
 }

@@ -8,9 +8,13 @@ comment "Apple cctools"
 
 choice
     bool
-    prompt "cctols version"
+    prompt "cctools version"
 # Don't remove next line
 # CT_INSERT_VERSION_BELOW
+
+config CCTOOLS_V_809
+    bool
+    prompt "809"
 
 config CCTOOLS_V_806
     bool
@@ -22,4 +26,5 @@ config BINUTILS_VERSION
     string
 # Don't remove next line
 # CT_INSERT_VERSION_STRING_BELOW
+    default "809" if CCTOOLS_V_809
     default "806" if CCTOOLS_V_806

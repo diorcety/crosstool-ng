@@ -1,0 +1,35 @@
+diff -urN a/libstuff/execute.c b/libstuff/execute.c
+--- a/libstuff/execute.c	2013-01-07 08:19:37.375392069 +0000
++++ b/libstuff/execute.c	2013-01-07 08:19:37.531312107 +0000
+@@ -25,7 +25,11 @@
+ #include <mach/mach.h> /* first to get rid of pre-comp warning */
+ #include "stdio.h"
+ #include <signal.h>
++#if defined(__MINGW32__)
++#include <process.h>
++#else
+ #include <sys/wait.h>
++#endif
+ #include <sys/file.h>
+ #include "stuff/errors.h"
+ #include "stuff/allocate.h"
+@@ -60,7 +64,10 @@
+ 		    fprintf(stderr, "%s ", *p++);
+ 	    fprintf(stderr, "\n");
+ 	}
+-
++#if defined __MINGW32__
++    termsig = _spawnvp(_P_WAIT, name, (const char * const*)argv);
++    return(termsig==0);
++#else
+ 	forkpid = fork();
+ 	if(forkpid == -1)
+ 	    system_fatal("can't fork a new process to execute: %s", name);
+@@ -89,6 +96,7 @@
+ #endif
+ 		termsig == 0);
+ 	}
++#endif
+ }
+ 
+ /*
