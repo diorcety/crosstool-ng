@@ -10,7 +10,7 @@ do_llvm_for_host() { :; }
 # Overide functions depending on configuration
 if [ "${CT_LLVM}" = "y" ]; then
 
-if [ "${CC_CLANG_V_3_1}" = "y" ]; then
+if [ "${CC_LLVM_V_3_1}" = "y" ]; then
 	LLVM_SUFFIX=".src"
 else
 	LLVM_SUFFIX=""

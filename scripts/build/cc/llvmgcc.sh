@@ -323,7 +323,7 @@ do_llvmgcc_core_backend() {
         --target=${CT_TARGET}                       \
         --prefix="${prefix}"                        \
         --with-local-prefix="${CT_SYSROOT_DIR}"     \
-        --program-prefix=llvm-                      \
+        --program-prefix=${CT_TARGET}-llvm-         \
 		--disable-bootstrap                         \
         --enable-llvm=${CT_BUILD_DIR}/build-LLVM-host-${CT_HOST} \
         --disable-libmudflap                        \
@@ -733,7 +733,7 @@ do_llvmgcc_backend() {
         --host=${host}                              \
         --target=${CT_TARGET}                       \
         --prefix="${prefix}"                        \
-        --program-prefix=llvm-                      \
+        --program-prefix=${CT_TARGET}-llvm-         \
 		--disable-bootstrap                         \
         --enable-llvm=${CT_BUILD_DIR}/build-LLVM-host-${CT_HOST} \
         ${CC_SYSROOT_ARG}                           \
