@@ -2,7 +2,6 @@
 #
 ## select CC_SUPPORT_CXX
 ## select CC_SUPPORT_FORTRAN
-## select CC_SUPPORT_JAVA
 ## select CC_SUPPORT_ADA
 ## select CC_SUPPORT_OBJC
 ## select CC_SUPPORT_OBJCXX
@@ -44,5 +43,68 @@ config CC_LLVMGCC_VERSION
     default "2.9" if CC_LLVMGCC_V_2_9
     default "2.8" if CC_LLVMGCC_V_2_8
     default "2.7" if CC_LLVMGCC_V_2_7
+
+config CC_LLVMGCC_HAS_GRAPHITE
+    bool
+
+# The way LTO works is a bit twisted.
+# See: http://gcc.gnu.org/wiki/LinkTimeOptimization#Requirements
+# Basically:
+#   - if binutils has plugins: LTO is handled by ld/gold by loading
+#     the plugin when linking
+#   - if binutils does not have plugins: LTO is handled by collect2
+# In any case, LTO support does not depend on plugins, but takes
+# advantage of it
+config CC_LLVMGCC_HAS_LTO
+    bool
+
+config CC_LLVMGCC_HAS_PKGVERSION_BUGURL
+    bool
+
+config CC_LLVMGCC_HAS_BUILD_ID
+    bool
+
+config CC_LLVMGCC_HAS_LNK_HASH_STYLE
+    bool
+
+# Only enable gcc's support for plugins if binutils has it as well
+# They are usefull only when doing LTO, but it does no harm enabling
+# them even without LTO.
+config CC_LLVMGCC_ENABLE_PLUGINS
+    bool
+    depends on BINUTILS_PLUGINS
+    depends on ! STATIC_TOOLCHAIN
+    default y
+
+# If binutils installs gold, enable support for gold in gcc
+config CC_LLVMGCC_GOLD
+    bool
+    depends on BINUTILS_GOLD_INSTALLED
+    default y
+
+config CC_LLVMGCC_USE_GMP_MPFR
+    bool
+    select GMP_NEEDED
+    select MPFR_NEEDED
+
+config CC_LLVMGCC_USE_PPL_CLOOG
+    bool
+    select PPL_NEEDED
+    select CLOOG_NEEDED
+
+config CC_LLVMGCC_USE_MPC
+    bool
+    select MPC_NEEDED
+
+config CC_LLVMGCC_USE_LIBELF
+    bool
+    select LIBELF_NEEDED
+
+config CC_LLVMGCC_HAS_LIBQUADMATH
+    bool
+
+# Fortran always requires GMP+MPFR, whatever the gcc version
+config CC_LANG_FORTRAN
+    select CC_LLVMGCC_USE_GMP_MPFR
 
 source "config/cc/llvmgcc.in.2"

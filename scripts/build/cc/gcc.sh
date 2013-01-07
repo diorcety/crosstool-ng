@@ -82,7 +82,7 @@ do_gcc_core_pass_1() {
     core_opts+=( "cflags=${CT_CFLAGS_FOR_HOST}" )
     core_opts+=( "lang_list=c" )
 
-    CT_DoStep INFO "Installing pass-1 core C compiler"
+    CT_DoStep INFO "Installing pass-1 core C gcc compiler"
     CT_mkdir_pushd "${CT_BUILD_DIR}/build-cc-gcc-core-pass-1"
 
     do_gcc_core_backend "${core_opts[@]}"
@@ -124,7 +124,7 @@ do_gcc_core_pass_2() {
             ;;
     esac
 
-    CT_DoStep INFO "Installing pass-2 core C compiler"
+    CT_DoStep INFO "Installing pass-2 core C gcc compiler"
     CT_mkdir_pushd "${CT_BUILD_DIR}/build-cc-gcc-core-pass-2"
 
     do_gcc_core_backend "${core_opts[@]}"
@@ -171,7 +171,7 @@ do_gcc_core_backend() {
         eval "${arg// /\\ }"
     done
 
-    CT_DoLog EXTRA "Configuring core C compiler"
+    CT_DoLog EXTRA "Configuring core C gcc compiler"
 
     case "${mode}" in
         static)
@@ -354,7 +354,7 @@ do_gcc_core_backend() {
         ${CC_CORE_SYSROOT_ARG}                      \
         "${extra_config[@]}"                        \
         --enable-languages="${lang_list}"           \
-        "${CT_CC_CORE_EXTRA_CONFIG_ARRAY[@]}"
+        "${CT_CC_GCC_CORE_EXTRA_CONFIG_ARRAY[@]}"
 
     if [ "${build_libgcc}" = "yes" ]; then
         # HACK: we need to override SHLIB_LC from gcc/config/t-slibgcc-elf-ver or
@@ -422,16 +422,16 @@ do_gcc_core_backend() {
         core_targets+=( target-libstdc++-v3 )
     fi
 
-    CT_DoLog EXTRA "Building core C compiler"
+    CT_DoLog EXTRA "Building core C gcc compiler"
     CT_DoExecLog ALL make ${JOBSFLAGS} "${core_targets[@]/#/all-}"
 
-    CT_DoLog EXTRA "Installing core C compiler"
+    CT_DoLog EXTRA "Installing core C gcc compiler"
     CT_DoExecLog ALL make ${JOBSFLAGS} "${core_targets[@]/#/install-}"
 
     if [ "${build_manuals}" = "yes" ]; then
-        CT_DoLog EXTRA "Building the GCC manuals"
+        CT_DoLog EXTRA "Building the gcc manuals"
         CT_DoExecLog ALL make pdf html
-        CT_DoLog EXTRA "Installing the GCC manuals"
+        CT_DoLog EXTRA "Installing the gcc manuals"
         CT_DoExecLog ALL make install-{pdf,html}-gcc
     fi
 
@@ -489,7 +489,7 @@ do_gcc_for_build() {
         build_final_backend=do_gcc_backend
     fi
 
-    CT_DoStep INFO "Installing final compiler for build"
+    CT_DoStep INFO "Installing final gcc compiler for build"
     CT_mkdir_pushd "${CT_BUILD_DIR}/build-cc-gcc-final-build-${CT_BUILD}"
 
     "${build_final_backend}" "${build_final_opts[@]}"
@@ -524,7 +524,7 @@ do_gcc_for_host() {
         final_backend=do_gcc_backend
     fi
 
-    CT_DoStep INFO "Installing final compiler"
+    CT_DoStep INFO "Installing final gcc compiler"
     CT_mkdir_pushd "${CT_BUILD_DIR}/build-cc-gcc-final"
 
     "${final_backend}" "${final_opts[@]}"
@@ -560,7 +560,7 @@ do_gcc_backend() {
         eval "${arg// /\\ }"
     done
 
-    CT_DoLog EXTRA "Configuring final compiler"
+    CT_DoLog EXTRA "Configuring final gcc compiler"
 
     # Enable selected languages
     extra_config+=("--enable-languages=${lang_list}")
@@ -587,8 +587,8 @@ do_gcc_backend() {
     else
         extra_config+=("--disable-__cxa_atexit")
     fi
-    if [ -n "${CT_CC_ENABLE_CXX_FLAGS}" ]; then
-        extra_config+=("--enable-cxx-flags=${CT_CC_ENABLE_CXX_FLAGS}")
+    if [ -n "${CT_CC_GCC_ENABLE_CXX_FLAGS}" ]; then
+        extra_config+=("--enable-cxx-flags=${CT_CC_GCC_ENABLE_CXX_FLAGS}")
     fi
     if [ "${CT_CC_GCC_LIBMUDFLAP}" = "y" ]; then
         extra_config+=(--enable-libmudflap)
@@ -630,7 +630,7 @@ do_gcc_backend() {
         final_LDFLAGS+=("-lstdc++")
         final_LDFLAGS+=("-lm")
     else
-        if [ "${CT_CC_STATIC_LIBSTDCXX}" = "y" ]; then
+        if [ "${CT_CC_GCC_STATIC_LIBSTDCXX}" = "y" ]; then
             # this is from CodeSourcery arm-2010q1-202-arm-none-linux-gnueabi.src.tar.bz2
             # build script
             # INFO: if the host gcc is gcc-4.5 then presumably we could use -static-libstdc++,
@@ -770,23 +770,23 @@ do_gcc_backend() {
         --with-local-prefix="${CT_SYSROOT_DIR}"     \
         --enable-c99                                \
         --enable-long-long                          \
-        "${CT_CC_EXTRA_CONFIG_ARRAY[@]}"
+        "${CT_CC_GCC_EXTRA_CONFIG_ARRAY[@]}"
 
     if [ "${CT_CANADIAN}" = "y" ]; then
         CT_DoLog EXTRA "Building libiberty"
         CT_DoExecLog ALL make ${JOBSFLAGS} all-build-libiberty
     fi
 
-    CT_DoLog EXTRA "Building final compiler"
+    CT_DoLog EXTRA "Building final gcc compiler"
     CT_DoExecLog ALL make ${JOBSFLAGS} all
 
-    CT_DoLog EXTRA "Installing final compiler"
+    CT_DoLog EXTRA "Installing final gcc compiler"
     CT_DoExecLog ALL make ${JOBSFLAGS} install
 
     if [ "${build_manuals}" = "yes" ]; then
-        CT_DoLog EXTRA "Building the GCC manuals"
+        CT_DoLog EXTRA "Building the gcc manuals"
         CT_DoExecLog ALL make pdf html
-        CT_DoLog EXTRA "Installing the GCC manuals"
+        CT_DoLog EXTRA "Installing the gcc manuals"
         CT_DoExecLog ALL make install-{pdf,html}-gcc
     fi
 
