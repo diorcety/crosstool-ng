@@ -9,6 +9,13 @@ all: conf mconf nconf
 CFLAGS = -DCONFIG_=\"CT_\" -DPACKAGE="\"crosstool-NG $(VERSION)\""
 LDFLAGS =
 
+$(warning MAKEFLAGS are $(MAKEFLAGS))
+$(warning MAKEFLAGS are $(MAKEFLAGS))
+$(warning MAKEFLAGS are $(MAKEFLAGS))
+$(warning MAKEFLAGS are $(MAKEFLAGS))
+$(warning MAKEFLAGS are $(MAKEFLAGS))
+$(warning EXTRA_CFLAGS are $(EXTRA_CFLAGS))
+
 # Compiler flags to use gettext
 ifeq ($(gettext),)
 INTL_CFLAGS = -DKBUILD_NO_NLS
@@ -51,7 +58,7 @@ $(nconf_OBJ) $(nconf_DEP): CFLAGS += $(INTL_CFLAGS) -I/usr/include/ncurses
 nconf: LDFLAGS += -lmenu -lpanel -lncurses
 
 # Under Cygwin, we need to auto-import some libs (which ones, exactly?)
-# for mconf and nconf to lin properly.
+# for mconf and nconf to link properly.
 ifeq ($(shell uname -o 2>/dev/null || echo unknown),Cygwin)
 mconf: LDFLAGS += -Wl,--enable-auto-import
 nconf: LDFLAGS += -Wl,--enable-auto-import
@@ -93,7 +100,7 @@ lex.zconf.c: zconf.l
 # Build C files
 %.o: %.c
 	@echo "  CC     '$@'"
-	@$(CC) $(CFLAGS) $(EXTRA_CFLAGS) -o $@ -c $<
+	$(CC) $(CFLAGS) $(EXTRA_CFLAGS) -o $@ -c $<
 
 # Actual link
 mconf: $(COMMON_OBJ) $(LX_OBJ) $(mconf_OBJ)

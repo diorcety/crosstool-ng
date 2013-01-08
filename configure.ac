@@ -264,6 +264,22 @@ AC_CACHE_CHECK([for GNU automake >= 1.10], [ac_cv_path_automake],
          AC_MSG_ERROR([could not find GNU automake >= 1.10])])])
 AC_SUBST([automake], [$ac_cv_path_automake])
 
+#----------------------------------------
+# Check whether mkdir takes one argument
+AC_CACHE_VAL([ac_cv_mkdir_takes_one_arg],
+    [AC_CHECK_FUNCS([mkdir _mkdir])
+        AC_CACHE_CHECK([whether mkdir takes one argument],
+                       [ac_cv_mkdir_takes_one_arg],
+    [AC_TRY_COMPILE([
+#include <sys/stat.h>
+#if HAVE_UNISTD_H
+#  include <unistd.h>
+#endif
+        ], [mkdir (".");],
+        [ac_cv_mkdir_takes_one_arg=yes], [ac_cv_mkdir_takes_one_arg=no])])])
+AC_SUBST([MKDIR_TAKES_ONE_ARG],[$ac_cv_mkdir_takes_one_arg])
+ACX_SET_KCONFIG_OPTION([MKDIR_TAKES_ONE_ARG])
+
 #--------------------------------------------------------------------
 # Boring again... But still a bit of work to do...
 #--------------------------------------------------------------------

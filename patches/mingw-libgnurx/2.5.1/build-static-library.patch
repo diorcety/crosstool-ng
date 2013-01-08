@@ -1,16 +1,39 @@
---- mingw-libgnurx-2.5.1.orig/configure	2009-11-03 08:19:15.000000000 +0100
-+++ mingw-libgnurx-2.5.1/configure	2009-11-03 08:31:37.000000000 +0100
+diff -urN mingw-libgnurx-2.5.1.orig/Makefile.in mingw-libgnurx-2.5.1/Makefile.in
+--- mingw-libgnurx-2.5.1.orig/Makefile.in	Mon May  7 20:28:28 2007
++++ mingw-libgnurx-2.5.1/Makefile.in	Thu Dec 20 10:48:47 2012
+@@ -39,6 +39,7 @@
+ mandir = @mandir@
+ 
+ CC = @CC_QUALIFIED@
++AR = @AR@
+ CFLAGS = @CFLAGS@ -I ${srcdir}
+ LDFLAGS = @LDFLAGS@
+ 
+@@ -69,8 +70,8 @@
+ libgnurx-$(DLLVERSION).dll libgnurx.dll.a: $(OBJECTS)
+ 	$(CC) $(CFLAGS) -shared -o libgnurx-$(DLLVERSION).dll $(LDFLAGS) $(OBJECTS)
+ 
+-libregex.a: libgnurx.dll.a
+-	cp -p libgnurx.dll.a $@
++libregex.a: $(OBJECTS)
++	$(AR) cru $@ $(OBJECTS)
+ 
+ gnurx.lib: libgnurx-$(DLLVERSION).dll
+ 	$(MSVCLIB) -def:libgnurx.def -out:gnurx.lib
+diff -urN mingw-libgnurx-2.5.1.orig/configure mingw-libgnurx-2.5.1/configure
+--- mingw-libgnurx-2.5.1.orig/configure	Mon May  7 20:52:26 2007
++++ mingw-libgnurx-2.5.1/configure	Thu Dec 20 10:51:30 2012
 @@ -273,7 +273,7 @@
  PACKAGE_STRING='MinGW libgnurx 2.5.1'
  PACKAGE_BUGREPORT='https://sourceforge.net/tracker/?group_id=2435&atid=102435'
-
+ 
 -ac_subst_vars='SHELL PATH_SEPARATOR PACKAGE_NAME PACKAGE_TARNAME PACKAGE_VERSION PACKAGE_STRING PACKAGE_BUGREPORT exec_prefix prefix program_transform_name bindir sbindir libexecdir datadir sysconfdir sharedstatedir localstatedir libdir includedir oldincludedir infodir mandir build_alias host_alias target_alias DEFS ECHO_C ECHO_N ECHO_T LIBS CC CFLAGS LDFLAGS CPPFLAGS ac_ct_CC EXEEXT OBJEXT CC_QUALIFIED DLLVERSION ZIPCMD ZIPEXT MSVCLIB ac_ct_MSVCLIB GNURX_LIB install_dev LIBOBJS LTLIBOBJS'
 +ac_subst_vars='SHELL PATH_SEPARATOR PACKAGE_NAME PACKAGE_TARNAME PACKAGE_VERSION PACKAGE_STRING PACKAGE_BUGREPORT exec_prefix prefix program_transform_name bindir sbindir libexecdir datadir sysconfdir sharedstatedir localstatedir libdir includedir oldincludedir infodir mandir build_alias host_alias target_alias DEFS ECHO_C ECHO_N ECHO_T LIBS CC CFLAGS LDFLAGS CPPFLAGS ac_ct_CC EXEEXT OBJEXT CC_QUALIFIED AR DLLVERSION ZIPCMD ZIPEXT MSVCLIB ac_ct_MSVCLIB GNURX_LIB install_dev LIBOBJS LTLIBOBJS'
  ac_subst_files=''
-
+ 
  # Initialize some variables set by options.
 @@ -2190,21 +2190,54 @@
-
+ 
  fi
  rm -f conftest.err conftest.$ac_objext conftest.$ac_ext
 -ac_ext=c
@@ -18,7 +41,7 @@
 -ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
 -ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
 -ac_compiler_gnu=$ac_cv_c_compiler_gnu
-
+ 
 -  ac_ext=c
 +
 +for ac_prog in ar; do
@@ -63,7 +86,7 @@
  ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
  ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
  ac_compiler_gnu=$ac_cv_c_compiler_gnu
-
+ 
 - popCFLAGS=$CFLAGS
 - echo 'int main(void){return 0;}' > conftest.$ac_ext
 - echo "$as_me:$LINENO: checking whether $CC accepts the -mthreads option" >&5
@@ -73,7 +96,7 @@
  echo $ECHO_N "checking whether $CC accepts the -mthreads option... $ECHO_C" >&6
     CFLAGS="$popCFLAGS $CC_QUALIFIED -mthreads"
     if (eval $ac_compile) 2>&5; then
-@@ -3038,6 +3069,7 @@
+@@ -3038,6 +3071,7 @@
  s,@EXEEXT@,$EXEEXT,;t t
  s,@OBJEXT@,$OBJEXT,;t t
  s,@CC_QUALIFIED@,$CC_QUALIFIED,;t t
@@ -81,23 +104,20 @@
  s,@DLLVERSION@,$DLLVERSION,;t t
  s,@ZIPCMD@,$ZIPCMD,;t t
  s,@ZIPEXT@,$ZIPEXT,;t t
---- mingw-libgnurx-2.5.1.orig/Makefile.in	2009-11-03 08:17:49.000000000 +0100
-+++ mingw-libgnurx-2.5.1/Makefile.in	2009-11-03 08:57:37.000000000 +0100
-@@ -39,6 +39,7 @@
- mandir = @mandir@
-
- CC = @CC_QUALIFIED@
-+AR = @AR@
- CFLAGS = @CFLAGS@ -I ${srcdir}
- LDFLAGS = @LDFLAGS@
-
-@@ -67,8 +68,8 @@
- libgnurx-$(DLLVERSION).dll libgnurx.dll.a: $(OBJECTS)
- 	$(CC) $(CFLAGS) -shared -o libgnurx-$(DLLVERSION).dll $(LDFLAGS) $(OBJECTS)
-
--libregex.a: libgnurx.dll.a
--	cp -p libgnurx.dll.a $@
-+libregex.a: $(OBJECTS)
-+	$(AR) cru $@ $(OBJECTS)
-
- gnurx.lib: libgnurx-$(DLLVERSION).dll
+diff -urN mingw-libgnurx-2.5.1.orig/regcomp.c mingw-libgnurx-2.5.1/regcomp.c
+--- mingw-libgnurx-2.5.1.orig/regcomp.c	Fri Apr 27 20:29:49 2007
++++ mingw-libgnurx-2.5.1/regcomp.c	Thu Dec 20 10:49:58 2012
+@@ -506,11 +506,8 @@
+    from either regcomp or regexec.   We don't use PREG here.  */
+ 
+ size_t
+-regerror (errcode, preg, errbuf, errbuf_size)
+-    int errcode;
+-    const regex_t *__restrict preg;
+-    char *__restrict errbuf;
+-    size_t errbuf_size;
++regerror (int errcode, const regex_t *__restrict preg,
++    char *__restrict errbuf, size_t errbuf_size)
+ {
+   const char *msg;
+   size_t msg_size;
