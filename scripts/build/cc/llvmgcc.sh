@@ -21,14 +21,14 @@ do_llvmgcc_get() {
 do_llvmgcc_extract() {
     CT_Extract "llvm-gcc-4.2-${CT_CC_LLVMGCC_VERSION}${CC_LLVMGCC_SUFFIX}"
     CT_Pushd "${CT_SRC_DIR}/llvm-gcc-4.2-${CT_CC_LLVMGCC_VERSION}${CC_LLVMGCC_SUFFIX}"
-    CT_Patch nochdir "llvm" "llvm-gcc" "4.2-${CT_CC_LLVMGCC_VERSION}"
+    CT_Patch nochdir "llvm-gcc" "${CT_CC_LLVMGCC_VERSION}"
     CT_Popd
 }
 
 #------------------------------------------------------------------------------
 # This function builds up the set of languages to enable
 # No argument expected, returns the comma-separated language list on stdout
-cc_gcc_lang_list() {
+cc_llvmgcc_lang_list() {
     local lang_list
 
     lang_list="c"
@@ -324,13 +324,12 @@ do_llvmgcc_core_backend() {
         --prefix="${prefix}"                        \
         --with-local-prefix="${CT_SYSROOT_DIR}"     \
         --program-prefix=${CT_TARGET}-llvm-         \
-		--disable-bootstrap                         \
         --enable-llvm=${CT_BUILD_DIR}/build-LLVM-host-${CT_HOST} \
         --disable-libmudflap                        \
         ${CC_CORE_SYSROOT_ARG}                      \
         "${extra_config[@]}"                        \
         --enable-languages="${lang_list}"           \
-        "${CT_CC_GCCLLVM_CORE_EXTRA_CONFIG_ARRAY[@]}"
+        "${CT_CC_LLVMGCC_CORE_EXTRA_CONFIG_ARRAY[@]}"
 
     if [ "${build_libgcc}" = "yes" ]; then
         # HACK: we need to override SHLIB_LC from gcc/config/t-slibgcc-elf-ver or
@@ -411,10 +410,10 @@ do_llvmgcc_core_backend() {
     CT_DoExecLog ALL ln -sfv "${CT_TARGET}-gcc${ext}" "${prefix}/bin/${CT_TARGET}-cc${ext}"
 
     if [ "${CT_MULTILIB}" = "y" ]; then
-        multilibs=( $( "${prefix}/bin/${CT_TARGET}-gcc" -print-multi-lib   \
+        multilibs=( $( "${prefix}/bin/${CT_TARGET}-llvm-gcc" -print-multi-lib   \
                        |tail -n +2 ) )
         if [ ${#multilibs[@]} -ne 0 ]; then
-            CT_DoLog EXTRA "gcc configured with these multilibs (besides the default):"
+            CT_DoLog EXTRA "llvmgcc configured with these multilibs (besides the default):"
             for i in "${multilibs[@]}"; do
                 dir="${i%%;*}"
                 flags="${i#*;}"
@@ -442,7 +441,7 @@ do_llvmgcc_for_build() {
     build_final_opts+=( "host=${CT_BUILD}" )
     build_final_opts+=( "prefix=${CT_BUILDTOOLS_PREFIX_DIR}" )
     build_final_opts+=( "complibs=${CT_BUILDTOOLS_PREFIX_DIR}" )
-    build_final_opts+=( "lang_list=$( cc_gcc_lang_list )" )
+    build_final_opts+=( "lang_list=$( cc_llvmgcc_lang_list )" )
     if [ "${CT_BARE_METAL}" = "y" ]; then
         # In the tests I've done, bare-metal was not impacted by the
         # lack of such a compiler, but better safe than sorry...
@@ -476,7 +475,7 @@ do_llvmgcc_for_host() {
     final_opts+=( "prefix=${CT_PREFIX_DIR}" )
     final_opts+=( "complibs=${CT_HOST_COMPLIBS_DIR}" )
     final_opts+=( "cflags=${CT_CFLAGS_FOR_HOST}" )
-    final_opts+=( "lang_list=$( cc_gcc_lang_list )" )
+    final_opts+=( "lang_list=$( cc_llvmgcc_lang_list )" )
     if [ "${CT_BUILD_MANUALS}" = "y" ]; then
         final_opts+=( "build_manuals=yes" )
     fi
@@ -734,14 +733,13 @@ do_llvmgcc_backend() {
         --target=${CT_TARGET}                       \
         --prefix="${prefix}"                        \
         --program-prefix=${CT_TARGET}-llvm-         \
-		--disable-bootstrap                         \
         --enable-llvm=${CT_BUILD_DIR}/build-LLVM-host-${CT_HOST} \
         ${CC_SYSROOT_ARG}                           \
         "${extra_config[@]}"                        \
         --with-local-prefix="${CT_SYSROOT_DIR}"     \
         --enable-c99                                \
         --enable-long-long                          \
-        "${CT_CC_GCCLLVM_EXTRA_CONFIG_ARRAY[@]}"
+        "${CT_CC_LLVMGCC_EXTRA_CONFIG_ARRAY[@]}"
 
     if [ "${CT_CANADIAN}" = "y" ]; then
         CT_DoLog EXTRA "Building libiberty"
@@ -761,18 +759,18 @@ do_llvmgcc_backend() {
         CT_DoExecLog ALL make install-{pdf,html}-gcc
     fi
 
-    # Create a symlink ${CT_TARGET}-cc to ${CT_TARGET}-gcc to always be able
+    # Create a symlink ${CT_TARGET}-llvm-cc to ${CT_TARGET}-llvm-gcc to always be able
     # to call the C compiler with the same, somewhat canonical name.
     # check whether compiler has an extension
-    file="$( ls -1 "${CT_PREFIX_DIR}/bin/${CT_TARGET}-gcc."* 2>/dev/null || true )"
+    file="$( ls -1 "${CT_PREFIX_DIR}/bin/${CT_TARGET}-llvm-gcc."* 2>/dev/null || true )"
     [ -z "${file}" ] || ext=".${file##*.}"
-    CT_DoExecLog ALL ln -sfv "${CT_TARGET}-gcc${ext}" "${CT_PREFIX_DIR}/bin/${CT_TARGET}-cc${ext}"
+    CT_DoExecLog ALL ln -sfv "${CT_TARGET}-llvm-gcc${ext}" "${CT_PREFIX_DIR}/bin/${CT_TARGET}-llvm-cc${ext}"
 
     if [ "${CT_MULTILIB}" = "y" ]; then
-        multilibs=( $( "${CT_PREFIX_DIR}/bin/${CT_TARGET}-gcc" -print-multi-lib \
+        multilibs=( $( "${CT_PREFIX_DIR}/bin/${CT_TARGET}-llvm-gcc" -print-multi-lib \
                        |tail -n +2 ) )
         if [ ${#multilibs[@]} -ne 0 ]; then
-            CT_DoLog EXTRA "gcc configured with these multilibs (besides the default):"
+            CT_DoLog EXTRA "llvmgcc configured with these multilibs (besides the default):"
             for i in "${multilibs[@]}"; do
                 dir="${i%%;*}"
                 flags="${i#*;}"
