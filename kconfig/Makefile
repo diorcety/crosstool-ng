@@ -6,7 +6,7 @@ all: conf mconf nconf
 	@true   # Just be silent, you fscking son of a fscking beach...
 
 # Build flags
-CFLAGS = -DCONFIG_=\"CT_\" -DPACKAGE="\"crosstool-NG $(VERSION)\""
+CFLAGS = -DCONFIG_=\"CT_\" -DPACKAGE="\"crosstool-NG $(VERSION)\"" -DMKDIR_TAKES_ONE_ARG=$(MKDIR_TAKES_ONE_ARG)
 LDFLAGS =
 
 $(warning MAKEFLAGS are $(MAKEFLAGS))
@@ -15,6 +15,8 @@ $(warning MAKEFLAGS are $(MAKEFLAGS))
 $(warning MAKEFLAGS are $(MAKEFLAGS))
 $(warning MAKEFLAGS are $(MAKEFLAGS))
 $(warning EXTRA_CFLAGS are $(EXTRA_CFLAGS))
+$(warning MKDIR_TAKES_ONE_ARG is $(MKDIR_TAKES_ONE_ARG))
+$(warning CFLAGS is $(CFLAGS))
 
 # Compiler flags to use gettext
 ifeq ($(gettext),)
@@ -42,6 +44,7 @@ conf_SRC = conf.c
 conf_OBJ = $(patsubst %.c,%.o,$(conf_SRC))
 conf_DEP = $(patsubst %.o,%.dep,$(conf_OBJ))
 $(conf_OBJ) $(conf_DEP): CFLAGS += $(INTL_CFLAGS)
+conf: LDFLAGS +=  -lintl -lregex -liconv
 
 # What's needed to build 'mconf'
 mconf_SRC = mconf.c
@@ -100,20 +103,20 @@ lex.zconf.c: zconf.l
 # Build C files
 %.o: %.c
 	@echo "  CC     '$@'"
-	$(CC) $(CFLAGS) $(EXTRA_CFLAGS) -o $@ -c $<
+	$(CC) -DMKDIR_TAKES_ONE_ARG=$(MKDIR_TAKES_ONE_ARG) $(CFLAGS) $(EXTRA_CFLAGS) -o $@ -c $<
 
 # Actual link
 mconf: $(COMMON_OBJ) $(LX_OBJ) $(mconf_OBJ)
 	@echo "  LD     '$@'"
-	@$(CC) -o $@ $^ $(LDFLAGS) $(EXTRA_LDFLAGS)
+	$(CC) -o $@ $^ $(LDFLAGS) $(EXTRA_LDFLAGS)
 
 nconf: $(COMMON_OBJ) $(nconf_OBJ)
 	@echo "  LD     '$@'"
-	@$(CC) -o $@ $^ $(LDFLAGS) $(EXTRA_LDFLAGS)
+	$(CC) -o $@ $^ $(LDFLAGS) $(EXTRA_LDFLAGS)
 
 conf: $(COMMON_OBJ) $(conf_OBJ)
 	@echo "  LD     '$@'"
-	@$(CC) -o $@ $^ $(LDFLAGS) $(EXTRA_LDFLAGS)
+	$(CC) -o $@ $^ $(LDFLAGS) $(EXTRA_LDFLAGS)
 
 #-----------------------------------------------------------
 # Cleaning up the mess...

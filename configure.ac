@@ -276,9 +276,9 @@ AC_CACHE_VAL([ac_cv_mkdir_takes_one_arg],
 #  include <unistd.h>
 #endif
         ], [mkdir (".");],
-        [ac_cv_mkdir_takes_one_arg=yes], [ac_cv_mkdir_takes_one_arg=no])])])
+        [ac_cv_mkdir_takes_one_arg=1], [ac_cv_mkdir_takes_one_arg=0])])])
 AC_SUBST([MKDIR_TAKES_ONE_ARG],[$ac_cv_mkdir_takes_one_arg])
-ACX_SET_KCONFIG_OPTION([MKDIR_TAKES_ONE_ARG])
+AC_SUBST([MKDIR_TAKES_ONE_ARG])
 
 #--------------------------------------------------------------------
 # Boring again... But still a bit of work to do...

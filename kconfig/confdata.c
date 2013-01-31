@@ -666,6 +666,10 @@ next:
 	return 0;
 }
 
+#if MKDIR_TAKES_ONE_ARG==1
+#define mkdir(_n,_p) mkdir((_n))
+#endif
+
 static int conf_split_config(void)
 {
 	const char *name;

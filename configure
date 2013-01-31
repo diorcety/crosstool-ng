@@ -5131,9 +5131,9 @@ mkdir (".");
 }
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"; then :
-  ac_cv_mkdir_takes_one_arg=yes
+  ac_cv_mkdir_takes_one_arg=1
 else
-  ac_cv_mkdir_takes_one_arg=no
+  ac_cv_mkdir_takes_one_arg=0
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
 fi
@@ -5143,11 +5143,6 @@ fi
 
 MKDIR_TAKES_ONE_ARG=$ac_cv_mkdir_takes_one_arg
 
-if test -n "$MKDIR_TAKES_ONE_ARG"; then :
-  kconfig_options="$kconfig_options has_MKDIR_TAKES_ONE_ARG=y"
-else
-  kconfig_options="$kconfig_options has_MKDIR_TAKES_ONE_ARG"
-fi
 
 
 #--------------------------------------------------------------------
