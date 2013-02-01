@@ -51,7 +51,7 @@ mconf_SRC = mconf.c
 mconf_OBJ = $(patsubst %.c,%.o,$(mconf_SRC))
 mconf_DEP = $(patsubst %.c,%.dep,$(mconf_SRC))
 $(mconf_OBJ) $(mconf_DEP): CFLAGS += $(NCURSES_CFLAGS) $(INTL_CFLAGS)
-mconf: LDFLAGS += $(NCURSES_LDFLAGS)
+mconf: LDFLAGS += $(NCURSES_LDFLAGS) -lintl -lregex -liconv
 
 # What's needed to build 'nconf'
 nconf_SRC = nconf.c nconf.gui.c

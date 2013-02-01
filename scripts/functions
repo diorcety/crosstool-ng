@@ -358,7 +358,7 @@ CT_DoForceRmdir() {
     for dir in "${@}"; do
         [ -d "${dir}" ] || continue
         case "$CT_SYS_OS" in
-            Linux|CYGWIN*)
+            Linux|CYGWIN*|MINGW32*)
                 mode="$(stat -c '%a' "$(dirname "${dir}")")"
                 ;;
             Darwin|*BSD)
