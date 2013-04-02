@@ -1,6 +1,6 @@
 diff -urN a/as/write_object.c b/as/write_object.c
---- a/as/write_object.c	2013-01-07 08:19:36.199994854 +0000
-+++ b/as/write_object.c	2013-01-07 08:19:36.539820579 +0000
+--- a/as/write_object.c	2013-04-02 23:45:10.043143232 +0100
++++ b/as/write_object.c	2013-04-02 23:45:10.607136143 +0100
 @@ -633,7 +633,7 @@
  	    if(stat_buf.st_mode & S_IFREG)
  		(void)unlink(out_file_name);
@@ -11,8 +11,8 @@ diff -urN a/as/write_object.c b/as/write_object.c
  	if(write(fd, output_addr, output_size) != (int)output_size)
  	    as_fatal("can't write output file");
 diff -urN a/dyld/launch-cache/dsc_extractor.cpp b/dyld/launch-cache/dsc_extractor.cpp
---- a/dyld/launch-cache/dsc_extractor.cpp	2013-01-07 08:19:36.195996904 +0000
-+++ b/dyld/launch-cache/dsc_extractor.cpp	2013-01-07 08:19:36.535822629 +0000
+--- a/dyld/launch-cache/dsc_extractor.cpp	2013-04-02 23:45:10.039143283 +0100
++++ b/dyld/launch-cache/dsc_extractor.cpp	2013-04-02 23:45:10.603136193 +0100
 @@ -395,7 +395,7 @@
              make_dirs(dylib_path);
              
@@ -23,8 +23,8 @@ diff -urN a/dyld/launch-cache/dsc_extractor.cpp b/dyld/launch-cache/dsc_extracto
                  fprintf(stderr, "can't open or create dylib file %s, errnor=%d\n", dylib_path, errno);
                  cumulativeResult    = -1;
 diff -urN a/dyld/launch-cache/update_dyld_shared_cache.cpp b/dyld/launch-cache/update_dyld_shared_cache.cpp
---- a/dyld/launch-cache/update_dyld_shared_cache.cpp	2013-01-07 08:19:36.195996904 +0000
-+++ b/dyld/launch-cache/update_dyld_shared_cache.cpp	2013-01-07 08:19:36.535822629 +0000
+--- a/dyld/launch-cache/update_dyld_shared_cache.cpp	2013-04-02 23:45:10.039143283 +0100
++++ b/dyld/launch-cache/update_dyld_shared_cache.cpp	2013-04-02 23:45:10.603136193 +0100
 @@ -2732,7 +2732,7 @@
  				}
  				
@@ -35,8 +35,8 @@ diff -urN a/dyld/launch-cache/update_dyld_shared_cache.cpp b/dyld/launch-cache/u
  					throwf("can't create temp file %s, errnor=%d", tempCachePath, errno);
  					
 diff -urN a/dyld/src/dyld.cpp b/dyld/src/dyld.cpp
---- a/dyld/src/dyld.cpp	2013-01-07 08:19:36.199994854 +0000
-+++ b/dyld/src/dyld.cpp	2013-01-07 08:19:36.535822629 +0000
+--- a/dyld/src/dyld.cpp	2013-04-02 23:45:10.039143283 +0100
++++ b/dyld/src/dyld.cpp	2013-04-02 23:45:10.603136193 +0100
 @@ -3926,10 +3926,10 @@
  			++shortProgName;
  	}
@@ -52,8 +52,8 @@ diff -urN a/dyld/src/dyld.cpp b/dyld/src/dyld.cpp
  	//dyld::log("open(%s) => %d, errno = %d\n", bindingsLogPath, sBindingsLogfile, errno);
  #endif	
 diff -urN a/efitools/makerelocs.c b/efitools/makerelocs.c
---- a/efitools/makerelocs.c	2013-01-07 08:19:36.199994854 +0000
-+++ b/efitools/makerelocs.c	2013-01-07 08:19:36.535822629 +0000
+--- a/efitools/makerelocs.c	2013-04-02 23:45:10.039143283 +0100
++++ b/efitools/makerelocs.c	2013-04-02 23:45:10.607136143 +0100
 @@ -440,7 +440,7 @@
  	       (nbase_reloc + 1) * sizeof(struct base_relocation_entry);
  	fb = malloc(size);
@@ -64,8 +64,8 @@ diff -urN a/efitools/makerelocs.c b/efitools/makerelocs.c
  	    fatal("open output file");
  	}
 diff -urN a/efitools/mtoc.c b/efitools/mtoc.c
---- a/efitools/mtoc.c	2013-01-07 08:19:36.199994854 +0000
-+++ b/efitools/mtoc.c	2013-01-07 08:19:36.535822629 +0000
+--- a/efitools/mtoc.c	2013-04-02 23:45:10.039143283 +0100
++++ b/efitools/mtoc.c	2013-04-02 23:45:10.607136143 +0100
 @@ -1625,7 +1625,7 @@
  	/*
  	 * Create the pecoff file and write the buffer to the file.
@@ -76,8 +76,8 @@ diff -urN a/efitools/mtoc.c b/efitools/mtoc.c
  	    system_fatal("Can't create output file: %s", out);
  
 diff -urN a/ld/ld.c b/ld/ld.c
---- a/ld/ld.c	2013-01-07 08:19:36.164013304 +0000
-+++ b/ld/ld.c	2013-01-07 08:19:36.503839032 +0000
+--- a/ld/ld.c	2013-04-02 23:45:09.999143787 +0100
++++ b/ld/ld.c	2013-04-02 23:45:10.555136796 +0100
 @@ -3530,7 +3530,7 @@
  
  	if(trace_file == -1){
@@ -88,8 +88,8 @@ diff -urN a/ld/ld.c b/ld/ld.c
  				fatal("Could not open or create trace file: %s\n", trace_file_path);
  		}
 diff -urN a/ld/pass2.c b/ld/pass2.c
---- a/ld/pass2.c	2013-01-07 08:19:36.168011254 +0000
-+++ b/ld/pass2.c	2013-01-07 08:19:36.503839032 +0000
+--- a/ld/pass2.c	2013-04-02 23:45:09.999143787 +0100
++++ b/ld/pass2.c	2013-04-02 23:45:10.559136746 +0100
 @@ -147,7 +147,7 @@
  	 * of the unlink() is ignored).
  	 */
@@ -112,8 +112,8 @@ diff -urN a/ld/pass2.c b/ld/pass2.c
  	    system_fatal("can't set execution permissions output file: %s",
  			 outputfile);
 diff -urN a/ld/rld.c b/ld/rld.c
---- a/ld/rld.c	2013-01-07 08:19:36.168011254 +0000
-+++ b/ld/rld.c	2013-01-07 08:19:36.503839032 +0000
+--- a/ld/rld.c	2013-04-02 23:45:09.999143787 +0100
++++ b/ld/rld.c	2013-04-02 23:45:10.555136796 +0100
 @@ -630,7 +630,7 @@
  			  output_symtab_info.symtab_command.strsize;
  	    (void)unlink(output_filename);
@@ -133,8 +133,8 @@ diff -urN a/ld/rld.c b/ld/rld.c
  	    return_value = 0;
  	    goto deallocate_and_return;
 diff -urN a/ld64/src/ld/InputFiles.cpp b/ld64/src/ld/InputFiles.cpp
---- a/ld64/src/ld/InputFiles.cpp	2013-01-07 08:19:36.152019456 +0000
-+++ b/ld64/src/ld/InputFiles.cpp	2013-01-07 08:19:36.487847232 +0000
+--- a/ld64/src/ld/InputFiles.cpp	2013-04-02 23:45:09.979144038 +0100
++++ b/ld64/src/ld/InputFiles.cpp	2013-04-02 23:45:10.531137099 +0100
 @@ -370,7 +370,7 @@
  	if ( trace_file == -1 ) {
  		const char *trace_file_path = _options.traceOutputFile();
@@ -145,8 +145,8 @@ diff -urN a/ld64/src/ld/InputFiles.cpp b/ld64/src/ld/InputFiles.cpp
  				throwf("Could not open or create trace file: %s", trace_file_path);
  		}
 diff -urN a/ld64/src/ld/lto_file.hpp b/ld64/src/ld/lto_file.hpp
---- a/ld64/src/ld/lto_file.hpp	2013-01-07 08:19:36.148021507 +0000
-+++ b/ld64/src/ld/lto_file.hpp	2013-01-07 08:19:36.483849282 +0000
+--- a/ld64/src/ld/lto_file.hpp	2013-04-02 23:45:09.975144089 +0100
++++ b/ld64/src/ld/lto_file.hpp	2013-04-02 23:45:10.527137149 +0100
 @@ -547,7 +547,7 @@
          char tempMachoPath[MAXPATHLEN];
          strcpy(tempMachoPath, outputFilePath);
@@ -157,8 +157,8 @@ diff -urN a/ld64/src/ld/lto_file.hpp b/ld64/src/ld/lto_file.hpp
  			::write(fd, machOFile, machOFileLen);
  			::close(fd);
 diff -urN a/ld64/src/ld/OutputFile.cpp b/ld64/src/ld/OutputFile.cpp
---- a/ld64/src/ld/OutputFile.cpp	2013-01-07 08:19:36.148021507 +0000
-+++ b/ld64/src/ld/OutputFile.cpp	2013-01-07 08:19:36.483849282 +0000
+--- a/ld64/src/ld/OutputFile.cpp	2013-04-02 23:45:09.975144089 +0100
++++ b/ld64/src/ld/OutputFile.cpp	2013-04-02 23:45:10.527137149 +0100
 @@ -1591,9 +1591,9 @@
  	if ( (access(_options.outputFilePath(), F_OK) == 0) && (access(_options.outputFilePath(), W_OK) == -1) )
  		throwf("can't write output file: %s", _options.outputFilePath());
@@ -172,8 +172,8 @@ diff -urN a/ld64/src/ld/OutputFile.cpp b/ld64/src/ld/OutputFile.cpp
  	// It also handles the case where __options.outputFilePath() file is not writable but its directory is
  	// And it means we don't have to truncate the file when done writing (in case new is smaller than old)
 diff -urN a/ld64/src/ld/parsers/lto_file.cpp b/ld64/src/ld/parsers/lto_file.cpp
---- a/ld64/src/ld/parsers/lto_file.cpp	2013-01-07 08:19:36.148021507 +0000
-+++ b/ld64/src/ld/parsers/lto_file.cpp	2013-01-07 08:19:36.483849282 +0000
+--- a/ld64/src/ld/parsers/lto_file.cpp	2013-04-02 23:45:09.975144089 +0100
++++ b/ld64/src/ld/parsers/lto_file.cpp	2013-04-02 23:45:10.527137149 +0100
 @@ -649,7 +649,7 @@
          char tempMachoPath[MAXPATHLEN];
          strcpy(tempMachoPath, options.outputFilePath);
@@ -193,8 +193,8 @@ diff -urN a/ld64/src/ld/parsers/lto_file.cpp b/ld64/src/ld/parsers/lto_file.cpp
  			::write(fd, machOFile, machOFileLen);
  			::close(fd);
 diff -urN a/misc/codesign_allocate.c b/misc/codesign_allocate.c
---- a/misc/codesign_allocate.c	2013-01-07 08:19:36.164013304 +0000
-+++ b/misc/codesign_allocate.c	2013-01-07 08:19:36.499841082 +0000
+--- a/misc/codesign_allocate.c	2013-04-02 23:45:09.991143887 +0100
++++ b/misc/codesign_allocate.c	2013-04-02 23:45:10.547136896 +0100
 @@ -200,7 +200,7 @@
  		      arch_signs[i].arch_flag.name, arch_signs[i].datasize);
  	}
@@ -205,8 +205,8 @@ diff -urN a/misc/codesign_allocate.c b/misc/codesign_allocate.c
  	if(errors)
  	    return(EXIT_FAILURE);
 diff -urN a/misc/ctf_insert.c b/misc/ctf_insert.c
---- a/misc/ctf_insert.c	2013-01-07 08:19:36.164013304 +0000
-+++ b/misc/ctf_insert.c	2013-01-07 08:19:36.499841082 +0000
+--- a/misc/ctf_insert.c	2013-04-02 23:45:09.991143887 +0100
++++ b/misc/ctf_insert.c	2013-04-02 23:45:10.547136896 +0100
 @@ -174,7 +174,7 @@
  		      arch_ctfs[i].arch_flag.name, arch_ctfs[i].filename);
  	}
@@ -217,8 +217,8 @@ diff -urN a/misc/ctf_insert.c b/misc/ctf_insert.c
  	if(errors)
  	    return(EXIT_FAILURE);
 diff -urN a/misc/inout.c b/misc/inout.c
---- a/misc/inout.c	2013-01-07 08:19:36.164013304 +0000
-+++ b/misc/inout.c	2013-01-07 08:19:36.499841082 +0000
+--- a/misc/inout.c	2013-04-02 23:45:09.991143887 +0100
++++ b/misc/inout.c	2013-04-02 23:45:10.547136896 +0100
 @@ -89,7 +89,7 @@
  
  	process(archs, narchs);
@@ -229,8 +229,8 @@ diff -urN a/misc/inout.c b/misc/inout.c
  	if(errors)
  	    return(EXIT_FAILURE);
 diff -urN a/misc/install_name_tool.c b/misc/install_name_tool.c
---- a/misc/install_name_tool.c	2013-01-07 08:19:36.164013304 +0000
-+++ b/misc/install_name_tool.c	2013-01-07 08:19:36.499841082 +0000
+--- a/misc/install_name_tool.c	2013-04-02 23:45:09.995143837 +0100
++++ b/misc/install_name_tool.c	2013-04-02 23:45:10.551136846 +0100
 @@ -333,7 +333,7 @@
  	    exit(EXIT_FAILURE);
  
@@ -241,8 +241,8 @@ diff -urN a/misc/install_name_tool.c b/misc/install_name_tool.c
  	    write_on_input(archs, narchs, input);
  
 diff -urN a/misc/libtool.c b/misc/libtool.c
---- a/misc/libtool.c	2013-01-07 08:19:36.164013304 +0000
-+++ b/misc/libtool.c	2013-01-07 08:19:36.499841082 +0000
+--- a/misc/libtool.c	2013-04-02 23:45:09.995143837 +0100
++++ b/misc/libtool.c	2013-04-02 23:45:10.547136896 +0100
 @@ -87,7 +87,7 @@
  static enum bool zero_ar_date = FALSE;
  
@@ -280,8 +280,8 @@ diff -urN a/misc/libtool.c b/misc/libtool.c
  				error("Could not open or create trace file: %s\n", cmd_flags.trace_file_path);
  		}
 diff -urN a/misc/lipo.c b/misc/lipo.c
---- a/misc/lipo.c	2013-01-07 08:19:36.164013304 +0000
-+++ b/misc/lipo.c	2013-01-07 08:19:36.499841082 +0000
+--- a/misc/lipo.c	2013-04-02 23:45:09.995143837 +0100
++++ b/misc/lipo.c	2013-04-02 23:45:10.547136896 +0100
 @@ -955,7 +955,7 @@
  	    system_fatal("Can't stat input file: %s", input->name);
  	size = stat_buf.st_size;
@@ -292,8 +292,8 @@ diff -urN a/misc/lipo.c b/misc/lipo.c
  	 * Select the eariliest modifiy time so that if the output file
  	 * contains archives with table of contents lipo will not make them
 diff -urN a/misc/redo_prebinding.c b/misc/redo_prebinding.c
---- a/misc/redo_prebinding.c	2013-01-07 08:19:36.164013304 +0000
-+++ b/misc/redo_prebinding.c	2013-01-07 08:19:36.499841082 +0000
+--- a/misc/redo_prebinding.c	2013-04-02 23:45:09.995143837 +0100
++++ b/misc/redo_prebinding.c	2013-04-02 23:45:10.551136846 +0100
 @@ -906,7 +906,7 @@
  		exit(1);
  	    if(stat(input_file, &stat_buf) == -1)
@@ -304,8 +304,8 @@ diff -urN a/misc/redo_prebinding.c b/misc/redo_prebinding.c
              gid = stat_buf.st_gid;
  
 diff -urN a/misc/segedit.c b/misc/segedit.c
---- a/misc/segedit.c	2013-01-07 08:19:36.164013304 +0000
-+++ b/misc/segedit.c	2013-01-07 08:19:36.499841082 +0000
+--- a/misc/segedit.c	2013-04-02 23:45:09.995143837 +0100
++++ b/misc/segedit.c	2013-04-02 23:45:10.547136896 +0100
 @@ -460,7 +460,7 @@
  			  "end of the file) in: %s", segname,
  			  sectname, input);
@@ -316,8 +316,8 @@ diff -urN a/misc/segedit.c b/misc/segedit.c
  		 if(write(fd, (char *)input_addr + offset,
  			 size) != (int)size)
 diff -urN a/misc/strip.c b/misc/strip.c
---- a/misc/strip.c	2013-01-07 08:19:36.164013304 +0000
-+++ b/misc/strip.c	2013-01-07 08:19:36.499841082 +0000
+--- a/misc/strip.c	2013-04-02 23:45:09.995143837 +0100
++++ b/misc/strip.c	2013-04-02 23:45:10.551136846 +0100
 @@ -652,7 +652,7 @@
  	if(stat(input_file, &stat_buf) == -1)
  	    system_error("can't stat input file: %s", input_file);

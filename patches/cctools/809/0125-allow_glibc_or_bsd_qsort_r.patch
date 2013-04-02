@@ -1,6 +1,6 @@
 diff -urN a/ld/pass1.c b/ld/pass1.c
---- a/ld/pass1.c	2013-01-07 08:19:27.608400918 +0000
-+++ b/ld/pass1.c	2013-01-07 08:19:27.780312756 +0000
+--- a/ld/pass1.c	2013-04-02 23:44:38.055545371 +0100
++++ b/ld/pass1.c	2013-04-02 23:44:38.627538181 +0100
 @@ -5978,7 +5978,11 @@
   * symbols and if found sets *(int *)fail_p.
   */
@@ -28,8 +28,8 @@ diff -urN a/ld/pass1.c b/ld/pass1.c
      error_with_cur_obj("has both STABS and DWARF debugging info");
      free (sst);
 diff -urN a/ld64/src/ld/parsers/macho_relocatable_file.cpp b/ld64/src/ld/parsers/macho_relocatable_file.cpp
---- a/ld64/src/ld/parsers/macho_relocatable_file.cpp	2013-01-07 08:19:27.588411168 +0000
-+++ b/ld64/src/ld/parsers/macho_relocatable_file.cpp	2013-01-07 08:19:27.764320956 +0000
+--- a/ld64/src/ld/parsers/macho_relocatable_file.cpp	2013-04-02 23:44:38.031545674 +0100
++++ b/ld64/src/ld/parsers/macho_relocatable_file.cpp	2013-04-02 23:44:38.603538483 +0100
 @@ -51,6 +51,11 @@
  #include "macho_relocatable_file.h"
  

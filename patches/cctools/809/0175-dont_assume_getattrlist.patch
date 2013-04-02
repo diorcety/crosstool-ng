@@ -1,6 +1,6 @@
 diff -urN a/misc/redo_prebinding.c b/misc/redo_prebinding.c
---- a/misc/redo_prebinding.c	2013-01-07 08:19:32.122086145 +0000
-+++ b/misc/redo_prebinding.c	2013-01-07 08:19:32.278006184 +0000
+--- a/misc/redo_prebinding.c	2013-04-02 23:44:55.203329796 +0100
++++ b/misc/redo_prebinding.c	2013-04-02 23:44:55.467326476 +0100
 @@ -9818,7 +9818,7 @@
  	errors++;
  }

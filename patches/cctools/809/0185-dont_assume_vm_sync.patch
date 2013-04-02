@@ -1,6 +1,6 @@
 diff -urN a/ld/pass1.c b/ld/pass1.c
---- a/ld/pass1.c	2013-01-07 08:19:32.913680188 +0000
-+++ b/ld/pass1.c	2013-01-07 08:19:33.049610479 +0000
+--- a/ld/pass1.c	2013-04-02 23:44:57.451301534 +0100
++++ b/ld/pass1.c	2013-04-02 23:44:57.639299170 +0100
 @@ -508,7 +508,7 @@
  	    pass1_object(file_name, file_addr, file_size, base_name, FALSE,
  			 FALSE, bundle_loader, force_weak);
@@ -11,8 +11,8 @@ diff -urN a/ld/pass1.c b/ld/pass1.c
  		 (vm_size_t)file_size, VM_SYNC_DEACTIVATE);
  #endif /* VM_SYNC_DEACTIVATE */
 diff -urN a/ld/pass2.c b/ld/pass2.c
---- a/ld/pass2.c	2013-01-07 08:19:32.913680188 +0000
-+++ b/ld/pass2.c	2013-01-07 08:19:33.045612529 +0000
+--- a/ld/pass2.c	2013-04-02 23:44:57.451301534 +0100
++++ b/ld/pass2.c	2013-04-02 23:44:57.639299170 +0100
 @@ -269,7 +269,7 @@
  		    }
  		}
@@ -23,8 +23,8 @@ diff -urN a/ld/pass2.c b/ld/pass2.c
  			 (vm_size_t)cur_obj->obj_size, VM_SYNC_DEACTIVATE);
  #endif /* VM_SYNC_DEACTIVATE */
 diff -urN a/misc/libtool.c b/misc/libtool.c
---- a/misc/libtool.c	2013-01-07 08:19:32.909682238 +0000
-+++ b/misc/libtool.c	2013-01-07 08:19:33.041614579 +0000
+--- a/misc/libtool.c	2013-04-02 23:44:57.443301636 +0100
++++ b/misc/libtool.c	2013-04-02 23:44:57.631299271 +0100
 @@ -2559,7 +2559,7 @@
  		}
  		memcpy(p, arch->members[j].object_addr,

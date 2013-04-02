@@ -1,6 +1,6 @@
 diff -urN a/as/driver.c b/as/driver.c
---- a/as/driver.c	2013-01-07 08:19:31.094613068 +0000
-+++ b/as/driver.c	2013-01-07 08:19:31.266524905 +0000
+--- a/as/driver.c	2013-04-02 23:44:51.195380182 +0100
++++ b/as/driver.c	2013-04-02 23:44:51.475376661 +0100
 @@ -53,6 +53,9 @@
  	 */
  	bufsize = MAXPATHLEN;
@@ -12,8 +12,8 @@ diff -urN a/as/driver.c b/as/driver.c
  	if(i == -1){
  	    p = allocate(bufsize);
 diff -urN a/libstuff/execute.c b/libstuff/execute.c
---- a/libstuff/execute.c	2013-01-07 08:19:31.058631521 +0000
-+++ b/libstuff/execute.c	2013-01-07 08:19:31.226545409 +0000
+--- a/libstuff/execute.c	2013-04-02 23:44:51.147380785 +0100
++++ b/libstuff/execute.c	2013-04-02 23:44:51.427377264 +0100
 @@ -161,7 +161,11 @@
  	    p = allocate(bufsize);
  	    _NSGetExecutablePath(p, &bufsize);

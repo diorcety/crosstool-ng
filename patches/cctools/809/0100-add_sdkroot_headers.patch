@@ -1,6 +1,6 @@
 diff -urN a/include/architecture/alignment.h b/include/architecture/alignment.h
 --- a/include/architecture/alignment.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/architecture/alignment.h	2013-01-07 08:19:13.983388293 +0000
++++ b/include/architecture/alignment.h	2013-04-02 23:44:04.567966368 +0100
 @@ -0,0 +1,45 @@
 +/*
 + * Copyright (c) 1999, 2008 Apple Inc. All rights reserved.
@@ -49,7 +49,7 @@ diff -urN a/include/architecture/alignment.h b/include/architecture/alignment.h
 +
 diff -urN a/include/architecture/byte_order.h b/include/architecture/byte_order.h
 --- a/include/architecture/byte_order.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/architecture/byte_order.h	2013-01-07 08:19:13.983388293 +0000
++++ b/include/architecture/byte_order.h	2013-04-02 23:44:04.567966368 +0100
 @@ -0,0 +1,381 @@
 +/*
 + * Copyright (c) 1999-2008 Apple Computer, Inc. All rights reserved.
@@ -434,7 +434,7 @@ diff -urN a/include/architecture/byte_order.h b/include/architecture/byte_order.
 +#endif	/* _ARCHITECTURE_BYTE_ORDER_H_ */
 diff -urN a/include/architecture/i386/alignment.h b/include/architecture/i386/alignment.h
 --- a/include/architecture/i386/alignment.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/architecture/i386/alignment.h	2013-01-07 08:19:13.983388293 +0000
++++ b/include/architecture/i386/alignment.h	2013-04-02 23:44:04.571966318 +0100
 @@ -0,0 +1,69 @@
 +/*
 + * Copyright (c) 1999 Apple Computer, Inc. All rights reserved.
@@ -507,7 +507,7 @@ diff -urN a/include/architecture/i386/alignment.h b/include/architecture/i386/al
 +#endif	/* _ARCH_I386_ALIGNMENT_H_ */
 diff -urN a/include/architecture/i386/asm_help.h b/include/architecture/i386/asm_help.h
 --- a/include/architecture/i386/asm_help.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/architecture/i386/asm_help.h	2013-01-07 08:19:13.983388293 +0000
++++ b/include/architecture/i386/asm_help.h	2013-04-02 23:44:04.571966318 +0100
 @@ -0,0 +1,398 @@
 +/*
 + * Copyright (c) 1999 Apple Computer, Inc. All rights reserved.
@@ -909,7 +909,7 @@ diff -urN a/include/architecture/i386/asm_help.h b/include/architecture/i386/asm
 +#endif	/* _ARCH_I386_ASM_HELP_H_ */
 diff -urN a/include/architecture/i386/byte_order.h b/include/architecture/i386/byte_order.h
 --- a/include/architecture/i386/byte_order.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/architecture/i386/byte_order.h	2013-01-07 08:19:13.983388293 +0000
++++ b/include/architecture/i386/byte_order.h	2013-04-02 23:44:04.571966318 +0100
 @@ -0,0 +1,33 @@
 +/*
 + * Copyright (c) 1999-2002 Apple Computer, Inc. All rights reserved.
@@ -946,7 +946,7 @@ diff -urN a/include/architecture/i386/byte_order.h b/include/architecture/i386/b
 +#endif	/* _ARCH_I386_BYTE_ORDER_H_ */
 diff -urN a/include/architecture/i386/cpu.h b/include/architecture/i386/cpu.h
 --- a/include/architecture/i386/cpu.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/architecture/i386/cpu.h	2013-01-07 08:19:13.983388293 +0000
++++ b/include/architecture/i386/cpu.h	2013-04-02 23:44:04.571966318 +0100
 @@ -0,0 +1,74 @@
 +/*
 + * Copyright (c) 1999 Apple Computer, Inc. All rights reserved.
@@ -1024,7 +1024,7 @@ diff -urN a/include/architecture/i386/cpu.h b/include/architecture/i386/cpu.h
 +#endif	/* _ARCH_I386_CPU_H_ */
 diff -urN a/include/architecture/i386/desc.h b/include/architecture/i386/desc.h
 --- a/include/architecture/i386/desc.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/architecture/i386/desc.h	2013-01-07 08:19:13.983388293 +0000
++++ b/include/architecture/i386/desc.h	2013-04-02 23:44:04.571966318 +0100
 @@ -0,0 +1,150 @@
 +/*
 + * Copyright (c) 1999 Apple Computer, Inc. All rights reserved.
@@ -1178,7 +1178,7 @@ diff -urN a/include/architecture/i386/desc.h b/include/architecture/i386/desc.h
 +#endif	/* _ARCH_I386_DESC_H_ */
 diff -urN a/include/architecture/i386/fenv.h b/include/architecture/i386/fenv.h
 --- a/include/architecture/i386/fenv.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/architecture/i386/fenv.h	2013-01-07 08:19:13.983388293 +0000
++++ b/include/architecture/i386/fenv.h	2013-04-02 23:44:04.571966318 +0100
 @@ -0,0 +1,283 @@
 +/*
 + * Copyright (c) 2002 Apple Computer, Inc. All rights reserved.
@@ -1464,8 +1464,8 @@ diff -urN a/include/architecture/i386/fenv.h b/include/architecture/i386/fenv.h
 +#endif /* __FENV__ */
 +
 diff -urN a/include/architecture/i386/fpu.h b/include/architecture/i386/fpu.h
---- a/include/architecture/i386/fpu.h	2013-01-07 08:19:13.819472354 +0000
-+++ b/include/architecture/i386/fpu.h	2013-01-07 08:19:13.983388293 +0000
+--- a/include/architecture/i386/fpu.h	2013-04-02 23:44:03.727976928 +0100
++++ b/include/architecture/i386/fpu.h	2013-04-02 23:44:04.571966318 +0100
 @@ -27,13 +27,16 @@
   *
   * HISTORY
@@ -1517,8 +1517,8 @@ diff -urN a/include/architecture/i386/fpu.h b/include/architecture/i386/fpu.h
 +
 +#endif	/* _ARCH_I386_FPU_H_ */
 diff -urN a/include/architecture/i386/frame.h b/include/architecture/i386/frame.h
---- a/include/architecture/i386/frame.h	2013-01-07 08:19:13.819472354 +0000
-+++ b/include/architecture/i386/frame.h	2013-01-07 08:19:13.983388293 +0000
+--- a/include/architecture/i386/frame.h	2013-04-02 23:44:03.727976928 +0100
++++ b/include/architecture/i386/frame.h	2013-04-02 23:44:04.571966318 +0100
 @@ -27,17 +27,20 @@
   *
   * HISTORY
@@ -1560,7 +1560,7 @@ diff -urN a/include/architecture/i386/frame.h b/include/architecture/i386/frame.
 +#endif	/* _ARCH_I386_FRAME_H_ */
 diff -urN a/include/architecture/i386/io.h b/include/architecture/i386/io.h
 --- a/include/architecture/i386/io.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/architecture/i386/io.h	2013-01-07 08:19:13.983388293 +0000
++++ b/include/architecture/i386/io.h	2013-04-02 23:44:04.571966318 +0100
 @@ -0,0 +1,40 @@
 +/*
 + * Copyright (c) 1999 Apple Computer, Inc. All rights reserved.
@@ -1604,7 +1604,7 @@ diff -urN a/include/architecture/i386/io.h b/include/architecture/i386/io.h
 +#endif	/* _ARCH_I386_IO_H_ */
 diff -urN a/include/architecture/i386/math.h b/include/architecture/i386/math.h
 --- a/include/architecture/i386/math.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/architecture/i386/math.h	2013-01-07 08:19:13.983388293 +0000
++++ b/include/architecture/i386/math.h	2013-04-02 23:44:04.571966318 +0100
 @@ -0,0 +1,646 @@
 +/*
 + * Copyright (c) 2002 Apple Computer, Inc. All rights reserved.
@@ -2254,7 +2254,7 @@ diff -urN a/include/architecture/i386/math.h b/include/architecture/i386/math.h
 +#endif /* __MATH__ */
 diff -urN a/include/architecture/i386/pio.h b/include/architecture/i386/pio.h
 --- a/include/architecture/i386/pio.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/architecture/i386/pio.h	2013-01-07 08:19:13.983388293 +0000
++++ b/include/architecture/i386/pio.h	2013-04-02 23:44:04.571966318 +0100
 @@ -0,0 +1,104 @@
 +/*
 + * Copyright (c) 2000-2005 Apple Computer, Inc. All rights reserved.
@@ -2362,7 +2362,7 @@ diff -urN a/include/architecture/i386/pio.h b/include/architecture/i386/pio.h
 +#endif /* _ARCH_I386_PIO_H_ */
 diff -urN a/include/architecture/i386/reg_help.h b/include/architecture/i386/reg_help.h
 --- a/include/architecture/i386/reg_help.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/architecture/i386/reg_help.h	2013-01-07 08:19:13.983388293 +0000
++++ b/include/architecture/i386/reg_help.h	2013-04-02 23:44:04.571966318 +0100
 @@ -0,0 +1,105 @@
 +/*
 + * Copyright (c) 1999 Apple Computer, Inc. All rights reserved.
@@ -2471,7 +2471,7 @@ diff -urN a/include/architecture/i386/reg_help.h b/include/architecture/i386/reg
 +#endif	/* _ARCH_I386_REG_HELP_H_ */
 diff -urN a/include/architecture/i386/sel.h b/include/architecture/i386/sel.h
 --- a/include/architecture/i386/sel.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/architecture/i386/sel.h	2013-01-07 08:19:13.983388293 +0000
++++ b/include/architecture/i386/sel.h	2013-04-02 23:44:04.571966318 +0100
 @@ -0,0 +1,53 @@
 +/*
 + * Copyright (c) 1999 Apple Computer, Inc. All rights reserved.
@@ -2528,7 +2528,7 @@ diff -urN a/include/architecture/i386/sel.h b/include/architecture/i386/sel.h
 +#endif	/* _ARCH_I386_SEL_H_ */
 diff -urN a/include/architecture/i386/table.h b/include/architecture/i386/table.h
 --- a/include/architecture/i386/table.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/architecture/i386/table.h	2013-01-07 08:19:13.983388293 +0000
++++ b/include/architecture/i386/table.h	2013-04-02 23:44:04.571966318 +0100
 @@ -0,0 +1,98 @@
 +/*
 + * Copyright (c) 1999 Apple Computer, Inc. All rights reserved.
@@ -2630,7 +2630,7 @@ diff -urN a/include/architecture/i386/table.h b/include/architecture/i386/table.
 +#endif	/* _ARCH_I386_TABLE_H_ */
 diff -urN a/include/architecture/i386/tss.h b/include/architecture/i386/tss.h
 --- a/include/architecture/i386/tss.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/architecture/i386/tss.h	2013-01-07 08:19:13.983388293 +0000
++++ b/include/architecture/i386/tss.h	2013-04-02 23:44:04.571966318 +0100
 @@ -0,0 +1,120 @@
 +/*
 + * Copyright (c) 1999 Apple Computer, Inc. All rights reserved.
@@ -2754,7 +2754,7 @@ diff -urN a/include/architecture/i386/tss.h b/include/architecture/i386/tss.h
 +#endif	/* _ARCH_I386_TSS_H_ */
 diff -urN a/include/architecture/ppc/fenv.h b/include/architecture/ppc/fenv.h
 --- a/include/architecture/ppc/fenv.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/architecture/ppc/fenv.h	2013-01-07 08:19:13.983388293 +0000
++++ b/include/architecture/ppc/fenv.h	2013-04-02 23:44:04.567966368 +0100
 @@ -0,0 +1,175 @@
 +/*
 + * Copyright (c) 2002 Apple Computer, Inc. All rights reserved.
@@ -2933,7 +2933,7 @@ diff -urN a/include/architecture/ppc/fenv.h b/include/architecture/ppc/fenv.h
 +
 diff -urN a/include/architecture/ppc/math.h b/include/architecture/ppc/math.h
 --- a/include/architecture/ppc/math.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/architecture/ppc/math.h	2013-01-07 08:19:13.983388293 +0000
++++ b/include/architecture/ppc/math.h	2013-04-02 23:44:04.571966318 +0100
 @@ -0,0 +1,883 @@
 +/*
 + * Copyright (c) 2002 Apple Computer, Inc. All rights reserved.
@@ -3820,7 +3820,7 @@ diff -urN a/include/architecture/ppc/math.h b/include/architecture/ppc/math.h
 +#endif /* __MATH__ */
 diff -urN a/include/ar.h b/include/ar.h
 --- a/include/ar.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/ar.h	2013-01-07 08:19:13.983388293 +0000
++++ b/include/ar.h	2013-04-02 23:44:04.571966318 +0100
 @@ -0,0 +1,67 @@
 +/*-
 + * Copyright (c) 1991, 1993
@@ -3891,7 +3891,7 @@ diff -urN a/include/ar.h b/include/ar.h
 +#endif /* !_AR_H_ */
 diff -urN a/include/Availability.h b/include/Availability.h
 --- a/include/Availability.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/Availability.h	2013-01-07 08:19:13.991384192 +0000
++++ b/include/Availability.h	2013-04-02 23:44:04.583966166 +0100
 @@ -0,0 +1,160 @@
 +/*
 + * Copyright (c) 2007-2010 by Apple Inc.. All rights reserved.
@@ -4055,7 +4055,7 @@ diff -urN a/include/Availability.h b/include/Availability.h
 +#endif /* __AVAILABILITY__ */
 diff -urN a/include/AvailabilityInternal.h b/include/AvailabilityInternal.h
 --- a/include/AvailabilityInternal.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/AvailabilityInternal.h	2013-01-07 08:19:13.983388293 +0000
++++ b/include/AvailabilityInternal.h	2013-04-02 23:44:04.567966368 +0100
 @@ -0,0 +1,761 @@
 +/*
 + * Copyright (c) 2007-2010 by Apple Inc.. All rights reserved.
@@ -4820,7 +4820,7 @@ diff -urN a/include/AvailabilityInternal.h b/include/AvailabilityInternal.h
 +#endif /* __AVAILABILITY_INTERNAL__ */
 diff -urN a/include/AvailabilityMacros.h b/include/AvailabilityMacros.h
 --- a/include/AvailabilityMacros.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/AvailabilityMacros.h	2013-01-07 08:19:13.983388293 +0000
++++ b/include/AvailabilityMacros.h	2013-04-02 23:44:04.567966368 +0100
 @@ -0,0 +1,822 @@
 +/*
 + * Copyright (c) 2001-2010 by Apple Inc.. All rights reserved.
@@ -5646,7 +5646,7 @@ diff -urN a/include/AvailabilityMacros.h b/include/AvailabilityMacros.h
 +
 diff -urN a/include/i386/eflags.h b/include/i386/eflags.h
 --- a/include/i386/eflags.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/i386/eflags.h	2013-01-07 08:19:13.987386242 +0000
++++ b/include/i386/eflags.h	2013-04-02 23:44:04.571966318 +0100
 @@ -0,0 +1,94 @@
 +/*
 + * Copyright (c) 2000-2005 Apple Computer, Inc. All rights reserved.
@@ -5744,7 +5744,7 @@ diff -urN a/include/i386/eflags.h b/include/i386/eflags.h
 +#endif	/* _I386_EFLAGS_H_ */
 diff -urN a/include/i386/endian.h b/include/i386/endian.h
 --- a/include/i386/endian.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/i386/endian.h	2013-01-07 08:19:13.987386242 +0000
++++ b/include/i386/endian.h	2013-04-02 23:44:04.571966318 +0100
 @@ -0,0 +1,102 @@
 +/*
 + * Copyright (c) 2000-2002 Apple Computer, Inc. All rights reserved.
@@ -5850,7 +5850,7 @@ diff -urN a/include/i386/endian.h b/include/i386/endian.h
 +#endif /* !_I386__ENDIAN_H_ */
 diff -urN a/include/i386/fasttrap_isa.h b/include/i386/fasttrap_isa.h
 --- a/include/i386/fasttrap_isa.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/i386/fasttrap_isa.h	2013-01-07 08:19:13.987386242 +0000
++++ b/include/i386/fasttrap_isa.h	2013-04-02 23:44:04.571966318 +0100
 @@ -0,0 +1,116 @@
 +/*
 + * CDDL HEADER START
@@ -5970,7 +5970,7 @@ diff -urN a/include/i386/fasttrap_isa.h b/include/i386/fasttrap_isa.h
 +#endif	/* _FASTTRAP_ISA_H */
 diff -urN a/include/i386/_limits.h b/include/i386/_limits.h
 --- a/include/i386/_limits.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/i386/_limits.h	2013-01-07 08:19:13.987386242 +0000
++++ b/include/i386/_limits.h	2013-04-02 23:44:04.575966268 +0100
 @@ -0,0 +1,27 @@
 +/*
 + * Copyright (c) 2004 Apple Computer, Inc. All rights reserved.
@@ -6001,7 +6001,7 @@ diff -urN a/include/i386/_limits.h b/include/i386/_limits.h
 +#endif	/* _I386__LIMITS_H_ */
 diff -urN a/include/i386/limits.h b/include/i386/limits.h
 --- a/include/i386/limits.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/i386/limits.h	2013-01-07 08:19:13.987386242 +0000
++++ b/include/i386/limits.h	2013-04-02 23:44:04.575966268 +0100
 @@ -0,0 +1,107 @@
 +/*
 + * Copyright (c) 1988, 1993
@@ -6112,7 +6112,7 @@ diff -urN a/include/i386/limits.h b/include/i386/limits.h
 +#endif /* _I386_LIMITS_H_ */
 diff -urN a/include/i386/_param.h b/include/i386/_param.h
 --- a/include/i386/_param.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/i386/_param.h	2013-01-07 08:19:13.987386242 +0000
++++ b/include/i386/_param.h	2013-04-02 23:44:04.571966318 +0100
 @@ -0,0 +1,46 @@
 +/*
 + * Copyright (c) 2008 Apple Computer, Inc. All rights reserved.
@@ -6162,7 +6162,7 @@ diff -urN a/include/i386/_param.h b/include/i386/_param.h
 +#endif /* _I386__PARAM_H_ */
 diff -urN a/include/i386/param.h b/include/i386/param.h
 --- a/include/i386/param.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/i386/param.h	2013-01-07 08:19:13.987386242 +0000
++++ b/include/i386/param.h	2013-04-02 23:44:04.571966318 +0100
 @@ -0,0 +1,175 @@
 +/*
 + * Copyright (c) 2000-2010 Apple Inc. All rights reserved.
@@ -6341,7 +6341,7 @@ diff -urN a/include/i386/param.h b/include/i386/param.h
 +#endif /* _I386_PARAM_H_ */
 diff -urN a/include/i386/profile.h b/include/i386/profile.h
 --- a/include/i386/profile.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/i386/profile.h	2013-01-07 08:19:13.987386242 +0000
++++ b/include/i386/profile.h	2013-04-02 23:44:04.571966318 +0100
 @@ -0,0 +1,39 @@
 +/*
 + * Copyright (c) 2000-2002 Apple Computer, Inc. All rights reserved.
@@ -6384,7 +6384,7 @@ diff -urN a/include/i386/profile.h b/include/i386/profile.h
 +#endif /* _BSD_I386_PROFILE_H_ */
 diff -urN a/include/i386/setjmp.h b/include/i386/setjmp.h
 --- a/include/i386/setjmp.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/i386/setjmp.h	2013-01-07 08:19:13.987386242 +0000
++++ b/include/i386/setjmp.h	2013-04-02 23:44:04.571966318 +0100
 @@ -0,0 +1,80 @@
 +/*
 + * Copyright (c) 2000-2002 Apple Computer, Inc. All rights reserved.
@@ -6468,7 +6468,7 @@ diff -urN a/include/i386/setjmp.h b/include/i386/setjmp.h
 +#endif /* !_BSD_I386_SETJMP_H */
 diff -urN a/include/i386/signal.h b/include/i386/signal.h
 --- a/include/i386/signal.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/i386/signal.h	2013-01-07 08:19:13.987386242 +0000
++++ b/include/i386/signal.h	2013-04-02 23:44:04.571966318 +0100
 @@ -0,0 +1,62 @@
 +/*
 + * Copyright (c) 2000-2002 Apple Computer, Inc. All rights reserved.
@@ -6534,7 +6534,7 @@ diff -urN a/include/i386/signal.h b/include/i386/signal.h
 +
 diff -urN a/include/i386/_structs.h b/include/i386/_structs.h
 --- a/include/i386/_structs.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/i386/_structs.h	2013-01-07 08:19:13.987386242 +0000
++++ b/include/i386/_structs.h	2013-04-02 23:44:04.575966268 +0100
 @@ -0,0 +1,141 @@
 +/*
 + * Copyright (c) 2004 Apple Computer, Inc. All rights reserved.
@@ -6679,7 +6679,7 @@ diff -urN a/include/i386/_structs.h b/include/i386/_structs.h
 +
 diff -urN a/include/i386/_types.h b/include/i386/_types.h
 --- a/include/i386/_types.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/i386/_types.h	2013-01-07 08:19:13.987386242 +0000
++++ b/include/i386/_types.h	2013-04-02 23:44:04.571966318 +0100
 @@ -0,0 +1,120 @@
 +/*
 + * Copyright (c) 2000-2003 Apple Computer, Inc. All rights reserved.
@@ -6803,7 +6803,7 @@ diff -urN a/include/i386/_types.h b/include/i386/_types.h
 +#endif	/* _BSD_I386__TYPES_H_ */
 diff -urN a/include/i386/types.h b/include/i386/types.h
 --- a/include/i386/types.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/i386/types.h	2013-01-07 08:19:13.987386242 +0000
++++ b/include/i386/types.h	2013-04-02 23:44:04.571966318 +0100
 @@ -0,0 +1,135 @@
 +/*
 + * Copyright (c) 2000-2008 Apple Inc. All rights reserved.
@@ -6942,7 +6942,7 @@ diff -urN a/include/i386/types.h b/include/i386/types.h
 +#endif	/* _MACHTYPES_H_ */
 diff -urN a/include/i386/user_ldt.h b/include/i386/user_ldt.h
 --- a/include/i386/user_ldt.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/i386/user_ldt.h	2013-01-07 08:19:13.987386242 +0000
++++ b/include/i386/user_ldt.h	2013-04-02 23:44:04.571966318 +0100
 @@ -0,0 +1,80 @@
 +/*
 + * Copyright (c) 2000-2008 Apple Inc. All rights reserved.
@@ -7026,7 +7026,7 @@ diff -urN a/include/i386/user_ldt.h b/include/i386/user_ldt.h
 +#endif	/* _I386_USER_LDT_H_ */
 diff -urN a/include/i386/vmparam.h b/include/i386/vmparam.h
 --- a/include/i386/vmparam.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/i386/vmparam.h	2013-01-07 08:19:13.987386242 +0000
++++ b/include/i386/vmparam.h	2013-04-02 23:44:04.571966318 +0100
 @@ -0,0 +1,62 @@
 +/*
 + * Copyright (c) 2000-2006 Apple Computer, Inc. All rights reserved.
@@ -7092,7 +7092,7 @@ diff -urN a/include/i386/vmparam.h b/include/i386/vmparam.h
 +#endif	/* _BSD_I386_VMPARAM_H_ */
 diff -urN a/include/libkern/i386/_OSByteOrder.h b/include/libkern/i386/_OSByteOrder.h
 --- a/include/libkern/i386/_OSByteOrder.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/libkern/i386/_OSByteOrder.h	2013-01-07 08:19:13.983388293 +0000
++++ b/include/libkern/i386/_OSByteOrder.h	2013-04-02 23:44:04.567966368 +0100
 @@ -0,0 +1,104 @@
 +/*
 + * Copyright (c) 2006 Apple Computer, Inc. All rights reserved.
@@ -7200,7 +7200,7 @@ diff -urN a/include/libkern/i386/_OSByteOrder.h b/include/libkern/i386/_OSByteOr
 +#endif /* ! _OS__OSBYTEORDERI386_H */
 diff -urN a/include/libkern/i386/OSByteOrder.h b/include/libkern/i386/OSByteOrder.h
 --- a/include/libkern/i386/OSByteOrder.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/libkern/i386/OSByteOrder.h	2013-01-07 08:19:13.983388293 +0000
++++ b/include/libkern/i386/OSByteOrder.h	2013-04-02 23:44:04.567966368 +0100
 @@ -0,0 +1,115 @@
 +/*
 + * Copyright (c) 1999-2006 Apple Computer, Inc. All rights reserved.
@@ -7319,7 +7319,7 @@ diff -urN a/include/libkern/i386/OSByteOrder.h b/include/libkern/i386/OSByteOrde
 +#endif /* ! _OS_OSBYTEORDERI386_H */
 diff -urN a/include/libkern/machine/OSByteOrder.h b/include/libkern/machine/OSByteOrder.h
 --- a/include/libkern/machine/OSByteOrder.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/libkern/machine/OSByteOrder.h	2013-01-07 08:19:13.983388293 +0000
++++ b/include/libkern/machine/OSByteOrder.h	2013-04-02 23:44:04.567966368 +0100
 @@ -0,0 +1,143 @@
 +/*
 + * Copyright (c) 2000-2005 Apple Computer, Inc. All rights reserved.
@@ -7466,7 +7466,7 @@ diff -urN a/include/libkern/machine/OSByteOrder.h b/include/libkern/machine/OSBy
 +#endif /* ! _OS_OSBYTEORDERMACHINE_H */
 diff -urN a/include/libkern/OSAtomic.h b/include/libkern/OSAtomic.h
 --- a/include/libkern/OSAtomic.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/libkern/OSAtomic.h	2013-01-07 08:19:13.983388293 +0000
++++ b/include/libkern/OSAtomic.h	2013-04-02 23:44:04.567966368 +0100
 @@ -0,0 +1,769 @@
 +/*
 + * Copyright (c) 2004-2006 Apple Computer, Inc. All rights reserved.
@@ -8239,7 +8239,7 @@ diff -urN a/include/libkern/OSAtomic.h b/include/libkern/OSAtomic.h
 +#endif /* _OSATOMIC_H_ */
 diff -urN a/include/libkern/_OSByteOrder.h b/include/libkern/_OSByteOrder.h
 --- a/include/libkern/_OSByteOrder.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/libkern/_OSByteOrder.h	2013-01-07 08:19:13.983388293 +0000
++++ b/include/libkern/_OSByteOrder.h	2013-04-02 23:44:04.567966368 +0100
 @@ -0,0 +1,133 @@
 +/*
 + * Copyright (c) 2006 Apple Computer, Inc. All rights reserved.
@@ -8376,7 +8376,7 @@ diff -urN a/include/libkern/_OSByteOrder.h b/include/libkern/_OSByteOrder.h
 +#endif /* ! _OS__OSBYTEORDER_H */
 diff -urN a/include/libkern/OSByteOrder.h b/include/libkern/OSByteOrder.h
 --- a/include/libkern/OSByteOrder.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/libkern/OSByteOrder.h	2013-01-07 08:19:13.983388293 +0000
++++ b/include/libkern/OSByteOrder.h	2013-04-02 23:44:04.567966368 +0100
 @@ -0,0 +1,308 @@
 +/*
 + * Copyright (c) 2000-2006 Apple Computer, Inc. All rights reserved.
@@ -8688,7 +8688,7 @@ diff -urN a/include/libkern/OSByteOrder.h b/include/libkern/OSByteOrder.h
 +
 diff -urN a/include/libkern/OSCacheControl.h b/include/libkern/OSCacheControl.h
 --- a/include/libkern/OSCacheControl.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/libkern/OSCacheControl.h	2013-01-07 08:19:13.983388293 +0000
++++ b/include/libkern/OSCacheControl.h	2013-04-02 23:44:04.567966368 +0100
 @@ -0,0 +1,66 @@
 +/*
 + * Copyright (c) 2006 Apple Computer, Inc. All rights reserved.
@@ -8758,7 +8758,7 @@ diff -urN a/include/libkern/OSCacheControl.h b/include/libkern/OSCacheControl.h
 +#endif /* _OS_CACHE_CONTROL_H_ */
 diff -urN a/include/libkern/OSDebug.h b/include/libkern/OSDebug.h
 --- a/include/libkern/OSDebug.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/libkern/OSDebug.h	2013-01-07 08:19:13.983388293 +0000
++++ b/include/libkern/OSDebug.h	2013-04-02 23:44:04.567966368 +0100
 @@ -0,0 +1,69 @@
 +/*
 + * Copyright (c) 2000 Apple Computer, Inc. All rights reserved.
@@ -8831,7 +8831,7 @@ diff -urN a/include/libkern/OSDebug.h b/include/libkern/OSDebug.h
 +#endif /* !_OS_OSDEBBUG_H */
 diff -urN a/include/libkern/OSKextLib.h b/include/libkern/OSKextLib.h
 --- a/include/libkern/OSKextLib.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/libkern/OSKextLib.h	2013-01-07 08:19:13.983388293 +0000
++++ b/include/libkern/OSKextLib.h	2013-04-02 23:44:04.567966368 +0100
 @@ -0,0 +1,472 @@
 +/*
 + * Copyright (c) 2008 Apple Inc. All rights reserved.
@@ -9307,7 +9307,7 @@ diff -urN a/include/libkern/OSKextLib.h b/include/libkern/OSKextLib.h
 +#endif /* _LIBKERN_OSKEXTLIB_H */
 diff -urN a/include/libkern/OSReturn.h b/include/libkern/OSReturn.h
 --- a/include/libkern/OSReturn.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/libkern/OSReturn.h	2013-01-07 08:19:13.983388293 +0000
++++ b/include/libkern/OSReturn.h	2013-04-02 23:44:04.567966368 +0100
 @@ -0,0 +1,198 @@
 +/*
 + * Copyright (c) 2000 Apple Inc. All rights reserved.
@@ -9509,7 +9509,7 @@ diff -urN a/include/libkern/OSReturn.h b/include/libkern/OSReturn.h
 +#endif /* ! __LIBKERN_OSRETURN_H */
 diff -urN a/include/libkern/OSTypes.h b/include/libkern/OSTypes.h
 --- a/include/libkern/OSTypes.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/libkern/OSTypes.h	2013-01-07 08:19:13.983388293 +0000
++++ b/include/libkern/OSTypes.h	2013-04-02 23:44:04.567966368 +0100
 @@ -0,0 +1,131 @@
 +/*
 + * Copyright (c) 2000 Apple Computer, Inc. All rights reserved.
@@ -9644,7 +9644,7 @@ diff -urN a/include/libkern/OSTypes.h b/include/libkern/OSTypes.h
 +#endif /* _OS_OSTYPES_H */
 diff -urN a/include/libunwind.h b/include/libunwind.h
 --- a/include/libunwind.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/libunwind.h	2013-01-07 08:19:13.983388293 +0000
++++ b/include/libunwind.h	2013-04-02 23:44:04.567966368 +0100
 @@ -0,0 +1,300 @@
 +/* -*- mode: C; c-basic-offset: 4; -*- 
 + *
@@ -9948,7 +9948,7 @@ diff -urN a/include/libunwind.h b/include/libunwind.h
 +
 diff -urN a/include/mach/audit_triggers.defs b/include/mach/audit_triggers.defs
 --- a/include/mach/audit_triggers.defs	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach/audit_triggers.defs	2013-01-07 08:19:13.991384192 +0000
++++ b/include/mach/audit_triggers.defs	2013-04-02 23:44:04.575966268 +0100
 @@ -0,0 +1,49 @@
 +/*
 + * Copyright (c) 2004-2008, Apple Inc.  All rights reserved.
@@ -10001,7 +10001,7 @@ diff -urN a/include/mach/audit_triggers.defs b/include/mach/audit_triggers.defs
 +
 diff -urN a/include/mach/boolean.h b/include/mach/boolean.h
 --- a/include/mach/boolean.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach/boolean.h	2013-01-07 08:19:13.987386242 +0000
++++ b/include/mach/boolean.h	2013-04-02 23:44:04.575966268 +0100
 @@ -0,0 +1,88 @@
 +/*
 + * Copyright (c) 2000 Apple Computer, Inc. All rights reserved.
@@ -10093,7 +10093,7 @@ diff -urN a/include/mach/boolean.h b/include/mach/boolean.h
 +#endif	/* _MACH_BOOLEAN_H_ */
 diff -urN a/include/mach/bootstrap.h b/include/mach/bootstrap.h
 --- a/include/mach/bootstrap.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach/bootstrap.h	2013-01-07 08:19:13.987386242 +0000
++++ b/include/mach/bootstrap.h	2013-04-02 23:44:04.575966268 +0100
 @@ -0,0 +1,34 @@
 +/*
 + * Copyright (c) 2002 Apple Computer, Inc. All rights reserved.
@@ -10131,7 +10131,7 @@ diff -urN a/include/mach/bootstrap.h b/include/mach/bootstrap.h
 +#endif /* _MACH_BOOTSTRAP_H_ */
 diff -urN a/include/mach/clock.defs b/include/mach/clock.defs
 --- a/include/mach/clock.defs	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach/clock.defs	2013-01-07 08:19:13.987386242 +0000
++++ b/include/mach/clock.defs	2013-04-02 23:44:04.575966268 +0100
 @@ -0,0 +1,81 @@
 +/*
 + * Copyright (c) 2000 Apple Computer, Inc. All rights reserved.
@@ -10216,7 +10216,7 @@ diff -urN a/include/mach/clock.defs b/include/mach/clock.defs
 +/* vim: set ft=c : */
 diff -urN a/include/mach/clock.h b/include/mach/clock.h
 --- a/include/mach/clock.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach/clock.h	2013-01-07 08:19:13.991384192 +0000
++++ b/include/mach/clock.h	2013-04-02 23:44:04.579966217 +0100
 @@ -0,0 +1,222 @@
 +#ifndef	_clock_user_
 +#define	_clock_user_
@@ -10442,7 +10442,7 @@ diff -urN a/include/mach/clock.h b/include/mach/clock.h
 +#endif	 /* _clock_user_ */
 diff -urN a/include/mach/clock_priv.defs b/include/mach/clock_priv.defs
 --- a/include/mach/clock_priv.defs	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach/clock_priv.defs	2013-01-07 08:19:13.987386242 +0000
++++ b/include/mach/clock_priv.defs	2013-04-02 23:44:04.575966268 +0100
 @@ -0,0 +1,69 @@
 +/*
 + * Copyright (c) 2000 Apple Computer, Inc. All rights reserved.
@@ -10515,7 +10515,7 @@ diff -urN a/include/mach/clock_priv.defs b/include/mach/clock_priv.defs
 +/* vim: set ft=c : */
 diff -urN a/include/mach/clock_priv.h b/include/mach/clock_priv.h
 --- a/include/mach/clock_priv.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach/clock_priv.h	2013-01-07 08:19:13.987386242 +0000
++++ b/include/mach/clock_priv.h	2013-04-02 23:44:04.575966268 +0100
 @@ -0,0 +1,176 @@
 +#ifndef	_clock_priv_user_
 +#define	_clock_priv_user_
@@ -10695,7 +10695,7 @@ diff -urN a/include/mach/clock_priv.h b/include/mach/clock_priv.h
 +#endif	 /* _clock_priv_user_ */
 diff -urN a/include/mach/clock_reply.defs b/include/mach/clock_reply.defs
 --- a/include/mach/clock_reply.defs	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach/clock_reply.defs	2013-01-07 08:19:13.987386242 +0000
++++ b/include/mach/clock_reply.defs	2013-04-02 23:44:04.575966268 +0100
 @@ -0,0 +1,56 @@
 +/*
 + * Copyright (c) 2000 Apple Computer, Inc. All rights reserved.
@@ -10755,7 +10755,7 @@ diff -urN a/include/mach/clock_reply.defs b/include/mach/clock_reply.defs
 +/* vim: set ft=c : */
 diff -urN a/include/mach/clock_reply.h b/include/mach/clock_reply.h
 --- a/include/mach/clock_reply.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach/clock_reply.h	2013-01-07 08:19:13.991384192 +0000
++++ b/include/mach/clock_reply.h	2013-04-02 23:44:04.575966268 +0100
 @@ -0,0 +1,136 @@
 +#ifndef	_clock_reply_user_
 +#define	_clock_reply_user_
@@ -10895,7 +10895,7 @@ diff -urN a/include/mach/clock_reply.h b/include/mach/clock_reply.h
 +#endif	 /* _clock_reply_user_ */
 diff -urN a/include/mach/clock_types.defs b/include/mach/clock_types.defs
 --- a/include/mach/clock_types.defs	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach/clock_types.defs	2013-01-07 08:19:13.991384192 +0000
++++ b/include/mach/clock_types.defs	2013-04-02 23:44:04.579966217 +0100
 @@ -0,0 +1,73 @@
 +/*
 + * Copyright (c) 2000 Apple Computer, Inc. All rights reserved.
@@ -10972,7 +10972,7 @@ diff -urN a/include/mach/clock_types.defs b/include/mach/clock_types.defs
 +/* vim: set ft=c : */
 diff -urN a/include/mach/clock_types.h b/include/mach/clock_types.h
 --- a/include/mach/clock_types.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach/clock_types.h	2013-01-07 08:19:13.991384192 +0000
++++ b/include/mach/clock_types.h	2013-04-02 23:44:04.575966268 +0100
 @@ -0,0 +1,127 @@
 +/*
 + * Copyright (c) 2000 Apple Computer, Inc. All rights reserved.
@@ -11103,7 +11103,7 @@ diff -urN a/include/mach/clock_types.h b/include/mach/clock_types.h
 +#endif /* _MACH_CLOCK_TYPES_H_ */
 diff -urN a/include/mach/error.h b/include/mach/error.h
 --- a/include/mach/error.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach/error.h	2013-01-07 08:19:13.987386242 +0000
++++ b/include/mach/error.h	2013-04-02 23:44:04.575966268 +0100
 @@ -0,0 +1,114 @@
 +/*
 + * Copyright (c) 2000 Apple Computer, Inc. All rights reserved.
@@ -11221,7 +11221,7 @@ diff -urN a/include/mach/error.h b/include/mach/error.h
 +#endif	/* _MACH_ERROR_H_ */
 diff -urN a/include/mach/exc.defs b/include/mach/exc.defs
 --- a/include/mach/exc.defs	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach/exc.defs	2013-01-07 08:19:13.987386242 +0000
++++ b/include/mach/exc.defs	2013-04-02 23:44:04.575966268 +0100
 @@ -0,0 +1,119 @@
 +/*
 + * Copyright (c) 2000 Apple Computer, Inc. All rights reserved.
@@ -11344,7 +11344,7 @@ diff -urN a/include/mach/exc.defs b/include/mach/exc.defs
 +/* vim: set ft=c : */
 diff -urN a/include/mach/exception.h b/include/mach/exception.h
 --- a/include/mach/exception.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach/exception.h	2013-01-07 08:19:13.987386242 +0000
++++ b/include/mach/exception.h	2013-04-02 23:44:04.575966268 +0100
 @@ -0,0 +1,62 @@
 +/*
 + * Copyright (c) 2000 Apple Computer, Inc. All rights reserved.
@@ -11410,7 +11410,7 @@ diff -urN a/include/mach/exception.h b/include/mach/exception.h
 +#endif	/* _MACH_EXCEPTION_H_ */
 diff -urN a/include/mach/exception_types.h b/include/mach/exception_types.h
 --- a/include/mach/exception_types.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach/exception_types.h	2013-01-07 08:19:13.987386242 +0000
++++ b/include/mach/exception_types.h	2013-04-02 23:44:04.575966268 +0100
 @@ -0,0 +1,181 @@
 +/*
 + * Copyright (c) 2000 Apple Computer, Inc. All rights reserved.
@@ -11595,7 +11595,7 @@ diff -urN a/include/mach/exception_types.h b/include/mach/exception_types.h
 +#endif	/* _MACH_EXCEPTION_TYPES_H_ */
 diff -urN a/include/mach/exc.h b/include/mach/exc.h
 --- a/include/mach/exc.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach/exc.h	2013-01-07 08:19:13.987386242 +0000
++++ b/include/mach/exc.h	2013-04-02 23:44:04.575966268 +0100
 @@ -0,0 +1,258 @@
 +#ifndef	_exc_user_
 +#define	_exc_user_
@@ -11857,7 +11857,7 @@ diff -urN a/include/mach/exc.h b/include/mach/exc.h
 +#endif	 /* _exc_user_ */
 diff -urN a/include/mach/host_info.h b/include/mach/host_info.h
 --- a/include/mach/host_info.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach/host_info.h	2013-01-07 08:19:13.991384192 +0000
++++ b/include/mach/host_info.h	2013-04-02 23:44:04.579966217 +0100
 @@ -0,0 +1,229 @@
 +/*
 + * Copyright (c) 2000-2009 Apple Inc. All rights reserved.
@@ -12090,7 +12090,7 @@ diff -urN a/include/mach/host_info.h b/include/mach/host_info.h
 +#endif	/* _MACH_HOST_INFO_H_ */
 diff -urN a/include/mach/host_notify.h b/include/mach/host_notify.h
 --- a/include/mach/host_notify.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach/host_notify.h	2013-01-07 08:19:13.987386242 +0000
++++ b/include/mach/host_notify.h	2013-04-02 23:44:04.575966268 +0100
 @@ -0,0 +1,37 @@
 +/*
 + * Copyright (c) 2003 Apple Computer, Inc. All rights reserved.
@@ -12131,7 +12131,7 @@ diff -urN a/include/mach/host_notify.h b/include/mach/host_notify.h
 +#endif /* _MACH_HOST_NOTIFY_H_ */
 diff -urN a/include/mach/host_notify_reply.defs b/include/mach/host_notify_reply.defs
 --- a/include/mach/host_notify_reply.defs	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach/host_notify_reply.defs	2013-01-07 08:19:13.987386242 +0000
++++ b/include/mach/host_notify_reply.defs	2013-04-02 23:44:04.575966268 +0100
 @@ -0,0 +1,40 @@
 +/*
 + * Copyright (c) 2003 Apple Computer, Inc. All rights reserved.
@@ -12175,7 +12175,7 @@ diff -urN a/include/mach/host_notify_reply.defs b/include/mach/host_notify_reply
 +/* vim: set ft=c : */
 diff -urN a/include/mach/host_priv.defs b/include/mach/host_priv.defs
 --- a/include/mach/host_priv.defs	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach/host_priv.defs	2013-01-07 08:19:13.991384192 +0000
++++ b/include/mach/host_priv.defs	2013-04-02 23:44:04.579966217 +0100
 @@ -0,0 +1,380 @@
 +/*
 + * Copyright (c) 2000-2004 Apple Inc. All rights reserved.
@@ -12559,7 +12559,7 @@ diff -urN a/include/mach/host_priv.defs b/include/mach/host_priv.defs
 +/* vim: set ft=c : */
 diff -urN a/include/mach/host_priv.h b/include/mach/host_priv.h
 --- a/include/mach/host_priv.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach/host_priv.h	2013-01-07 08:19:13.991384192 +0000
++++ b/include/mach/host_priv.h	2013-04-02 23:44:04.579966217 +0100
 @@ -0,0 +1,1270 @@
 +#ifndef	_host_priv_user_
 +#define	_host_priv_user_
@@ -13833,7 +13833,7 @@ diff -urN a/include/mach/host_priv.h b/include/mach/host_priv.h
 +#endif	 /* _host_priv_user_ */
 diff -urN a/include/mach/host_reboot.h b/include/mach/host_reboot.h
 --- a/include/mach/host_reboot.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach/host_reboot.h	2013-01-07 08:19:13.987386242 +0000
++++ b/include/mach/host_reboot.h	2013-04-02 23:44:04.575966268 +0100
 @@ -0,0 +1,39 @@
 +/*
 + * Copyright (c) 2000-2004 Apple Computer, Inc. All rights reserved.
@@ -13876,7 +13876,7 @@ diff -urN a/include/mach/host_reboot.h b/include/mach/host_reboot.h
 +#endif	/* _MACH_HOST_REBOOT_ */
 diff -urN a/include/mach/host_security.defs b/include/mach/host_security.defs
 --- a/include/mach/host_security.defs	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach/host_security.defs	2013-01-07 08:19:13.987386242 +0000
++++ b/include/mach/host_security.defs	2013-04-02 23:44:04.575966268 +0100
 @@ -0,0 +1,101 @@
 +/*
 + * Copyright (c) 2000 Apple Computer, Inc. All rights reserved.
@@ -13981,7 +13981,7 @@ diff -urN a/include/mach/host_security.defs b/include/mach/host_security.defs
 +/* vim: set ft=c : */
 diff -urN a/include/mach/host_security.h b/include/mach/host_security.h
 --- a/include/mach/host_security.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach/host_security.h	2013-01-07 08:19:13.991384192 +0000
++++ b/include/mach/host_security.h	2013-04-02 23:44:04.575966268 +0100
 @@ -0,0 +1,198 @@
 +#ifndef	_host_security_user_
 +#define	_host_security_user_
@@ -14183,7 +14183,7 @@ diff -urN a/include/mach/host_security.h b/include/mach/host_security.h
 +#endif	 /* _host_security_user_ */
 diff -urN a/include/mach/host_special_ports.h b/include/mach/host_special_ports.h
 --- a/include/mach/host_special_ports.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach/host_special_ports.h	2013-01-07 08:19:13.987386242 +0000
++++ b/include/mach/host_special_ports.h	2013-04-02 23:44:04.575966268 +0100
 @@ -0,0 +1,180 @@
 +/*
 + * Copyright (c) 2003 Apple Computer, Inc. All rights reserved.
@@ -14367,7 +14367,7 @@ diff -urN a/include/mach/host_special_ports.h b/include/mach/host_special_ports.
 +#endif	/* _MACH_HOST_SPECIAL_PORTS_H_ */
 diff -urN a/include/mach/i386/asm.h b/include/mach/i386/asm.h
 --- a/include/mach/i386/asm.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach/i386/asm.h	2013-01-07 08:19:13.991384192 +0000
++++ b/include/mach/i386/asm.h	2013-04-02 23:44:04.579966217 +0100
 @@ -0,0 +1,408 @@
 +/*
 + * Copyright (c) 2000 Apple Computer, Inc. All rights reserved.
@@ -14779,7 +14779,7 @@ diff -urN a/include/mach/i386/asm.h b/include/mach/i386/asm.h
 +#endif /* _I386_ASM_H_ */
 diff -urN a/include/mach/i386/boolean.h b/include/mach/i386/boolean.h
 --- a/include/mach/i386/boolean.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach/i386/boolean.h	2013-01-07 08:19:13.991384192 +0000
++++ b/include/mach/i386/boolean.h	2013-04-02 23:44:04.579966217 +0100
 @@ -0,0 +1,74 @@
 +/*
 + * Copyright (c) 2000-2006 Apple Computer, Inc. All rights reserved.
@@ -14857,7 +14857,7 @@ diff -urN a/include/mach/i386/boolean.h b/include/mach/i386/boolean.h
 +#endif	/* _MACH_I386_BOOLEAN_H_ */
 diff -urN a/include/mach/i386/exception.h b/include/mach/i386/exception.h
 --- a/include/mach/i386/exception.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach/i386/exception.h	2013-01-07 08:19:13.991384192 +0000
++++ b/include/mach/i386/exception.h	2013-04-02 23:44:04.579966217 +0100
 @@ -0,0 +1,135 @@
 +/*
 + * Copyright (c) 2000 Apple Computer, Inc. All rights reserved.
@@ -14996,7 +14996,7 @@ diff -urN a/include/mach/i386/exception.h b/include/mach/i386/exception.h
 +#endif	/* _MACH_I386_EXCEPTION_H_ */
 diff -urN a/include/mach/i386/fp_reg.h b/include/mach/i386/fp_reg.h
 --- a/include/mach/i386/fp_reg.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach/i386/fp_reg.h	2013-01-07 08:19:13.991384192 +0000
++++ b/include/mach/i386/fp_reg.h	2013-04-02 23:44:04.579966217 +0100
 @@ -0,0 +1,118 @@
 +/*
 + * Copyright (c) 2000 Apple Computer, Inc. All rights reserved.
@@ -15118,7 +15118,7 @@ diff -urN a/include/mach/i386/fp_reg.h b/include/mach/i386/fp_reg.h
 +#endif	/* _I386_FP_SAVE_H_ */
 diff -urN a/include/mach/i386/kern_return.h b/include/mach/i386/kern_return.h
 --- a/include/mach/i386/kern_return.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach/i386/kern_return.h	2013-01-07 08:19:13.991384192 +0000
++++ b/include/mach/i386/kern_return.h	2013-04-02 23:44:04.579966217 +0100
 @@ -0,0 +1,74 @@
 +/*
 + * Copyright (c) 2000 Apple Computer, Inc. All rights reserved.
@@ -15196,7 +15196,7 @@ diff -urN a/include/mach/i386/kern_return.h b/include/mach/i386/kern_return.h
 +#endif	/* _MACH_I386_KERN_RETURN_H_ */
 diff -urN a/include/mach/i386/machine_types.defs b/include/mach/i386/machine_types.defs
 --- a/include/mach/i386/machine_types.defs	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach/i386/machine_types.defs	2013-01-07 08:19:13.991384192 +0000
++++ b/include/mach/i386/machine_types.defs	2013-04-02 23:44:04.579966217 +0100
 @@ -0,0 +1,127 @@
 +/*
 + * Copyright (c) 2000-2004 Apple Computer, Inc. All rights reserved.
@@ -15327,7 +15327,7 @@ diff -urN a/include/mach/i386/machine_types.defs b/include/mach/i386/machine_typ
 +/* vim: set ft=c : */
 diff -urN a/include/mach/i386/ndr_def.h b/include/mach/i386/ndr_def.h
 --- a/include/mach/i386/ndr_def.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach/i386/ndr_def.h	2013-01-07 08:19:13.991384192 +0000
++++ b/include/mach/i386/ndr_def.h	2013-04-02 23:44:04.579966217 +0100
 @@ -0,0 +1,45 @@
 +/*
 + * Copyright (c) 2000 Apple Computer, Inc. All rights reserved.
@@ -15376,7 +15376,7 @@ diff -urN a/include/mach/i386/ndr_def.h b/include/mach/i386/ndr_def.h
 +};
 diff -urN a/include/mach/i386/processor_info.h b/include/mach/i386/processor_info.h
 --- a/include/mach/i386/processor_info.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach/i386/processor_info.h	2013-01-07 08:19:13.991384192 +0000
++++ b/include/mach/i386/processor_info.h	2013-04-02 23:44:04.579966217 +0100
 @@ -0,0 +1,37 @@
 +/*
 + * Copyright (c) 2000 Apple Computer, Inc. All rights reserved.
@@ -15417,7 +15417,7 @@ diff -urN a/include/mach/i386/processor_info.h b/include/mach/i386/processor_inf
 +#endif	/* _MACH_I386_PROCESSOR_INFO_H_ */
 diff -urN a/include/mach/i386/rpc.h b/include/mach/i386/rpc.h
 --- a/include/mach/i386/rpc.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach/i386/rpc.h	2013-01-07 08:19:13.991384192 +0000
++++ b/include/mach/i386/rpc.h	2013-04-02 23:44:04.579966217 +0100
 @@ -0,0 +1,36 @@
 +/*
 + * Copyright (c) 2002,2000 Apple Computer, Inc. All rights reserved.
@@ -15457,7 +15457,7 @@ diff -urN a/include/mach/i386/rpc.h b/include/mach/i386/rpc.h
 +
 diff -urN a/include/mach/i386/sdt_isa.h b/include/mach/i386/sdt_isa.h
 --- a/include/mach/i386/sdt_isa.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach/i386/sdt_isa.h	2013-01-07 08:19:13.991384192 +0000
++++ b/include/mach/i386/sdt_isa.h	2013-04-02 23:44:04.579966217 +0100
 @@ -0,0 +1,414 @@
 +/*
 + * CDDL HEADER START
@@ -15875,7 +15875,7 @@ diff -urN a/include/mach/i386/sdt_isa.h b/include/mach/i386/sdt_isa.h
 +#endif	/* _MACH_I386_SDT_ISA_H */
 diff -urN a/include/mach/i386/_structs.h b/include/mach/i386/_structs.h
 --- a/include/mach/i386/_structs.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach/i386/_structs.h	2013-01-07 08:19:13.991384192 +0000
++++ b/include/mach/i386/_structs.h	2013-04-02 23:44:04.579966217 +0100
 @@ -0,0 +1,797 @@
 +/*
 + * Copyright (c) 2004-2006 Apple Computer, Inc. All rights reserved.
@@ -16676,7 +16676,7 @@ diff -urN a/include/mach/i386/_structs.h b/include/mach/i386/_structs.h
 +#endif /* _MACH_I386__STRUCTS_H_ */
 diff -urN a/include/mach/i386/task.h b/include/mach/i386/task.h
 --- a/include/mach/i386/task.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach/i386/task.h	2013-01-07 08:19:13.991384192 +0000
++++ b/include/mach/i386/task.h	2013-04-02 23:44:04.579966217 +0100
 @@ -0,0 +1,1625 @@
 +#ifndef	_task_user_
 +#define	_task_user_
@@ -18305,7 +18305,7 @@ diff -urN a/include/mach/i386/task.h b/include/mach/i386/task.h
 +#endif	 /* _task_user_ */
 diff -urN a/include/mach/i386/thread_act.h b/include/mach/i386/thread_act.h
 --- a/include/mach/i386/thread_act.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach/i386/thread_act.h	2013-01-07 08:19:13.991384192 +0000
++++ b/include/mach/i386/thread_act.h	2013-04-02 23:44:04.579966217 +0100
 @@ -0,0 +1,1155 @@
 +#ifndef	_thread_act_user_
 +#define	_thread_act_user_
@@ -19464,7 +19464,7 @@ diff -urN a/include/mach/i386/thread_act.h b/include/mach/i386/thread_act.h
 +#endif	 /* _thread_act_user_ */
 diff -urN a/include/mach/i386/thread_state.h b/include/mach/i386/thread_state.h
 --- a/include/mach/i386/thread_state.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach/i386/thread_state.h	2013-01-07 08:19:13.991384192 +0000
++++ b/include/mach/i386/thread_state.h	2013-04-02 23:44:04.579966217 +0100
 @@ -0,0 +1,42 @@
 +/*
 + * Copyright (c) 2000-2006 Apple Computer, Inc. All rights reserved.
@@ -19510,7 +19510,7 @@ diff -urN a/include/mach/i386/thread_state.h b/include/mach/i386/thread_state.h
 +#endif	/* _MACH_I386_THREAD_STATE_H_ */
 diff -urN a/include/mach/i386/thread_status.h b/include/mach/i386/thread_status.h
 --- a/include/mach/i386/thread_status.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach/i386/thread_status.h	2013-01-07 08:19:13.991384192 +0000
++++ b/include/mach/i386/thread_status.h	2013-04-02 23:44:04.579966217 +0100
 @@ -0,0 +1,312 @@
 +/*
 + * Copyright (c) 2000-2006 Apple Computer, Inc. All rights reserved.
@@ -19826,7 +19826,7 @@ diff -urN a/include/mach/i386/thread_status.h b/include/mach/i386/thread_status.
 +#endif	/* _MACH_I386_THREAD_STATUS_H_ */
 diff -urN a/include/mach/i386/vm_param.h b/include/mach/i386/vm_param.h
 --- a/include/mach/i386/vm_param.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach/i386/vm_param.h	2013-01-07 08:19:13.991384192 +0000
++++ b/include/mach/i386/vm_param.h	2013-04-02 23:44:04.579966217 +0100
 @@ -0,0 +1,157 @@
 +/*
 + * Copyright (c) 2000-2006 Apple Computer, Inc. All rights reserved.
@@ -19987,7 +19987,7 @@ diff -urN a/include/mach/i386/vm_param.h b/include/mach/i386/vm_param.h
 +#endif	/* _MACH_I386_VM_PARAM_H_ */
 diff -urN a/include/mach/i386/vm_types.h b/include/mach/i386/vm_types.h
 --- a/include/mach/i386/vm_types.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach/i386/vm_types.h	2013-01-07 08:19:13.991384192 +0000
++++ b/include/mach/i386/vm_types.h	2013-04-02 23:44:04.579966217 +0100
 @@ -0,0 +1,140 @@
 +/*
 + * Copyright (c) 2000-2006 Apple Computer, Inc. All rights reserved.
@@ -20131,7 +20131,7 @@ diff -urN a/include/mach/i386/vm_types.h b/include/mach/i386/vm_types.h
 +#endif	/* _MACH_I386_VM_TYPES_H_ */
 diff -urN a/include/mach/kern_return.h b/include/mach/kern_return.h
 --- a/include/mach/kern_return.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach/kern_return.h	2013-01-07 08:19:13.987386242 +0000
++++ b/include/mach/kern_return.h	2013-04-02 23:44:04.575966268 +0100
 @@ -0,0 +1,322 @@
 +/*
 + * Copyright (c) 2000 Apple Computer, Inc. All rights reserved.
@@ -20457,7 +20457,7 @@ diff -urN a/include/mach/kern_return.h b/include/mach/kern_return.h
 +#endif	/* _MACH_KERN_RETURN_H_ */
 diff -urN a/include/mach/kmod.h b/include/mach/kmod.h
 --- a/include/mach/kmod.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach/kmod.h	2013-01-07 08:19:13.987386242 +0000
++++ b/include/mach/kmod.h	2013-04-02 23:44:04.575966268 +0100
 @@ -0,0 +1,180 @@
 +/*
 + * Copyright (c) 2000-2007 Apple Inc. All rights reserved.
@@ -20641,7 +20641,7 @@ diff -urN a/include/mach/kmod.h b/include/mach/kmod.h
 +#endif    /* _MACH_KMOD_H_ */
 diff -urN a/include/mach/ledger.defs b/include/mach/ledger.defs
 --- a/include/mach/ledger.defs	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach/ledger.defs	2013-01-07 08:19:13.991384192 +0000
++++ b/include/mach/ledger.defs	2013-04-02 23:44:04.579966217 +0100
 @@ -0,0 +1,79 @@
 +/*
 + * Copyright (c) 2000 Apple Computer, Inc. All rights reserved.
@@ -20724,7 +20724,7 @@ diff -urN a/include/mach/ledger.defs b/include/mach/ledger.defs
 +/* vim: set ft=c : */
 diff -urN a/include/mach/ledger.h b/include/mach/ledger.h
 --- a/include/mach/ledger.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach/ledger.h	2013-01-07 08:19:13.991384192 +0000
++++ b/include/mach/ledger.h	2013-04-02 23:44:04.575966268 +0100
 @@ -0,0 +1,260 @@
 +#ifndef	_ledger_user_
 +#define	_ledger_user_
@@ -20988,7 +20988,7 @@ diff -urN a/include/mach/ledger.h b/include/mach/ledger.h
 +#endif	 /* _ledger_user_ */
 diff -urN a/include/mach/lock_set.defs b/include/mach/lock_set.defs
 --- a/include/mach/lock_set.defs	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach/lock_set.defs	2013-01-07 08:19:13.991384192 +0000
++++ b/include/mach/lock_set.defs	2013-04-02 23:44:04.583966166 +0100
 @@ -0,0 +1,79 @@
 +/*
 + * Copyright (c) 2000 Apple Computer, Inc. All rights reserved.
@@ -21071,7 +21071,7 @@ diff -urN a/include/mach/lock_set.defs b/include/mach/lock_set.defs
 +/* vim: set ft=c : */
 diff -urN a/include/mach/lock_set.h b/include/mach/lock_set.h
 --- a/include/mach/lock_set.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach/lock_set.h	2013-01-07 08:19:13.987386242 +0000
++++ b/include/mach/lock_set.h	2013-04-02 23:44:04.575966268 +0100
 @@ -0,0 +1,327 @@
 +#ifndef	_lock_set_user_
 +#define	_lock_set_user_
@@ -21402,7 +21402,7 @@ diff -urN a/include/mach/lock_set.h b/include/mach/lock_set.h
 +#endif	 /* _lock_set_user_ */
 diff -urN a/include/mach/mach_error.h b/include/mach/mach_error.h
 --- a/include/mach/mach_error.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach/mach_error.h	2013-01-07 08:19:13.991384192 +0000
++++ b/include/mach/mach_error.h	2013-04-02 23:44:04.575966268 +0100
 @@ -0,0 +1,93 @@
 +/*
 + * Copyright (c) 1999 Apple Computer, Inc. All rights reserved.
@@ -21499,7 +21499,7 @@ diff -urN a/include/mach/mach_error.h b/include/mach/mach_error.h
 +#endif	/* _MACH_ERROR_ */
 diff -urN a/include/mach/mach_exc.defs b/include/mach/mach_exc.defs
 --- a/include/mach/mach_exc.defs	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach/mach_exc.defs	2013-01-07 08:19:13.987386242 +0000
++++ b/include/mach/mach_exc.defs	2013-04-02 23:44:04.575966268 +0100
 @@ -0,0 +1,119 @@
 +/*
 + * Copyright (c) 2006 Apple Computer, Inc. All rights reserved.
@@ -21622,7 +21622,7 @@ diff -urN a/include/mach/mach_exc.defs b/include/mach/mach_exc.defs
 +/* vim: set ft=c : */
 diff -urN a/include/mach/mach.h b/include/mach/mach.h
 --- a/include/mach/mach.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach/mach.h	2013-01-07 08:19:13.987386242 +0000
++++ b/include/mach/mach.h	2013-04-02 23:44:04.575966268 +0100
 @@ -0,0 +1,133 @@
 +/*
 + * Copyright (c) 1999-2005 Apple Computer, Inc. All rights reserved.
@@ -21759,7 +21759,7 @@ diff -urN a/include/mach/mach.h b/include/mach/mach.h
 +#endif	/* _MACH_H_ */
 diff -urN a/include/mach/mach_host.defs b/include/mach/mach_host.defs
 --- a/include/mach/mach_host.defs	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach/mach_host.defs	2013-01-07 08:19:13.987386242 +0000
++++ b/include/mach/mach_host.defs	2013-04-02 23:44:04.575966268 +0100
 @@ -0,0 +1,271 @@
 +/*
 + * Copyright (c) 2000-2009 Apple Inc. All rights reserved.
@@ -22034,7 +22034,7 @@ diff -urN a/include/mach/mach_host.defs b/include/mach/mach_host.defs
 +/* vim: set ft=c : */
 diff -urN a/include/mach/mach_host.h b/include/mach/mach_host.h
 --- a/include/mach/mach_host.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach/mach_host.h	2013-01-07 08:19:13.987386242 +0000
++++ b/include/mach/mach_host.h	2013-04-02 23:44:04.575966268 +0100
 @@ -0,0 +1,920 @@
 +#ifndef	_mach_host_user_
 +#define	_mach_host_user_
@@ -22958,7 +22958,7 @@ diff -urN a/include/mach/mach_host.h b/include/mach/mach_host.h
 +#endif	 /* _mach_host_user_ */
 diff -urN a/include/mach/machine/asm.h b/include/mach/machine/asm.h
 --- a/include/mach/machine/asm.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach/machine/asm.h	2013-01-07 08:19:13.991384192 +0000
++++ b/include/mach/machine/asm.h	2013-04-02 23:44:04.575966268 +0100
 @@ -0,0 +1,40 @@
 +/*
 + * Copyright (c) 2000-2007 Apple Inc. All rights reserved.
@@ -23002,7 +23002,7 @@ diff -urN a/include/mach/machine/asm.h b/include/mach/machine/asm.h
 +#endif /* _MACH_MACHINE_ASM_H */
 diff -urN a/include/mach/machine/boolean.h b/include/mach/machine/boolean.h
 --- a/include/mach/machine/boolean.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach/machine/boolean.h	2013-01-07 08:19:13.991384192 +0000
++++ b/include/mach/machine/boolean.h	2013-04-02 23:44:04.575966268 +0100
 @@ -0,0 +1,40 @@
 +/*
 + * Copyright (c) 2000-2007 Apple Inc. All rights reserved.
@@ -23046,7 +23046,7 @@ diff -urN a/include/mach/machine/boolean.h b/include/mach/machine/boolean.h
 +#endif /* _MACH_MACHINE_BOOLEAN_H_ */
 diff -urN a/include/mach/machine/exception.h b/include/mach/machine/exception.h
 --- a/include/mach/machine/exception.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach/machine/exception.h	2013-01-07 08:19:13.991384192 +0000
++++ b/include/mach/machine/exception.h	2013-04-02 23:44:04.575966268 +0100
 @@ -0,0 +1,40 @@
 +/*
 + * Copyright (c) 2000-2007 Apple Inc. All rights reserved.
@@ -23090,7 +23090,7 @@ diff -urN a/include/mach/machine/exception.h b/include/mach/machine/exception.h
 +#endif /* _MACH_MACHINE_EXCEPTION_H_ */
 diff -urN a/include/mach/machine/kern_return.h b/include/mach/machine/kern_return.h
 --- a/include/mach/machine/kern_return.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach/machine/kern_return.h	2013-01-07 08:19:13.991384192 +0000
++++ b/include/mach/machine/kern_return.h	2013-04-02 23:44:04.575966268 +0100
 @@ -0,0 +1,40 @@
 +/*
 + * Copyright (c) 2000-2007 Apple Inc. All rights reserved.
@@ -23134,7 +23134,7 @@ diff -urN a/include/mach/machine/kern_return.h b/include/mach/machine/kern_retur
 +#endif /* _MACH_MACHINE_KERN_RETURN_H_ */
 diff -urN a/include/mach/machine/machine_types.defs b/include/mach/machine/machine_types.defs
 --- a/include/mach/machine/machine_types.defs	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach/machine/machine_types.defs	2013-01-07 08:19:13.991384192 +0000
++++ b/include/mach/machine/machine_types.defs	2013-04-02 23:44:04.575966268 +0100
 @@ -0,0 +1,42 @@
 +/*
 + * Copyright (c) 2000-2006 Apple Computer, Inc. All rights reserved.
@@ -23180,7 +23180,7 @@ diff -urN a/include/mach/machine/machine_types.defs b/include/mach/machine/machi
 +/* vim: set ft=c : */
 diff -urN a/include/mach/machine/ndr_def.h b/include/mach/machine/ndr_def.h
 --- a/include/mach/machine/ndr_def.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach/machine/ndr_def.h	2013-01-07 08:19:13.991384192 +0000
++++ b/include/mach/machine/ndr_def.h	2013-04-02 23:44:04.575966268 +0100
 @@ -0,0 +1,40 @@
 +/*
 + * Copyright (c) 2000-2007 Apple Inc. All rights reserved.
@@ -23224,7 +23224,7 @@ diff -urN a/include/mach/machine/ndr_def.h b/include/mach/machine/ndr_def.h
 +#endif /* _MACH_MACHINE_NDR_DEF_H */
 diff -urN a/include/mach/machine/processor_info.h b/include/mach/machine/processor_info.h
 --- a/include/mach/machine/processor_info.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach/machine/processor_info.h	2013-01-07 08:19:13.991384192 +0000
++++ b/include/mach/machine/processor_info.h	2013-04-02 23:44:04.575966268 +0100
 @@ -0,0 +1,40 @@
 +/*
 + * Copyright (c) 2000-2007 Apple Inc. All rights reserved.
@@ -23268,7 +23268,7 @@ diff -urN a/include/mach/machine/processor_info.h b/include/mach/machine/process
 +#endif /* _MACH_MACHINE_PROCESSOR_INFO_H_ */
 diff -urN a/include/mach/machine/rpc.h b/include/mach/machine/rpc.h
 --- a/include/mach/machine/rpc.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach/machine/rpc.h	2013-01-07 08:19:13.991384192 +0000
++++ b/include/mach/machine/rpc.h	2013-04-02 23:44:04.575966268 +0100
 @@ -0,0 +1,40 @@
 +/*
 + * Copyright (c) 2000-2007 Apple Inc. All rights reserved.
@@ -23312,7 +23312,7 @@ diff -urN a/include/mach/machine/rpc.h b/include/mach/machine/rpc.h
 +#endif	/* _MACH_MACHINE_RPC_H_ */
 diff -urN a/include/mach/machine/sdt.h b/include/mach/machine/sdt.h
 --- a/include/mach/machine/sdt.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach/machine/sdt.h	2013-01-07 08:19:13.991384192 +0000
++++ b/include/mach/machine/sdt.h	2013-04-02 23:44:04.575966268 +0100
 @@ -0,0 +1,36 @@
 +/*
 + * Copyright (c) 2007 Apple Inc. All rights reserved.
@@ -23352,7 +23352,7 @@ diff -urN a/include/mach/machine/sdt.h b/include/mach/machine/sdt.h
 +#endif	/* _MACH_MACHINE_SYS_SDT_H */
 diff -urN a/include/mach/machine/sdt_isa.h b/include/mach/machine/sdt_isa.h
 --- a/include/mach/machine/sdt_isa.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach/machine/sdt_isa.h	2013-01-07 08:19:13.991384192 +0000
++++ b/include/mach/machine/sdt_isa.h	2013-04-02 23:44:04.575966268 +0100
 @@ -0,0 +1,39 @@
 +/*
 + * Copyright (c) 2000-2007 Apple Inc. All rights reserved.
@@ -23395,7 +23395,7 @@ diff -urN a/include/mach/machine/sdt_isa.h b/include/mach/machine/sdt_isa.h
 +#endif /* _BSD_MACHINE_SDT_ISA_H_ */
 diff -urN a/include/mach/machine/thread_state.h b/include/mach/machine/thread_state.h
 --- a/include/mach/machine/thread_state.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach/machine/thread_state.h	2013-01-07 08:19:13.991384192 +0000
++++ b/include/mach/machine/thread_state.h	2013-04-02 23:44:04.575966268 +0100
 @@ -0,0 +1,40 @@
 +/*
 + * Copyright (c) 2000-2007 Apple Inc. All rights reserved.
@@ -23439,7 +23439,7 @@ diff -urN a/include/mach/machine/thread_state.h b/include/mach/machine/thread_st
 +#endif /* _MACH_MACHINE_THREAD_STATE_H_ */
 diff -urN a/include/mach/machine/thread_status.h b/include/mach/machine/thread_status.h
 --- a/include/mach/machine/thread_status.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach/machine/thread_status.h	2013-01-07 08:19:13.991384192 +0000
++++ b/include/mach/machine/thread_status.h	2013-04-02 23:44:04.575966268 +0100
 @@ -0,0 +1,40 @@
 +/*
 + * Copyright (c) 2000-2007 Apple Inc. All rights reserved.
@@ -23483,7 +23483,7 @@ diff -urN a/include/mach/machine/thread_status.h b/include/mach/machine/thread_s
 +#endif /* _MACH_MACHINE_THREAD_STATUS_H_ */
 diff -urN a/include/mach/machine/vm_param.h b/include/mach/machine/vm_param.h
 --- a/include/mach/machine/vm_param.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach/machine/vm_param.h	2013-01-07 08:19:13.991384192 +0000
++++ b/include/mach/machine/vm_param.h	2013-04-02 23:44:04.575966268 +0100
 @@ -0,0 +1,40 @@
 +/*
 + * Copyright (c) 2000-2007 Apple Inc. All rights reserved.
@@ -23527,7 +23527,7 @@ diff -urN a/include/mach/machine/vm_param.h b/include/mach/machine/vm_param.h
 +#endif /* _MACH_MACHINE_VM_PARAM_H_ */
 diff -urN a/include/mach/machine/vm_types.h b/include/mach/machine/vm_types.h
 --- a/include/mach/machine/vm_types.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach/machine/vm_types.h	2013-01-07 08:19:13.991384192 +0000
++++ b/include/mach/machine/vm_types.h	2013-04-02 23:44:04.575966268 +0100
 @@ -0,0 +1,40 @@
 +/*
 + * Copyright (c) 2000-2007 Apple Inc. All rights reserved.
@@ -23571,7 +23571,7 @@ diff -urN a/include/mach/machine/vm_types.h b/include/mach/machine/vm_types.h
 +#endif /* _MACH_MACHINE_VM_TYPES_H_ */
 diff -urN a/include/mach/mach_init.h b/include/mach/mach_init.h
 --- a/include/mach/mach_init.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach/mach_init.h	2013-01-07 08:19:13.991384192 +0000
++++ b/include/mach/mach_init.h	2013-04-02 23:44:04.579966217 +0100
 @@ -0,0 +1,127 @@
 +/*
 + * Copyright (c) 1999 Apple Computer, Inc. All rights reserved.
@@ -23702,7 +23702,7 @@ diff -urN a/include/mach/mach_init.h b/include/mach/mach_init.h
 +#endif	/* _MACH_INIT_ */
 diff -urN a/include/mach/mach_interface.h b/include/mach/mach_interface.h
 --- a/include/mach/mach_interface.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach/mach_interface.h	2013-01-07 08:19:13.987386242 +0000
++++ b/include/mach/mach_interface.h	2013-04-02 23:44:04.575966268 +0100
 @@ -0,0 +1,54 @@
 +/*
 + * Copyright (c) 2003 Apple Computer, Inc. All rights reserved.
@@ -23760,7 +23760,7 @@ diff -urN a/include/mach/mach_interface.h b/include/mach/mach_interface.h
 +#endif /* _MACH_INTERFACE_H_ */
 diff -urN a/include/mach/mach_param.h b/include/mach/mach_param.h
 --- a/include/mach/mach_param.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach/mach_param.h	2013-01-07 08:19:13.991384192 +0000
++++ b/include/mach/mach_param.h	2013-04-02 23:44:04.579966217 +0100
 @@ -0,0 +1,73 @@
 +/*
 + * Copyright (c) 2000 Apple Computer, Inc. All rights reserved.
@@ -23837,7 +23837,7 @@ diff -urN a/include/mach/mach_param.h b/include/mach/mach_param.h
 +#endif	/* _MACH_MACH_PARAM_H_ */
 diff -urN a/include/mach/mach_port.defs b/include/mach/mach_port.defs
 --- a/include/mach/mach_port.defs	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach/mach_port.defs	2013-01-07 08:19:13.991384192 +0000
++++ b/include/mach/mach_port.defs	2013-04-02 23:44:04.575966268 +0100
 @@ -0,0 +1,503 @@
 +/*
 + * Copyright (c) 2000-2004 Apple Computer, Inc. All rights reserved.
@@ -24344,7 +24344,7 @@ diff -urN a/include/mach/mach_port.defs b/include/mach/mach_port.defs
 +/* vim: set ft=c : */
 diff -urN a/include/mach/mach_port.h b/include/mach/mach_port.h
 --- a/include/mach/mach_port.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach/mach_port.h	2013-01-07 08:19:13.991384192 +0000
++++ b/include/mach/mach_port.h	2013-04-02 23:44:04.575966268 +0100
 @@ -0,0 +1,1384 @@
 +#ifndef	_mach_port_user_
 +#define	_mach_port_user_
@@ -25732,7 +25732,7 @@ diff -urN a/include/mach/mach_port.h b/include/mach/mach_port.h
 +#endif	 /* _mach_port_user_ */
 diff -urN a/include/mach/mach_syscalls.h b/include/mach/mach_syscalls.h
 --- a/include/mach/mach_syscalls.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach/mach_syscalls.h	2013-01-07 08:19:13.991384192 +0000
++++ b/include/mach/mach_syscalls.h	2013-04-02 23:44:04.579966217 +0100
 @@ -0,0 +1,37 @@
 +/*
 + * Copyright (c) 2000-2004 Apple Computer, Inc. All rights reserved.
@@ -25773,7 +25773,7 @@ diff -urN a/include/mach/mach_syscalls.h b/include/mach/mach_syscalls.h
 +#endif	/* _MACH_MACH_SYSCALLS_H_ */
 diff -urN a/include/mach/mach_time.h b/include/mach/mach_time.h
 --- a/include/mach/mach_time.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach/mach_time.h	2013-01-07 08:19:13.987386242 +0000
++++ b/include/mach/mach_time.h	2013-04-02 23:44:04.575966268 +0100
 @@ -0,0 +1,56 @@
 +/*
 + * Copyright (c) 2001-2005 Apple Computer, Inc. All rights reserved.
@@ -25833,7 +25833,7 @@ diff -urN a/include/mach/mach_time.h b/include/mach/mach_time.h
 +#endif /* _MACH_MACH_TIME_H_ */
 diff -urN a/include/mach/mach_traps.h b/include/mach/mach_traps.h
 --- a/include/mach/mach_traps.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach/mach_traps.h	2013-01-07 08:19:13.991384192 +0000
++++ b/include/mach/mach_traps.h	2013-04-02 23:44:04.575966268 +0100
 @@ -0,0 +1,152 @@
 +/*
 + * Copyright (c) 2000-2007 Apple Inc. All rights reserved.
@@ -25989,7 +25989,7 @@ diff -urN a/include/mach/mach_traps.h b/include/mach/mach_traps.h
 +#endif	/* _MACH_MACH_TRAPS_H_ */
 diff -urN a/include/mach/mach_types.defs b/include/mach/mach_types.defs
 --- a/include/mach/mach_types.defs	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach/mach_types.defs	2013-01-07 08:19:13.987386242 +0000
++++ b/include/mach/mach_types.defs	2013-04-02 23:44:04.575966268 +0100
 @@ -0,0 +1,477 @@
 +/*
 + * Copyright (c) 2000-2009 Apple Inc. All rights reserved.
@@ -26470,7 +26470,7 @@ diff -urN a/include/mach/mach_types.defs b/include/mach/mach_types.defs
 +/* vim: set ft=c : */
 diff -urN a/include/mach/mach_types.h b/include/mach/mach_types.h
 --- a/include/mach/mach_types.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach/mach_types.h	2013-01-07 08:19:13.991384192 +0000
++++ b/include/mach/mach_types.h	2013-04-02 23:44:04.579966217 +0100
 @@ -0,0 +1,231 @@
 +/*
 + * Copyright (c) 2000-2004 Apple Computer, Inc. All rights reserved.
@@ -26705,7 +26705,7 @@ diff -urN a/include/mach/mach_types.h b/include/mach/mach_types.h
 +#endif	/* _MACH_MACH_TYPES_H_ */
 diff -urN a/include/mach/mach_vm.defs b/include/mach/mach_vm.defs
 --- a/include/mach/mach_vm.defs	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach/mach_vm.defs	2013-01-07 08:19:13.991384192 +0000
++++ b/include/mach/mach_vm.defs	2013-04-02 23:44:04.579966217 +0100
 @@ -0,0 +1,484 @@
 +/*
 + * Copyright (c) 2004 Apple Computer, Inc. All rights reserved.
@@ -27193,7 +27193,7 @@ diff -urN a/include/mach/mach_vm.defs b/include/mach/mach_vm.defs
 +/* vim: set ft=c : */
 diff -urN a/include/mach/mach_vm.h b/include/mach/mach_vm.h
 --- a/include/mach/mach_vm.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach/mach_vm.h	2013-01-07 08:19:13.991384192 +0000
++++ b/include/mach/mach_vm.h	2013-04-02 23:44:04.575966268 +0100
 @@ -0,0 +1,1033 @@
 +#ifndef	_mach_vm_user_
 +#define	_mach_vm_user_
@@ -28230,7 +28230,7 @@ diff -urN a/include/mach/mach_vm.h b/include/mach/mach_vm.h
 +#endif	 /* _mach_vm_user_ */
 diff -urN a/include/mach/memory_object_types.h b/include/mach/memory_object_types.h
 --- a/include/mach/memory_object_types.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach/memory_object_types.h	2013-01-07 08:19:13.991384192 +0000
++++ b/include/mach/memory_object_types.h	2013-04-02 23:44:04.575966268 +0100
 @@ -0,0 +1,271 @@
 +/*
 + * Copyright (c) 2000-2006 Apple Computer, Inc. All rights reserved.
@@ -28505,7 +28505,7 @@ diff -urN a/include/mach/memory_object_types.h b/include/mach/memory_object_type
 +#endif	/* _MACH_MEMORY_OBJECT_TYPES_H_ */
 diff -urN a/include/mach/message.h b/include/mach/message.h
 --- a/include/mach/message.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach/message.h	2013-01-07 08:19:13.987386242 +0000
++++ b/include/mach/message.h	2013-04-02 23:44:04.575966268 +0100
 @@ -0,0 +1,783 @@
 +/*
 + * Copyright (c) 2000-2005 Apple Computer, Inc. All rights reserved.
@@ -29292,7 +29292,7 @@ diff -urN a/include/mach/message.h b/include/mach/message.h
 +
 diff -urN a/include/mach/mig_errors.h b/include/mach/mig_errors.h
 --- a/include/mach/mig_errors.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach/mig_errors.h	2013-01-07 08:19:13.987386242 +0000
++++ b/include/mach/mig_errors.h	2013-04-02 23:44:04.575966268 +0100
 @@ -0,0 +1,124 @@
 +/*
 + * Copyright (c) 2000-2007 Apple Inc. All rights reserved.
@@ -29420,7 +29420,7 @@ diff -urN a/include/mach/mig_errors.h b/include/mach/mig_errors.h
 +#endif	/* _MACH_MIG_ERRORS_H_ */
 diff -urN a/include/mach/mig.h b/include/mach/mig.h
 --- a/include/mach/mig.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach/mig.h	2013-01-07 08:19:13.987386242 +0000
++++ b/include/mach/mig.h	2013-04-02 23:44:04.575966268 +0100
 @@ -0,0 +1,174 @@
 +/*
 + * Copyright (c) 2000-2007 Apple Inc. All rights reserved.
@@ -29598,7 +29598,7 @@ diff -urN a/include/mach/mig.h b/include/mach/mig.h
 +#endif	/* _MACH_MIG_H_ */
 diff -urN a/include/mach/ndr.h b/include/mach/ndr.h
 --- a/include/mach/ndr.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach/ndr.h	2013-01-07 08:19:13.991384192 +0000
++++ b/include/mach/ndr.h	2013-04-02 23:44:04.579966217 +0100
 @@ -0,0 +1,207 @@
 +/*
 + * Copyright (c) 2000-2005 Apple Computer, Inc. All rights reserved.
@@ -29809,7 +29809,7 @@ diff -urN a/include/mach/ndr.h b/include/mach/ndr.h
 +#endif /* _MACH_NDR_H_ */
 diff -urN a/include/mach/notify.defs b/include/mach/notify.defs
 --- a/include/mach/notify.defs	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach/notify.defs	2013-01-07 08:19:13.991384192 +0000
++++ b/include/mach/notify.defs	2013-04-02 23:44:04.579966217 +0100
 @@ -0,0 +1,134 @@
 +/*
 + * Copyright (c) 2000-2003 Apple Computer, Inc. All rights reserved.
@@ -29947,7 +29947,7 @@ diff -urN a/include/mach/notify.defs b/include/mach/notify.defs
 +/* vim: set ft=c : */
 diff -urN a/include/mach/notify.h b/include/mach/notify.h
 --- a/include/mach/notify.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach/notify.h	2013-01-07 08:19:13.991384192 +0000
++++ b/include/mach/notify.h	2013-04-02 23:44:04.575966268 +0100
 @@ -0,0 +1,141 @@
 +/*
 + * Copyright (c) 2000-2003 Apple Computer, Inc. All rights reserved.
@@ -30092,7 +30092,7 @@ diff -urN a/include/mach/notify.h b/include/mach/notify.h
 +#endif	/* _MACH_NOTIFY_H_ */
 diff -urN a/include/mach/policy.h b/include/mach/policy.h
 --- a/include/mach/policy.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach/policy.h	2013-01-07 08:19:13.987386242 +0000
++++ b/include/mach/policy.h	2013-04-02 23:44:04.575966268 +0100
 @@ -0,0 +1,235 @@
 +/*
 + * Copyright (c) 2000-2005 Apple Computer, Inc. All rights reserved.
@@ -30331,7 +30331,7 @@ diff -urN a/include/mach/policy.h b/include/mach/policy.h
 +#endif	/* _MACH_POLICY_H_ */
 diff -urN a/include/mach/port.h b/include/mach/port.h
 --- a/include/mach/port.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach/port.h	2013-01-07 08:19:13.987386242 +0000
++++ b/include/mach/port.h	2013-04-02 23:44:04.575966268 +0100
 @@ -0,0 +1,321 @@
 +/*
 + * Copyright (c) 2000-2006 Apple Computer, Inc. All rights reserved.
@@ -30656,7 +30656,7 @@ diff -urN a/include/mach/port.h b/include/mach/port.h
 +#endif	/* _MACH_PORT_H_ */
 diff -urN a/include/mach/port_obj.h b/include/mach/port_obj.h
 --- a/include/mach/port_obj.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach/port_obj.h	2013-01-07 08:19:13.987386242 +0000
++++ b/include/mach/port_obj.h	2013-04-02 23:44:04.575966268 +0100
 @@ -0,0 +1,103 @@
 +/*
 + * Copyright (c) 2003 Apple Computer, Inc. All rights reserved.
@@ -30763,7 +30763,7 @@ diff -urN a/include/mach/port_obj.h b/include/mach/port_obj.h
 +#endif	/* PORT_OBJ_H */
 diff -urN a/include/mach/processor.defs b/include/mach/processor.defs
 --- a/include/mach/processor.defs	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach/processor.defs	2013-01-07 08:19:13.991384192 +0000
++++ b/include/mach/processor.defs	2013-04-02 23:44:04.583966166 +0100
 @@ -0,0 +1,128 @@
 +/*
 + * Copyright (c) 2000 Apple Computer, Inc. All rights reserved.
@@ -30895,7 +30895,7 @@ diff -urN a/include/mach/processor.defs b/include/mach/processor.defs
 +/* vim: set ft=c : */
 diff -urN a/include/mach/processor.h b/include/mach/processor.h
 --- a/include/mach/processor.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach/processor.h	2013-01-07 08:19:13.991384192 +0000
++++ b/include/mach/processor.h	2013-04-02 23:44:04.575966268 +0100
 @@ -0,0 +1,337 @@
 +#ifndef	_processor_user_
 +#define	_processor_user_
@@ -31236,7 +31236,7 @@ diff -urN a/include/mach/processor.h b/include/mach/processor.h
 +#endif	 /* _processor_user_ */
 diff -urN a/include/mach/processor_info.h b/include/mach/processor_info.h
 --- a/include/mach/processor_info.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach/processor_info.h	2013-01-07 08:19:13.987386242 +0000
++++ b/include/mach/processor_info.h	2013-04-02 23:44:04.575966268 +0100
 @@ -0,0 +1,153 @@
 +/*
 + * Copyright (c) 2000-2005 Apple Computer, Inc. All rights reserved.
@@ -31393,7 +31393,7 @@ diff -urN a/include/mach/processor_info.h b/include/mach/processor_info.h
 +#endif	/* _MACH_PROCESSOR_INFO_H_ */
 diff -urN a/include/mach/processor_set.defs b/include/mach/processor_set.defs
 --- a/include/mach/processor_set.defs	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach/processor_set.defs	2013-01-07 08:19:13.987386242 +0000
++++ b/include/mach/processor_set.defs	2013-04-02 23:44:04.575966268 +0100
 @@ -0,0 +1,161 @@
 +/*
 + * Copyright (c) 2000-2006 Apple Computer, Inc. All rights reserved.
@@ -31558,7 +31558,7 @@ diff -urN a/include/mach/processor_set.defs b/include/mach/processor_set.defs
 +/* vim: set ft=c : */
 diff -urN a/include/mach/processor_set.h b/include/mach/processor_set.h
 --- a/include/mach/processor_set.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach/processor_set.h	2013-01-07 08:19:13.991384192 +0000
++++ b/include/mach/processor_set.h	2013-04-02 23:44:04.579966217 +0100
 @@ -0,0 +1,517 @@
 +#ifndef	_processor_set_user_
 +#define	_processor_set_user_
@@ -32079,7 +32079,7 @@ diff -urN a/include/mach/processor_set.h b/include/mach/processor_set.h
 +#endif	 /* _processor_set_user_ */
 diff -urN a/include/mach/rpc.h b/include/mach/rpc.h
 --- a/include/mach/rpc.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach/rpc.h	2013-01-07 08:19:13.991384192 +0000
++++ b/include/mach/rpc.h	2013-04-02 23:44:04.579966217 +0100
 @@ -0,0 +1,135 @@
 +/*
 + * Copyright (c) 2002,2000 Apple Computer, Inc. All rights reserved.
@@ -32218,7 +32218,7 @@ diff -urN a/include/mach/rpc.h b/include/mach/rpc.h
 +#endif	/* _MACH_RPC_H_ */
 diff -urN a/include/mach/sdt.h b/include/mach/sdt.h
 --- a/include/mach/sdt.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach/sdt.h	2013-01-07 08:19:13.991384192 +0000
++++ b/include/mach/sdt.h	2013-04-02 23:44:04.575966268 +0100
 @@ -0,0 +1,32 @@
 +/*
 + * CDDL HEADER START
@@ -32254,7 +32254,7 @@ diff -urN a/include/mach/sdt.h b/include/mach/sdt.h
 +#endif	/* _MACH_SDT_H */
 diff -urN a/include/mach/security.defs b/include/mach/security.defs
 --- a/include/mach/security.defs	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach/security.defs	2013-01-07 08:19:13.991384192 +0000
++++ b/include/mach/security.defs	2013-04-02 23:44:04.579966217 +0100
 @@ -0,0 +1,208 @@
 +
 +/* -*- C++ -*- */
@@ -32466,7 +32466,7 @@ diff -urN a/include/mach/security.defs b/include/mach/security.defs
 +			  out newlabel : mach_port_name_t);
 diff -urN a/include/mach/semaphore.h b/include/mach/semaphore.h
 --- a/include/mach/semaphore.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach/semaphore.h	2013-01-07 08:19:13.991384192 +0000
++++ b/include/mach/semaphore.h	2013-04-02 23:44:04.579966217 +0100
 @@ -0,0 +1,78 @@
 +/*
 + * Copyright (c) 2000-2008 Apple Inc. All rights reserved.
@@ -32548,7 +32548,7 @@ diff -urN a/include/mach/semaphore.h b/include/mach/semaphore.h
 +#endif	/* _MACH_SEMAPHORE_H_ */
 diff -urN a/include/mach/shared_memory_server.h b/include/mach/shared_memory_server.h
 --- a/include/mach/shared_memory_server.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach/shared_memory_server.h	2013-01-07 08:19:13.991384192 +0000
++++ b/include/mach/shared_memory_server.h	2013-04-02 23:44:04.579966217 +0100
 @@ -0,0 +1,147 @@
 +/*
 + * Copyright (c) 2000-2005 Apple Computer, Inc. All rights reserved.
@@ -32699,7 +32699,7 @@ diff -urN a/include/mach/shared_memory_server.h b/include/mach/shared_memory_ser
 +#endif /* _MACH_SHARED_MEMORY_SERVER_H_ */
 diff -urN a/include/mach/shared_region.h b/include/mach/shared_region.h
 --- a/include/mach/shared_region.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach/shared_region.h	2013-01-07 08:19:13.991384192 +0000
++++ b/include/mach/shared_region.h	2013-04-02 23:44:04.579966217 +0100
 @@ -0,0 +1,122 @@
 +/*
 + * Copyright (c) 2007 Apple Inc. All rights reserved.
@@ -32825,7 +32825,7 @@ diff -urN a/include/mach/shared_region.h b/include/mach/shared_region.h
 +#endif /* _MACH_SHARED_REGION_H_ */
 diff -urN a/include/mach/std_types.defs b/include/mach/std_types.defs
 --- a/include/mach/std_types.defs	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach/std_types.defs	2013-01-07 08:19:13.987386242 +0000
++++ b/include/mach/std_types.defs	2013-04-02 23:44:04.575966268 +0100
 @@ -0,0 +1,150 @@
 +/*
 + * Copyright (c) 2002,2000 Apple Computer, Inc. All rights reserved.
@@ -32979,7 +32979,7 @@ diff -urN a/include/mach/std_types.defs b/include/mach/std_types.defs
 +/* vim: set ft=c : */
 diff -urN a/include/mach/std_types.h b/include/mach/std_types.h
 --- a/include/mach/std_types.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach/std_types.h	2013-01-07 08:19:13.991384192 +0000
++++ b/include/mach/std_types.h	2013-04-02 23:44:04.579966217 +0100
 @@ -0,0 +1,72 @@
 +/*
 + * Copyright (c) 2002,2000 Apple Computer, Inc. All rights reserved.
@@ -33055,7 +33055,7 @@ diff -urN a/include/mach/std_types.h b/include/mach/std_types.h
 +#endif	/* _MACH_STD_TYPES_H_ */
 diff -urN a/include/mach/sync.h b/include/mach/sync.h
 --- a/include/mach/sync.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach/sync.h	2013-01-07 08:19:13.991384192 +0000
++++ b/include/mach/sync.h	2013-04-02 23:44:04.575966268 +0100
 @@ -0,0 +1,35 @@
 +/*
 + * Copyright (c) 1999 Apple Computer, Inc. All rights reserved.
@@ -33094,7 +33094,7 @@ diff -urN a/include/mach/sync.h b/include/mach/sync.h
 +#include <mach/lock_set.h>
 diff -urN a/include/mach/sync_policy.h b/include/mach/sync_policy.h
 --- a/include/mach/sync_policy.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach/sync_policy.h	2013-01-07 08:19:13.987386242 +0000
++++ b/include/mach/sync_policy.h	2013-04-02 23:44:04.575966268 +0100
 @@ -0,0 +1,49 @@
 +/*
 + * Copyright (c) 2000-2002 Apple Computer, Inc. All rights reserved.
@@ -33147,7 +33147,7 @@ diff -urN a/include/mach/sync_policy.h b/include/mach/sync_policy.h
 +#endif 	/* _MACH_SYNC_POLICY_H_ */
 diff -urN a/include/mach/task_access.defs b/include/mach/task_access.defs
 --- a/include/mach/task_access.defs	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach/task_access.defs	2013-01-07 08:19:13.991384192 +0000
++++ b/include/mach/task_access.defs	2013-04-02 23:44:04.579966217 +0100
 @@ -0,0 +1,59 @@
 +/*
 + * Copyright (c) 2006 Apple Computer, Inc. All rights reserved.
@@ -33210,7 +33210,7 @@ diff -urN a/include/mach/task_access.defs b/include/mach/task_access.defs
 +/* vim: set ft=c : */
 diff -urN a/include/mach/task.defs b/include/mach/task.defs
 --- a/include/mach/task.defs	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach/task.defs	2013-01-07 08:19:13.991384192 +0000
++++ b/include/mach/task.defs	2013-04-02 23:44:04.579966217 +0100
 @@ -0,0 +1,413 @@
 +/*
 + * Copyright (c) 2000-2007 Apple Inc. All rights reserved.
@@ -33627,7 +33627,7 @@ diff -urN a/include/mach/task.defs b/include/mach/task.defs
 +/* vim: set ft=c : */
 diff -urN a/include/mach/task.h b/include/mach/task.h
 --- a/include/mach/task.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach/task.h	2013-01-07 08:19:13.987386242 +0000
++++ b/include/mach/task.h	2013-04-02 23:44:04.575966268 +0100
 @@ -0,0 +1,36 @@
 +/*
 + * Copyright (c) 2002 Apple Computer, Inc. All rights reserved.
@@ -33667,7 +33667,7 @@ diff -urN a/include/mach/task.h b/include/mach/task.h
 +#endif 
 diff -urN a/include/mach/task_info.h b/include/mach/task_info.h
 --- a/include/mach/task_info.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach/task_info.h	2013-01-07 08:19:13.987386242 +0000
++++ b/include/mach/task_info.h	2013-04-02 23:44:04.575966268 +0100
 @@ -0,0 +1,272 @@
 +/*
 + * Copyright (c) 2000-2007 Apple Inc. All rights reserved.
@@ -33943,7 +33943,7 @@ diff -urN a/include/mach/task_info.h b/include/mach/task_info.h
 +#endif	/* _MACH_TASK_INFO_H_ */
 diff -urN a/include/mach/task_ledger.h b/include/mach/task_ledger.h
 --- a/include/mach/task_ledger.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach/task_ledger.h	2013-01-07 08:19:13.987386242 +0000
++++ b/include/mach/task_ledger.h	2013-04-02 23:44:04.575966268 +0100
 @@ -0,0 +1,51 @@
 +/*
 + * Copyright (c) 2000-2002 Apple Computer, Inc. All rights reserved.
@@ -33998,7 +33998,7 @@ diff -urN a/include/mach/task_ledger.h b/include/mach/task_ledger.h
 +#endif  /* _MACH_TASK_LEDGER_H_ */
 diff -urN a/include/mach/task_policy.h b/include/mach/task_policy.h
 --- a/include/mach/task_policy.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach/task_policy.h	2013-01-07 08:19:13.991384192 +0000
++++ b/include/mach/task_policy.h	2013-04-02 23:44:04.579966217 +0100
 @@ -0,0 +1,130 @@
 +/*
 + * Copyright (c) 2000-2005 Apple Computer, Inc. All rights reserved.
@@ -34132,7 +34132,7 @@ diff -urN a/include/mach/task_policy.h b/include/mach/task_policy.h
 +#endif	/* _MACH_TASK_POLICY_H_ */
 diff -urN a/include/mach/task_special_ports.h b/include/mach/task_special_ports.h
 --- a/include/mach/task_special_ports.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach/task_special_ports.h	2013-01-07 08:19:13.991384192 +0000
++++ b/include/mach/task_special_ports.h	2013-04-02 23:44:04.579966217 +0100
 @@ -0,0 +1,141 @@
 +/*
 + * Copyright (c) 2000-2002 Apple Computer, Inc. All rights reserved.
@@ -34277,7 +34277,7 @@ diff -urN a/include/mach/task_special_ports.h b/include/mach/task_special_ports.
 +#endif	/* _MACH_TASK_SPECIAL_PORTS_H_ */
 diff -urN a/include/mach/thread_act.defs b/include/mach/thread_act.defs
 --- a/include/mach/thread_act.defs	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach/thread_act.defs	2013-01-07 08:19:13.991384192 +0000
++++ b/include/mach/thread_act.defs	2013-04-02 23:44:04.575966268 +0100
 @@ -0,0 +1,333 @@
 +/*
 + * Copyright (c) 2000-2007 Apple Inc. All rights reserved.
@@ -34614,7 +34614,7 @@ diff -urN a/include/mach/thread_act.defs b/include/mach/thread_act.defs
 +/* vim: set ft=c : */
 diff -urN a/include/mach/thread_act.h b/include/mach/thread_act.h
 --- a/include/mach/thread_act.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach/thread_act.h	2013-01-07 08:19:13.991384192 +0000
++++ b/include/mach/thread_act.h	2013-04-02 23:44:04.575966268 +0100
 @@ -0,0 +1,36 @@
 +/*
 + * Copyright (c) 2002 Apple Computer, Inc. All rights reserved.
@@ -34654,7 +34654,7 @@ diff -urN a/include/mach/thread_act.h b/include/mach/thread_act.h
 +#endif 
 diff -urN a/include/mach/thread_info.h b/include/mach/thread_info.h
 --- a/include/mach/thread_info.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach/thread_info.h	2013-01-07 08:19:13.987386242 +0000
++++ b/include/mach/thread_info.h	2013-04-02 23:44:04.575966268 +0100
 @@ -0,0 +1,154 @@
 +/*
 + * Copyright (c) 2000-2005 Apple Computer, Inc. All rights reserved.
@@ -34812,7 +34812,7 @@ diff -urN a/include/mach/thread_info.h b/include/mach/thread_info.h
 +#endif	/* _MACH_THREAD_INFO_H_ */
 diff -urN a/include/mach/thread_policy.h b/include/mach/thread_policy.h
 --- a/include/mach/thread_policy.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach/thread_policy.h	2013-01-07 08:19:13.991384192 +0000
++++ b/include/mach/thread_policy.h	2013-04-02 23:44:04.579966217 +0100
 @@ -0,0 +1,234 @@
 +/*
 + * Copyright (c) 2000-2007 Apple Inc. All rights reserved.
@@ -35050,7 +35050,7 @@ diff -urN a/include/mach/thread_policy.h b/include/mach/thread_policy.h
 +#endif	/* _MACH_THREAD_POLICY_H_ */
 diff -urN a/include/mach/thread_special_ports.h b/include/mach/thread_special_ports.h
 --- a/include/mach/thread_special_ports.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach/thread_special_ports.h	2013-01-07 08:19:13.991384192 +0000
++++ b/include/mach/thread_special_ports.h	2013-04-02 23:44:04.579966217 +0100
 @@ -0,0 +1,83 @@
 +/*
 + * Copyright (c) 2000-2002 Apple Computer, Inc. All rights reserved.
@@ -35137,7 +35137,7 @@ diff -urN a/include/mach/thread_special_ports.h b/include/mach/thread_special_po
 +#endif	/* _MACH_THREAD_SPECIAL_PORTS_H_ */
 diff -urN a/include/mach/thread_status.h b/include/mach/thread_status.h
 --- a/include/mach/thread_status.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach/thread_status.h	2013-01-07 08:19:13.987386242 +0000
++++ b/include/mach/thread_status.h	2013-04-02 23:44:04.575966268 +0100
 @@ -0,0 +1,94 @@
 +/*
 + * Copyright (c) 2000-2002 Apple Computer, Inc. All rights reserved.
@@ -35235,7 +35235,7 @@ diff -urN a/include/mach/thread_status.h b/include/mach/thread_status.h
 +#endif	/* _MACH_THREAD_STATUS_H_ */
 diff -urN a/include/mach/thread_switch.h b/include/mach/thread_switch.h
 --- a/include/mach/thread_switch.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach/thread_switch.h	2013-01-07 08:19:13.987386242 +0000
++++ b/include/mach/thread_switch.h	2013-04-02 23:44:04.575966268 +0100
 @@ -0,0 +1,77 @@
 +/*
 + * Copyright (c) 2000-2004 Apple Computer, Inc. All rights reserved.
@@ -35316,7 +35316,7 @@ diff -urN a/include/mach/thread_switch.h b/include/mach/thread_switch.h
 +#endif	/* _MACH_THREAD_SWITCH_H_ */
 diff -urN a/include/mach/time_value.h b/include/mach/time_value.h
 --- a/include/mach/time_value.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach/time_value.h	2013-01-07 08:19:13.991384192 +0000
++++ b/include/mach/time_value.h	2013-04-02 23:44:04.575966268 +0100
 @@ -0,0 +1,96 @@
 +/*
 + * Copyright (c) 2000 Apple Computer, Inc. All rights reserved.
@@ -35416,7 +35416,7 @@ diff -urN a/include/mach/time_value.h b/include/mach/time_value.h
 +#endif	/* _MACH_TIME_VALUE_H_ */
 diff -urN a/include/mach/vm_attributes.h b/include/mach/vm_attributes.h
 --- a/include/mach/vm_attributes.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach/vm_attributes.h	2013-01-07 08:19:13.991384192 +0000
++++ b/include/mach/vm_attributes.h	2013-04-02 23:44:04.575966268 +0100
 @@ -0,0 +1,99 @@
 +/*
 + * Copyright (c) 2000-2002 Apple Computer, Inc. All rights reserved.
@@ -35519,7 +35519,7 @@ diff -urN a/include/mach/vm_attributes.h b/include/mach/vm_attributes.h
 +#endif	/* _MACH_VM_ATTRIBUTES_H_ */
 diff -urN a/include/mach/vm_behavior.h b/include/mach/vm_behavior.h
 --- a/include/mach/vm_behavior.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach/vm_behavior.h	2013-01-07 08:19:13.991384192 +0000
++++ b/include/mach/vm_behavior.h	2013-04-02 23:44:04.575966268 +0100
 @@ -0,0 +1,78 @@
 +/*
 + * Copyright (c) 2000-2002 Apple Computer, Inc. All rights reserved.
@@ -35601,7 +35601,7 @@ diff -urN a/include/mach/vm_behavior.h b/include/mach/vm_behavior.h
 +#endif	/*_MACH_VM_BEHAVIOR_H_*/
 diff -urN a/include/mach/vm_inherit.h b/include/mach/vm_inherit.h
 --- a/include/mach/vm_inherit.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach/vm_inherit.h	2013-01-07 08:19:13.987386242 +0000
++++ b/include/mach/vm_inherit.h	2013-04-02 23:44:04.575966268 +0100
 @@ -0,0 +1,89 @@
 +/*
 + * Copyright (c) 2000-2002 Apple Computer, Inc. All rights reserved.
@@ -35694,7 +35694,7 @@ diff -urN a/include/mach/vm_inherit.h b/include/mach/vm_inherit.h
 +#endif	/* _MACH_VM_INHERIT_H_ */
 diff -urN a/include/mach/vm_map.defs b/include/mach/vm_map.defs
 --- a/include/mach/vm_map.defs	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach/vm_map.defs	2013-01-07 08:19:13.987386242 +0000
++++ b/include/mach/vm_map.defs	2013-04-02 23:44:04.575966268 +0100
 @@ -0,0 +1,475 @@
 +/*
 + * Copyright (c) 2000-2004 Apple Computer, Inc. All rights reserved.
@@ -36173,7 +36173,7 @@ diff -urN a/include/mach/vm_map.defs b/include/mach/vm_map.defs
 +/* vim: set ft=c : */
 diff -urN a/include/mach/vm_map.h b/include/mach/vm_map.h
 --- a/include/mach/vm_map.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach/vm_map.h	2013-01-07 08:19:13.987386242 +0000
++++ b/include/mach/vm_map.h	2013-04-02 23:44:04.575966268 +0100
 @@ -0,0 +1,1379 @@
 +#ifndef	_vm_map_user_
 +#define	_vm_map_user_
@@ -37556,7 +37556,7 @@ diff -urN a/include/mach/vm_map.h b/include/mach/vm_map.h
 +#endif	 /* _vm_map_user_ */
 diff -urN a/include/mach/vm_param.h b/include/mach/vm_param.h
 --- a/include/mach/vm_param.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach/vm_param.h	2013-01-07 08:19:13.991384192 +0000
++++ b/include/mach/vm_param.h	2013-04-02 23:44:04.575966268 +0100
 @@ -0,0 +1,73 @@
 +/*
 + * Copyright (c) 2000-2006 Apple Computer, Inc. All rights reserved.
@@ -37633,7 +37633,7 @@ diff -urN a/include/mach/vm_param.h b/include/mach/vm_param.h
 +#endif	/* _MACH_VM_PARAM_H_ */
 diff -urN a/include/mach/vm_prot.h b/include/mach/vm_prot.h
 --- a/include/mach/vm_prot.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach/vm_prot.h	2013-01-07 08:19:13.991384192 +0000
++++ b/include/mach/vm_prot.h	2013-04-02 23:44:04.579966217 +0100
 @@ -0,0 +1,140 @@
 +/*
 + * Copyright (c) 2000-2002 Apple Computer, Inc. All rights reserved.
@@ -37777,7 +37777,7 @@ diff -urN a/include/mach/vm_prot.h b/include/mach/vm_prot.h
 +#endif	/* _MACH_VM_PROT_H_ */
 diff -urN a/include/mach/vm_purgable.h b/include/mach/vm_purgable.h
 --- a/include/mach/vm_purgable.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach/vm_purgable.h	2013-01-07 08:19:13.991384192 +0000
++++ b/include/mach/vm_purgable.h	2013-04-02 23:44:04.575966268 +0100
 @@ -0,0 +1,134 @@
 +/*
 + * Copyright (c) 2003-2007 Apple Inc. All rights reserved.
@@ -37915,7 +37915,7 @@ diff -urN a/include/mach/vm_purgable.h b/include/mach/vm_purgable.h
 +#endif	/* _MACH_VM_PURGABLE_H_ */
 diff -urN a/include/mach/vm_region.h b/include/mach/vm_region.h
 --- a/include/mach/vm_region.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach/vm_region.h	2013-01-07 08:19:13.987386242 +0000
++++ b/include/mach/vm_region.h	2013-04-02 23:44:04.575966268 +0100
 @@ -0,0 +1,322 @@
 +/*
 + * Copyright (c) 2000-2006 Apple Computer, Inc. All rights reserved.
@@ -38241,7 +38241,7 @@ diff -urN a/include/mach/vm_region.h b/include/mach/vm_region.h
 +#endif	/*_MACH_VM_REGION_H_*/
 diff -urN a/include/mach/vm_statistics.h b/include/mach/vm_statistics.h
 --- a/include/mach/vm_statistics.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach/vm_statistics.h	2013-01-07 08:19:13.991384192 +0000
++++ b/include/mach/vm_statistics.h	2013-04-02 23:44:04.583966166 +0100
 @@ -0,0 +1,369 @@
 +/*
 + * Copyright (c) 2000-2009 Apple Inc. All rights reserved.
@@ -38614,7 +38614,7 @@ diff -urN a/include/mach/vm_statistics.h b/include/mach/vm_statistics.h
 +#endif	/* _MACH_VM_STATISTICS_H_ */
 diff -urN a/include/mach/vm_sync.h b/include/mach/vm_sync.h
 --- a/include/mach/vm_sync.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach/vm_sync.h	2013-01-07 08:19:13.987386242 +0000
++++ b/include/mach/vm_sync.h	2013-04-02 23:44:04.575966268 +0100
 @@ -0,0 +1,80 @@
 +/*
 + * Copyright (c) 2000-2002 Apple Computer, Inc. All rights reserved.
@@ -38698,7 +38698,7 @@ diff -urN a/include/mach/vm_sync.h b/include/mach/vm_sync.h
 +#endif  /* _MACH_VM_SYNC_H_ */
 diff -urN a/include/mach/vm_task.h b/include/mach/vm_task.h
 --- a/include/mach/vm_task.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach/vm_task.h	2013-01-07 08:19:13.991384192 +0000
++++ b/include/mach/vm_task.h	2013-04-02 23:44:04.575966268 +0100
 @@ -0,0 +1,34 @@
 +/*
 + * Copyright (c) 2000 Apple Computer, Inc. All rights reserved.
@@ -38736,7 +38736,7 @@ diff -urN a/include/mach/vm_task.h b/include/mach/vm_task.h
 +#include <mach/vm_map.h>
 diff -urN a/include/mach/vm_types.h b/include/mach/vm_types.h
 --- a/include/mach/vm_types.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach/vm_types.h	2013-01-07 08:19:13.987386242 +0000
++++ b/include/mach/vm_types.h	2013-04-02 23:44:04.575966268 +0100
 @@ -0,0 +1,93 @@
 +/*
 + * Copyright (c) 2000-2004 Apple Computer, Inc. All rights reserved.
@@ -38833,7 +38833,7 @@ diff -urN a/include/mach/vm_types.h b/include/mach/vm_types.h
 +#endif	/* _MACH_VM_TYPES_H_ */
 diff -urN a/include/mach/x86_64/task.h b/include/mach/x86_64/task.h
 --- a/include/mach/x86_64/task.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach/x86_64/task.h	2013-01-07 08:19:13.987386242 +0000
++++ b/include/mach/x86_64/task.h	2013-04-02 23:44:04.575966268 +0100
 @@ -0,0 +1,1625 @@
 +#ifndef	_task_user_
 +#define	_task_user_
@@ -40462,7 +40462,7 @@ diff -urN a/include/mach/x86_64/task.h b/include/mach/x86_64/task.h
 +#endif	 /* _task_user_ */
 diff -urN a/include/mach/x86_64/thread_act.h b/include/mach/x86_64/thread_act.h
 --- a/include/mach/x86_64/thread_act.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach/x86_64/thread_act.h	2013-01-07 08:19:13.987386242 +0000
++++ b/include/mach/x86_64/thread_act.h	2013-04-02 23:44:04.575966268 +0100
 @@ -0,0 +1,1155 @@
 +#ifndef	_thread_act_user_
 +#define	_thread_act_user_
@@ -41621,7 +41621,7 @@ diff -urN a/include/mach/x86_64/thread_act.h b/include/mach/x86_64/thread_act.h
 +#endif	 /* _thread_act_user_ */
 diff -urN a/include/mach_debug/hash_info.h b/include/mach_debug/hash_info.h
 --- a/include/mach_debug/hash_info.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach_debug/hash_info.h	2013-01-07 08:19:13.991384192 +0000
++++ b/include/mach_debug/hash_info.h	2013-04-02 23:44:04.583966166 +0100
 @@ -0,0 +1,73 @@
 +/*
 + * Copyright (c) 2000-2005 Apple Computer, Inc. All rights reserved.
@@ -41698,7 +41698,7 @@ diff -urN a/include/mach_debug/hash_info.h b/include/mach_debug/hash_info.h
 +#endif	/* _MACH_DEBUG_HASH_INFO_H_ */
 diff -urN a/include/mach_debug/ipc_info.h b/include/mach_debug/ipc_info.h
 --- a/include/mach_debug/ipc_info.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach_debug/ipc_info.h	2013-01-07 08:19:13.991384192 +0000
++++ b/include/mach_debug/ipc_info.h	2013-04-02 23:44:04.583966166 +0100
 @@ -0,0 +1,110 @@
 +/*
 + * Copyright (c) 2000-2005 Apple Computer, Inc. All rights reserved.
@@ -41812,7 +41812,7 @@ diff -urN a/include/mach_debug/ipc_info.h b/include/mach_debug/ipc_info.h
 +#endif	/* _MACH_DEBUG_IPC_INFO_H_ */
 diff -urN a/include/mach_debug/lockgroup_info.h b/include/mach_debug/lockgroup_info.h
 --- a/include/mach_debug/lockgroup_info.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach_debug/lockgroup_info.h	2013-01-07 08:19:13.991384192 +0000
++++ b/include/mach_debug/lockgroup_info.h	2013-04-02 23:44:04.583966166 +0100
 @@ -0,0 +1,75 @@
 +/*
 + * Copyright (c) 2004 Apple Computer, Inc. All rights reserved.
@@ -41891,7 +41891,7 @@ diff -urN a/include/mach_debug/lockgroup_info.h b/include/mach_debug/lockgroup_i
 +
 diff -urN a/include/mach_debug/mach_debug_types.h b/include/mach_debug/mach_debug_types.h
 --- a/include/mach_debug/mach_debug_types.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach_debug/mach_debug_types.h	2013-01-07 08:19:13.991384192 +0000
++++ b/include/mach_debug/mach_debug_types.h	2013-04-02 23:44:04.583966166 +0100
 @@ -0,0 +1,74 @@
 +/*
 + * Copyright (c) 2000 Apple Computer, Inc. All rights reserved.
@@ -41969,7 +41969,7 @@ diff -urN a/include/mach_debug/mach_debug_types.h b/include/mach_debug/mach_debu
 +#endif	/* _MACH_DEBUG_MACH_DEBUG_TYPES_H_ */
 diff -urN a/include/mach_debug/page_info.h b/include/mach_debug/page_info.h
 --- a/include/mach_debug/page_info.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach_debug/page_info.h	2013-01-07 08:19:13.991384192 +0000
++++ b/include/mach_debug/page_info.h	2013-04-02 23:44:04.583966166 +0100
 @@ -0,0 +1,64 @@
 +/*
 + * Copyright (c) 2000-2005 Apple Computer, Inc. All rights reserved.
@@ -42037,7 +42037,7 @@ diff -urN a/include/mach_debug/page_info.h b/include/mach_debug/page_info.h
 +#endif	/* MACH_DEBUG_PAGE_INFO_H */
 diff -urN a/include/mach_debug/vm_info.h b/include/mach_debug/vm_info.h
 --- a/include/mach_debug/vm_info.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach_debug/vm_info.h	2013-01-07 08:19:13.991384192 +0000
++++ b/include/mach_debug/vm_info.h	2013-04-02 23:44:04.583966166 +0100
 @@ -0,0 +1,149 @@
 +/*
 + * Copyright (c) 2000-2006 Apple Computer, Inc. All rights reserved.
@@ -42190,7 +42190,7 @@ diff -urN a/include/mach_debug/vm_info.h b/include/mach_debug/vm_info.h
 +#endif	/* _MACH_DEBUG_VM_INFO_H_ */
 diff -urN a/include/mach_debug/zone_info.h b/include/mach_debug/zone_info.h
 --- a/include/mach_debug/zone_info.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach_debug/zone_info.h	2013-01-07 08:19:13.991384192 +0000
++++ b/include/mach_debug/zone_info.h	2013-04-02 23:44:04.583966166 +0100
 @@ -0,0 +1,136 @@
 +/*
 + * Copyright (c) 2000-2005 Apple Computer, Inc. All rights reserved.
@@ -42330,7 +42330,7 @@ diff -urN a/include/mach_debug/zone_info.h b/include/mach_debug/zone_info.h
 +#endif	/* _MACH_DEBUG_ZONE_INFO_H_ */
 diff -urN a/include/machine/endian.h b/include/machine/endian.h
 --- a/include/machine/endian.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/machine/endian.h	2013-01-07 08:19:13.987386242 +0000
++++ b/include/machine/endian.h	2013-04-02 23:44:04.571966318 +0100
 @@ -0,0 +1,42 @@
 +/*
 + * Copyright (c) 2000-2007 Apple Inc. All rights reserved.
@@ -42376,7 +42376,7 @@ diff -urN a/include/machine/endian.h b/include/machine/endian.h
 +#endif /* _BSD_MACHINE_ENDIAN_H_ */
 diff -urN a/include/machine/_types.h b/include/machine/_types.h
 --- a/include/machine/_types.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/machine/_types.h	2013-01-07 08:19:13.987386242 +0000
++++ b/include/machine/_types.h	2013-04-02 23:44:04.571966318 +0100
 @@ -0,0 +1,39 @@
 +/*
 + * Copyright (c) 2003-2007 Apple Inc. All rights reserved.
@@ -42419,7 +42419,7 @@ diff -urN a/include/machine/_types.h b/include/machine/_types.h
 +#endif /* _BSD_MACHINE__TYPES_H_ */
 diff -urN a/include/machine/types.h b/include/machine/types.h
 --- a/include/machine/types.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/machine/types.h	2013-01-07 08:19:13.987386242 +0000
++++ b/include/machine/types.h	2013-04-02 23:44:04.571966318 +0100
 @@ -0,0 +1,42 @@
 +/*
 + * Copyright (c) 2000-2007 Apple Inc. All rights reserved.
@@ -42465,7 +42465,7 @@ diff -urN a/include/machine/types.h b/include/machine/types.h
 +#endif /* _BSD_MACHINE_TYPES_H_ */
 diff -urN a/include/mach-o/compact_unwind_encoding.h b/include/mach-o/compact_unwind_encoding.h
 --- a/include/mach-o/compact_unwind_encoding.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach-o/compact_unwind_encoding.h	2013-01-07 08:19:13.987386242 +0000
++++ b/include/mach-o/compact_unwind_encoding.h	2013-04-02 23:44:04.571966318 +0100
 @@ -0,0 +1,224 @@
 +/* -*- mode: C; c-basic-offset: 4; tab-width: 4 -*-
 + *
@@ -42691,9 +42691,2333 @@ diff -urN a/include/mach-o/compact_unwind_encoding.h b/include/mach-o/compact_un
 +
 +#endif
 +
+diff -urN a/include/objc/hashtable2.h b/include/objc/hashtable2.h
+--- a/include/objc/hashtable2.h	1970-01-01 01:00:00.000000000 +0100
++++ b/include/objc/hashtable2.h	2013-04-02 23:44:04.567966368 +0100
+@@ -0,0 +1,227 @@
++/*
++ * Copyright (c) 1999-2006 Apple Inc.  All Rights Reserved.
++ * 
++ * @APPLE_LICENSE_HEADER_START@
++ * 
++ * This file contains Original Code and/or Modifications of Original Code
++ * as defined in and that are subject to the Apple Public Source License
++ * Version 2.0 (the 'License'). You may not use this file except in
++ * compliance with the License. Please obtain a copy of the License at
++ * http://www.opensource.apple.com/apsl/ and read it before using this
++ * file.
++ * 
++ * The Original Code and all software distributed under the License are
++ * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
++ * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
++ * INCLUDING WITHOUT LIMITATION, ANY WARRANTIES OF MERCHANTABILITY,
++ * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
++ * Please see the License for the specific language governing rights and
++ * limitations under the License.
++ * 
++ * @APPLE_LICENSE_HEADER_END@
++ */
++/*
++    hashtable2.h
++    Scalable hash table.
++    Copyright 1989-1996 NeXT Software, Inc.
++*/
++
++#ifndef _OBJC_LITTLE_HASHTABLE_H_
++#define _OBJC_LITTLE_HASHTABLE_H_
++
++#ifndef _OBJC_PRIVATE_H_
++#   define OBJC_HASH_AVAILABILITY __OSX_AVAILABLE_BUT_DEPRECATED(__MAC_10_0,__MAC_10_1, __IPHONE_NA,__IPHONE_NA);
++#else
++#   define OBJC_HASH_AVAILABILITY
++#endif
++
++#include <objc/objc.h>
++#include <stdint.h>
++#include <TargetConditionals.h>
++
++__BEGIN_DECLS
++
++/*************************************************************************
++ *	Hash tables of arbitrary data
++ *************************************************************************/
++
++/* This module allows hashing of arbitrary data.  Such data must be pointers or integers, and client is responsible for allocating/deallocating this data.  A deallocation call-back is provided.
++The objective C class HashTable is preferred when dealing with (key, values) associations because it is easier to use in that situation.
++As well-behaved scalable data structures, hash tables double in size when they start becoming full, thus guaranteeing both average constant time access and linear size. */
++
++typedef struct {
++    uintptr_t	(*hash)(const void *info, const void *data);
++    int		(*isEqual)(const void *info, const void *data1, const void *data2);
++    void	(*free)(const void *info, void *data);
++    int		style; /* reserved for future expansion; currently 0 */
++    } NXHashTablePrototype;
++    
++/* the info argument allows a certain generality, such as freeing according to some owner information */
++/* invariants assumed by the implementation: 
++	1 - data1 = data2 => hash(data1) = hash(data2)
++	    when data varies over time, hash(data) must remain invariant
++		    e.g. if data hashes over a string key, the string must not be changed
++	2- isEqual (data1, data2) => data1= data2
++ */
++
++typedef struct {
++    const NXHashTablePrototype	*prototype OBJC_HASH_AVAILABILITY;
++    unsigned			count OBJC_HASH_AVAILABILITY;
++    unsigned			nbBuckets OBJC_HASH_AVAILABILITY;
++    void			*buckets OBJC_HASH_AVAILABILITY;
++    const void			*info OBJC_HASH_AVAILABILITY;
++   } NXHashTable OBJC_HASH_AVAILABILITY;
++    /* private data structure; may change */
++    
++OBJC_EXPORT NXHashTable *NXCreateHashTableFromZone (NXHashTablePrototype prototype, unsigned capacity, const void *info, void *z) OBJC_HASH_AVAILABILITY;
++OBJC_EXPORT NXHashTable *NXCreateHashTable (NXHashTablePrototype prototype, unsigned capacity, const void *info) OBJC_HASH_AVAILABILITY;
++    /* if hash is 0, pointer hash is assumed */
++    /* if isEqual is 0, pointer equality is assumed */
++    /* if free is 0, elements are not freed */
++    /* capacity is only a hint; 0 creates a small table */
++    /* info allows call backs to be very general */
++
++OBJC_EXPORT void NXFreeHashTable (NXHashTable *table) OBJC_HASH_AVAILABILITY;
++    /* calls free for each data, and recovers table */
++	
++OBJC_EXPORT void NXEmptyHashTable (NXHashTable *table) OBJC_HASH_AVAILABILITY;
++    /* does not deallocate table nor data; keeps current capacity */
++
++OBJC_EXPORT void NXResetHashTable (NXHashTable *table) OBJC_HASH_AVAILABILITY;
++    /* frees each entry; keeps current capacity */
++
++OBJC_EXPORT BOOL NXCompareHashTables (NXHashTable *table1, NXHashTable *table2) OBJC_HASH_AVAILABILITY;
++    /* Returns YES if the two sets are equal (each member of table1 in table2, and table have same size) */
++
++OBJC_EXPORT NXHashTable *NXCopyHashTable (NXHashTable *table) OBJC_HASH_AVAILABILITY;
++    /* makes a fresh table, copying data pointers, not data itself.  */
++	
++OBJC_EXPORT unsigned NXCountHashTable (NXHashTable *table) OBJC_HASH_AVAILABILITY;
++    /* current number of data in table */
++	
++OBJC_EXPORT int NXHashMember (NXHashTable *table, const void *data) OBJC_HASH_AVAILABILITY;
++    /* returns non-0 iff data is present in table.
++    Example of use when the hashed data is a struct containing the key,
++    and when the callee only has a key:
++	MyStruct	pseudo;
++	pseudo.key = myKey;
++	return NXHashMember (myTable, &pseudo)
++    */
++	
++OBJC_EXPORT void *NXHashGet (NXHashTable *table, const void *data) OBJC_HASH_AVAILABILITY;
++    /* return original table data or NULL.
++    Example of use when the hashed data is a struct containing the key,
++    and when the callee only has a key:
++	MyStruct	pseudo;
++	MyStruct	*original;
++	pseudo.key = myKey;
++	original = NXHashGet (myTable, &pseudo)
++    */
++	
++OBJC_EXPORT void *NXHashInsert (NXHashTable *table, const void *data) OBJC_HASH_AVAILABILITY;
++    /* previous data or NULL is returned. */
++	
++OBJC_EXPORT void *NXHashInsertIfAbsent (NXHashTable *table, const void *data) OBJC_HASH_AVAILABILITY;
++    /* If data already in table, returns the one in table
++    else adds argument to table and returns argument. */
++
++OBJC_EXPORT void *NXHashRemove (NXHashTable *table, const void *data) OBJC_HASH_AVAILABILITY;
++    /* previous data or NULL is returned */
++	
++/* Iteration over all elements of a table consists in setting up an iteration state and then to progress until all entries have been visited.  An example of use for counting elements in a table is:
++    unsigned	count = 0;
++    MyData	*data;
++    NXHashState	state = NXInitHashState(table);
++    while (NXNextHashState(table, &state, &data)) {
++	count++;
++    }
++*/
++
++typedef struct {int i; int j;} NXHashState OBJC_HASH_AVAILABILITY;
++    /* callers should not rely on actual contents of the struct */
++
++OBJC_EXPORT NXHashState NXInitHashState(NXHashTable *table) OBJC_HASH_AVAILABILITY;
++
++OBJC_EXPORT int NXNextHashState(NXHashTable *table, NXHashState *state, void **data) OBJC_HASH_AVAILABILITY;
++    /* returns 0 when all elements have been visited */
++
++/*************************************************************************
++ *	Conveniences for writing hash, isEqual and free functions
++ *	and common prototypes
++ *************************************************************************/
++
++OBJC_EXPORT uintptr_t NXPtrHash(const void *info, const void *data) OBJC_HASH_AVAILABILITY;
++    /* scrambles the address bits; info unused */
++OBJC_EXPORT uintptr_t NXStrHash(const void *info, const void *data) OBJC_HASH_AVAILABILITY;
++    /* string hashing; info unused */
++OBJC_EXPORT int NXPtrIsEqual(const void *info, const void *data1, const void *data2) OBJC_HASH_AVAILABILITY;
++    /* pointer comparison; info unused */
++OBJC_EXPORT int NXStrIsEqual(const void *info, const void *data1, const void *data2) OBJC_HASH_AVAILABILITY;
++    /* string comparison; NULL ok; info unused */
++OBJC_EXPORT void NXNoEffectFree(const void *info, void *data) OBJC_HASH_AVAILABILITY;
++    /* no effect; info unused */
++OBJC_EXPORT void NXReallyFree(const void *info, void *data) OBJC_HASH_AVAILABILITY;
++    /* frees it; info unused */
++
++/* The two following prototypes are useful for manipulating set of pointers or set of strings; For them free is defined as NXNoEffectFree */
++OBJC_EXPORT const NXHashTablePrototype NXPtrPrototype OBJC_HASH_AVAILABILITY;
++    /* prototype when data is a pointer (void *) */
++OBJC_EXPORT const NXHashTablePrototype NXStrPrototype OBJC_HASH_AVAILABILITY;
++    /* prototype when data is a string (char *) */
++
++/* following prototypes help describe mappings where the key is the first element of a struct and is either a pointer or a string.
++For example NXStrStructKeyPrototype can be used to hash pointers to Example, where Example is:
++	typedef struct {
++	    char	*key;
++	    int		data1;
++	    ...
++	    } Example
++    
++For the following prototypes, free is defined as NXReallyFree.
++ */
++OBJC_EXPORT const NXHashTablePrototype NXPtrStructKeyPrototype OBJC_HASH_AVAILABILITY;
++OBJC_EXPORT const NXHashTablePrototype NXStrStructKeyPrototype OBJC_HASH_AVAILABILITY;
++
++
++#if !__OBJC2__  &&  !TARGET_OS_WIN32
++
++/*************************************************************************
++ *	Unique strings and buffers
++ *************************************************************************/
++
++/* Unique strings allows C users to enjoy the benefits of Lisp's atoms:
++A unique string is a string that is allocated once for all (never de-allocated) and that has only one representant (thus allowing comparison with == instead of strcmp).  A unique string should never be modified (and in fact some memory protection is done to ensure that).  In order to more explicitly insist on the fact that the string has been uniqued, a synonym of (const char *) has been added, NXAtom. */
++
++typedef const char *NXAtom OBJC_HASH_AVAILABILITY;
++
++OBJC_EXPORT NXAtom NXUniqueString(const char *buffer) OBJC_HASH_AVAILABILITY;
++    /* assumes that buffer is \0 terminated, and returns
++     a previously created string or a new string that is a copy of buffer.
++    If NULL is passed returns NULL.
++    Returned string should never be modified.  To ensure this invariant,
++    allocations are made in a special read only zone. */
++	
++OBJC_EXPORT NXAtom NXUniqueStringWithLength(const char *buffer, int length) OBJC_HASH_AVAILABILITY;
++    /* assumes that buffer is a non NULL buffer of at least 
++    length characters.  Returns a previously created string or 
++    a new string that is a copy of buffer. 
++    If buffer contains \0, string will be truncated.
++    As for NXUniqueString, returned string should never be modified.  */
++	
++OBJC_EXPORT NXAtom NXUniqueStringNoCopy(const char *string) OBJC_HASH_AVAILABILITY;
++    /* If there is already a unique string equal to string, returns the original.  
++    Otherwise, string is entered in the table, without making a copy.  Argument should then never be modified.  */
++	
++OBJC_EXPORT char *NXCopyStringBuffer(const char *buffer) OBJC_HASH_AVAILABILITY;
++    /* given a buffer, allocates a new string copy of buffer.  
++    Buffer should be \0 terminated; returned string is \0 terminated. */
++
++OBJC_EXPORT char *NXCopyStringBufferFromZone(const char *buffer, void *z) OBJC_HASH_AVAILABILITY;
++    /* given a buffer, allocates a new string copy of buffer.  
++    Buffer should be \0 terminated; returned string is \0 terminated. */
++
++#endif
++
++__END_DECLS
++
++#endif /* _OBJC_LITTLE_HASHTABLE_H_ */
+diff -urN a/include/objc/hashtable.h b/include/objc/hashtable.h
+--- a/include/objc/hashtable.h	1970-01-01 01:00:00.000000000 +0100
++++ b/include/objc/hashtable.h	2013-04-02 23:44:04.567966368 +0100
+@@ -0,0 +1,2 @@
++#include <objc/hashtable2.h>
++
+diff -urN a/include/objc/List.h b/include/objc/List.h
+--- a/include/objc/List.h	1970-01-01 01:00:00.000000000 +0100
++++ b/include/objc/List.h	2013-04-02 23:44:04.567966368 +0100
+@@ -0,0 +1,118 @@
++/*
++ * Copyright (c) 1999-2002, 2005-2007 Apple Inc.  All Rights Reserved.
++ * 
++ * @APPLE_LICENSE_HEADER_START@
++ * 
++ * This file contains Original Code and/or Modifications of Original Code
++ * as defined in and that are subject to the Apple Public Source License
++ * Version 2.0 (the 'License'). You may not use this file except in
++ * compliance with the License. Please obtain a copy of the License at
++ * http://www.opensource.apple.com/apsl/ and read it before using this
++ * file.
++ * 
++ * The Original Code and all software distributed under the License are
++ * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
++ * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
++ * INCLUDING WITHOUT LIMITATION, ANY WARRANTIES OF MERCHANTABILITY,
++ * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
++ * Please see the License for the specific language governing rights and
++ * limitations under the License.
++ * 
++ * @APPLE_LICENSE_HEADER_END@
++ */
++/*
++    List.h
++    Copyright 1988-1996 NeXT Software, Inc.
++
++    DEFINED AS:	A common class
++    HEADER FILES:	objc/List.h
++
++*/
++
++#ifndef _OBJC_LIST_H_
++#define _OBJC_LIST_H_
++
++#if !__OBJC2__
++
++#import <objc/Object.h>
++#import <Availability.h>
++
++AVAILABLE_MAC_OS_X_VERSION_10_0_AND_LATER_BUT_DEPRECATED
++@interface List : Object
++{
++@public
++    id 		*dataPtr  AVAILABLE_MAC_OS_X_VERSION_10_0_AND_LATER_BUT_DEPRECATED;	/* data of the List object */
++    unsigned 	numElements  AVAILABLE_MAC_OS_X_VERSION_10_0_AND_LATER_BUT_DEPRECATED;	/* Actual number of elements */
++    unsigned 	maxElements  AVAILABLE_MAC_OS_X_VERSION_10_0_AND_LATER_BUT_DEPRECATED;	/* Total allocated elements */
++}
++
++/* Creating, freeing */
++
++- free  AVAILABLE_MAC_OS_X_VERSION_10_0_AND_LATER_BUT_DEPRECATED;
++- freeObjects  AVAILABLE_MAC_OS_X_VERSION_10_0_AND_LATER_BUT_DEPRECATED;
++- copyFromZone:(void *)z  AVAILABLE_MAC_OS_X_VERSION_10_0_AND_LATER_BUT_DEPRECATED;
++  
++/* Initializing */
++
++- init  AVAILABLE_MAC_OS_X_VERSION_10_0_AND_LATER_BUT_DEPRECATED;
++- initCount:(unsigned)numSlots  AVAILABLE_MAC_OS_X_VERSION_10_0_AND_LATER_BUT_DEPRECATED;
++
++/* Comparing two lists */
++
++- (BOOL)isEqual: anObject  AVAILABLE_MAC_OS_X_VERSION_10_0_AND_LATER_BUT_DEPRECATED;
++  
++/* Managing the storage capacity */
++
++- (unsigned)capacity  AVAILABLE_MAC_OS_X_VERSION_10_0_AND_LATER_BUT_DEPRECATED;
++- setAvailableCapacity:(unsigned)numSlots  AVAILABLE_MAC_OS_X_VERSION_10_0_AND_LATER_BUT_DEPRECATED;
++
++/* Manipulating objects by index */
++
++- (unsigned)count  AVAILABLE_MAC_OS_X_VERSION_10_0_AND_LATER_BUT_DEPRECATED;
++- objectAt:(unsigned)index  AVAILABLE_MAC_OS_X_VERSION_10_0_AND_LATER_BUT_DEPRECATED;
++- lastObject  AVAILABLE_MAC_OS_X_VERSION_10_0_AND_LATER_BUT_DEPRECATED;
++- addObject:anObject  AVAILABLE_MAC_OS_X_VERSION_10_0_AND_LATER_BUT_DEPRECATED;
++- insertObject:anObject at:(unsigned)index  AVAILABLE_MAC_OS_X_VERSION_10_0_AND_LATER_BUT_DEPRECATED;
++- removeObjectAt:(unsigned)index  AVAILABLE_MAC_OS_X_VERSION_10_0_AND_LATER_BUT_DEPRECATED;
++- removeLastObject  AVAILABLE_MAC_OS_X_VERSION_10_0_AND_LATER_BUT_DEPRECATED;
++- replaceObjectAt:(unsigned)index with:newObject  AVAILABLE_MAC_OS_X_VERSION_10_0_AND_LATER_BUT_DEPRECATED;
++- appendList: (List *)otherList  AVAILABLE_MAC_OS_X_VERSION_10_0_AND_LATER_BUT_DEPRECATED;
++
++/* Manipulating objects by id */
++
++- (unsigned)indexOf:anObject  AVAILABLE_MAC_OS_X_VERSION_10_0_AND_LATER_BUT_DEPRECATED;
++- addObjectIfAbsent:anObject  AVAILABLE_MAC_OS_X_VERSION_10_0_AND_LATER_BUT_DEPRECATED;
++- removeObject:anObject  AVAILABLE_MAC_OS_X_VERSION_10_0_AND_LATER_BUT_DEPRECATED;
++- replaceObject:anObject with:newObject  AVAILABLE_MAC_OS_X_VERSION_10_0_AND_LATER_BUT_DEPRECATED;
++
++/* Emptying the list */
++
++- empty  AVAILABLE_MAC_OS_X_VERSION_10_0_AND_LATER_BUT_DEPRECATED;
++
++/* Sending messages to elements of the list */
++
++- makeObjectsPerform:(SEL)aSelector  AVAILABLE_MAC_OS_X_VERSION_10_0_AND_LATER_BUT_DEPRECATED;
++- makeObjectsPerform:(SEL)aSelector with:anObject  AVAILABLE_MAC_OS_X_VERSION_10_0_AND_LATER_BUT_DEPRECATED;
++
++/*
++ * The following new... methods are now obsolete.  They remain in this 
++ * interface file for backward compatibility only.  Use Object's alloc method 
++ * and the init... methods defined in this class instead.
++ */
++
+++ new  AVAILABLE_MAC_OS_X_VERSION_10_0_AND_LATER_BUT_DEPRECATED;
+++ newCount:(unsigned)numSlots  AVAILABLE_MAC_OS_X_VERSION_10_0_AND_LATER_BUT_DEPRECATED;
++
++@end
++
++typedef struct {
++    @defs(List)
++} NXListId  AVAILABLE_MAC_OS_X_VERSION_10_0_AND_LATER_BUT_DEPRECATED;
++
++#define NX_ADDRESS(x) (((NXListId *)(x))->dataPtr)
++
++#define NX_NOT_IN_LIST	0xffffffff
++
++#endif
++
++#endif /* _OBJC_LIST_H_ */
+diff -urN a/include/objc/malloc.h b/include/objc/malloc.h
+--- a/include/objc/malloc.h	1970-01-01 01:00:00.000000000 +0100
++++ b/include/objc/malloc.h	2013-04-02 23:44:04.567966368 +0100
+@@ -0,0 +1,25 @@
++/*
++ * Copyright (c) 1999 Apple Computer, Inc. All rights reserved.
++ *
++ * @APPLE_LICENSE_HEADER_START@
++ * 
++ * This file contains Original Code and/or Modifications of Original Code
++ * as defined in and that are subject to the Apple Public Source License
++ * Version 2.0 (the 'License'). You may not use this file except in
++ * compliance with the License. Please obtain a copy of the License at
++ * http://www.opensource.apple.com/apsl/ and read it before using this
++ * file.
++ * 
++ * The Original Code and all software distributed under the License are
++ * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
++ * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
++ * INCLUDING WITHOUT LIMITATION, ANY WARRANTIES OF MERCHANTABILITY,
++ * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
++ * Please see the License for the specific language governing rights and
++ * limitations under the License.
++ * 
++ * @APPLE_LICENSE_HEADER_END@
++ */
++
++#warning "Use <malloc/malloc.h> instead of <objc/malloc.h>"
++#include <malloc/malloc.h>
+diff -urN a/include/objc/message.h b/include/objc/message.h
+--- a/include/objc/message.h	1970-01-01 01:00:00.000000000 +0100
++++ b/include/objc/message.h	2013-04-02 23:44:04.567966368 +0100
+@@ -0,0 +1,226 @@
++/*
++ * Copyright (c) 1999-2007 Apple Inc.  All Rights Reserved.
++ * 
++ * @APPLE_LICENSE_HEADER_START@
++ * 
++ * This file contains Original Code and/or Modifications of Original Code
++ * as defined in and that are subject to the Apple Public Source License
++ * Version 2.0 (the 'License'). You may not use this file except in
++ * compliance with the License. Please obtain a copy of the License at
++ * http://www.opensource.apple.com/apsl/ and read it before using this
++ * file.
++ * 
++ * The Original Code and all software distributed under the License are
++ * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
++ * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
++ * INCLUDING WITHOUT LIMITATION, ANY WARRANTIES OF MERCHANTABILITY,
++ * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
++ * Please see the License for the specific language governing rights and
++ * limitations under the License.
++ * 
++ * @APPLE_LICENSE_HEADER_END@
++ */
++
++#ifndef _OBJC_MESSAGE_H
++#define _OBJC_MESSAGE_H
++
++#include <objc/objc.h>
++#include <objc/runtime.h>
++
++
++#ifndef OBJC_SUPER
++#define OBJC_SUPER
++struct objc_super {
++    id receiver;
++#if !defined(__cplusplus)  &&  !__OBJC2__
++    Class class;  /* For compatibility with old objc-runtime.h header */
++#else
++    Class super_class;
++#endif
++    /* super_class is the first class to search */
++};
++#endif
++
++
++/* Basic Messaging Primitives
++ *
++ * On some architectures, use objc_msgSend_stret for some struct return types.
++ * On some architectures, use objc_msgSend_fpret for some float return types.
++ * On some architectures, use objc_msgSend_fp2ret for some float return types.
++ *
++ * These functions must be cast to an appropriate function pointer type 
++ * before being called. 
++ */
++OBJC_EXPORT id objc_msgSend(id self, SEL op, ...)
++    __OSX_AVAILABLE_STARTING(__MAC_10_0, __IPHONE_2_0);
++OBJC_EXPORT id objc_msgSendSuper(struct objc_super *super, SEL op, ...)
++    __OSX_AVAILABLE_STARTING(__MAC_10_0, __IPHONE_2_0);
++
++
++/* Struct-returning Messaging Primitives
++ *
++ * Use these functions to call methods that return structs on the stack. 
++ * On some architectures, some structures are returned in registers. 
++ * Consult your local function call ABI documentation for details.
++ * 
++ * These functions must be cast to an appropriate function pointer type 
++ * before being called. 
++ */
++#if defined(__OBJC2__)
++OBJC_EXPORT void objc_msgSend_stret(id self, SEL op, ...)
++    __OSX_AVAILABLE_STARTING(__MAC_10_0, __IPHONE_2_0);
++OBJC_EXPORT void objc_msgSendSuper_stret(struct objc_super *super, SEL op, ...)
++    __OSX_AVAILABLE_STARTING(__MAC_10_0, __IPHONE_2_0);
++#elif defined(__cplusplus)
++/* For compatibility with old objc-runtime.h header */
++OBJC_EXPORT id objc_msgSend_stret(id self, SEL op, ...)
++    __OSX_AVAILABLE_STARTING(__MAC_10_0, __IPHONE_2_0);
++OBJC_EXPORT id objc_msgSendSuper_stret(struct objc_super *super, SEL op, ...)
++    __OSX_AVAILABLE_STARTING(__MAC_10_0, __IPHONE_2_0);
++#else
++/* For compatibility with old objc-runtime.h header */
++OBJC_EXPORT void objc_msgSend_stret(void * stretAddr, id self, SEL op, ...)
++    __OSX_AVAILABLE_STARTING(__MAC_10_0, __IPHONE_2_0);
++OBJC_EXPORT void objc_msgSendSuper_stret(void * stretAddr, struct objc_super *super, SEL op, ...)
++    __OSX_AVAILABLE_STARTING(__MAC_10_0, __IPHONE_2_0);
++#endif
++
++
++/* Floating-point-returning Messaging Primitives
++ * 
++ * Use these functions to call methods that return floating-point values 
++ * on the stack. 
++ * Consult your local function call ABI documentation for details.
++ * 
++ * arm:    objc_msgSend_fpret not used
++ * i386:   objc_msgSend_fpret used for `float`, `double`, `long double`.
++ * x86-64: objc_msgSend_fpret used for `long double`.
++ *
++ * arm:    objc_msgSend_fp2ret not used
++ * i386:   objc_msgSend_fp2ret not used
++ * x86-64: objc_msgSend_fp2ret used for `_Complex long double`.
++ *
++ * These functions must be cast to an appropriate function pointer type 
++ * before being called. 
++ */
++#if defined(__i386__)
++
++OBJC_EXPORT double objc_msgSend_fpret(id self, SEL op, ...)
++    __OSX_AVAILABLE_STARTING(__MAC_10_4, __IPHONE_2_0);
++
++/* Use objc_msgSendSuper() for fp-returning messages to super. */
++/* See also objc_msgSendv_fpret() below. */
++
++#elif defined(__x86_64__)
++
++OBJC_EXPORT long double objc_msgSend_fpret(id self, SEL op, ...)
++    __OSX_AVAILABLE_STARTING(__MAC_10_5, __IPHONE_2_0);
++
++# if __STDC_VERSION__ >= 199901L
++OBJC_EXPORT _Complex long double objc_msgSend_fp2ret(id self, SEL op, ...)
++    __OSX_AVAILABLE_STARTING(__MAC_10_5, __IPHONE_2_0);
++# else
++OBJC_EXPORT void objc_msgSend_fp2ret(id self, SEL op, ...)
++    __OSX_AVAILABLE_STARTING(__MAC_10_5, __IPHONE_2_0);
++# endif
++
++/* Use objc_msgSendSuper() for fp-returning messages to super. */
++/* See also objc_msgSendv_fpret() below. */
++
++#endif
++
++
++/* Direct Method Invocation Primitives
++ * Use these functions to call the implementation of a given Method.
++ * This is faster than calling method_getImplementation() and method_getName().
++ *
++ * The receiver must not be nil.
++ *
++ * These functions must be cast to an appropriate function pointer type 
++ * before being called. 
++ */
++OBJC_EXPORT id method_invoke(id receiver, Method m, ...) 
++     __OSX_AVAILABLE_STARTING(__MAC_10_5, __IPHONE_2_0);
++OBJC_EXPORT void method_invoke_stret(id receiver, Method m, ...) 
++     __OSX_AVAILABLE_STARTING(__MAC_10_5, __IPHONE_2_0);
++
++
++/* Message Forwarding Primitives
++ * Use these functions to forward a message as if the receiver did not 
++ * respond to it. 
++ *
++ * The receiver must not be nil.
++ * 
++ * class_getMethodImplementation() may return (IMP)_objc_msgForward.
++ * class_getMethodImplementation_stret() may return (IMP)_objc_msgForward_stret
++ * 
++ * These functions must be cast to an appropriate function pointer type 
++ * before being called. 
++ *
++ * Before Mac OS X 10.6, _objc_msgForward must not be called directly 
++ * but may be compared to other IMP values.
++ */
++OBJC_EXPORT id _objc_msgForward(id receiver, SEL sel, ...) 
++     __OSX_AVAILABLE_STARTING(__MAC_10_0, __IPHONE_2_0);
++OBJC_EXPORT void _objc_msgForward_stret(id receiver, SEL sel, ...) 
++     __OSX_AVAILABLE_STARTING(__MAC_10_6, __IPHONE_3_0);
++
++
++/* Variable-argument Messaging Primitives
++ *
++ * Use these functions to call methods with a list of arguments, such 
++ * as the one passed to forward:: .
++ *
++ * The contents of the argument list are architecture-specific. 
++ * Consult your local function call ABI documentation for details.
++ * 
++ * These functions must be cast to an appropriate function pointer type 
++ * before being called, except for objc_msgSendv_stret() which must not 
++ * be cast to a struct-returning type.
++ */
++
++typedef void* marg_list;
++
++OBJC_EXPORT id objc_msgSendv(id self, SEL op, size_t arg_size, marg_list arg_frame) OBJC2_UNAVAILABLE;
++OBJC_EXPORT void objc_msgSendv_stret(void *stretAddr, id self, SEL op, size_t arg_size, marg_list arg_frame) OBJC2_UNAVAILABLE;
++/* Note that objc_msgSendv_stret() does not return a structure type, 
++ * and should not be cast to do so. This is unlike objc_msgSend_stret() 
++ * and objc_msgSendSuper_stret().
++ */
++#if defined(__i386__)
++OBJC_EXPORT double objc_msgSendv_fpret(id self, SEL op, unsigned arg_size, marg_list arg_frame) OBJC2_UNAVAILABLE;
++#endif
++
++
++/* The following marg_list macros are of marginal utility. They
++ * are included for compatibility with the old objc-class.h header. */
++
++#if !__OBJC2__
++
++#define marg_prearg_size	0
++
++#define marg_malloc(margs, method) \
++	do { \
++		margs = (marg_list *)malloc (marg_prearg_size + ((7 + method_getSizeOfArguments(method)) & ~7)); \
++	} while (0)
++
++#define marg_free(margs) \
++	do { \
++		free(margs); \
++	} while (0)
++	
++#define marg_adjustedOffset(method, offset) \
++	(marg_prearg_size + offset)
++
++#define marg_getRef(margs, offset, type) \
++	( (type *)((char *)margs + marg_adjustedOffset(method,offset) ) )
++
++#define marg_getValue(margs, offset, type) \
++	( *marg_getRef(margs, offset, type) )
++
++#define marg_setValue(margs, offset, type, value) \
++	( marg_getValue(margs, offset, type) = (value) )
++
++#endif
++
++#endif
+diff -urN a/include/objc/objc-api.h b/include/objc/objc-api.h
+--- a/include/objc/objc-api.h	1970-01-01 01:00:00.000000000 +0100
++++ b/include/objc/objc-api.h	2013-04-02 23:44:04.567966368 +0100
+@@ -0,0 +1,101 @@
++/*
++ * Copyright (c) 1999-2006 Apple Inc.  All Rights Reserved.
++ * 
++ * @APPLE_LICENSE_HEADER_START@
++ * 
++ * This file contains Original Code and/or Modifications of Original Code
++ * as defined in and that are subject to the Apple Public Source License
++ * Version 2.0 (the 'License'). You may not use this file except in
++ * compliance with the License. Please obtain a copy of the License at
++ * http://www.opensource.apple.com/apsl/ and read it before using this
++ * file.
++ * 
++ * The Original Code and all software distributed under the License are
++ * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
++ * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
++ * INCLUDING WITHOUT LIMITATION, ANY WARRANTIES OF MERCHANTABILITY,
++ * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
++ * Please see the License for the specific language governing rights and
++ * limitations under the License.
++ * 
++ * @APPLE_LICENSE_HEADER_END@
++ */
++// Copyright 1988-1996 NeXT Software, Inc.
++
++#ifndef _OBJC_OBJC_API_H_
++#define _OBJC_OBJC_API_H_
++
++#include <AvailabilityMacros.h>
++#include <TargetConditionals.h>
++
++#ifndef __has_feature
++#   define __has_feature(x) 0
++#endif
++
++/*
++ * OBJC_API_VERSION 0 or undef: Tiger and earlier API only
++ * OBJC_API_VERSION 2: Leopard and later API available
++ */
++#if !defined(OBJC_API_VERSION)
++#   if MAC_OS_X_VERSION_MIN_REQUIRED < MAC_OS_X_VERSION_10_5
++#       define OBJC_API_VERSION 0
++#   else
++#       define OBJC_API_VERSION 2
++#   endif
++#endif
++
++/* OBJC2_UNAVAILABLE: unavailable in objc 2.0, deprecated in Leopard */
++#if !defined(OBJC2_UNAVAILABLE)
++#   if __OBJC2__
++#       define OBJC2_UNAVAILABLE UNAVAILABLE_ATTRIBUTE
++#   else
++#       define OBJC2_UNAVAILABLE DEPRECATED_IN_MAC_OS_X_VERSION_10_5_AND_LATER
++#   endif
++#endif
++
++/* OBJC_ARC_UNAVAILABLE: unavailable with -fobjc-arc */
++#if !defined(OBJC_ARC_UNAVAILABLE)
++#   if __has_feature(objc_arr)
++#       define OBJC_ARC_UNAVAILABLE __attribute__((unavailable("not available in automatic reference counting mode")))
++#   else
++#       define OBJC_ARC_UNAVAILABLE
++#   endif
++#endif
++
++#if !defined(OBJC_EXTERN)
++#   if defined(__cplusplus)
++#       define OBJC_EXTERN extern "C" 
++#   else
++#       define OBJC_EXTERN extern
++#   endif
++#endif
++
++#if !defined(OBJC_VISIBLE)
++#   if TARGET_OS_WIN32
++#       if defined(BUILDING_OBJC)
++#           define OBJC_VISIBLE __declspec(dllexport)
++#       else
++#           define OBJC_VISIBLE __declspec(dllimport)
++#       endif
++#   else
++#       define OBJC_VISIBLE  __attribute__((visibility("default")))
++#   endif
++#endif
++
++#if !defined(OBJC_EXPORT)
++#   define OBJC_EXPORT  OBJC_EXTERN OBJC_VISIBLE
++#endif
++
++#if !defined(OBJC_IMPORT)
++#   define OBJC_IMPORT extern
++#endif
++
++#ifndef __DARWIN_NULL
++#define __DARWIN_NULL NULL
++#endif
++
++#if !defined(OBJC_INLINE)
++#   define OBJC_INLINE __inline
++#endif
++
++#endif
+diff -urN a/include/objc/objc-auto.h b/include/objc/objc-auto.h
+--- a/include/objc/objc-auto.h	1970-01-01 01:00:00.000000000 +0100
++++ b/include/objc/objc-auto.h	2013-04-02 23:44:04.567966368 +0100
+@@ -0,0 +1,292 @@
++/*
++ * Copyright (c) 2004-2007 Apple Inc. All rights reserved.
++ *
++ * @APPLE_LICENSE_HEADER_START@
++ * 
++ * This file contains Original Code and/or Modifications of Original Code
++ * as defined in and that are subject to the Apple Public Source License
++ * Version 2.0 (the 'License'). You may not use this file except in
++ * compliance with the License. Please obtain a copy of the License at
++ * http://www.opensource.apple.com/apsl/ and read it before using this
++ * file.
++ * 
++ * The Original Code and all software distributed under the License are
++ * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
++ * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
++ * INCLUDING WITHOUT LIMITATION, ANY WARRANTIES OF MERCHANTABILITY,
++ * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
++ * Please see the License for the specific language governing rights and
++ * limitations under the License.
++ * 
++ * @APPLE_LICENSE_HEADER_END@
++ */
++
++#ifndef _OBJC_AUTO_H_
++#define _OBJC_AUTO_H_
++
++#include <objc/objc.h>
++#include <malloc/malloc.h>
++#include <stdint.h>
++#include <stddef.h>
++#include <string.h>
++#include <Availability.h>
++#include <AvailabilityMacros.h>
++#include <TargetConditionals.h>
++
++#if !TARGET_OS_WIN32
++#include <sys/types.h>
++#include <libkern/OSAtomic.h>
++#else
++#   define WINVER 0x0501		// target Windows XP and later
++#   define _WIN32_WINNT 0x0501	// target Windows XP and later
++#   define WIN32_LEAN_AND_MEAN
++// workaround: windef.h typedefs BOOL as int
++#   define BOOL WINBOOL
++#   include <windows.h>
++#   undef BOOL
++#endif
++
++
++/* GC is unsupported on some architectures. */
++
++#if TARGET_OS_EMBEDDED  ||  TARGET_OS_IPHONE  ||  TARGET_OS_WIN32
++#   define OBJC_NO_GC 1
++#endif
++
++
++/* objc_collect() options */
++enum {
++    // choose one
++    OBJC_RATIO_COLLECTION        = (0 << 0),  // run "ratio" generational collections, then a full
++    OBJC_GENERATIONAL_COLLECTION = (1 << 0),  // run fast incremental collection
++    OBJC_FULL_COLLECTION         = (2 << 0),  // run full collection.
++    OBJC_EXHAUSTIVE_COLLECTION   = (3 << 0),  // run full collections until memory available stops improving
++    
++    OBJC_COLLECT_IF_NEEDED       = (1 << 3), // run collection only if needed (allocation threshold exceeded)
++    OBJC_WAIT_UNTIL_DONE         = (1 << 4), // wait (when possible) for collection to end before returning (when collector is running on dedicated thread)
++};
++
++/* objc_clear_stack() options */
++enum {
++    OBJC_CLEAR_RESIDENT_STACK = (1 << 0)
++};
++
++#ifndef OBJC_NO_GC
++
++
++/* GC declarations */
++
++/* Collection utilities */
++
++OBJC_EXPORT void objc_collect(unsigned long options)
++    __OSX_AVAILABLE_STARTING(__MAC_10_6, __IPHONE_NA);
++OBJC_EXPORT BOOL objc_collectingEnabled(void)
++    __OSX_AVAILABLE_STARTING(__MAC_10_5, __IPHONE_NA);
++OBJC_EXPORT malloc_zone_t *objc_collectableZone(void) 
++    __OSX_AVAILABLE_STARTING(__MAC_10_7, __IPHONE_NA);
++
++/* GC configuration */
++
++/* Tells collector to wait until specified bytes have been allocated before trying to collect again. */
++OBJC_EXPORT void objc_setCollectionThreshold(size_t threshold)
++    __OSX_AVAILABLE_STARTING(__MAC_10_5, __IPHONE_NA);
++
++/* Tells collector to run a full collection for every ratio generational collections. */
++OBJC_EXPORT void objc_setCollectionRatio(size_t ratio)
++    __OSX_AVAILABLE_STARTING(__MAC_10_5, __IPHONE_NA);
++
++// 
++// GC-safe compare-and-swap
++//
++
++/* Atomic update, with write barrier. */
++OBJC_EXPORT BOOL objc_atomicCompareAndSwapPtr(id predicate, id replacement, volatile id *objectLocation) 
++    __OSX_AVAILABLE_STARTING(__MAC_10_6, __IPHONE_NA) OBJC_ARC_UNAVAILABLE;
++/* "Barrier" version also includes memory barrier. */
++OBJC_EXPORT BOOL objc_atomicCompareAndSwapPtrBarrier(id predicate, id replacement, volatile id *objectLocation) 
++    __OSX_AVAILABLE_STARTING(__MAC_10_6, __IPHONE_NA) OBJC_ARC_UNAVAILABLE;
++
++// atomic update of a global variable
++OBJC_EXPORT BOOL objc_atomicCompareAndSwapGlobal(id predicate, id replacement, volatile id *objectLocation)
++    __OSX_AVAILABLE_STARTING(__MAC_10_6, __IPHONE_NA) OBJC_ARC_UNAVAILABLE;
++OBJC_EXPORT BOOL objc_atomicCompareAndSwapGlobalBarrier(id predicate, id replacement, volatile id *objectLocation)
++    __OSX_AVAILABLE_STARTING(__MAC_10_6, __IPHONE_NA) OBJC_ARC_UNAVAILABLE;
++// atomic update of an instance variable
++OBJC_EXPORT BOOL objc_atomicCompareAndSwapInstanceVariable(id predicate, id replacement, volatile id *objectLocation)
++    __OSX_AVAILABLE_STARTING(__MAC_10_6, __IPHONE_NA) OBJC_ARC_UNAVAILABLE;
++OBJC_EXPORT BOOL objc_atomicCompareAndSwapInstanceVariableBarrier(id predicate, id replacement, volatile id *objectLocation)
++    __OSX_AVAILABLE_STARTING(__MAC_10_6, __IPHONE_NA) OBJC_ARC_UNAVAILABLE;
++
++
++// 
++// Read and write barriers
++// 
++
++OBJC_EXPORT id objc_assign_strongCast(id val, id *dest)
++    __OSX_AVAILABLE_STARTING(__MAC_10_4, __IPHONE_NA);
++OBJC_EXPORT id objc_assign_global(id val, id *dest)
++    __OSX_AVAILABLE_STARTING(__MAC_10_4, __IPHONE_NA);
++OBJC_EXPORT id objc_assign_threadlocal(id val, id *dest)
++    __OSX_AVAILABLE_STARTING(__MAC_10_7, __IPHONE_NA);
++OBJC_EXPORT id objc_assign_ivar(id value, id dest, ptrdiff_t offset)
++    __OSX_AVAILABLE_STARTING(__MAC_10_4, __IPHONE_NA);
++OBJC_EXPORT void *objc_memmove_collectable(void *dst, const void *src, size_t size)
++    __OSX_AVAILABLE_STARTING(__MAC_10_4, __IPHONE_NA);
++
++OBJC_EXPORT id objc_read_weak(id *location)
++    __OSX_AVAILABLE_STARTING(__MAC_10_5, __IPHONE_NA);
++OBJC_EXPORT id objc_assign_weak(id value, id *location)
++    __OSX_AVAILABLE_STARTING(__MAC_10_5, __IPHONE_NA);
++
++
++//
++// Thread management
++// 
++
++/* Register the calling thread with the garbage collector. */
++OBJC_EXPORT void objc_registerThreadWithCollector(void)
++    __OSX_AVAILABLE_STARTING(__MAC_10_6, __IPHONE_NA);
++
++/* Unregisters the calling thread with the garbage collector. 
++   Unregistration also happens automatically at thread exit. */
++OBJC_EXPORT void objc_unregisterThreadWithCollector(void)
++    __OSX_AVAILABLE_STARTING(__MAC_10_6, __IPHONE_NA);
++
++/* To be called from code which must only execute on a registered thread. */
++/* If the calling thread is unregistered then an error message is emitted and the thread is implicitly registered. */
++OBJC_EXPORT void objc_assertRegisteredThreadWithCollector(void)
++    __OSX_AVAILABLE_STARTING(__MAC_10_6, __IPHONE_NA);
++
++/* Erases any stale references in unused parts of the stack. */
++OBJC_EXPORT void objc_clear_stack(unsigned long options)
++    __OSX_AVAILABLE_STARTING(__MAC_10_5, __IPHONE_NA);
++
++
++//
++// Finalization
++// 
++
++/* Returns true if object has been scheduled for finalization.  Can be used to avoid operations that may lead to resurrection, which are fatal. */
++OBJC_EXPORT BOOL objc_is_finalized(void *ptr)
++    __OSX_AVAILABLE_STARTING(__MAC_10_4, __IPHONE_NA);
++
++// Deprcated. Tells runtime to issue finalize calls on the main thread only.
++OBJC_EXPORT void objc_finalizeOnMainThread(Class cls)
++    AVAILABLE_MAC_OS_X_VERSION_10_5_AND_LATER_BUT_DEPRECATED;
++
++
++//
++// Deprecated names. 
++//
++
++/* Deprecated. Use objc_collectingEnabled() instead. */
++OBJC_EXPORT BOOL objc_collecting_enabled(void)
++    __OSX_AVAILABLE_BUT_DEPRECATED(__MAC_10_4,__MAC_10_5, __IPHONE_NA,__IPHONE_NA);
++/* Deprecated. Use objc_setCollectionThreshold() instead. */
++OBJC_EXPORT void objc_set_collection_threshold(size_t threshold)
++    __OSX_AVAILABLE_BUT_DEPRECATED(__MAC_10_4,__MAC_10_5, __IPHONE_NA,__IPHONE_NA);
++/* Deprecated. Use objc_setCollectionRatio() instead. */
++OBJC_EXPORT void objc_set_collection_ratio(size_t ratio)
++    __OSX_AVAILABLE_BUT_DEPRECATED(__MAC_10_4,__MAC_10_5, __IPHONE_NA,__IPHONE_NA);
++/* Deprecated. Use objc_startCollectorThread() instead. */
++OBJC_EXPORT void objc_start_collector_thread(void)
++    __OSX_AVAILABLE_BUT_DEPRECATED(__MAC_10_4,__MAC_10_5, __IPHONE_NA,__IPHONE_NA);
++/* Deprecated. No replacement. Formerly told the collector to run using a dedicated background thread. */
++OBJC_EXPORT void objc_startCollectorThread(void)
++__OSX_AVAILABLE_BUT_DEPRECATED(__MAC_10_5,__MAC_10_7, __IPHONE_NA,__IPHONE_NA);
++
++
++/* Deprecated. Use class_createInstance() instead. */
++OBJC_EXPORT id objc_allocate_object(Class cls, int extra)
++    AVAILABLE_MAC_OS_X_VERSION_10_4_AND_LATER_BUT_DEPRECATED;
++
++
++/* !defined(OBJC_NO_GC) */
++#else
++/* defined(OBJC_NO_GC) */
++
++
++/* Non-GC declarations */
++
++static OBJC_INLINE void objc_collect(unsigned long options __unused) { }
++static OBJC_INLINE BOOL objc_collectingEnabled(void) { return NO; }
++static OBJC_INLINE void objc_setCollectionThreshold(size_t threshold __unused) { }
++static OBJC_INLINE void objc_setCollectionRatio(size_t ratio __unused) { }
++static OBJC_INLINE void objc_startCollectorThread(void) { }
++
++#if TARGET_OS_WIN32
++static OBJC_INLINE BOOL objc_atomicCompareAndSwapPtr(id predicate, id replacement, volatile id *objectLocation) 
++    { void *original = InterlockedCompareExchangePointer((void * volatile *)objectLocation, (void *)replacement, (void *)predicate); return (original == predicate); }
++
++static OBJC_INLINE BOOL objc_atomicCompareAndSwapPtrBarrier(id predicate, id replacement, volatile id *objectLocation) 
++    { void *original = InterlockedCompareExchangePointer((void * volatile *)objectLocation, (void *)replacement, (void *)predicate); return (original == predicate); }
++#else
++static OBJC_INLINE BOOL objc_atomicCompareAndSwapPtr(id predicate, id replacement, volatile id *objectLocation) 
++    { return OSAtomicCompareAndSwapPtr((void *)predicate, (void *)replacement, (void * volatile *)objectLocation); }
++
++static OBJC_INLINE BOOL objc_atomicCompareAndSwapPtrBarrier(id predicate, id replacement, volatile id *objectLocation) 
++    { return OSAtomicCompareAndSwapPtrBarrier((void *)predicate, (void *)replacement, (void * volatile *)objectLocation); }
++#endif
++
++static OBJC_INLINE BOOL objc_atomicCompareAndSwapGlobal(id predicate, id replacement, volatile id *objectLocation) 
++    { return objc_atomicCompareAndSwapPtr(predicate, replacement, objectLocation); }
++
++static OBJC_INLINE BOOL objc_atomicCompareAndSwapGlobalBarrier(id predicate, id replacement, volatile id *objectLocation) 
++    { return objc_atomicCompareAndSwapPtrBarrier(predicate, replacement, objectLocation); }
++
++static OBJC_INLINE BOOL objc_atomicCompareAndSwapInstanceVariable(id predicate, id replacement, volatile id *objectLocation) 
++    { return objc_atomicCompareAndSwapPtr(predicate, replacement, objectLocation); }
++
++static OBJC_INLINE BOOL objc_atomicCompareAndSwapInstanceVariableBarrier(id predicate, id replacement, volatile id *objectLocation) 
++    { return objc_atomicCompareAndSwapPtrBarrier(predicate, replacement, objectLocation); }
++
++
++static OBJC_INLINE id objc_assign_strongCast(id val, id *dest) 
++    { return (*dest = val); }
++
++static OBJC_INLINE id objc_assign_global(id val, id *dest) 
++    { return (*dest = val); }
++
++static OBJC_INLINE id objc_assign_ivar(id val, id dest, ptrdiff_t offset) 
++    { return (*(id*)((char *)dest+offset) = val); }
++
++static OBJC_INLINE void *objc_memmove_collectable(void *dst, const void *src, size_t size) 
++    { return memmove(dst, src, size); }
++
++static OBJC_INLINE id objc_read_weak(id *location) 
++    { return *location; }
++
++static OBJC_INLINE id objc_assign_weak(id value, id *location) 
++    { return (*location = value); }
++
++static OBJC_INLINE void objc_finalizeOnMainThread(Class cls __unused) { }
++static OBJC_INLINE BOOL objc_is_finalized(void *ptr __unused) { return NO; }
++static OBJC_INLINE void objc_clear_stack(unsigned long options __unused) { }
++
++static OBJC_INLINE BOOL objc_collecting_enabled(void) { return NO; }
++static OBJC_INLINE void objc_set_collection_threshold(size_t threshold __unused) { } 
++static OBJC_INLINE void objc_set_collection_ratio(size_t ratio __unused) { } 
++static OBJC_INLINE void objc_start_collector_thread(void) { }
++
++OBJC_EXPORT id class_createInstance(Class cls, size_t extraBytes)
++    __OSX_AVAILABLE_STARTING(__MAC_10_0, __IPHONE_2_0);
++static OBJC_INLINE id objc_allocate_object(Class cls, int extra) 
++    { return class_createInstance(cls, extra); }
++
++static OBJC_INLINE void objc_registerThreadWithCollector() { }
++static OBJC_INLINE void objc_unregisterThreadWithCollector() { }
++static OBJC_INLINE void objc_assertRegisteredThreadWithCollector() { }
++
++/* defined(OBJC_NO_GC) */
++#endif
++
++
++#if TARGET_OS_EMBEDDED
++enum {
++    OBJC_GENERATIONAL = (1 << 0)
++};
++static OBJC_INLINE void objc_collect_if_needed(unsigned long options) __attribute__((deprecated));
++static OBJC_INLINE void objc_collect_if_needed(unsigned long options __unused) { }
++#endif
++
++#endif
+diff -urN a/include/objc/objc-class.h b/include/objc/objc-class.h
+--- a/include/objc/objc-class.h	1970-01-01 01:00:00.000000000 +0100
++++ b/include/objc/objc-class.h	2013-04-02 23:44:04.567966368 +0100
+@@ -0,0 +1,2 @@
++#import <objc/runtime.h>
++#import <objc/message.h>
+diff -urN a/include/objc/objc-exception.h b/include/objc/objc-exception.h
+--- a/include/objc/objc-exception.h	1970-01-01 01:00:00.000000000 +0100
++++ b/include/objc/objc-exception.h	2013-04-02 23:44:04.567966368 +0100
+@@ -0,0 +1,99 @@
++/*
++ * Copyright (c) 2002-2003, 2006-2007 Apple Inc.  All Rights Reserved.
++ * 
++ * @APPLE_LICENSE_HEADER_START@
++ * 
++ * This file contains Original Code and/or Modifications of Original Code
++ * as defined in and that are subject to the Apple Public Source License
++ * Version 2.0 (the 'License'). You may not use this file except in
++ * compliance with the License. Please obtain a copy of the License at
++ * http://www.opensource.apple.com/apsl/ and read it before using this
++ * file.
++ * 
++ * The Original Code and all software distributed under the License are
++ * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
++ * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
++ * INCLUDING WITHOUT LIMITATION, ANY WARRANTIES OF MERCHANTABILITY,
++ * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
++ * Please see the License for the specific language governing rights and
++ * limitations under the License.
++ * 
++ * @APPLE_LICENSE_HEADER_END@
++ */
++
++#ifndef __OBJC_EXCEPTION_H_
++#define __OBJC_EXCEPTION_H_
++
++#include <objc/objc.h>
++#include <stdint.h>
++
++#if !__OBJC2__
++
++// compiler reserves a setjmp buffer + 4 words as localExceptionData
++
++OBJC_EXPORT void objc_exception_throw(id exception)
++    __OSX_AVAILABLE_STARTING(__MAC_10_3, __IPHONE_NA);
++OBJC_EXPORT void objc_exception_try_enter(void *localExceptionData)
++    __OSX_AVAILABLE_STARTING(__MAC_10_3, __IPHONE_NA);
++OBJC_EXPORT void objc_exception_try_exit(void *localExceptionData)
++    __OSX_AVAILABLE_STARTING(__MAC_10_3, __IPHONE_NA);
++OBJC_EXPORT id objc_exception_extract(void *localExceptionData)
++    __OSX_AVAILABLE_STARTING(__MAC_10_3, __IPHONE_NA);
++OBJC_EXPORT int objc_exception_match(Class exceptionClass, id exception)
++    __OSX_AVAILABLE_STARTING(__MAC_10_3, __IPHONE_NA);
++
++
++typedef struct {
++    int version;
++    void (*throw_exc)(id);		// version 0
++    void (*try_enter)(void *);	// version 0
++    void (*try_exit)(void *);	// version 0
++    id	 (*extract)(void *);	// version 0
++    int	(*match)(Class, id);	// version 0
++} objc_exception_functions_t;
++
++// get table; version tells how many
++OBJC_EXPORT void objc_exception_get_functions(objc_exception_functions_t *table)
++    __OSX_AVAILABLE_STARTING(__MAC_10_3, __IPHONE_NA);
++
++// set table
++OBJC_EXPORT void objc_exception_set_functions(objc_exception_functions_t *table)
++    __OSX_AVAILABLE_STARTING(__MAC_10_3, __IPHONE_NA);
++
++
++// !__OBJC2__
++#else
++// __OBJC2__
++
++typedef id (*objc_exception_preprocessor)(id exception);
++typedef int (*objc_exception_matcher)(Class catch_type, id exception);
++typedef void (*objc_uncaught_exception_handler)(id exception);
++typedef void (*objc_exception_handler)(id unused, void *context);
++
++OBJC_EXPORT void objc_exception_throw(id exception)
++    __OSX_AVAILABLE_STARTING(__MAC_10_5, __IPHONE_2_0);
++OBJC_EXPORT void objc_exception_rethrow(void)
++    __OSX_AVAILABLE_STARTING(__MAC_10_5, __IPHONE_2_0);
++OBJC_EXPORT id objc_begin_catch(void *exc_buf)
++    __OSX_AVAILABLE_STARTING(__MAC_10_5, __IPHONE_2_0);
++OBJC_EXPORT void objc_end_catch(void)
++    __OSX_AVAILABLE_STARTING(__MAC_10_5, __IPHONE_2_0);
++
++OBJC_EXPORT objc_exception_preprocessor objc_setExceptionPreprocessor(objc_exception_preprocessor fn)
++    __OSX_AVAILABLE_STARTING(__MAC_10_5, __IPHONE_2_0);
++OBJC_EXPORT objc_exception_matcher objc_setExceptionMatcher(objc_exception_matcher fn)
++    __OSX_AVAILABLE_STARTING(__MAC_10_5, __IPHONE_2_0);
++OBJC_EXPORT objc_uncaught_exception_handler objc_setUncaughtExceptionHandler(objc_uncaught_exception_handler fn)
++    __OSX_AVAILABLE_STARTING(__MAC_10_5, __IPHONE_2_0);
++
++// Not for iOS.
++OBJC_EXPORT uintptr_t objc_addExceptionHandler(objc_exception_handler fn, void *context)
++    __OSX_AVAILABLE_STARTING(__MAC_10_5, __IPHONE_NA);
++OBJC_EXPORT void objc_removeExceptionHandler(uintptr_t token)
++    __OSX_AVAILABLE_STARTING(__MAC_10_5, __IPHONE_NA);
++
++// __OBJC2__
++#endif
++
++#endif  // __OBJC_EXCEPTION_H_
++
+diff -urN a/include/objc/objc.h b/include/objc/objc.h
+--- a/include/objc/objc.h	1970-01-01 01:00:00.000000000 +0100
++++ b/include/objc/objc.h	2013-04-02 23:44:04.567966368 +0100
+@@ -0,0 +1,150 @@
++/*
++ * Copyright (c) 1999-2007 Apple Inc.  All Rights Reserved.
++ * 
++ * @APPLE_LICENSE_HEADER_START@
++ * 
++ * This file contains Original Code and/or Modifications of Original Code
++ * as defined in and that are subject to the Apple Public Source License
++ * Version 2.0 (the 'License'). You may not use this file except in
++ * compliance with the License. Please obtain a copy of the License at
++ * http://www.opensource.apple.com/apsl/ and read it before using this
++ * file.
++ * 
++ * The Original Code and all software distributed under the License are
++ * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
++ * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
++ * INCLUDING WITHOUT LIMITATION, ANY WARRANTIES OF MERCHANTABILITY,
++ * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
++ * Please see the License for the specific language governing rights and
++ * limitations under the License.
++ * 
++ * @APPLE_LICENSE_HEADER_END@
++ */
++/*
++ *	objc.h
++ *	Copyright 1988-1996, NeXT Software, Inc.
++ */
++
++#ifndef _OBJC_OBJC_H_
++#define _OBJC_OBJC_H_
++
++#include <sys/types.h>      // for __DARWIN_NULL
++#include <Availability.h>
++#include <objc/objc-api.h>
++
++
++typedef struct objc_class *Class;
++typedef struct objc_object {
++    Class isa;
++} *id;
++
++
++typedef struct objc_selector 	*SEL;    
++typedef id 			(*IMP)(id, SEL, ...); 
++typedef signed char		BOOL; 
++// BOOL is explicitly signed so @encode(BOOL) == "c" rather than "C" 
++// even if -funsigned-char is used.
++#define OBJC_BOOL_DEFINED
++
++
++#define YES             (BOOL)1
++#define NO              (BOOL)0
++
++#ifndef Nil
++#define Nil __DARWIN_NULL	/* id of Nil class */
++#endif
++
++#ifndef nil
++#define nil __DARWIN_NULL	/* id of Nil instance */
++#endif
++
++#if ! (defined(__OBJC_GC__)  ||  __has_feature(objc_arr))
++#define __strong /* empty */
++#endif
++
++#if !__has_feature(objc_arr)
++#define __unsafe_unretained /* empty */
++#define __autoreleasing /* empty */
++#endif
++
++OBJC_EXPORT const char *sel_getName(SEL sel)
++    __OSX_AVAILABLE_STARTING(__MAC_10_0, __IPHONE_2_0);
++OBJC_EXPORT SEL sel_registerName(const char *str)
++    __OSX_AVAILABLE_STARTING(__MAC_10_0, __IPHONE_2_0);
++OBJC_EXPORT const char *object_getClassName(id obj)
++    __OSX_AVAILABLE_STARTING(__MAC_10_0, __IPHONE_2_0);
++OBJC_EXPORT void *object_getIndexedIvars(id obj)
++    __OSX_AVAILABLE_STARTING(__MAC_10_0, __IPHONE_2_0);
++OBJC_EXPORT BOOL sel_isMapped(SEL sel)
++    __OSX_AVAILABLE_STARTING(__MAC_10_0, __IPHONE_2_0);
++OBJC_EXPORT SEL sel_getUid(const char *str)
++    __OSX_AVAILABLE_STARTING(__MAC_10_0, __IPHONE_2_0);
++
++
++#ifndef CF_CONSUMED
++#if __has_feature(attribute_cf_consumed)
++#define CF_CONSUMED __attribute__((cf_consumed))
++#else
++#define CF_CONSUMED
++#endif
++#endif
++
++#ifndef CF_RETURNS_NOT_RETAINED
++#if __has_feature(attribute_cf_not_retained)
++#define CF_RETURNS_NOT_RETAINED __attribute__((cf_returns_not_retained))
++#else
++#define CF_RETURNS_NOT_RETAINED
++#endif
++#endif
++
++#ifndef NS_RETURNS_RETAINED
++#if __has_feature(attribute_ns_returns_retained)
++#define NS_RETURNS_RETAINED __attribute__((ns_returns_retained))
++#else
++#define NS_RETURNS_RETAINED
++#endif
++#endif
++
++#ifndef NS_RETURNS_NOT_RETAINED
++#if __has_feature(attribute_ns_returns_not_retained)
++#define NS_RETURNS_NOT_RETAINED __attribute__((ns_returns_not_retained))
++#else
++#define NS_RETURNS_NOT_RETAINED
++#endif
++#endif
++
++typedef const void* objc_objectptr_t;
++
++OBJC_EXPORT NS_RETURNS_RETAINED id objc_retainedObject(objc_objectptr_t CF_CONSUMED pointer)
++    __OSX_AVAILABLE_STARTING(__MAC_10_7, __IPHONE_5_0);
++OBJC_EXPORT NS_RETURNS_NOT_RETAINED id objc_unretainedObject(objc_objectptr_t pointer)
++    __OSX_AVAILABLE_STARTING(__MAC_10_7, __IPHONE_5_0);
++OBJC_EXPORT CF_RETURNS_NOT_RETAINED objc_objectptr_t objc_unretainedPointer(id object)
++    __OSX_AVAILABLE_STARTING(__MAC_10_7, __IPHONE_5_0);
++
++
++#if !__OBJC2__
++
++// The following declarations are provided here for source compatibility.
++
++#if defined(__LP64__)
++    typedef long arith_t;
++    typedef unsigned long uarith_t;
++#   define ARITH_SHIFT 32
++#else
++    typedef int arith_t;
++    typedef unsigned uarith_t;
++#   define ARITH_SHIFT 16
++#endif
++
++typedef char *STR;
++
++#define ISSELECTOR(sel) sel_isMapped(sel)
++#define SELNAME(sel)	sel_getName(sel)
++#define SELUID(str)	sel_getUid(str)
++#define NAMEOF(obj)     object_getClassName(obj)
++#define IV(obj)         object_getIndexedIvars(obj)
++
++#endif
++
++#endif  /* _OBJC_OBJC_H_ */
+diff -urN a/include/objc/objc-load.h b/include/objc/objc-load.h
+--- a/include/objc/objc-load.h	1970-01-01 01:00:00.000000000 +0100
++++ b/include/objc/objc-load.h	2013-04-02 23:44:04.567966368 +0100
+@@ -0,0 +1,55 @@
++/*
++ * Copyright (c) 1999-2001, 2005-2006 Apple Inc.  All Rights Reserved.
++ * 
++ * @APPLE_LICENSE_HEADER_START@
++ * 
++ * This file contains Original Code and/or Modifications of Original Code
++ * as defined in and that are subject to the Apple Public Source License
++ * Version 2.0 (the 'License'). You may not use this file except in
++ * compliance with the License. Please obtain a copy of the License at
++ * http://www.opensource.apple.com/apsl/ and read it before using this
++ * file.
++ * 
++ * The Original Code and all software distributed under the License are
++ * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
++ * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
++ * INCLUDING WITHOUT LIMITATION, ANY WARRANTIES OF MERCHANTABILITY,
++ * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
++ * Please see the License for the specific language governing rights and
++ * limitations under the License.
++ * 
++ * @APPLE_LICENSE_HEADER_END@
++ */
++/*
++ *	objc-load.h
++ *	Copyright 1988-1996, NeXT Software, Inc.
++ */
++
++#ifndef _OBJC_LOAD_H_
++#define _OBJC_LOAD_H_
++
++#include <objc/objc-class.h>
++
++#include <mach-o/loader.h>
++#include <AvailabilityMacros.h>
++
++/* dynamically loading Mach-O object files that contain Objective-C code */
++
++OBJC_EXPORT long objc_loadModules (
++	char *modlist[], 
++	void *errStream,
++	void (*class_callback) (Class, Category),
++	/*headerType*/ struct mach_header **hdr_addr,
++	char *debug_file
++) OBJC2_UNAVAILABLE;
++OBJC_EXPORT int objc_loadModule (
++	char *	moduleName, 
++	void	(*class_callback) (Class, Category),
++	int *	errorCode
++) OBJC2_UNAVAILABLE;
++OBJC_EXPORT long objc_unloadModules(
++	void *errorStream,				/* input (optional) */
++	void (*unloadCallback)(Class, Category)		/* input (optional) */
++) OBJC2_UNAVAILABLE;
++
++#endif /* _OBJC_LOAD_H_ */
+diff -urN a/include/objc/objc-runtime.h b/include/objc/objc-runtime.h
+--- a/include/objc/objc-runtime.h	1970-01-01 01:00:00.000000000 +0100
++++ b/include/objc/objc-runtime.h	2013-04-02 23:44:04.567966368 +0100
+@@ -0,0 +1,2 @@
++#import <objc/runtime.h>
++#import <objc/message.h>
+diff -urN a/include/objc/objc-sync.h b/include/objc/objc-sync.h
+--- a/include/objc/objc-sync.h	1970-01-01 01:00:00.000000000 +0100
++++ b/include/objc/objc-sync.h	2013-04-02 23:44:04.567966368 +0100
+@@ -0,0 +1,56 @@
++/*
++ * Copyright (c) 2002, 2006 Apple Inc.  All Rights Reserved.
++ * 
++ * @APPLE_LICENSE_HEADER_START@
++ * 
++ * This file contains Original Code and/or Modifications of Original Code
++ * as defined in and that are subject to the Apple Public Source License
++ * Version 2.0 (the 'License'). You may not use this file except in
++ * compliance with the License. Please obtain a copy of the License at
++ * http://www.opensource.apple.com/apsl/ and read it before using this
++ * file.
++ * 
++ * The Original Code and all software distributed under the License are
++ * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
++ * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
++ * INCLUDING WITHOUT LIMITATION, ANY WARRANTIES OF MERCHANTABILITY,
++ * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
++ * Please see the License for the specific language governing rights and
++ * limitations under the License.
++ * 
++ * @APPLE_LICENSE_HEADER_END@
++ */
++
++#ifndef __OBJC_SNYC_H_
++#define __OBJC_SNYC_H_
++
++#include <objc/objc.h>
++
++// Begin synchronizing on 'obj'.  
++// Allocates recursive pthread_mutex associated with 'obj' if needed.
++// Returns OBJC_SYNC_SUCCESS once lock is acquired.  
++OBJC_EXPORT  int objc_sync_enter(id obj)
++    __OSX_AVAILABLE_STARTING(__MAC_10_3, __IPHONE_2_0);
++
++// End synchronizing on 'obj'. 
++// Returns OBJC_SYNC_SUCCESS or OBJC_SYNC_NOT_OWNING_THREAD_ERROR
++OBJC_EXPORT  int objc_sync_exit(id obj)
++    __OSX_AVAILABLE_STARTING(__MAC_10_3, __IPHONE_2_0);
++
++// The wait/notify functions have never worked correctly and no longer exist.
++OBJC_EXPORT  int objc_sync_wait(id obj, long long milliSecondsMaxWait) 
++    UNAVAILABLE_ATTRIBUTE;
++OBJC_EXPORT  int objc_sync_notify(id obj) 
++    UNAVAILABLE_ATTRIBUTE;
++OBJC_EXPORT  int objc_sync_notifyAll(id obj) 
++    UNAVAILABLE_ATTRIBUTE;
++
++enum {
++	OBJC_SYNC_SUCCESS                 = 0,
++	OBJC_SYNC_NOT_OWNING_THREAD_ERROR = -1,
++	OBJC_SYNC_TIMED_OUT               = -2,
++	OBJC_SYNC_NOT_INITIALIZED         = -3		
++};
++
++
++#endif // __OBJC_SNYC_H_
+diff -urN a/include/objc/Object.h b/include/objc/Object.h
+--- a/include/objc/Object.h	1970-01-01 01:00:00.000000000 +0100
++++ b/include/objc/Object.h	2013-04-02 23:44:04.567966368 +0100
+@@ -0,0 +1,177 @@
++/*
++ * Copyright (c) 1999-2003, 2005-2007 Apple Inc.  All Rights Reserved.
++ * 
++ * @APPLE_LICENSE_HEADER_START@
++ * 
++ * This file contains Original Code and/or Modifications of Original Code
++ * as defined in and that are subject to the Apple Public Source License
++ * Version 2.0 (the 'License'). You may not use this file except in
++ * compliance with the License. Please obtain a copy of the License at
++ * http://www.opensource.apple.com/apsl/ and read it before using this
++ * file.
++ * 
++ * The Original Code and all software distributed under the License are
++ * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
++ * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
++ * INCLUDING WITHOUT LIMITATION, ANY WARRANTIES OF MERCHANTABILITY,
++ * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
++ * Please see the License for the specific language governing rights and
++ * limitations under the License.
++ * 
++ * @APPLE_LICENSE_HEADER_END@
++ */
++/*
++	Object.h
++	Copyright 1988-1996 NeXT Software, Inc.
++  
++	DEFINED AS:	A common class
++	HEADER FILES:	<objc/Object.h>
++
++*/
++
++#ifndef _OBJC_OBJECT_H_
++#define _OBJC_OBJECT_H_
++
++#include <stdarg.h>
++#import <objc/objc-runtime.h>
++
++#if __OBJC2__
++
++__OSX_AVAILABLE_STARTING(__MAC_10_0, __IPHONE_NA)
++@interface Object
++{
++	Class isa;	/* A pointer to the instance's class structure */
++}
++
+++class;
++-(BOOL) isEqual:anObject;
++
++@end
++
++#else
++
++__OSX_AVAILABLE_STARTING(__MAC_10_0, __IPHONE_NA)
++@interface Object
++{
++	Class isa;	/* A pointer to the instance's class structure */
++}
++
++/* Initializing classes and instances */
++
+++ initialize;
++- init;
++
++/* Creating, copying, and freeing instances */
++
+++ new;
+++ free;
++- free;
+++ alloc;
++- copy;
+++ allocFromZone:(void *)zone;
++- copyFromZone:(void *)zone;
++- (void *)zone;
++
++/* Identifying classes */
++
+++ class;
+++ superclass;
+++ (const char *) name;
++- class;
++- superclass;
++- (const char *) name;
++
++/* Identifying and comparing instances */
++
++- self;
++- (unsigned int) hash;
++- (BOOL) isEqual:anObject;
++
++/* Testing inheritance relationships */
++
++- (BOOL) isKindOf: aClassObject;
++- (BOOL) isMemberOf: aClassObject;
++- (BOOL) isKindOfClassNamed: (const char *)aClassName;
++- (BOOL) isMemberOfClassNamed: (const char *)aClassName;
++
++/* Testing class functionality */
++
+++ (BOOL) instancesRespondTo:(SEL)aSelector;
++- (BOOL) respondsTo:(SEL)aSelector;
++
++/* Testing protocol conformance */
++
++- (BOOL) conformsTo: (Protocol *)aProtocolObject;
+++ (BOOL) conformsTo: (Protocol *)aProtocolObject;
++
++/* Obtaining method descriptors from protocols */
++
++- (struct objc_method_description *) descriptionForMethod:(SEL)aSel;
+++ (struct objc_method_description *) descriptionForInstanceMethod:(SEL)aSel;
++
++/* Obtaining method handles */
++
++- (IMP) methodFor:(SEL)aSelector;
+++ (IMP) instanceMethodFor:(SEL)aSelector;
++
++/* Sending messages determined at run time */
++
++- perform:(SEL)aSelector;
++- perform:(SEL)aSelector with:anObject;
++- perform:(SEL)aSelector with:object1 with:object2;
++
++/* Posing */
++
+++ poseAs: aClassObject;
++
++/* Enforcing intentions */
++ 
++- subclassResponsibility:(SEL)aSelector;
++- notImplemented:(SEL)aSelector;
++
++/* Error handling */
++
++- doesNotRecognize:(SEL)aSelector;
++- error:(const char *)aString, ...;
++
++/* Debugging */
++
++- (void) printForDebugger:(void *)stream;
++
++/* Archiving */
++
++- awake;
++- write:(void *)stream;
++- read:(void *)stream;
+++ (int) version;
+++ setVersion: (int) aVersion;
++
++/* Forwarding */
++
++- forward: (SEL)sel : (marg_list)args;
++- performv: (SEL)sel : (marg_list)args;
++
++@end
++
++/* Abstract Protocol for Archiving */
++
++@interface Object (Archiving)
++
++- startArchiving: (void *)stream;
++- finishUnarchiving;
++
++@end
++
++/* Abstract Protocol for Dynamic Loading */
++
++@interface Object (DynamicLoading)
++
++//+ finishLoading:(headerType *)header;
+++ finishLoading:(struct mach_header *)header;
+++ startUnloading;
++
++@end
++
++#endif
++
++#endif /* _OBJC_OBJECT_H_ */
+diff -urN a/include/objc/Protocol.h b/include/objc/Protocol.h
+--- a/include/objc/Protocol.h	1970-01-01 01:00:00.000000000 +0100
++++ b/include/objc/Protocol.h	2013-04-02 23:44:04.567966368 +0100
+@@ -0,0 +1,62 @@
++/*
++ * Copyright (c) 1999-2003, 2006-2007 Apple Inc.  All Rights Reserved.
++ * 
++ * @APPLE_LICENSE_HEADER_START@
++ * 
++ * This file contains Original Code and/or Modifications of Original Code
++ * as defined in and that are subject to the Apple Public Source License
++ * Version 2.0 (the 'License'). You may not use this file except in
++ * compliance with the License. Please obtain a copy of the License at
++ * http://www.opensource.apple.com/apsl/ and read it before using this
++ * file.
++ * 
++ * The Original Code and all software distributed under the License are
++ * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
++ * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
++ * INCLUDING WITHOUT LIMITATION, ANY WARRANTIES OF MERCHANTABILITY,
++ * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
++ * Please see the License for the specific language governing rights and
++ * limitations under the License.
++ * 
++ * @APPLE_LICENSE_HEADER_END@
++ */
++/*
++	Protocol.h
++	Copyright 1991-1996 NeXT Software, Inc.
++*/
++
++#ifndef _OBJC_PROTOCOL_H_
++#define _OBJC_PROTOCOL_H_
++
++#include <objc/Object.h>
++
++/* Warning: All of these methods will disappear in 64-bit. */
++
++__OSX_AVAILABLE_STARTING(__MAC_10_0, __IPHONE_2_0)
++@interface Protocol : Object
++{
++@private
++    char *protocol_name OBJC2_UNAVAILABLE;
++    struct objc_protocol_list *protocol_list OBJC2_UNAVAILABLE;
++    struct objc_method_description_list *instance_methods OBJC2_UNAVAILABLE;
++    struct objc_method_description_list *class_methods OBJC2_UNAVAILABLE;
++}
++
++/* Obtaining attributes intrinsic to the protocol */
++
++- (const char *)name OBJC2_UNAVAILABLE;
++
++/* Testing protocol conformance */
++
++- (BOOL) conformsTo: (Protocol *)aProtocolObject OBJC2_UNAVAILABLE;
++
++/* Looking up information specific to a protocol */
++
++- (struct objc_method_description *) descriptionForInstanceMethod:(SEL)aSel
++    DEPRECATED_IN_MAC_OS_X_VERSION_10_5_AND_LATER;
++- (struct objc_method_description *) descriptionForClassMethod:(SEL)aSel 
++    DEPRECATED_IN_MAC_OS_X_VERSION_10_5_AND_LATER;
++
++@end
++
++#endif /* _OBJC_PROTOCOL_H_ */
+diff -urN a/include/objc/runtime.h b/include/objc/runtime.h
+--- a/include/objc/runtime.h	1970-01-01 01:00:00.000000000 +0100
++++ b/include/objc/runtime.h	2013-04-02 23:44:04.567966368 +0100
+@@ -0,0 +1,596 @@
++/*
++ * Copyright (c) 1999-2007 Apple Inc.  All Rights Reserved.
++ * 
++ * @APPLE_LICENSE_HEADER_START@
++ * 
++ * This file contains Original Code and/or Modifications of Original Code
++ * as defined in and that are subject to the Apple Public Source License
++ * Version 2.0 (the 'License'). You may not use this file except in
++ * compliance with the License. Please obtain a copy of the License at
++ * http://www.opensource.apple.com/apsl/ and read it before using this
++ * file.
++ * 
++ * The Original Code and all software distributed under the License are
++ * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
++ * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
++ * INCLUDING WITHOUT LIMITATION, ANY WARRANTIES OF MERCHANTABILITY,
++ * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
++ * Please see the License for the specific language governing rights and
++ * limitations under the License.
++ * 
++ * @APPLE_LICENSE_HEADER_END@
++ */
++
++#ifndef _OBJC_RUNTIME_H
++#define _OBJC_RUNTIME_H
++
++#include <objc/objc.h>
++#include <stdarg.h>
++#include <stdint.h>
++#include <stddef.h>
++#include <Availability.h>
++#include <AvailabilityMacros.h>
++#include <TargetConditionals.h>
++
++#if TARGET_OS_MAC
++#include <sys/types.h>
++#endif
++
++
++/* Types */
++
++typedef struct objc_method *Method;
++typedef struct objc_ivar *Ivar;
++typedef struct objc_category *Category;
++typedef struct objc_property *objc_property_t;
++
++struct objc_class {
++    Class isa;
++
++#if !__OBJC2__
++    Class super_class                                        OBJC2_UNAVAILABLE;
++    const char *name                                         OBJC2_UNAVAILABLE;
++    long version                                             OBJC2_UNAVAILABLE;
++    long info                                                OBJC2_UNAVAILABLE;
++    long instance_size                                       OBJC2_UNAVAILABLE;
++    struct objc_ivar_list *ivars                             OBJC2_UNAVAILABLE;
++    struct objc_method_list **methodLists                    OBJC2_UNAVAILABLE;
++    struct objc_cache *cache                                 OBJC2_UNAVAILABLE;
++    struct objc_protocol_list *protocols                     OBJC2_UNAVAILABLE;
++#endif
++
++} OBJC2_UNAVAILABLE;
++/* Use `Class` instead of `struct objc_class *` */
++
++#ifdef __OBJC__
++@class Protocol;
++#else
++typedef struct objc_object Protocol;
++#endif
++
++struct objc_method_description {
++	SEL name;
++	char *types;
++};
++
++typedef struct {
++    const char *name;
++    const char *value;
++} objc_property_attribute_t;
++
++
++/* Functions */
++
++OBJC_EXPORT id object_copy(id obj, size_t size)
++    __OSX_AVAILABLE_STARTING(__MAC_10_0, __IPHONE_2_0)
++    OBJC_ARC_UNAVAILABLE;
++OBJC_EXPORT id object_dispose(id obj)
++    __OSX_AVAILABLE_STARTING(__MAC_10_0, __IPHONE_2_0)
++    OBJC_ARC_UNAVAILABLE;
++
++OBJC_EXPORT Class object_getClass(id obj) 
++     __OSX_AVAILABLE_STARTING(__MAC_10_5, __IPHONE_2_0);
++OBJC_EXPORT Class object_setClass(id obj, Class cls) 
++     __OSX_AVAILABLE_STARTING(__MAC_10_5, __IPHONE_2_0);
++
++OBJC_EXPORT const char *object_getClassName(id obj)
++    __OSX_AVAILABLE_STARTING(__MAC_10_0, __IPHONE_2_0);
++OBJC_EXPORT void *object_getIndexedIvars(id obj)
++    __OSX_AVAILABLE_STARTING(__MAC_10_0, __IPHONE_2_0)
++    OBJC_ARC_UNAVAILABLE;
++
++OBJC_EXPORT id object_getIvar(id obj, Ivar ivar) 
++     __OSX_AVAILABLE_STARTING(__MAC_10_5, __IPHONE_2_0);
++OBJC_EXPORT void object_setIvar(id obj, Ivar ivar, id value) 
++     __OSX_AVAILABLE_STARTING(__MAC_10_5, __IPHONE_2_0);
++
++OBJC_EXPORT Ivar object_setInstanceVariable(id obj, const char *name, void *value)
++    __OSX_AVAILABLE_STARTING(__MAC_10_0, __IPHONE_2_0)
++    OBJC_ARC_UNAVAILABLE;
++OBJC_EXPORT Ivar object_getInstanceVariable(id obj, const char *name, void **outValue)
++    __OSX_AVAILABLE_STARTING(__MAC_10_0, __IPHONE_2_0)
++    OBJC_ARC_UNAVAILABLE;
++
++OBJC_EXPORT id objc_getClass(const char *name)
++    __OSX_AVAILABLE_STARTING(__MAC_10_0, __IPHONE_2_0);
++OBJC_EXPORT id objc_getMetaClass(const char *name)
++    __OSX_AVAILABLE_STARTING(__MAC_10_0, __IPHONE_2_0);
++OBJC_EXPORT id objc_lookUpClass(const char *name)
++    __OSX_AVAILABLE_STARTING(__MAC_10_0, __IPHONE_2_0);
++OBJC_EXPORT id objc_getRequiredClass(const char *name)
++    __OSX_AVAILABLE_STARTING(__MAC_10_0, __IPHONE_2_0);
++OBJC_EXPORT Class objc_getFutureClass(const char *name) 
++     __OSX_AVAILABLE_STARTING(__MAC_10_5, __IPHONE_2_0);
++OBJC_EXPORT void objc_setFutureClass(Class cls, const char *name) 
++     __OSX_AVAILABLE_STARTING(__MAC_10_5, __IPHONE_2_0);
++OBJC_EXPORT int objc_getClassList(Class *buffer, int bufferCount)
++    __OSX_AVAILABLE_STARTING(__MAC_10_0, __IPHONE_2_0);
++OBJC_EXPORT Class *objc_copyClassList(unsigned int *outCount)
++     __OSX_AVAILABLE_STARTING(__MAC_10_7, __IPHONE_3_1);
++
++OBJC_EXPORT Protocol *objc_getProtocol(const char *name)
++     __OSX_AVAILABLE_STARTING(__MAC_10_5, __IPHONE_2_0);
++OBJC_EXPORT Protocol * __unsafe_unretained *objc_copyProtocolList(unsigned int *outCount)
++     __OSX_AVAILABLE_STARTING(__MAC_10_5, __IPHONE_2_0);
++
++OBJC_EXPORT const char *class_getName(Class cls) 
++     __OSX_AVAILABLE_STARTING(__MAC_10_5, __IPHONE_2_0);
++OBJC_EXPORT BOOL class_isMetaClass(Class cls) 
++     __OSX_AVAILABLE_STARTING(__MAC_10_5, __IPHONE_2_0);
++OBJC_EXPORT Class class_getSuperclass(Class cls) 
++     __OSX_AVAILABLE_STARTING(__MAC_10_5, __IPHONE_2_0);
++OBJC_EXPORT Class class_setSuperclass(Class cls, Class newSuper) 
++     AVAILABLE_MAC_OS_X_VERSION_10_5_AND_LATER_BUT_DEPRECATED;
++
++OBJC_EXPORT int class_getVersion(Class cls)
++    __OSX_AVAILABLE_STARTING(__MAC_10_0, __IPHONE_2_0);
++OBJC_EXPORT void class_setVersion(Class cls, int version)
++    __OSX_AVAILABLE_STARTING(__MAC_10_0, __IPHONE_2_0);
++
++OBJC_EXPORT size_t class_getInstanceSize(Class cls) 
++     __OSX_AVAILABLE_STARTING(__MAC_10_5, __IPHONE_2_0);
++
++OBJC_EXPORT Ivar class_getInstanceVariable(Class cls, const char *name)
++    __OSX_AVAILABLE_STARTING(__MAC_10_0, __IPHONE_2_0);
++OBJC_EXPORT Ivar class_getClassVariable(Class cls, const char *name) 
++     __OSX_AVAILABLE_STARTING(__MAC_10_5, __IPHONE_2_0);
++OBJC_EXPORT Ivar *class_copyIvarList(Class cls, unsigned int *outCount) 
++     __OSX_AVAILABLE_STARTING(__MAC_10_5, __IPHONE_2_0);
++
++OBJC_EXPORT Method class_getInstanceMethod(Class cls, SEL name)
++    __OSX_AVAILABLE_STARTING(__MAC_10_0, __IPHONE_2_0);
++OBJC_EXPORT Method class_getClassMethod(Class cls, SEL name)
++    __OSX_AVAILABLE_STARTING(__MAC_10_0, __IPHONE_2_0);
++OBJC_EXPORT IMP class_getMethodImplementation(Class cls, SEL name) 
++     __OSX_AVAILABLE_STARTING(__MAC_10_5, __IPHONE_2_0);
++OBJC_EXPORT IMP class_getMethodImplementation_stret(Class cls, SEL name) 
++     __OSX_AVAILABLE_STARTING(__MAC_10_5, __IPHONE_2_0);
++OBJC_EXPORT BOOL class_respondsToSelector(Class cls, SEL sel) 
++     __OSX_AVAILABLE_STARTING(__MAC_10_5, __IPHONE_2_0);
++OBJC_EXPORT Method *class_copyMethodList(Class cls, unsigned int *outCount) 
++     __OSX_AVAILABLE_STARTING(__MAC_10_5, __IPHONE_2_0);
++
++OBJC_EXPORT BOOL class_conformsToProtocol(Class cls, Protocol *protocol) 
++     __OSX_AVAILABLE_STARTING(__MAC_10_5, __IPHONE_2_0);
++OBJC_EXPORT Protocol * __unsafe_unretained *class_copyProtocolList(Class cls, unsigned int *outCount)
++     __OSX_AVAILABLE_STARTING(__MAC_10_5, __IPHONE_2_0);
++
++OBJC_EXPORT objc_property_t class_getProperty(Class cls, const char *name)
++     __OSX_AVAILABLE_STARTING(__MAC_10_5, __IPHONE_2_0);
++OBJC_EXPORT objc_property_t *class_copyPropertyList(Class cls, unsigned int *outCount)
++     __OSX_AVAILABLE_STARTING(__MAC_10_5, __IPHONE_2_0);
++
++OBJC_EXPORT const uint8_t *class_getIvarLayout(Class cls)
++     __OSX_AVAILABLE_STARTING(__MAC_10_5, __IPHONE_2_0);
++OBJC_EXPORT const uint8_t *class_getWeakIvarLayout(Class cls)
++     __OSX_AVAILABLE_STARTING(__MAC_10_5, __IPHONE_2_0);
++
++OBJC_EXPORT id class_createInstance(Class cls, size_t extraBytes)
++    __OSX_AVAILABLE_STARTING(__MAC_10_0, __IPHONE_2_0)
++    OBJC_ARC_UNAVAILABLE;
++OBJC_EXPORT id objc_constructInstance(Class cls, void *bytes) 
++    __OSX_AVAILABLE_STARTING(__MAC_10_6, __IPHONE_3_0)
++    OBJC_ARC_UNAVAILABLE;
++OBJC_EXPORT void *objc_destructInstance(id obj) 
++    __OSX_AVAILABLE_STARTING(__MAC_10_6, __IPHONE_3_0)
++    OBJC_ARC_UNAVAILABLE;
++
++OBJC_EXPORT Class objc_allocateClassPair(Class superclass, const char *name, 
++                                         size_t extraBytes) 
++     __OSX_AVAILABLE_STARTING(__MAC_10_5, __IPHONE_2_0);
++OBJC_EXPORT void objc_registerClassPair(Class cls) 
++     __OSX_AVAILABLE_STARTING(__MAC_10_5, __IPHONE_2_0);
++OBJC_EXPORT Class objc_duplicateClass(Class original, const char *name, 
++                                      size_t extraBytes) 
++     __OSX_AVAILABLE_STARTING(__MAC_10_5, __IPHONE_2_0);
++OBJC_EXPORT void objc_disposeClassPair(Class cls) 
++     __OSX_AVAILABLE_STARTING(__MAC_10_5, __IPHONE_2_0);
++
++OBJC_EXPORT BOOL class_addMethod(Class cls, SEL name, IMP imp, 
++                                 const char *types) 
++     __OSX_AVAILABLE_STARTING(__MAC_10_5, __IPHONE_2_0);
++OBJC_EXPORT IMP class_replaceMethod(Class cls, SEL name, IMP imp, 
++                                    const char *types) 
++     __OSX_AVAILABLE_STARTING(__MAC_10_5, __IPHONE_2_0);
++OBJC_EXPORT BOOL class_addIvar(Class cls, const char *name, size_t size, 
++                               uint8_t alignment, const char *types) 
++     __OSX_AVAILABLE_STARTING(__MAC_10_5, __IPHONE_2_0);
++OBJC_EXPORT BOOL class_addProtocol(Class cls, Protocol *protocol) 
++     __OSX_AVAILABLE_STARTING(__MAC_10_5, __IPHONE_2_0);
++OBJC_EXPORT BOOL class_addProperty(Class cls, const char *name, const objc_property_attribute_t *attributes, unsigned int attributeCount)
++     __OSX_AVAILABLE_STARTING(__MAC_10_7, __IPHONE_4_3);
++OBJC_EXPORT void class_replaceProperty(Class cls, const char *name, const objc_property_attribute_t *attributes, unsigned int attributeCount)
++     __OSX_AVAILABLE_STARTING(__MAC_10_7, __IPHONE_4_3);
++OBJC_EXPORT void class_setIvarLayout(Class cls, const uint8_t *layout)
++     __OSX_AVAILABLE_STARTING(__MAC_10_5, __IPHONE_2_0);
++OBJC_EXPORT void class_setWeakIvarLayout(Class cls, const uint8_t *layout)
++     __OSX_AVAILABLE_STARTING(__MAC_10_5, __IPHONE_2_0);
++
++
++OBJC_EXPORT SEL method_getName(Method m) 
++     __OSX_AVAILABLE_STARTING(__MAC_10_5, __IPHONE_2_0);
++OBJC_EXPORT IMP method_getImplementation(Method m) 
++     __OSX_AVAILABLE_STARTING(__MAC_10_5, __IPHONE_2_0);
++OBJC_EXPORT const char *method_getTypeEncoding(Method m) 
++     __OSX_AVAILABLE_STARTING(__MAC_10_5, __IPHONE_2_0);
++
++OBJC_EXPORT unsigned int method_getNumberOfArguments(Method m)
++    __OSX_AVAILABLE_STARTING(__MAC_10_0, __IPHONE_2_0);
++OBJC_EXPORT char *method_copyReturnType(Method m) 
++     __OSX_AVAILABLE_STARTING(__MAC_10_5, __IPHONE_2_0);
++OBJC_EXPORT char *method_copyArgumentType(Method m, unsigned int index) 
++     __OSX_AVAILABLE_STARTING(__MAC_10_5, __IPHONE_2_0);
++OBJC_EXPORT void method_getReturnType(Method m, char *dst, size_t dst_len) 
++     __OSX_AVAILABLE_STARTING(__MAC_10_5, __IPHONE_2_0);
++OBJC_EXPORT void method_getArgumentType(Method m, unsigned int index, 
++                                        char *dst, size_t dst_len) 
++     __OSX_AVAILABLE_STARTING(__MAC_10_5, __IPHONE_2_0);
++OBJC_EXPORT struct objc_method_description *method_getDescription(Method m) 
++     __OSX_AVAILABLE_STARTING(__MAC_10_5, __IPHONE_2_0);
++
++OBJC_EXPORT IMP method_setImplementation(Method m, IMP imp) 
++     __OSX_AVAILABLE_STARTING(__MAC_10_5, __IPHONE_2_0);
++OBJC_EXPORT void method_exchangeImplementations(Method m1, Method m2) 
++     __OSX_AVAILABLE_STARTING(__MAC_10_5, __IPHONE_2_0);
++
++OBJC_EXPORT const char *ivar_getName(Ivar v) 
++     __OSX_AVAILABLE_STARTING(__MAC_10_5, __IPHONE_2_0);
++OBJC_EXPORT const char *ivar_getTypeEncoding(Ivar v) 
++     __OSX_AVAILABLE_STARTING(__MAC_10_5, __IPHONE_2_0);
++OBJC_EXPORT ptrdiff_t ivar_getOffset(Ivar v) 
++     __OSX_AVAILABLE_STARTING(__MAC_10_5, __IPHONE_2_0);
++
++OBJC_EXPORT const char *property_getName(objc_property_t property) 
++     __OSX_AVAILABLE_STARTING(__MAC_10_5, __IPHONE_2_0);
++OBJC_EXPORT const char *property_getAttributes(objc_property_t property) 
++     __OSX_AVAILABLE_STARTING(__MAC_10_5, __IPHONE_2_0);
++OBJC_EXPORT objc_property_attribute_t *property_copyAttributeList(objc_property_t property, unsigned int *outCount)
++     __OSX_AVAILABLE_STARTING(__MAC_10_7, __IPHONE_4_3);
++OBJC_EXPORT char *property_copyAttributeValue(objc_property_t property, const char *attributeName)
++     __OSX_AVAILABLE_STARTING(__MAC_10_7, __IPHONE_4_3);
++
++OBJC_EXPORT BOOL protocol_conformsToProtocol(Protocol *proto, Protocol *other)
++     __OSX_AVAILABLE_STARTING(__MAC_10_5, __IPHONE_2_0);
++OBJC_EXPORT BOOL protocol_isEqual(Protocol *proto, Protocol *other)
++     __OSX_AVAILABLE_STARTING(__MAC_10_5, __IPHONE_2_0);
++OBJC_EXPORT const char *protocol_getName(Protocol *p)
++     __OSX_AVAILABLE_STARTING(__MAC_10_5, __IPHONE_2_0);
++OBJC_EXPORT struct objc_method_description protocol_getMethodDescription(Protocol *p, SEL aSel, BOOL isRequiredMethod, BOOL isInstanceMethod)
++     __OSX_AVAILABLE_STARTING(__MAC_10_5, __IPHONE_2_0);
++OBJC_EXPORT struct objc_method_description *protocol_copyMethodDescriptionList(Protocol *p, BOOL isRequiredMethod, BOOL isInstanceMethod, unsigned int *outCount)
++     __OSX_AVAILABLE_STARTING(__MAC_10_5, __IPHONE_2_0);
++OBJC_EXPORT objc_property_t protocol_getProperty(Protocol *proto, const char *name, BOOL isRequiredProperty, BOOL isInstanceProperty)
++     __OSX_AVAILABLE_STARTING(__MAC_10_5, __IPHONE_2_0);
++OBJC_EXPORT objc_property_t *protocol_copyPropertyList(Protocol *proto, unsigned int *outCount)
++     __OSX_AVAILABLE_STARTING(__MAC_10_5, __IPHONE_2_0);
++OBJC_EXPORT Protocol * __unsafe_unretained *protocol_copyProtocolList(Protocol *proto, unsigned int *outCount)
++     __OSX_AVAILABLE_STARTING(__MAC_10_5, __IPHONE_2_0);
++
++OBJC_EXPORT Protocol *objc_allocateProtocol(const char *name) 
++     __OSX_AVAILABLE_STARTING(__MAC_10_7, __IPHONE_4_3);
++OBJC_EXPORT void objc_registerProtocol(Protocol *proto) 
++     __OSX_AVAILABLE_STARTING(__MAC_10_7, __IPHONE_4_3);
++OBJC_EXPORT void protocol_addMethodDescription(Protocol *proto, SEL name, const char *types, BOOL isRequiredMethod, BOOL isInstanceMethod) 
++     __OSX_AVAILABLE_STARTING(__MAC_10_7, __IPHONE_4_3);
++OBJC_EXPORT void protocol_addProtocol(Protocol *proto, Protocol *addition) 
++     __OSX_AVAILABLE_STARTING(__MAC_10_7, __IPHONE_4_3);
++OBJC_EXPORT void protocol_addProperty(Protocol *proto, const char *name, const objc_property_attribute_t *attributes, unsigned int attributeCount, BOOL isRequiredProperty, BOOL isInstanceProperty)
++     __OSX_AVAILABLE_STARTING(__MAC_10_7, __IPHONE_4_3);
++
++OBJC_EXPORT const char **objc_copyImageNames(unsigned int *outCount) 
++     __OSX_AVAILABLE_STARTING(__MAC_10_5, __IPHONE_2_0);
++OBJC_EXPORT const char *class_getImageName(Class cls) 
++     __OSX_AVAILABLE_STARTING(__MAC_10_5, __IPHONE_2_0);
++OBJC_EXPORT const char **objc_copyClassNamesForImage(const char *image, 
++                                                     unsigned int *outCount) 
++     __OSX_AVAILABLE_STARTING(__MAC_10_5, __IPHONE_2_0);
++
++OBJC_EXPORT const char *sel_getName(SEL sel)
++    __OSX_AVAILABLE_STARTING(__MAC_10_0, __IPHONE_2_0);
++OBJC_EXPORT SEL sel_getUid(const char *str)
++    __OSX_AVAILABLE_STARTING(__MAC_10_0, __IPHONE_2_0);
++OBJC_EXPORT SEL sel_registerName(const char *str)
++    __OSX_AVAILABLE_STARTING(__MAC_10_0, __IPHONE_2_0);
++OBJC_EXPORT BOOL sel_isEqual(SEL lhs, SEL rhs) 
++     __OSX_AVAILABLE_STARTING(__MAC_10_5, __IPHONE_2_0);
++
++OBJC_EXPORT void objc_enumerationMutation(id) 
++     __OSX_AVAILABLE_STARTING(__MAC_10_5, __IPHONE_2_0);
++OBJC_EXPORT void objc_setEnumerationMutationHandler(void (*handler)(id)) 
++     __OSX_AVAILABLE_STARTING(__MAC_10_5, __IPHONE_2_0);
++
++OBJC_EXPORT void objc_setForwardHandler(void *fwd, void *fwd_stret) 
++     __OSX_AVAILABLE_STARTING(__MAC_10_5, __IPHONE_2_0);
++
++OBJC_EXPORT IMP imp_implementationWithBlock(void *block)
++     __OSX_AVAILABLE_STARTING(__MAC_10_7, __IPHONE_4_3);
++OBJC_EXPORT void *imp_getBlock(IMP anImp)
++     __OSX_AVAILABLE_STARTING(__MAC_10_7, __IPHONE_4_3);
++OBJC_EXPORT BOOL imp_removeBlock(IMP anImp)
++     __OSX_AVAILABLE_STARTING(__MAC_10_7, __IPHONE_4_3);
++
++
++/* Associated Object support. */
++
++/* objc_setAssociatedObject() options */
++enum {
++    OBJC_ASSOCIATION_ASSIGN = 0,
++    OBJC_ASSOCIATION_RETAIN_NONATOMIC = 1,
++    OBJC_ASSOCIATION_COPY_NONATOMIC = 3,
++    OBJC_ASSOCIATION_RETAIN = 01401,
++    OBJC_ASSOCIATION_COPY = 01403
++};
++typedef uintptr_t objc_AssociationPolicy;
++
++OBJC_EXPORT void objc_setAssociatedObject(id object, const void *key, id value, objc_AssociationPolicy policy)
++    __OSX_AVAILABLE_STARTING(__MAC_10_6, __IPHONE_3_1);
++OBJC_EXPORT id objc_getAssociatedObject(id object, const void *key)
++    __OSX_AVAILABLE_STARTING(__MAC_10_6, __IPHONE_3_1);
++OBJC_EXPORT void objc_removeAssociatedObjects(id object)
++    __OSX_AVAILABLE_STARTING(__MAC_10_6, __IPHONE_3_1);
++
++
++// API to be called by clients of objects
++
++OBJC_EXPORT id objc_loadWeak(id *location)
++    __OSX_AVAILABLE_STARTING(__MAC_10_7, __IPHONE_5_0);
++// returns value stored (either obj or NULL)
++OBJC_EXPORT id objc_storeWeak(id *location, id obj) 
++    __OSX_AVAILABLE_STARTING(__MAC_10_7, __IPHONE_5_0);
++
++
++#define _C_ID       '@'
++#define _C_CLASS    '#'
++#define _C_SEL      ':'
++#define _C_CHR      'c'
++#define _C_UCHR     'C'
++#define _C_SHT      's'
++#define _C_USHT     'S'
++#define _C_INT      'i'
++#define _C_UINT     'I'
++#define _C_LNG      'l'
++#define _C_ULNG     'L'
++#define _C_LNG_LNG  'q'
++#define _C_ULNG_LNG 'Q'
++#define _C_FLT      'f'
++#define _C_DBL      'd'
++#define _C_BFLD     'b'
++#define _C_BOOL     'B'
++#define _C_VOID     'v'
++#define _C_UNDEF    '?'
++#define _C_PTR      '^'
++#define _C_CHARPTR  '*'
++#define _C_ATOM     '%'
++#define _C_ARY_B    '['
++#define _C_ARY_E    ']'
++#define _C_UNION_B  '('
++#define _C_UNION_E  ')'
++#define _C_STRUCT_B '{'
++#define _C_STRUCT_E '}'
++#define _C_VECTOR   '!'
++#define _C_CONST    'r'
++
++
++/* Obsolete types */
++
++#if !__OBJC2__
++
++#define CLS_GETINFO(cls,infomask)        ((cls)->info & (infomask))
++#define CLS_SETINFO(cls,infomask)        ((cls)->info |= (infomask))
++
++// class is not a metaclass
++#define CLS_CLASS               0x1
++// class is a metaclass
++#define CLS_META                0x2
++// class's +initialize method has completed
++#define CLS_INITIALIZED         0x4
++// class is posing
++#define CLS_POSING              0x8
++// unused
++#define CLS_MAPPED              0x10
++// class and subclasses need cache flush during image loading
++#define CLS_FLUSH_CACHE         0x20
++// method cache should grow when full
++#define CLS_GROW_CACHE          0x40
++// unused
++#define CLS_NEED_BIND           0x80
++// methodLists is array of method lists
++#define CLS_METHOD_ARRAY        0x100
++// the JavaBridge constructs classes with these markers
++#define CLS_JAVA_HYBRID         0x200
++#define CLS_JAVA_CLASS          0x400
++// thread-safe +initialize
++#define CLS_INITIALIZING        0x800
++// bundle unloading
++#define CLS_FROM_BUNDLE         0x1000
++// C++ ivar support
++#define CLS_HAS_CXX_STRUCTORS   0x2000
++// Lazy method list arrays
++#define CLS_NO_METHOD_ARRAY     0x4000
++// +load implementation
++#define CLS_HAS_LOAD_METHOD     0x8000
++// objc_allocateClassPair API
++#define CLS_CONSTRUCTING        0x10000
++// class compiled with bigger class structure
++#define CLS_EXT                 0x20000
++
++
++struct objc_method_description_list {
++        int count;
++        struct objc_method_description list[1];
++};
++
++
++struct objc_protocol_list {
++    struct objc_protocol_list *next;
++    long count;
++    Protocol *list[1];
++};
++
++
++struct objc_category {
++    char *category_name                                      OBJC2_UNAVAILABLE;
++    char *class_name                                         OBJC2_UNAVAILABLE;
++    struct objc_method_list *instance_methods                OBJC2_UNAVAILABLE;
++    struct objc_method_list *class_methods                   OBJC2_UNAVAILABLE;
++    struct objc_protocol_list *protocols                     OBJC2_UNAVAILABLE;
++}                                                            OBJC2_UNAVAILABLE;
++
++
++struct objc_ivar {
++    char *ivar_name                                          OBJC2_UNAVAILABLE;
++    char *ivar_type                                          OBJC2_UNAVAILABLE;
++    int ivar_offset                                          OBJC2_UNAVAILABLE;
++#ifdef __LP64__
++    int space                                                OBJC2_UNAVAILABLE;
++#endif
++}                                                            OBJC2_UNAVAILABLE;
++
++struct objc_ivar_list {
++    int ivar_count                                           OBJC2_UNAVAILABLE;
++#ifdef __LP64__
++    int space                                                OBJC2_UNAVAILABLE;
++#endif
++    /* variable length structure */
++    struct objc_ivar ivar_list[1]                            OBJC2_UNAVAILABLE;
++}                                                            OBJC2_UNAVAILABLE;
++
++
++struct objc_method {
++    SEL method_name                                          OBJC2_UNAVAILABLE;
++    char *method_types                                       OBJC2_UNAVAILABLE;
++    IMP method_imp                                           OBJC2_UNAVAILABLE;
++}                                                            OBJC2_UNAVAILABLE;
++
++struct objc_method_list {
++    struct objc_method_list *obsolete                        OBJC2_UNAVAILABLE;
++
++    int method_count                                         OBJC2_UNAVAILABLE;
++#ifdef __LP64__
++    int space                                                OBJC2_UNAVAILABLE;
++#endif
++    /* variable length structure */
++    struct objc_method method_list[1]                        OBJC2_UNAVAILABLE;
++}                                                            OBJC2_UNAVAILABLE;
++
++
++typedef struct objc_symtab *Symtab                           OBJC2_UNAVAILABLE;
++
++struct objc_symtab {
++    unsigned long sel_ref_cnt                                OBJC2_UNAVAILABLE;
++    SEL *refs                                                OBJC2_UNAVAILABLE;
++    unsigned short cls_def_cnt                               OBJC2_UNAVAILABLE;
++    unsigned short cat_def_cnt                               OBJC2_UNAVAILABLE;
++    void *defs[1] /* variable size */                        OBJC2_UNAVAILABLE;
++}                                                            OBJC2_UNAVAILABLE;
++
++
++typedef struct objc_cache *Cache                             OBJC2_UNAVAILABLE;
++
++#define CACHE_BUCKET_NAME(B)  ((B)->method_name)
++#define CACHE_BUCKET_IMP(B)   ((B)->method_imp)
++#define CACHE_BUCKET_VALID(B) (B)
++#ifndef __LP64__
++#define CACHE_HASH(sel, mask) (((uintptr_t)(sel)>>2) & (mask))
++#else
++#define CACHE_HASH(sel, mask) (((unsigned int)((uintptr_t)(sel)>>3)) & (mask))
++#endif
++struct objc_cache {
++    unsigned int mask /* total = mask + 1 */                 OBJC2_UNAVAILABLE;
++    unsigned int occupied                                    OBJC2_UNAVAILABLE;
++    Method buckets[1]                                        OBJC2_UNAVAILABLE;
++};
++
++
++typedef struct objc_module *Module                           OBJC2_UNAVAILABLE;
++
++struct objc_module {
++    unsigned long version                                    OBJC2_UNAVAILABLE;
++    unsigned long size                                       OBJC2_UNAVAILABLE;
++    const char *name                                         OBJC2_UNAVAILABLE;
++    Symtab symtab                                            OBJC2_UNAVAILABLE;
++}                                                            OBJC2_UNAVAILABLE;
++
++#else
++
++struct objc_method_list;
++
++#endif
++
++
++/* Obsolete functions */
++
++OBJC_EXPORT IMP class_lookupMethod(Class cls, SEL sel) 
++    __OSX_AVAILABLE_BUT_DEPRECATED(__MAC_10_0,__MAC_10_5, __IPHONE_2_0,__IPHONE_2_0);
++OBJC_EXPORT BOOL class_respondsToMethod(Class cls, SEL sel)
++    __OSX_AVAILABLE_BUT_DEPRECATED(__MAC_10_0,__MAC_10_5, __IPHONE_2_0,__IPHONE_2_0);
++OBJC_EXPORT void _objc_flush_caches(Class cls) 
++    __OSX_AVAILABLE_BUT_DEPRECATED(__MAC_10_0,__MAC_10_5, __IPHONE_2_0,__IPHONE_2_0);
++
++OBJC_EXPORT id object_copyFromZone(id anObject, size_t nBytes, void *z) 
++    __OSX_AVAILABLE_BUT_DEPRECATED(__MAC_10_0,__MAC_10_5, __IPHONE_NA,__IPHONE_NA)
++    OBJC_ARC_UNAVAILABLE;
++OBJC_EXPORT id object_realloc(id anObject, size_t nBytes)    OBJC2_UNAVAILABLE;
++OBJC_EXPORT id object_reallocFromZone(id anObject, size_t nBytes, void *z) OBJC2_UNAVAILABLE;
++
++#define OBSOLETE_OBJC_GETCLASSES 1
++OBJC_EXPORT void *objc_getClasses(void)                      OBJC2_UNAVAILABLE;
++OBJC_EXPORT void objc_addClass(Class myClass)                OBJC2_UNAVAILABLE;
++OBJC_EXPORT void objc_setClassHandler(int (*)(const char *)) OBJC2_UNAVAILABLE;
++OBJC_EXPORT void objc_setMultithreaded (BOOL flag)           OBJC2_UNAVAILABLE;
++
++OBJC_EXPORT id class_createInstanceFromZone(Class, size_t idxIvars, void *z)  
++    __OSX_AVAILABLE_BUT_DEPRECATED(__MAC_10_0,__MAC_10_5, __IPHONE_NA,__IPHONE_NA)
++    OBJC_ARC_UNAVAILABLE;
++
++OBJC_EXPORT void class_addMethods(Class, struct objc_method_list *) OBJC2_UNAVAILABLE;
++OBJC_EXPORT void class_removeMethods(Class, struct objc_method_list *) OBJC2_UNAVAILABLE;
++OBJC_EXPORT void _objc_resolve_categories_for_class(Class cls)  OBJC2_UNAVAILABLE;
++
++OBJC_EXPORT Class class_poseAs(Class imposter, Class original) OBJC2_UNAVAILABLE;
++
++OBJC_EXPORT unsigned int method_getSizeOfArguments(Method m) OBJC2_UNAVAILABLE;
++OBJC_EXPORT unsigned method_getArgumentInfo(struct objc_method *m, int arg, const char **type, int *offset) OBJC2_UNAVAILABLE;
++
++OBJC_EXPORT BOOL class_respondsToMethod(Class, SEL)          OBJC2_UNAVAILABLE;
++OBJC_EXPORT IMP class_lookupMethod(Class, SEL)               OBJC2_UNAVAILABLE;
++OBJC_EXPORT Class objc_getOrigClass(const char *name)        OBJC2_UNAVAILABLE;
++#define OBJC_NEXT_METHOD_LIST 1
++OBJC_EXPORT struct objc_method_list *class_nextMethodList(Class, void **) OBJC2_UNAVAILABLE;
++// usage for nextMethodList
++//
++// void *iterator = 0;
++// struct objc_method_list *mlist;
++// while ( mlist = class_nextMethodList( cls, &iterator ) )
++//    ;
++ 
++OBJC_EXPORT id (*_alloc)(Class, size_t)                      OBJC2_UNAVAILABLE;
++OBJC_EXPORT id (*_copy)(id, size_t)                          OBJC2_UNAVAILABLE;
++OBJC_EXPORT id (*_realloc)(id, size_t)                       OBJC2_UNAVAILABLE;
++OBJC_EXPORT id (*_dealloc)(id)                               OBJC2_UNAVAILABLE;
++OBJC_EXPORT id (*_zoneAlloc)(Class, size_t, void *)          OBJC2_UNAVAILABLE;
++OBJC_EXPORT id (*_zoneRealloc)(id, size_t, void *)           OBJC2_UNAVAILABLE;
++OBJC_EXPORT id (*_zoneCopy)(id, size_t, void *)              OBJC2_UNAVAILABLE;
++OBJC_EXPORT void (*_error)(id, const char *, va_list)        OBJC2_UNAVAILABLE;
++
++#endif
+diff -urN a/include/objc/zone.h b/include/objc/zone.h
+--- a/include/objc/zone.h	1970-01-01 01:00:00.000000000 +0100
++++ b/include/objc/zone.h	2013-04-02 23:44:04.567966368 +0100
+@@ -0,0 +1,66 @@
++/*
++ * Copyright (c) 1999, 2007 Apple Inc. All rights reserved.
++ *
++ * @APPLE_LICENSE_HEADER_START@
++ * 
++ * This file contains Original Code and/or Modifications of Original Code
++ * as defined in and that are subject to the Apple Public Source License
++ * Version 2.0 (the 'License'). You may not use this file except in
++ * compliance with the License. Please obtain a copy of the License at
++ * http://www.opensource.apple.com/apsl/ and read it before using this
++ * file.
++ * 
++ * The Original Code and all software distributed under the License are
++ * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
++ * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
++ * INCLUDING WITHOUT LIMITATION, ANY WARRANTIES OF MERCHANTABILITY,
++ * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
++ * Please see the License for the specific language governing rights and
++ * limitations under the License.
++ * 
++ * @APPLE_LICENSE_HEADER_END@
++ */
++
++#ifndef _OBJC_ZONE_H_
++#define _OBJC_ZONE_H_
++
++#import <malloc/malloc.h>
++
++typedef malloc_zone_t NXZone;
++
++#define NX_NOZONE  ((NXZone *)0)
++
++/*********	Interface to zone based malloc	************/
++
++#include <sys/cdefs.h>
++
++#warning All the routines in objc/zone.h are deprecated and will be removed in the future
++
++__BEGIN_DECLS
++extern NXZone *NXDefaultMallocZone(void) __deprecated;
++    // Returns the default zone used by the malloc(3) calls
++
++extern NXZone *NXCreateZone(size_t startSize, size_t granularity, int canFree) __deprecated;
++    // Create a new zone with its own memory pool.
++    // canfree: if 0 the allocator will never free memory and mallocing will be fast
++
++extern void NXNameZone(NXZone *z, const char *name) __deprecated;
++    // name a zone; The string will be copied
++
++extern void *NXZoneMalloc(malloc_zone_t *zone, size_t size) __deprecated;
++
++extern void *NXZoneRealloc(malloc_zone_t *zone, void *ptr, size_t size) __deprecated;
++
++extern void *NXZoneCalloc(NXZone *zonep, size_t numElems, size_t byteSize) __deprecated;
++    // Allocates and then clears
++
++extern void NXZoneFree(malloc_zone_t *zone, void *ptr) __deprecated;
++
++extern void NXDestroyZone(malloc_zone_t *zone) __deprecated;
++
++extern NXZone *NXZoneFromPtr(void *ptr) __deprecated;
++    // Returns the zone for a pointer, or NX_NOZONE if not in any zone.
++    // The ptr must have been returned from a malloc or realloc call.
++__END_DECLS
++
++#endif /* _OBJC_ZONE_H_ */
 diff -urN a/include/sys/_types.h b/include/sys/_types.h
 --- a/include/sys/_types.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/sys/_types.h	2013-01-07 08:19:13.983388293 +0000
++++ b/include/sys/_types.h	2013-04-02 23:44:04.567966368 +0100
 @@ -0,0 +1,138 @@
 +/*
 + * Copyright (c) 2003-2007 Apple Inc. All rights reserved.
@@ -42835,7 +45159,7 @@ diff -urN a/include/sys/_types.h b/include/sys/_types.h
 +#endif	/* _SYS__TYPES_H_ */
 diff -urN a/include/TargetConditionals.h b/include/TargetConditionals.h
 --- a/include/TargetConditionals.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/TargetConditionals.h	2013-01-07 08:19:13.983388293 +0000
++++ b/include/TargetConditionals.h	2013-04-02 23:44:04.571966318 +0100
 @@ -0,0 +1,319 @@
 +/*
 + * Copyright (c) 2000-2008 by Apple Inc.. All rights reserved.
@@ -43158,7 +45482,7 @@ diff -urN a/include/TargetConditionals.h b/include/TargetConditionals.h
 +#endif  /* __TARGETCONDITIONALS__ */
 diff -urN a/ld64/include/mach/machine.h b/ld64/include/mach/machine.h
 --- a/ld64/include/mach/machine.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/ld64/include/mach/machine.h	2013-01-07 08:19:13.947406745 +0000
++++ b/ld64/include/mach/machine.h	2013-04-02 23:44:04.511967073 +0100
 @@ -0,0 +1,346 @@
 +/*
 + * Copyright (c) 2000-2007 Apple Computer, Inc. All rights reserved.
@@ -43508,7 +45832,7 @@ diff -urN a/ld64/include/mach/machine.h b/ld64/include/mach/machine.h
 +#endif	/* _MACH_MACHINE_H_ */
 diff -urN a/ld64/include/mach-o/dyld_debug.h b/ld64/include/mach-o/dyld_debug.h
 --- a/ld64/include/mach-o/dyld_debug.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/ld64/include/mach-o/dyld_debug.h	2013-01-07 08:19:13.947406745 +0000
++++ b/ld64/include/mach-o/dyld_debug.h	2013-04-02 23:44:04.507967123 +0100
 @@ -0,0 +1,247 @@
 +/*
 + * Copyright (c) 1999 Apple Computer, Inc. All rights reserved.
@@ -43759,7 +46083,7 @@ diff -urN a/ld64/include/mach-o/dyld_debug.h b/ld64/include/mach-o/dyld_debug.h
 +#endif /* _DYLD_DEBUG_ */
 diff -urN a/ld64/include/mach-o/dyld_gdb.h b/ld64/include/mach-o/dyld_gdb.h
 --- a/ld64/include/mach-o/dyld_gdb.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/ld64/include/mach-o/dyld_gdb.h	2013-01-07 08:19:13.947406745 +0000
++++ b/ld64/include/mach-o/dyld_gdb.h	2013-04-02 23:44:04.511967073 +0100
 @@ -0,0 +1,122 @@
 +/*
 + * Copyright (c) 2003 Apple Computer, Inc. All rights reserved.
@@ -43885,7 +46209,7 @@ diff -urN a/ld64/include/mach-o/dyld_gdb.h b/ld64/include/mach-o/dyld_gdb.h
 +#endif /* _DYLD_GDB_ */
 diff -urN a/ld64/include/mach-o/dyld.h b/ld64/include/mach-o/dyld.h
 --- a/ld64/include/mach-o/dyld.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/ld64/include/mach-o/dyld.h	2013-01-07 08:19:13.947406745 +0000
++++ b/ld64/include/mach-o/dyld.h	2013-04-02 23:44:04.511967073 +0100
 @@ -0,0 +1,253 @@
 +/*
 + * Copyright (c) 1999-2008 Apple Inc. All rights reserved.
@@ -44142,7 +46466,7 @@ diff -urN a/ld64/include/mach-o/dyld.h b/ld64/include/mach-o/dyld.h
 +#endif /* _MACH_O_DYLD_H_ */
 diff -urN a/ld64/include/mach-o/dyld_images.h b/ld64/include/mach-o/dyld_images.h
 --- a/ld64/include/mach-o/dyld_images.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/ld64/include/mach-o/dyld_images.h	2013-01-07 08:19:13.947406745 +0000
++++ b/ld64/include/mach-o/dyld_images.h	2013-04-02 23:44:04.507967123 +0100
 @@ -0,0 +1,164 @@
 +/*
 + * Copyright (c) 2006-2010 Apple Inc. All rights reserved.
@@ -44310,7 +46634,7 @@ diff -urN a/ld64/include/mach-o/dyld_images.h b/ld64/include/mach-o/dyld_images.
 +#endif /* _DYLD_IMAGES_ */
 diff -urN a/ld64/include/mach-o/dyld-interposing.h b/ld64/include/mach-o/dyld-interposing.h
 --- a/ld64/include/mach-o/dyld-interposing.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/ld64/include/mach-o/dyld-interposing.h	2013-01-07 08:19:13.947406745 +0000
++++ b/ld64/include/mach-o/dyld-interposing.h	2013-04-02 23:44:04.507967123 +0100
 @@ -0,0 +1,47 @@
 +/*
 + * Copyright (c) 2005-2008 Apple Computer, Inc. All rights reserved.
@@ -44361,7 +46685,7 @@ diff -urN a/ld64/include/mach-o/dyld-interposing.h b/ld64/include/mach-o/dyld-in
 +#endif
 diff -urN a/ld64/include/mach-o/dyld_priv.h b/ld64/include/mach-o/dyld_priv.h
 --- a/ld64/include/mach-o/dyld_priv.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/ld64/include/mach-o/dyld_priv.h	2013-01-07 08:19:13.947406745 +0000
++++ b/ld64/include/mach-o/dyld_priv.h	2013-04-02 23:44:04.511967073 +0100
 @@ -0,0 +1,230 @@
 +/* -*- mode: C++; c-basic-offset: 4; tab-width: 4 -*-
 + *

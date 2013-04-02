@@ -1,6 +1,6 @@
 diff -urN a/libstuff/errors.c b/libstuff/errors.c
---- a/libstuff/errors.c	2013-01-07 08:19:33.685284483 +0000
-+++ b/libstuff/errors.c	2013-01-07 08:19:33.781235277 +0000
+--- a/libstuff/errors.c	2013-04-02 23:45:00.479263467 +0100
++++ b/libstuff/errors.c	2013-04-02 23:45:00.611261807 +0100
 @@ -56,6 +56,9 @@
   * indication.
   */

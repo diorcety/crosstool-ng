@@ -1,6 +1,6 @@
 diff -urN a/as/driver.c b/as/driver.c
---- a/as/driver.c	2013-01-07 08:19:34.432901080 +0000
-+++ b/as/driver.c	2013-01-07 08:19:34.536847771 +0000
+--- a/as/driver.c	2013-04-02 23:45:03.767222132 +0100
++++ b/as/driver.c	2013-04-02 23:45:03.911220323 +0100
 @@ -62,7 +62,7 @@
  	    _NSGetExecutablePath(p, &bufsize);
  	}

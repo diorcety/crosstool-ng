@@ -1,6 +1,6 @@
 diff -urN a/libstuff/get_arch_from_host.c b/libstuff/get_arch_from_host.c
---- a/libstuff/get_arch_from_host.c	2013-01-07 08:19:29.331517244 +0000
-+++ b/libstuff/get_arch_from_host.c	2013-01-07 08:19:29.487437282 +0000
+--- a/libstuff/get_arch_from_host.c	2013-04-02 23:44:44.819460338 +0100
++++ b/libstuff/get_arch_from_host.c	2013-04-02 23:44:45.067457220 +0100
 @@ -62,6 +62,8 @@
  	    return(0);
  	}

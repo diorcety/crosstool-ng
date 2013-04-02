@@ -1,6 +1,6 @@
 diff -urN a/ar/ar.c b/ar/ar.c
---- a/ar/ar.c	2013-01-07 08:19:30.590871405 +0000
-+++ b/ar/ar.c	2013-01-07 08:19:30.786770940 +0000
+--- a/ar/ar.c	2013-04-02 23:44:49.559400749 +0100
++++ b/ar/ar.c	2013-04-02 23:44:49.891396576 +0100
 @@ -276,7 +276,7 @@
  	if(run_ranlib){
  	    /* run ranlib -f or -q on the archive */
@@ -11,8 +11,8 @@ diff -urN a/ar/ar.c b/ar/ar.c
  		add_execute_list("-f");
  	    else
 diff -urN a/as/driver.c b/as/driver.c
---- a/as/driver.c	2013-01-07 08:19:30.630850901 +0000
-+++ b/as/driver.c	2013-01-07 08:19:30.830748386 +0000
+--- a/as/driver.c	2013-04-02 23:44:49.611400094 +0100
++++ b/as/driver.c	2013-04-02 23:44:49.951395820 +0100
 @@ -29,7 +29,8 @@
  {
      const char *LIB = "../libexec/as/";
@@ -24,8 +24,8 @@ diff -urN a/as/driver.c b/as/driver.c
  
      int i, j;
 diff -urN a/misc/libtool.c b/misc/libtool.c
---- a/misc/libtool.c	2013-01-07 08:19:30.590871405 +0000
-+++ b/misc/libtool.c	2013-01-07 08:19:30.794766839 +0000
+--- a/misc/libtool.c	2013-04-02 23:44:49.563400698 +0100
++++ b/misc/libtool.c	2013-04-02 23:44:49.895396525 +0100
 @@ -3146,7 +3146,7 @@
  	 */
  	for(i = 0; i < narchs || (i == 0 && narchs == 0); i++){

@@ -1,6 +1,6 @@
 diff -urN a/libstuff/macosx_deployment_target.c b/libstuff/macosx_deployment_target.c
---- a/libstuff/macosx_deployment_target.c	2013-01-07 08:19:34.041102008 +0000
-+++ b/libstuff/macosx_deployment_target.c	2013-01-07 08:19:34.141050750 +0000
+--- a/libstuff/macosx_deployment_target.c	2013-04-02 23:45:01.543250090 +0100
++++ b/libstuff/macosx_deployment_target.c	2013-04-02 23:45:01.671248482 +0100
 @@ -26,6 +26,9 @@
  #include <string.h>
  #include <mach/mach.h>
