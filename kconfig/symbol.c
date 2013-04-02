@@ -7,7 +7,12 @@
 #include <stdlib.h>
 #include <string.h>
 #include <regex.h>
-#include <sys/utsname.h>
+#if defined(__MINGW32__)
+# define UTS_RELEASE "1.0.17(0.48/3/2)"
+#else
+# include <sys/utsname.h>
+# define UTS_RELEASE uts.release
+#endif
 
 #define LKC_DIRECT_LINK
 #include "lkc.h"
@@ -46,19 +51,23 @@ static void sym_add_default(struct symbol *sym, const char *def)
 void sym_init(void)
 {
 	struct symbol *sym;
+#ifndef __MINGW32__
 	struct utsname uts;
+#endif
 	static bool inited = false;
 
 	if (inited)
 		return;
 	inited = true;
 
-	uname(&uts);
+#ifndef __MINGW32__
+    uname(&uts);
+#endif
 
 	sym = sym_lookup("UNAME_RELEASE", 0);
 	sym->type = S_STRING;
 	sym->flags |= SYMBOL_AUTO;
-	sym_add_default(sym, uts.release);
+	sym_add_default(sym, UTS_RELEASE);
 }
 
 enum symbol_type sym_get_type(struct symbol *sym)

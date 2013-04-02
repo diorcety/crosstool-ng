@@ -71,6 +71,8 @@ export LDFLAGS         := @LDFLAGS@
 export LIBS            := @LIBS@
 export curses_hdr      := @ac_ct_curses_hdr@
 export gettext         := @gettext@
+export mkdir_one_arg   := @ac_cv_mkdir_takes_one_arg@
+export build_os        := @build_os@
 
 # config options to push down to kconfig
 KCONFIG:= @kconfig_options@

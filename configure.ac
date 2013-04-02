@@ -82,6 +82,7 @@ AC_CANONICAL_HOST
 # ... but refuse --target
 AS_IF([test -n "$target_alias"],
       AC_MSG_ERROR([--target is not allowed]))
+AC_SUBST([build_os])
 
 # Allow program name tranformation (--program-{prefix,suffix,transform-name})
 AC_ARG_PROGRAM
@@ -369,6 +370,21 @@ AS_IF(
      mandir="$docdir"],
     [sublibdir="/ct-ng.\${VERSION}"
      subdocdir="/ct-ng.\${VERSION}"])
+
+#----------------------------------------
+# Check whether mkdir takes one argument
+AC_SUBST([ac_cv_mkdir_takes_one_arg])
+AC_CACHE_VAL([ac_cv_mkdir_takes_one_arg],
+    [AC_CHECK_FUNCS([mkdir _mkdir])
+        AC_CACHE_CHECK([whether mkdir takes one argument],
+                       [ac_cv_mkdir_takes_one_arg],
+    [AC_TRY_COMPILE([
+#include <sys/stat.h>
+#if HAVE_UNISTD_H
+#  include <unistd.h>
+#endif
+        ], [mkdir (".");],
+        [ac_cv_mkdir_takes_one_arg=yes], [ac_cv_mkdir_takes_one_arg=no])])])
 
 #--------------------------------------------------------------------
 # Finally, generate the output file(s)

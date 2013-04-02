@@ -7,6 +7,15 @@ all: conf mconf nconf
 
 # Build flags
 CFLAGS = -DCONFIG_=\"CT_\" -DPACKAGE="\"crosstool-NG $(VERSION)\""
+
+ifeq ($(mkdir_one_arg),yes)
+CFLAGS += -DMKDIR_TAKES_ONE_ARG
+endif
+
+ifeq ($(build_os),mingw32)
+MCONF_MINGW32_LDFLAGS = -lintl -lregex -liconv
+endif
+
 LDFLAGS =
 
 # Compiler flags to use gettext
@@ -41,7 +50,7 @@ mconf_SRC = mconf.c
 mconf_OBJ = $(patsubst %.c,%.o,$(mconf_SRC))
 mconf_DEP = $(patsubst %.c,%.dep,$(mconf_SRC))
 $(mconf_OBJ) $(mconf_DEP): CFLAGS += $(NCURSES_CFLAGS) $(INTL_CFLAGS)
-mconf: LDFLAGS += $(NCURSES_LDFLAGS)
+mconf: LDFLAGS += $(NCURSES_LDFLAGS) $(MCONF_MINGW32_LDFLAGS)
 
 # What's needed to build 'nconf'
 nconf_SRC = nconf.c nconf.gui.c

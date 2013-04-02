@@ -17,29 +17,29 @@ do_kernel_get() {
 
 do_kernel_extract() {
     CT_DoStep INFO "Extract kernel headers"
-    
+
     SDK_NAME="${CT_DARWIN_SDK}"  
- 
+
     CT_Pushd "${CT_SYSROOT_DIR}"
-    
+
     CT_DoExecLog ALL \
     mkdir -p "SDKs/${SDK_NAME}"
- 
+
     CT_DoExecLog ALL \
     cp -aT "${CT_DARWIN_SDK_PATH}" "SDKs/${SDK_NAME}"
-    
+
     CT_DoExecLog ALL \
     rm -rf "SDKs/${SDK_NAME}/Library/Frameworks"
-    
+
     CT_DoExecLog ALL \
     ln -sf "../System/Library/Frameworks" "SDKs/${SDK_NAME}/Library"
-    
+
     CT_DoExecLog ALL \
     ln -sf "SDKs/${SDK_NAME}/Developer" "Developer"
-    
+
     CT_DoExecLog ALL \
     ln -sf "SDKs/${SDK_NAME}/Library" "Library"
-    
+
     CT_DoExecLog ALL \
     ln -sf "SDKs/${SDK_NAME}/System" "System"
 
@@ -48,23 +48,23 @@ do_kernel_extract() {
 
     CT_DoExecLog ALL \
     ln -sf "SDKs/${SDK_NAME}/usr" "usr"
-  
+
     CT_DoExecLog ALL \
     ln -sf "i686-apple-darwin10" "usr/lib/x86_64-apple-darwin10"
-  
+
     mkdir -p "usr/lib/gcc/" 
-   
+
     CT_DoExecLog ALL \
     ln -sf "i686-apple-darwin10" "usr/lib/gcc/x86_64-apple-darwin10"
-    
+
     CT_DoExecLog ALL \
     ln -sf "usr/lib" "lib"
 
     CT_DoExecLog ALL \
     ln -sf "usr/include" "include"
-    
+
     CT_Popd
- 
+
     CT_EndStep
 }
 

@@ -244,6 +244,16 @@ CT_Test() {
     return 0
 }
 
+# Test a condition, and warn if satisfied
+# Usage: CT_TestAndWarn <message> <tests>
+CT_TestAndWarn() {
+    local m="$1"
+    shift
+    CT_DoLog DEBUG "Testing '! ( $* )'"
+    test "$@" && CT_DoLog WARN "$m"
+    return 0
+}
+
 # Test a condition, and abort with an error message if satisfied
 # Usage: CT_TestAndAbort <message> <tests>
 CT_TestAndAbort() {
@@ -363,6 +373,9 @@ CT_DoForceRmdir() {
                 ;;
             Darwin|*BSD)
                 mode="$(stat -f '%Lp' "$(dirname "${dir}")")"
+                ;;
+            MINGW*)
+                mode=0777
                 ;;
             *)
                 CT_Abort "Unhandled host OS $CT_SYS_OS"

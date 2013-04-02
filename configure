@@ -622,6 +622,7 @@ ac_includes_default="\
 #endif"
 
 ac_subst_vars='LTLIBOBJS
+ac_cv_mkdir_takes_one_arg
 subdocdir
 sublibdir
 DATE
@@ -5955,6 +5956,57 @@ else
   sublibdir="/ct-ng.\${VERSION}"
      subdocdir="/ct-ng.\${VERSION}"
 fi
+
+#----------------------------------------
+# Check whether mkdir takes one argument
+
+if ${ac_cv_mkdir_takes_one_arg+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  for ac_func in mkdir _mkdir
+do :
+  as_ac_var=`$as_echo "ac_cv_func_$ac_func" | $as_tr_sh`
+ac_fn_c_check_func "$LINENO" "$ac_func" "$as_ac_var"
+if eval test \"x\$"$as_ac_var"\" = x"yes"; then :
+  cat >>confdefs.h <<_ACEOF
+#define `$as_echo "HAVE_$ac_func" | $as_tr_cpp` 1
+_ACEOF
+
+fi
+done
+
+        { $as_echo "$as_me:${as_lineno-$LINENO}: checking whether mkdir takes one argument" >&5
+$as_echo_n "checking whether mkdir takes one argument... " >&6; }
+if ${ac_cv_mkdir_takes_one_arg+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+#include <sys/stat.h>
+#if HAVE_UNISTD_H
+#  include <unistd.h>
+#endif
+
+int
+main ()
+{
+mkdir (".");
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+  ac_cv_mkdir_takes_one_arg=yes
+else
+  ac_cv_mkdir_takes_one_arg=no
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_mkdir_takes_one_arg" >&5
+$as_echo "$ac_cv_mkdir_takes_one_arg" >&6; }
+fi
+
 
 #--------------------------------------------------------------------
 # Finally, generate the output file(s)
