@@ -5,9 +5,6 @@ menu "C compiler"
 config CC
     string
 
-config CC_VERSION
-    string
-
 source "config.gen/cc.in"
 
 config CC_SUPPORT_CXX
@@ -108,7 +105,5 @@ config CC_LANG_OTHERS
       in real life, it is not available in the selection above.
 
 endif # ! BARE_METAL
-
-source "config.gen/cc.in.2"
 
 endmenu

@@ -2,64 +2,33 @@
 # Copyright 2007 Yann E. MORIN
 # Licensed under the GPL v2. See COPYING in the root of this package
 
+CC_LLVMGCC_SUFFIX=".source"
+
 # Download gcc
-do_gcc_get() {
-    local linaro_version
-    local linaro_series
-    local linaro_base_url="http://launchpad.net/gcc-linaro"
-
-
-    # Account for the Linaro versioning
-    linaro_version="$( echo "${CT_CC_GCC_VERSION}"      \
-                       |sed -r -e 's/^linaro-//;'   \
-                     )"
-    linaro_series="$( echo "${linaro_version}"      \
-                      |sed -r -e 's/-.*//;'         \
-                    )"
-
+do_llvmgcc_get() {
     # Ah! gcc folks are kind of 'different': they store the tarballs in
     # subdirectories of the same name! That's because gcc is such /crap/ that
     # it is such /big/ that it needs being splitted for distribution! Sad. :-(
     # Arrgghh! Some of those versions does not follow this convention:
     # gcc-3.3.3 lives in releases/gcc-3.3.3, while gcc-2.95.* isn't in a
     # subdirectory! You bastard!
-    if [ "${CT_CC_GCC_APPLE}" = "y" ]; then
-    	CT_GetFile "gcc-${CT_CC_GCC_VERSION}" \
-                   http://opensource.apple.com/tarballs/gcc/
-    else
-    	CT_GetFile "gcc-${CT_CC_GCC_VERSION}"                                                       \
-       	        {ftp,http}://ftp.gnu.org/gnu/gcc{,{,/releases}/gcc-${CT_CC_GCC_VERSION}}         \
-       	        ftp://ftp.irisa.fr/pub/mirrors/gcc.gnu.org/gcc/releases/gcc-${CT_CC_GCC_VERSION} \
-       	        ftp://ftp.uvsq.fr/pub/gcc/snapshots/${CT_CC_GCC_VERSION}                         \
-       	        "${linaro_base_url}/${linaro_series}/${linaro_version}/+download"
-	fi
-    # Starting with GCC 4.3, ecj is used for Java, and will only be
-    # built if the configure script finds ecj.jar at the top of the
-    # GCC source tree, which will not be there unless we get it and
-    # put it there ourselves
-    if [ "${CT_CC_LANG_JAVA_USE_ECJ}" = "y" ]; then
-        CT_GetFile ecj-latest .jar ftp://gcc.gnu.org/pub/java   \
-                                   ftp://sourceware.org/pub/java
-    fi
+    CT_GetFile "llvm-gcc-4.2-${CT_CC_LLVMGCC_VERSION}${CC_LLVMGCC_SUFFIX}"     \
+               http://llvm.org/releases/${CT_CC_LLVMGCC_VERSION}/  
+
 }
 
 # Extract gcc
-do_gcc_extract() {
-    CT_Extract "gcc-${CT_CC_GCC_VERSION}"
-    CT_Patch "gcc" "${CT_CC_GCC_VERSION}"
-
-    # Copy ecj-latest.jar to ecj.jar at the top of the GCC source tree
-    if [ "${CT_CC_LANG_JAVA_USE_ECJ}" = "y"                     \
-         -a ! -f "${CT_SRC_DIR}/gcc-${CT_CC_GCC_VERSION}/ecj.jar"   \
-       ]; then
-        CT_DoExecLog ALL cp -v "${CT_TARBALLS_DIR}/ecj-latest.jar" "${CT_SRC_DIR}/gcc-${CT_CC_GCC_VERSION}/ecj.jar"
-    fi
+do_llvmgcc_extract() {
+    CT_Extract "llvm-gcc-4.2-${CT_CC_LLVMGCC_VERSION}${CC_LLVMGCC_SUFFIX}"
+    CT_Pushd "${CT_SRC_DIR}/llvm-gcc-4.2-${CT_CC_LLVMGCC_VERSION}${CC_LLVMGCC_SUFFIX}"
+    CT_Patch nochdir "llvm-gcc" "${CT_CC_LLVMGCC_VERSION}"
+    CT_Popd
 }
 
 #------------------------------------------------------------------------------
 # This function builds up the set of languages to enable
 # No argument expected, returns the comma-separated language list on stdout
-cc_gcc_lang_list() {
+cc_llvmgcc_lang_list() {
     local lang_list
 
     lang_list="c"
@@ -76,44 +45,34 @@ cc_gcc_lang_list() {
 
 #------------------------------------------------------------------------------
 # Core gcc pass 1
-do_gcc_core_pass_1() {
+do_llvmgcc_core_pass_1() {
     local -a core_opts
-
-    if [ "${CT_CC_GCC_APPLE}" = "y" ]; then
-        return 0
-    fi
 
     core_opts+=( "mode=static" )
     core_opts+=( "host=${CT_BUILD}" )
     core_opts+=( "complibs=${CT_BUILDTOOLS_PREFIX_DIR}" )
     core_opts+=( "prefix=${CT_BUILDTOOLS_PREFIX_DIR}" )
     core_opts+=( "cflags=${CT_CFLAGS_FOR_HOST}" )
-    core_opts+=( "ldflags=${CT_LDFLAGS_FOR_HOST}" )
     core_opts+=( "lang_list=c" )
 
-    CT_DoStep INFO "Installing pass-1 core C gcc compiler"
-    CT_mkdir_pushd "${CT_BUILD_DIR}/build-cc-gcc-core-pass-1"
+    CT_DoStep INFO "Installing pass-1 core C llvmgcc compiler"
+    CT_mkdir_pushd "${CT_BUILD_DIR}/build-cc-llvmgcc-core-pass-1"
 
-    do_gcc_core_backend "${core_opts[@]}"
+    do_llvmgcc_core_backend "${core_opts[@]}"
 
     CT_Popd
     CT_EndStep
 }
 
 # Core gcc pass 2
-do_gcc_core_pass_2() {
+do_llvmgcc_core_pass_2() {
     local -a core_opts
-
-    if [ "${CT_CC_GCC_APPLE}" = "y" ]; then
-        return 0
-    fi
 
     # Common options:
     core_opts+=( "host=${CT_BUILD}" )
     core_opts+=( "prefix=${CT_BUILDTOOLS_PREFIX_DIR}" )
     core_opts+=( "complibs=${CT_BUILDTOOLS_PREFIX_DIR}" )
     core_opts+=( "cflags=${CT_CFLAGS_FOR_HOST}" )
-    core_opts+=( "ldflags=${CT_LDFLAGS_FOR_HOST}" )
     core_opts+=( "lang_list=c" )
 
     # Different conditions are at stake here:
@@ -132,16 +91,16 @@ do_gcc_core_pass_2() {
             ;;
         *)
             core_opts+=( "mode=static" )
-            if [ "${CT_CC_GCC_4_3_or_later}" = "y" ]; then
+            if [ "${CT_CC_LLVMGCC_4_3_or_later}" = "y" ]; then
                 core_opts+=( "build_libgcc=yes" )
             fi
             ;;
     esac
 
-    CT_DoStep INFO "Installing pass-2 core C gcc compiler"
-    CT_mkdir_pushd "${CT_BUILD_DIR}/build-cc-gcc-core-pass-2"
+    CT_DoStep INFO "Installing pass-2 core C llvmgcc compiler"
+    CT_mkdir_pushd "${CT_BUILD_DIR}/build-cc-llvmgcc-core-pass-2"
 
-    do_gcc_core_backend "${core_opts[@]}"
+    do_llvmgcc_core_backend "${core_opts[@]}"
 
     CT_Popd
     CT_EndStep
@@ -150,7 +109,7 @@ do_gcc_core_pass_2() {
 #------------------------------------------------------------------------------
 # Build core gcc
 # This function is used to build the core C compiler.
-# Usage: do_gcc_core_backend param=value [...]
+# Usage: do_llvmgcc_core_backend param=value [...]
 #   Parameter           : Definition                                : Type      : Default
 #   mode                : build a 'static', 'shared' or 'baremetal' : string    : (none)
 #   host                : the machine the core will run on          : tuple     : (none)
@@ -162,9 +121,8 @@ do_gcc_core_pass_2() {
 #   build_staticlinked  : build statically linked or not            : bool      : no
 #   build_manuals       : whether to build manuals or not           : bool      : no
 #   cflags              : host CFLAGS to use                        : string    : (empty)
-#   ldflags             : host LDFLAGS to use                       : string    : (empty)
-# Usage: do_gcc_core_backend mode=[static|shared|baremetal] build_libgcc=[yes|no] build_staticlinked=[yes|no]
-do_gcc_core_backend() {
+# Usage: do_llvmgcc_core_backend mode=[static|shared|baremetal] build_libgcc=[yes|no] build_staticlinked=[yes|no]
+do_llvmgcc_core_backend() {
     local mode
     local build_libgcc=no
     local build_libstdcxx=no
@@ -175,7 +133,6 @@ do_gcc_core_backend() {
     local complibs
     local lang_list
     local cflags
-    local ldflags
     local tmp
     local -a host_libstdcxx_flags
     local -a extra_config
@@ -187,10 +144,7 @@ do_gcc_core_backend() {
         eval "${arg// /\\ }"
     done
 
-    # Add host ldflags
-    core_LDFLAGS+=("${ldflags}")
-
-    CT_DoLog EXTRA "Configuring core C gcc compiler"
+    CT_DoLog EXTRA "Configuring core C llvmgcc compiler"
 
     case "${mode}" in
         static)
@@ -215,7 +169,7 @@ do_gcc_core_backend() {
             ;;
     esac
 
-    if [ "${CT_CC_GCC_HAS_PKGVERSION_BUGURL}" = "y" ]; then
+    if [ "${CT_CC_LLVMGCC_HAS_PKGVERSION_BUGURL}" = "y" ]; then
         # Bare metal delivers the core compiler as final compiler, so add version info and bugurl
         extra_config+=("--with-pkgversion=${CT_PKGVERSION}")
         [ -n "${CT_TOOLCHAIN_BUGURL}" ] && extra_config+=("--with-bugurl=${CT_TOOLCHAIN_BUGURL}")
@@ -253,7 +207,7 @@ do_gcc_core_backend() {
         core_LDFLAGS+=("-lstdc++")
         core_LDFLAGS+=("-lm")
     else
-        if [ "${CT_CC_STATIC_LIBSTDCXX}" = "y" ]; then
+        if [ "${CT_CC_LLVMGCC_STATIC_LIBSTDCXX}" = "y" ]; then
             # this is from CodeSourcery arm-2010q1-202-arm-none-linux-gnueabi.src.tar.bz2
             # build script
             # INFO: if the host gcc is gcc-4.5 then presumably we could use -static-libstdc++,
@@ -271,14 +225,14 @@ do_gcc_core_backend() {
         fi
     fi
 
-    if [ "${CT_CC_GCC_USE_GMP_MPFR}" = "y" ]; then
+    if [ "${CT_CC_LLVMGCC_USE_GMP_MPFR}" = "y" ]; then
         extra_config+=("--with-gmp=${complibs}")
         extra_config+=("--with-mpfr=${complibs}")
     fi
-    if [ "${CT_CC_GCC_USE_MPC}" = "y" ]; then
+    if [ "${CT_CC_LLVMGCC_USE_MPC}" = "y" ]; then
         extra_config+=("--with-mpc=${complibs}")
     fi
-    if [ "${CT_CC_GCC_USE_GRAPHITE}" = "y" ]; then
+    if [ "${CT_CC_LLVMGCC_USE_GRAPHITE}" = "y" ]; then
         extra_config+=("--with-ppl=${complibs}")
         # With PPL 0.11+, also pull libpwl if needed
         if [ "${CT_PPL_NEEDS_LIBPWL}" = "y" ]; then
@@ -286,14 +240,14 @@ do_gcc_core_backend() {
             host_libstdcxx_flags+=("-lpwl")
         fi
         extra_config+=("--with-cloog=${complibs}")
-    elif [ "${CT_CC_GCC_HAS_GRAPHITE}" = "y" ]; then
+    elif [ "${CT_CC_LLVMGCC_HAS_GRAPHITE}" = "y" ]; then
         extra_config+=("--with-ppl=no")
         extra_config+=("--with-cloog=no")
     fi
-    if [ "${CT_CC_GCC_USE_LTO}" = "y" ]; then
+    if [ "${CT_CC_LLVMGCC_USE_LTO}" = "y" ]; then
         extra_config+=("--with-libelf=${complibs}")
         extra_config+=("--enable-lto")
-    elif [ "${CT_CC_GCC_HAS_LTO}" = "y" ]; then
+    elif [ "${CT_CC_LLVMGCC_HAS_LTO}" = "y" ]; then
         extra_config+=("--with-libelf=no")
         extra_config+=("--disable-lto")
     fi
@@ -302,38 +256,38 @@ do_gcc_core_backend() {
         extra_config+=("--with-host-libstdcxx=${host_libstdcxx_flags[*]}")
     fi
 
-    if [ "${CT_CC_GCC_ENABLE_TARGET_OPTSPACE}" = "y" ]; then
+    if [ "${CT_CC_LLVMGCC_ENABLE_TARGET_OPTSPACE}" = "y" ]; then
         extra_config+=("--enable-target-optspace")
     fi
 
-    case "${CT_CC_GCC_LDBL_128}" in
+    case "${CT_CC_LLVMGCC_LDBL_128}" in
         y)  extra_config+=("--with-long-double-128");;
         m)  ;;
         "") extra_config+=("--without-long-double-128");;
     esac
 
-    if [ "${CT_CC_GCC_BUILD_ID}" = "y" ]; then
+    if [ "${CT_CC_LLVMGCC_BUILD_ID}" = "y" ]; then
         extra_config+=( --enable-linker-build-id )
     fi
 
-    case "${CT_CC_GCC_LNK_HASH_STYLE}" in
+    case "${CT_CC_LLVMGCC_LNK_HASH_STYLE}" in
         "") ;;
-        *)  extra_config+=( "--with-linker-hash-style=${CT_CC_GCC_LNK_HASH_STYLE}" );;
+        *)  extra_config+=( "--with-linker-hash-style=${CT_CC_LLVMGCC_LNK_HASH_STYLE}" );;
     esac
 
     case "${CT_ARCH}" in
         mips)
-            case "${CT_CC_GCC_mips_llsc}" in
+            case "${CT_CC_LLVMGCC_mips_llsc}" in
                 y)  extra_config+=( --with-llsc );;
                 m)  ;;
                 *)  extra_config+=( --without-llsc );;
             esac
-            case "${CT_CC_GCC_mips_synci}" in
+            case "${CT_CC_LLVMGCC_mips_synci}" in
                 y)  extra_config+=( --with-synci );;
                 m)  ;;
                 *)  extra_config+=( --without-synci );;
             esac
-            if [ "${CT_CC_GCC_mips_plt}" ]; then
+            if [ "${CT_CC_LLVMGCC_mips_plt}" ]; then
                 extra_config+=( --with-mips-plt )
             fi
             ;; # ARCH is mips
@@ -344,9 +298,9 @@ do_gcc_core_backend() {
 
     [ "${CT_TOOLCHAIN_ENABLE_NLS}" != "y" ] && extra_config+=("--disable-nls")
 
-    [ "${CT_CC_GCC_DISABLE_PCH}" = "y" ] && extra_config+=("--disable-libstdcxx-pch")
+    [ "${CT_CC_LLVMGCC_DISABLE_PCH}" = "y" ] && extra_config+=("--disable-libstdcxx-pch")
 
-    if [ "${CT_CC_GCC_SYSTEM_ZLIB}" = "y" ]; then
+    if [ "${CT_CC_LLVMGCC_SYSTEM_ZLIB}" = "y" ]; then
         extra_config+=("--with-system-zlib")
     fi
 
@@ -362,19 +316,20 @@ do_gcc_core_backend() {
     CT_DoExecLog CFG                                \
     CC_FOR_BUILD="${CT_BUILD}-gcc"                  \
     CFLAGS="${cflags}"                              \
-    CXXFLAGS="${cflags}"                            \
     LDFLAGS="${core_LDFLAGS[*]}"                    \
-    "${CT_SRC_DIR}/gcc-${CT_CC_GCC_VERSION}/configure"  \
+    "${CT_SRC_DIR}/llvm-gcc-4.2-${CT_CC_LLVMGCC_VERSION}${CC_LLVMGCC_SUFFIX}/configure"  \
         --build=${CT_BUILD}                         \
         --host=${host}                              \
         --target=${CT_TARGET}                       \
         --prefix="${prefix}"                        \
         --with-local-prefix="${CT_SYSROOT_DIR}"     \
+        --program-prefix=${CT_TARGET}-llvm-         \
+        --enable-llvm=${CT_BUILD_DIR}/build-LLVM-host-${CT_HOST} \
         --disable-libmudflap                        \
         ${CC_CORE_SYSROOT_ARG}                      \
         "${extra_config[@]}"                        \
         --enable-languages="${lang_list}"           \
-        "${CT_CC_GCC_CORE_EXTRA_CONFIG_ARRAY[@]}"
+        "${CT_CC_LLVMGCC_CORE_EXTRA_CONFIG_ARRAY[@]}"
 
     if [ "${build_libgcc}" = "yes" ]; then
         # HACK: we need to override SHLIB_LC from gcc/config/t-slibgcc-elf-ver or
@@ -393,7 +348,7 @@ do_gcc_core_backend() {
         # so we configure then build it.
         # Next we have to configure gcc, create libgcc.mk then edit it...
         # So much easier if we just edit the source tree, but hey...
-        if [ ! -f "${CT_SRC_DIR}/gcc-${CT_CC_GCC_VERSION}/gcc/BASE-VER" ]; then
+        if [ ! -f "${CT_SRC_DIR}/llvm-gcc-4.2-${CT_CC_LLVMGCC_VERSION}${CC_LLVMGCC_SUFFIX}/gcc/BASE-VER" ]; then
             CT_DoExecLog CFG make ${JOBSFLAGS} configure-libiberty
             CT_DoExecLog ALL make ${JOBSFLAGS} -C libiberty libiberty.a
             CT_DoExecLog CFG make ${JOBSFLAGS} configure-gcc configure-libcpp
@@ -403,21 +358,13 @@ do_gcc_core_backend() {
             CT_DoExecLog ALL make ${JOBSFLAGS} all-libcpp all-build-libiberty
         fi
         # HACK: gcc-4.2 uses libdecnumber to build libgcc.mk, so build it here.
-        if [ -d "${CT_SRC_DIR}/gcc-${CT_CC_GCC_VERSION}/libdecnumber" ]; then
+        if [ -d "${CT_SRC_DIR}/llvm-gcc-4.2-${CT_CC_LLVMGCC_VERSION}${CC_LLVMGCC_SUFFIX}/libdecnumber" ]; then
             CT_DoExecLog CFG make ${JOBSFLAGS} configure-libdecnumber
             CT_DoExecLog ALL make ${JOBSFLAGS} -C libdecnumber libdecnumber.a
         fi
 
-        # Starting with GCC 4.3, libgcc.mk is no longer built,
-        # and libgcc.mvars is used instead.
-
-        if [ "${CT_CC_GCC_4_3_or_later}" = "y" ]; then
-            libgcc_rule="libgcc.mvars"
-            core_targets=( gcc target-libgcc )
-        else
-            libgcc_rule="libgcc.mk"
-            core_targets=( gcc )
-        fi
+        libgcc_rule="libgcc.mk"
+        core_targets=( gcc )
 
         # On bare metal and canadian build the host-compiler is used when
         # actually the build-system compiler is required. Choose the correct
@@ -442,16 +389,16 @@ do_gcc_core_backend() {
         core_targets+=( target-libstdc++-v3 )
     fi
 
-    CT_DoLog EXTRA "Building core C gcc compiler"
+    CT_DoLog EXTRA "Building core C llvmgcc compiler"
     CT_DoExecLog ALL make ${JOBSFLAGS} "${core_targets[@]/#/all-}"
 
-    CT_DoLog EXTRA "Installing core C gcc compiler"
+    CT_DoLog EXTRA "Installing core C llvmgcc compiler"
     CT_DoExecLog ALL make ${JOBSFLAGS} "${core_targets[@]/#/install-}"
 
     if [ "${build_manuals}" = "yes" ]; then
-        CT_DoLog EXTRA "Building the gcc manuals"
+        CT_DoLog EXTRA "Building the llvmgcc manuals"
         CT_DoExecLog ALL make pdf html
-        CT_DoLog EXTRA "Installing the gcc manuals"
+        CT_DoLog EXTRA "Installing the llvmgcc manuals"
         CT_DoExecLog ALL make install-{pdf,html}-gcc
     fi
 
@@ -463,24 +410,24 @@ do_gcc_core_backend() {
     CT_DoExecLog ALL ln -sfv "${CT_TARGET}-gcc${ext}" "${prefix}/bin/${CT_TARGET}-cc${ext}"
 
     if [ "${CT_MULTILIB}" = "y" ]; then
-        multilibs=( $( "${prefix}/bin/${CT_TARGET}-gcc" -print-multi-lib   \
+        multilibs=( $( "${prefix}/bin/${CT_TARGET}-llvm-gcc" -print-multi-lib   \
                        |tail -n +2 ) )
         if [ ${#multilibs[@]} -ne 0 ]; then
-            CT_DoLog EXTRA "gcc configured with these multilibs (besides the default):"
+            CT_DoLog EXTRA "llvmgcc configured with these multilibs (besides the default):"
             for i in "${multilibs[@]}"; do
                 dir="${i%%;*}"
                 flags="${i#*;}"
                 CT_DoLog EXTRA "   ${flags//@/ -}  -->  ${dir}/"
             done
         else
-            CT_DoLog WARN "gcc configured for multilib, but none available"
+            CT_DoLog WARN "llvmgcc configured for multilib, but none available"
         fi
     fi
 }
 
 #------------------------------------------------------------------------------
 # Build complete gcc to run on build
-do_gcc_for_build() {
+do_llvmgcc_for_build() {
     local -a build_final_opts
     local build_final_backend
 
@@ -494,7 +441,7 @@ do_gcc_for_build() {
     build_final_opts+=( "host=${CT_BUILD}" )
     build_final_opts+=( "prefix=${CT_BUILDTOOLS_PREFIX_DIR}" )
     build_final_opts+=( "complibs=${CT_BUILDTOOLS_PREFIX_DIR}" )
-    build_final_opts+=( "lang_list=$( cc_gcc_lang_list )" )
+    build_final_opts+=( "lang_list=$( cc_llvmgcc_lang_list )" )
     if [ "${CT_BARE_METAL}" = "y" ]; then
         # In the tests I've done, bare-metal was not impacted by the
         # lack of such a compiler, but better safe than sorry...
@@ -504,13 +451,13 @@ do_gcc_for_build() {
         if [ "${CT_STATIC_TOOLCHAIN}" = "y" ]; then
             build_final_opts+=( "build_staticlinked=yes" )
         fi
-        build_final_backend=do_gcc_core_backend
+        build_final_backend=do_llvmgcc_core_backend
     else
-        build_final_backend=do_gcc_backend
+        build_final_backend=do_llvmgcc_backend
     fi
 
-    CT_DoStep INFO "Installing final gcc compiler for build"
-    CT_mkdir_pushd "${CT_BUILD_DIR}/build-cc-gcc-final-build-${CT_BUILD}"
+    CT_DoStep INFO "Installing final llvmgcc compiler for build"
+    CT_mkdir_pushd "${CT_BUILD_DIR}/build-cc-llvmgcc-final-build-${CT_BUILD}"
 
     "${build_final_backend}" "${build_final_opts[@]}"
 
@@ -520,7 +467,7 @@ do_gcc_for_build() {
 
 #------------------------------------------------------------------------------
 # Build final gcc to run on host
-do_gcc_for_host() {
+do_llvmgcc_for_host() {
     local -a final_opts
     local final_backend
 
@@ -528,8 +475,7 @@ do_gcc_for_host() {
     final_opts+=( "prefix=${CT_PREFIX_DIR}" )
     final_opts+=( "complibs=${CT_HOST_COMPLIBS_DIR}" )
     final_opts+=( "cflags=${CT_CFLAGS_FOR_HOST}" )
-    final_opts+=( "ldflags=${CT_LDFLAGS_FOR_HOST}" )
-    final_opts+=( "lang_list=$( cc_gcc_lang_list )" )
+    final_opts+=( "lang_list=$( cc_llvmgcc_lang_list )" )
     if [ "${CT_BUILD_MANUALS}" = "y" ]; then
         final_opts+=( "build_manuals=yes" )
     fi
@@ -540,13 +486,13 @@ do_gcc_for_host() {
         if [ "${CT_STATIC_TOOLCHAIN}" = "y" ]; then
             final_opts+=( "build_staticlinked=yes" )
         fi
-        final_backend=do_gcc_core_backend
+        final_backend=do_llvmgcc_core_backend
     else
-        final_backend=do_gcc_backend
+        final_backend=do_llvmgcc_backend
     fi
 
-    CT_DoStep INFO "Installing final gcc compiler"
-    CT_mkdir_pushd "${CT_BUILD_DIR}/build-cc-gcc-final"
+    CT_DoStep INFO "Installing final llvmgcc compiler"
+    CT_mkdir_pushd "${CT_BUILD_DIR}/build-cc-llvmgcc-final"
 
     "${final_backend}" "${final_opts[@]}"
 
@@ -556,21 +502,19 @@ do_gcc_for_host() {
 
 #------------------------------------------------------------------------------
 # Build the final gcc
-# Usage: do_gcc_backend param=value [...]
+# Usage: do_llvmgcc_backend param=value [...]
 #   Parameter     : Definition                          : Type      : Default
 #   host          : the host we run onto                : tuple     : (none)
 #   prefix        : the runtime prefix                  : dir       : (none)
 #   complibs      : the companion libraries prefix      : dir       : (none)
 #   cflags        : the host CFLAGS                     : string    : (empty)
-#   ldflags       : the host LDFLAGS                    : string    : (empty)
 #   lang_list     : the list of languages to build      : string    : (empty)
 #   build_manuals : whether to build manuals or not     : bool      : no
-do_gcc_backend() {
+do_llvmgcc_backend() {
     local host
     local prefix
     local complibs
     local cflags
-    local ldflags
     local lang_list
     local build_manuals
     local -a host_libstdcxx_flags
@@ -583,10 +527,7 @@ do_gcc_backend() {
         eval "${arg// /\\ }"
     done
 
-    # Add host ldflags
-    final_LDFLAGS+=("${ldflags}")
-
-    CT_DoLog EXTRA "Configuring final gcc compiler"
+    CT_DoLog EXTRA "Configuring final compiler"
 
     # Enable selected languages
     extra_config+=("--enable-languages=${lang_list}")
@@ -599,11 +540,11 @@ do_gcc_backend() {
     done
 
     [ "${CT_SHARED_LIBS}" = "y" ] || extra_config+=("--disable-shared")
-    if [ "${CT_CC_GCC_HAS_PKGVERSION_BUGURL}" = "y" ]; then
+    if [ "${CT_CC_LLVMGCC_HAS_PKGVERSION_BUGURL}" = "y" ]; then
         extra_config+=("--with-pkgversion=${CT_PKGVERSION}")
         [ -n "${CT_TOOLCHAIN_BUGURL}" ] && extra_config+=("--with-bugurl=${CT_TOOLCHAIN_BUGURL}")
     fi
-    case "${CT_CC_GCC_SJLJ_EXCEPTIONS}" in
+    case "${CT_CC_LLVMGCC_SJLJ_EXCEPTIONS}" in
         y)  extra_config+=("--enable-sjlj-exceptions");;
         m)  ;;
         "") extra_config+=("--disable-sjlj-exceptions");;
@@ -613,26 +554,26 @@ do_gcc_backend() {
     else
         extra_config+=("--disable-__cxa_atexit")
     fi
-    if [ -n "${CT_CC_GCC_ENABLE_CXX_FLAGS}" ]; then
-        extra_config+=("--enable-cxx-flags=${CT_CC_GCC_ENABLE_CXX_FLAGS}")
+    if [ -n "${CT_CC_LLVMGCC_ENABLE_CXX_FLAGS}" ]; then
+        extra_config+=("--enable-cxx-flags=${CT_CC_LLVMGCC_ENABLE_CXX_FLAGS}")
     fi
-    if [ "${CT_CC_GCC_LIBMUDFLAP}" = "y" ]; then
+    if [ "${CT_CC_LLVMGCC_LIBMUDFLAP}" = "y" ]; then
         extra_config+=(--enable-libmudflap)
     else
         extra_config+=(--disable-libmudflap)
     fi
-    if [ "${CT_CC_GCC_LIBGOMP}" = "y" ]; then
+    if [ "${CT_CC_LLVMGCC_LIBGOMP}" = "y" ]; then
         extra_config+=(--enable-libgomp)
     else
         extra_config+=(--disable-libgomp)
     fi
-    if [ "${CT_CC_GCC_LIBSSP}" = "y" ]; then
+    if [ "${CT_CC_LLVMGCC_LIBSSP}" = "y" ]; then
         extra_config+=(--enable-libssp)
     else
         extra_config+=(--disable-libssp)
     fi
-    if [ "${CT_CC_GCC_HAS_LIBQUADMATH}" = "y" ]; then
-        if [ "${CT_CC_GCC_LIBQUADMATH}" = "y" ]; then
+    if [ "${CT_CC_LLVMGCC_HAS_LIBQUADMATH}" = "y" ]; then
+        if [ "${CT_CC_LLVMGCC_LIBQUADMATH}" = "y" ]; then
             extra_config+=(--enable-libquadmath)
             extra_config+=(--enable-libquadmath-support)
         else
@@ -643,7 +584,7 @@ do_gcc_backend() {
 
     # *** WARNING ! ***
     # Keep this full if-else-if-elif-fi-fi block in sync
-    # with the same block in do_gcc_core, above.
+    # with the same block in do_llvmgcc_core, above.
     if [ "${CT_STATIC_TOOLCHAIN}" = "y" ]; then
         final_LDFLAGS+=("-static")
         host_libstdcxx_flags+=("-static-libgcc")
@@ -656,7 +597,7 @@ do_gcc_backend() {
         final_LDFLAGS+=("-lstdc++")
         final_LDFLAGS+=("-lm")
     else
-        if [ "${CT_CC_GCC_STATIC_LIBSTDCXX}" = "y" ]; then
+        if [ "${CT_CC_LLVMGCC_STATIC_LIBSTDCXX}" = "y" ]; then
             # this is from CodeSourcery arm-2010q1-202-arm-none-linux-gnueabi.src.tar.bz2
             # build script
             # INFO: if the host gcc is gcc-4.5 then presumably we could use -static-libstdc++,
@@ -674,14 +615,14 @@ do_gcc_backend() {
         fi
     fi
 
-    if [ "${CT_CC_GCC_USE_GMP_MPFR}" = "y" ]; then
+    if [ "${CT_CC_LLVMGCC_USE_GMP_MPFR}" = "y" ]; then
         extra_config+=("--with-gmp=${complibs}")
         extra_config+=("--with-mpfr=${complibs}")
     fi
-    if [ "${CT_CC_GCC_USE_MPC}" = "y" ]; then
+    if [ "${CT_CC_LLVMGCC_USE_MPC}" = "y" ]; then
         extra_config+=("--with-mpc=${complibs}")
     fi
-    if [ "${CT_CC_GCC_USE_GRAPHITE}" = "y" ]; then
+    if [ "${CT_CC_LLVMGCC_USE_GRAPHITE}" = "y" ]; then
         extra_config+=("--with-ppl=${complibs}")
         # With PPL 0.11+, also pull libpwl if needed
         if [ "${CT_PPL_NEEDS_LIBPWL}" = "y" ]; then
@@ -689,13 +630,13 @@ do_gcc_backend() {
             host_libstdcxx_flags+=("-lpwl")
         fi
         extra_config+=("--with-cloog=${complibs}")
-    elif [ "${CT_CC_GCC_HAS_GRAPHITE}" = "y" ]; then
+    elif [ "${CT_CC_LLVMGCC_HAS_GRAPHITE}" = "y" ]; then
         extra_config+=("--with-ppl=no")
         extra_config+=("--with-cloog=no")
     fi
-    if [ "${CT_CC_GCC_USE_LTO}" = "y" ]; then
+    if [ "${CT_CC_LLVMGCC_USE_LTO}" = "y" ]; then
         extra_config+=("--with-libelf=${complibs}")
-    elif [ "${CT_CC_GCC_HAS_LTO}" = "y" ]; then
+    elif [ "${CT_CC_LLVMGCC_HAS_LTO}" = "y" ]; then
         extra_config+=("--with-libelf=no")
     fi
 
@@ -705,8 +646,8 @@ do_gcc_backend() {
 
     if [ "${CT_THREADS}" = "none" ]; then
         extra_config+=("--disable-threads")
-        if [ "${CT_CC_GCC_4_2_or_later}" = y ]; then
-            CT_Test "Disabling libgomp for no-thread gcc>=4.2" "${CT_CC_GCC_LIBGOMP}" = "Y"
+        if [ "${CT_CC_LLVMGCC_4_2_or_later}" = y ]; then
+            CT_Test "Disabling libgomp for no-thread gcc>=4.2" "${CT_CC_LLVMGCC_LIBGOMP}" = "Y"
             extra_config+=("--disable-libgomp")
         fi
     else
@@ -718,48 +659,48 @@ do_gcc_backend() {
         fi
     fi
 
-    if [ "${CT_CC_GCC_ENABLE_TARGET_OPTSPACE}" = "y" ]; then
+    if [ "${CT_CC_LLVMGCC_ENABLE_TARGET_OPTSPACE}" = "y" ]; then
         extra_config+=("--enable-target-optspace")
     fi
-    if [ "${CT_CC_GCC_DISABLE_PCH}" = "y" ]; then
+    if [ "${CT_CC_LLVMGCC_DISABLE_PCH}" = "y" ]; then
         extra_config+=("--disable-libstdcxx-pch")
     fi
 
-    case "${CT_CC_GCC_LDBL_128}" in
+    case "${CT_CC_LLVMGCC_LDBL_128}" in
         y)  extra_config+=("--with-long-double-128");;
         m)  ;;
         "") extra_config+=("--without-long-double-128");;
     esac
 
-    if [ "${CT_CC_GCC_BUILD_ID}" = "y" ]; then
+    if [ "${CT_CC_LLVMGCC_BUILD_ID}" = "y" ]; then
         extra_config+=( --enable-linker-build-id )
     fi
 
-    case "${CT_CC_GCC_LNK_HASH_STYLE}" in
+    case "${CT_CC_LLVMGCC_LNK_HASH_STYLE}" in
         "") ;;
-        *)  extra_config+=( "--with-linker-hash-style=${CT_CC_GCC_LNK_HASH_STYLE}" );;
+        *)  extra_config+=( "--with-linker-hash-style=${CT_CC_LLVMGCC_LNK_HASH_STYLE}" );;
     esac
 
-    if [ "${CT_CC_GCC_ENABLE_PLUGINS}" = "y" ]; then
+    if [ "${CT_CC_LLVMGCC_ENABLE_PLUGINS}" = "y" ]; then
         extra_config+=( --enable-plugin )
     fi
-    if [ "${CT_CC_GCC_GOLD}" = "y" ]; then
+    if [ "${CT_CC_LLVMGCC_GOLD}" = "y" ]; then
         extra_config+=( --enable-gold )
     fi
 
     case "${CT_ARCH}" in
         mips)
-            case "${CT_CC_GCC_mips_llsc}" in
+            case "${CT_CC_LLVMGCC_mips_llsc}" in
                 y)  extra_config+=( --with-llsc );;
                 m)  ;;
                 *)  extra_config+=( --without-llsc );;
             esac
-            case "${CT_CC_GCC_mips_synci}" in
+            case "${CT_CC_LLVMGCC_mips_synci}" in
                 y)  extra_config+=( --with-synci );;
                 m)  ;;
                 *)  extra_config+=( --without-synci );;
             esac
-            if [ "${CT_CC_GCC_mips_plt}" ]; then
+            if [ "${CT_CC_LLVMGCC_mips_plt}" ]; then
                 extra_config+=( --with-mips-plt )
             fi
             ;; # ARCH is mips
@@ -767,7 +708,7 @@ do_gcc_backend() {
 
     [ "${CT_TOOLCHAIN_ENABLE_NLS}" != "y" ] && extra_config+=("--disable-nls")
 
-    if [ "${CT_CC_GCC_SYSTEM_ZLIB}" = "y" ]; then
+    if [ "${CT_CC_LLVMGCC_SYSTEM_ZLIB}" = "y" ]; then
         extra_config+=("--with-system-zlib")
     fi
 
@@ -782,60 +723,61 @@ do_gcc_backend() {
     CT_DoExecLog CFG                                \
     CC_FOR_BUILD="${CT_BUILD}-gcc"                  \
     CFLAGS="${cflags}"                              \
-    CXXFLAGS="${cflags}"                            \
     LDFLAGS="${final_LDFLAGS[*]}"                   \
     CFLAGS_FOR_TARGET="${CT_TARGET_CFLAGS}"         \
     CXXFLAGS_FOR_TARGET="${CT_TARGET_CFLAGS}"       \
     LDFLAGS_FOR_TARGET="${CT_TARGET_LDFLAGS}"       \
-    "${CT_SRC_DIR}/gcc-${CT_CC_GCC_VERSION}/configure"  \
+    "${CT_SRC_DIR}/llvm-gcc-4.2-${CT_CC_LLVMGCC_VERSION}${CC_LLVMGCC_SUFFIX}/configure"  \
         --build=${CT_BUILD}                         \
         --host=${host}                              \
         --target=${CT_TARGET}                       \
         --prefix="${prefix}"                        \
+        --program-prefix=${CT_TARGET}-llvm-         \
+        --enable-llvm=${CT_BUILD_DIR}/build-LLVM-host-${CT_HOST} \
         ${CC_SYSROOT_ARG}                           \
         "${extra_config[@]}"                        \
         --with-local-prefix="${CT_SYSROOT_DIR}"     \
         --enable-c99                                \
         --enable-long-long                          \
-        "${CT_CC_GCC_EXTRA_CONFIG_ARRAY[@]}"
+        "${CT_CC_LLVMGCC_EXTRA_CONFIG_ARRAY[@]}"
 
     if [ "${CT_CANADIAN}" = "y" ]; then
         CT_DoLog EXTRA "Building libiberty"
         CT_DoExecLog ALL make ${JOBSFLAGS} all-build-libiberty
     fi
 
-    CT_DoLog EXTRA "Building final gcc compiler"
+    CT_DoLog EXTRA "Building final llvmgcc compiler"
     CT_DoExecLog ALL make ${JOBSFLAGS} all
 
-    CT_DoLog EXTRA "Installing final gcc compiler"
+    CT_DoLog EXTRA "Installing final llvmgcc compiler"
     CT_DoExecLog ALL make ${JOBSFLAGS} install
 
     if [ "${build_manuals}" = "yes" ]; then
-        CT_DoLog EXTRA "Building the gcc manuals"
+        CT_DoLog EXTRA "Building the llvmgcc manuals"
         CT_DoExecLog ALL make pdf html
-        CT_DoLog EXTRA "Installing the gcc manuals"
+        CT_DoLog EXTRA "Installing the llvmgcc manuals"
         CT_DoExecLog ALL make install-{pdf,html}-gcc
     fi
 
-    # Create a symlink ${CT_TARGET}-cc to ${CT_TARGET}-gcc to always be able
+    # Create a symlink ${CT_TARGET}-llvm-cc to ${CT_TARGET}-llvm-gcc to always be able
     # to call the C compiler with the same, somewhat canonical name.
     # check whether compiler has an extension
-    file="$( ls -1 "${CT_PREFIX_DIR}/bin/${CT_TARGET}-gcc."* 2>/dev/null || true )"
+    file="$( ls -1 "${CT_PREFIX_DIR}/bin/${CT_TARGET}-llvm-gcc."* 2>/dev/null || true )"
     [ -z "${file}" ] || ext=".${file##*.}"
-    CT_DoExecLog ALL ln -sfv "${CT_TARGET}-gcc${ext}" "${CT_PREFIX_DIR}/bin/${CT_TARGET}-cc${ext}"
+    CT_DoExecLog ALL ln -sfv "${CT_TARGET}-llvm-gcc${ext}" "${CT_PREFIX_DIR}/bin/${CT_TARGET}-llvm-cc${ext}"
 
     if [ "${CT_MULTILIB}" = "y" ]; then
-        multilibs=( $( "${CT_PREFIX_DIR}/bin/${CT_TARGET}-gcc" -print-multi-lib \
+        multilibs=( $( "${CT_PREFIX_DIR}/bin/${CT_TARGET}-llvm-gcc" -print-multi-lib \
                        |tail -n +2 ) )
         if [ ${#multilibs[@]} -ne 0 ]; then
-            CT_DoLog EXTRA "gcc configured with these multilibs (besides the default):"
+            CT_DoLog EXTRA "llvmgcc configured with these multilibs (besides the default):"
             for i in "${multilibs[@]}"; do
                 dir="${i%%;*}"
                 flags="${i#*;}"
                 CT_DoLog EXTRA "   ${flags//@/ -}  -->  ${dir}/"
             done
         else
-            CT_DoLog WARN "gcc configured for multilib, but none available"
+            CT_DoLog WARN "llvmgcc configured for multilib, but none available"
         fi
     fi
 }

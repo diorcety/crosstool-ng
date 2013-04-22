@@ -36,6 +36,16 @@ config LIBELF_NEEDED
     bool
     select LIBELF
     select COMPLIBS_NEEDED
+    
+config LLVM_NEEDED
+    bool
+    select LLVM
+    select COMPLIBS_NEEDED
+    
+config LLVM_COMPILER_RT_NEEDED
+    bool
+    select LLVM_COMPILER_RT
+    select COMPLIBS_NEEDED
 
 config OPENSSL_NEEDED
     bool
@@ -82,6 +92,14 @@ config LIBELF
 
 config LIBELF_TARGET
     bool
+    
+config LLVM
+    bool
+    select COMPLIBS
+    
+config LLVM_COMPILER_RT
+    bool
+    select COMPLIBS
 
 config OPENSSL
     bool
@@ -119,6 +137,15 @@ endif
 if OPENSSL
 source "config/companion_libs/openssl.in"
 endif
+
+if LLVM
+source "config/companion_libs/llvm.in"
+endif
+
+if LLVM_COMPILER_RT
+source "config/companion_libs/llvm-compiler-rt.in"
+endif
+
 
 config FOO
     bool
