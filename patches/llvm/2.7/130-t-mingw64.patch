@@ -1,0 +1,28 @@
+--- llvmCore/lib/System/Errno.cpp.orig	Mon Jul  6 17:50:27 2009
++++ llvmCore/lib/System/Errno.cpp	Fri Jun  8 11:58:49 2012
+@@ -52,7 +52,7 @@
+ # endif
+ #elif defined(HAVE_STRERROR_S)  // Windows.
+     if (errnum)
+-      strerror_s(buffer, errnum);
++      strerror_s(buffer, MaxErrStrLen-1, errnum);
+ #elif defined(HAVE_STRERROR)
+   // Copy the thread un-safe result of strerror into
+   // the buffer as fast as possible to minimize impact
+--- llvmCore/lib/System/Win32/Win32.h.orig	Sat Dec 29 20:36:04 2007
++++ llvmCore/lib/System/Win32/Win32.h	Fri Jun  8 12:02:57 2012
+@@ -17,7 +17,13 @@
+ //===----------------------------------------------------------------------===//
+ 
+ // Require at least Windows 2000 API.
+-#define _WIN32_WINNT 0x0500
++#if !defined(_WIN32_WINNT)
++ #define _WIN32_WINNT 0x0500
++#else
++ #if (_WIN32_WINNT < 0x0500)
++  #error Require at least Windows 2000 API.
++ #endif
++#endif
+ 
+ #include "llvm/Config/config.h"     // Get autoconf configuration settings
+ #include "windows.h"

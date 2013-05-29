@@ -1,0 +1,31 @@
+--- clang-2.7/include/clang/Basic/Diagnostic.h.orig	2013-05-29 14:48:11.521527902 +0100
++++ clang-2.7/include/clang/Basic/Diagnostic.h	2013-05-29 14:48:27.264861615 +0100
+@@ -14,6 +14,7 @@
+ #ifndef LLVM_CLANG_DIAGNOSTIC_H
+ #define LLVM_CLANG_DIAGNOSTIC_H
+ 
++#include <stdint.h>
+ #include "clang/Basic/SourceLocation.h"
+ #include "llvm/ADT/StringRef.h"
+ #include "llvm/Support/type_traits.h"
+
+--- clang/include/clang/AST/StmtIterator.h.orig	2013-05-29 15:45:21.088225491 +0100
++++ clang/include/clang/AST/StmtIterator.h	2013-05-29 15:45:43.964892719 +0100
+@@ -14,6 +14,7 @@
+ #ifndef LLVM_CLANG_AST_STMT_ITR_H
+ #define LLVM_CLANG_AST_STMT_ITR_H
+ 
++#include <cstddef>
+ #include "llvm/System/DataTypes.h"
+ #include <cassert>
+ #include <iterator>
+--- clang/include/clang/Analysis/Support/BumpVector.h.orig	2013-05-29 16:12:49.068240633 +0100
++++ clang/include/clang/Analysis/Support/BumpVector.h	2013-05-29 16:13:13.594907901 +0100
+@@ -19,6 +19,7 @@
+ #ifndef LLVM_CLANG_BUMP_VECTOR
+ #define LLVM_CLANG_BUMP_VECTOR
+ 
++#include <cstddef>
+ #include "llvm/Support/type_traits.h"
+ #include "llvm/Support/Allocator.h"
+ #include "llvm/ADT/PointerIntPair.h"

@@ -1,0 +1,14 @@
+--- llvmCore/Makefile.rules.orig	2012-05-08 21:24:57.142359266 +0100
++++ llvmCore/Makefile.rules	2012-05-08 21:27:13.131047546 +0100
+@@ -585,7 +585,11 @@
+ # that if LOADABLE_MODULE is specified then the resulting shared library can
+ # be opened with dlopen.
+ ifdef LOADABLE_MODULE
++  # -module isn't recognized on any version of gcc/g++/ld that
++  # I can find so may need to add more OSes to this exclusion.
++  ifeq ($(HOST_OS),Darwin)
+   LD.Flags += -module
++  endif
+ endif
+ 
+ ifdef SHARED_LIBRARY
