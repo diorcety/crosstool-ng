@@ -2,6 +2,7 @@
 
 ## depends on (ARCH_USE_MMU || BARE_METAL) && DARWIN
 ## select LIBUUID_NEEDED
+## select OPENSSL_NEEDED
 ##
 
 comment "Apple cctools"
