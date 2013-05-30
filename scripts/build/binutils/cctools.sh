@@ -137,9 +137,9 @@ do_cctools_backend() {
 
     CT_DoLog EXTRA "Configuring cctools"
     CT_DoExecLog CFG \
-    CFLAGS="${cflags} -isystem ${CT_BUILDTOOLS_PREFIX_DIR}/include/" 	\
-    CXXFLAGS="${cflags} -isystem ${CT_BUILDTOOLS_PREFIX_DIR}/include/" 	\
-    LDFLAGS="${ldflags} -L${CT_BUILDTOOLS_PREFIX_DIR}/lib/"             \
+    CFLAGS="${cflags} -isystem ${prefix}/include/ -isystem ${CT_BUILDTOOLS_PREFIX_DIR}/include/" 	\
+    CXXFLAGS="${cflags} -isystem ${prefix}/include/ -isystem ${CT_BUILDTOOLS_PREFIX_DIR}/include/" 	\
+    LDFLAGS="${ldflags} -L${CT_BUILDTOOLS_PREFIX_DIR}/lib/ -L${prefix}/lib/"                            \
     "${CT_SRC_DIR}/cctools-${CT_BINUTILS_VERSION}/configure"            \
         --build=${CT_BUILD}                                             \
         --host=${host}                                                  \
