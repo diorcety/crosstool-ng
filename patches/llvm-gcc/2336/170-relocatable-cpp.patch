@@ -1,6 +1,7 @@
---- gcc-5666.3/gcc/c-incpath.c.orig	2010-10-14 21:27:55.000000000 +0100
-+++ gcc-5666.3/gcc/c-incpath.c	2012-04-21 09:39:21.033801978 +0100
-@@ -51,6 +51,7 @@
+diff -urN a/gcc/c-incpath.c b/gcc/c-incpath.c
+--- a/gcc/c-incpath.c	2013-05-31 00:32:16.352806075 +0100
++++ b/gcc/c-incpath.c	2013-05-31 00:32:17.108812071 +0100
+@@ -56,6 +56,7 @@
  static const char dir_separator_str[] = { DIR_SEPARATOR, 0 };
  
  static void add_env_var_paths (const char *, int);
@@ -8,9 +9,9 @@
  static void add_standard_paths (const char *, const char *, const char *, int);
  static void free_path (struct cpp_dir *, int);
  static void merge_include_chains (cpp_reader *, int);
-@@ -124,6 +125,26 @@
-     }
- }
+@@ -139,6 +140,26 @@
+ #endif
+ /* LLVM LOCAL end sysroot */
  
 +extern char original_prefix[MAXPATHLEN];
 +extern char relocated_prefix[MAXPATHLEN];
@@ -35,7 +36,7 @@
  /* Append the standard include chain defined in cppdefault.c.  */
  static void
  add_standard_paths (const char *sysroot, const char *iprefix,
-@@ -132,6 +153,7 @@
+@@ -147,6 +168,7 @@
    const struct default_include *p;
    size_t len;
  
@@ -43,19 +44,21 @@
    if (iprefix && (len = cpp_GCC_INCLUDE_DIR_len) != 0)
      {
        /* Look for directories that start with the standard prefix.
---- gcc-5666.3/gcc/cppdefault.c.orig	2010-10-14 21:27:54.000000000 +0100
-+++ gcc-5666.3/gcc/cppdefault.c	2012-04-21 09:39:21.033801978 +0100
-@@ -46,7 +46,7 @@
- /* APPLE LOCAL begin SDK 3886137.  */
- /* Allow -isysroot to override ALL  include patchs. This is done by
-    setting add_sysroot for all default inclue paths.  */
+diff -urN a/gcc/cppdefault.c b/gcc/cppdefault.c
+--- a/gcc/cppdefault.c	2013-05-31 00:32:16.364806171 +0100
++++ b/gcc/cppdefault.c	2013-05-31 00:32:17.108812071 +0100
+@@ -52,7 +52,7 @@
+ #else
+ #define ADD_SYSROOT 0
+ #endif
 -const struct default_include cpp_include_defaults[]
 +struct default_include cpp_include_defaults[]
  #ifdef INCLUDE_DEFAULTS
  = INCLUDE_DEFAULTS;
  #else
---- gcc-5666.3/gcc/cppdefault.h.orig	2010-10-14 21:27:55.000000000 +0100
-+++ gcc-5666.3/gcc/cppdefault.h	2012-04-21 09:46:56.456076769 +0100
+diff -urN a/gcc/cppdefault.h b/gcc/cppdefault.h
+--- a/gcc/cppdefault.h	2013-05-31 00:32:16.347806036 +0100
++++ b/gcc/cppdefault.h	2013-05-31 00:32:17.108812071 +0100
 @@ -34,21 +34,21 @@
  
  struct default_include
@@ -81,17 +84,18 @@
  extern const char cpp_GCC_INCLUDE_DIR[];
  extern const size_t cpp_GCC_INCLUDE_DIR_len;
  
---- gcc-5666.3/gcc/toplev.c.orig	2010-10-14 21:27:54.000000000 +0100
-+++ gcc-5666.3/gcc/toplev.c	2012-04-21 09:39:21.033801978 +0100
+diff -urN a/gcc/toplev.c b/gcc/toplev.c
+--- a/gcc/toplev.c	2013-05-31 00:32:16.262805362 +0100
++++ b/gcc/toplev.c	2013-05-31 00:32:17.109812078 +0100
 @@ -82,6 +82,7 @@
  #include "value-prof.h"
  #include "alloc-pool.h"
  #include "tree-mudflap.h"
 +#include "cppdefault.h"
  
- #if defined (DWARF2_UNWIND_INFO) || defined (DWARF2_DEBUGGING_INFO)
- #include "dwarf2out.h"
-@@ -100,6 +101,11 @@
+ /* LLVM LOCAL begin */
+ #ifdef ENABLE_LLVM
+@@ -106,6 +107,11 @@
  				   declarations for e.g. AIX 4.x.  */
  #endif
  
@@ -103,7 +107,7 @@
  static void general_init (const char *);
  static void do_compile (void);
  static void process_options (void);
-@@ -1594,6 +1600,56 @@
+@@ -1641,6 +1647,56 @@
    return true;
  }
  
@@ -160,7 +164,7 @@
  /* Initialization of the front end environment, before command line
     options are parsed.  Signal handlers, internationalization etc.
     ARGV0 is main's argv[0].  */
-@@ -1602,6 +1658,7 @@
+@@ -1649,6 +1705,7 @@
  {
    const char *p;
  

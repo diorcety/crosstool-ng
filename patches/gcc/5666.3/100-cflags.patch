@@ -1,5 +1,6 @@
---- gcc-5666.3/Makefile.in	2010-10-14 15:28:01.000000000 -0500
-+++ gcc-5666.3-patched/Makefile.in	2011-09-04 07:57:19.000000000 -0500
+diff -urN a/Makefile.in b/Makefile.in
+--- a/Makefile.in	2010-10-14 21:28:01.000000000 +0100
++++ b/Makefile.in	2013-05-31 00:54:24.391270101 +0100
 @@ -342,7 +342,7 @@
  # CFLAGS will be just -g.  We want to ensure that TARGET libraries
  # (which we know are built with gcc) are built with optimizations so

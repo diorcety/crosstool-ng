@@ -1,22 +1,24 @@
---- gcc-5666.3/configure.orig	2012-03-09 02:12:45.567686617 +0000
-+++ gcc-5666.3/configure	2012-03-09 02:14:43.378205330 +0000
-@@ -3458,7 +3458,7 @@
+diff -urN a/configure b/configure
+--- a/configure	2013-05-31 00:32:11.071764198 +0100
++++ b/configure	2013-05-31 00:32:11.659768860 +0100
+@@ -3486,7 +3486,7 @@
  # being built; programs in there won't even run.
  if test "${build}" = "${host}" && test -d ${srcdir}/gcc; then
    # Search for pre-installed headers if nothing else fits.
 -  FLAGS_FOR_TARGET=$FLAGS_FOR_TARGET' -B$(build_tooldir)/bin/ -B$(build_tooldir)/lib/ -isystem $(build_tooldir)/include -isystem $(build_tooldir)/sys-include'
 +  FLAGS_FOR_TARGET=$FLAGS_FOR_TARGET' -B$(build_tooldir)/bin/ -B$(build_tooldir)/lib/ -B$(build_tooldir)/lib/system -isystem $(build_tooldir)/include -isystem $(build_tooldir)/sys-include'
  fi
-
+ 
  if test "x${use_gnu_ld}" = x &&
---- gcc-5666.3/configure.in.orig	2012-03-09 02:12:40.703747730 +0000
-+++ gcc-5666.3/configure.in	2012-03-09 02:13:51.950851693 +0000
-@@ -2165,7 +2165,7 @@
+diff -urN a/configure.in b/configure.in
+--- a/configure.in	2013-05-31 00:32:11.111764515 +0100
++++ b/configure.in	2013-05-31 00:32:11.659768860 +0100
+@@ -2193,7 +2193,7 @@
  # being built; programs in there won't even run.
  if test "${build}" = "${host}" && test -d ${srcdir}/gcc; then
    # Search for pre-installed headers if nothing else fits.
 -  FLAGS_FOR_TARGET=$FLAGS_FOR_TARGET' -B$(build_tooldir)/bin/ -B$(build_tooldir)/lib/ -isystem $(build_tooldir)/include -isystem $(build_tooldir)/sys-include'
 +  FLAGS_FOR_TARGET=$FLAGS_FOR_TARGET' -B$(build_tooldir)/bin/ -B$(build_tooldir)/lib/ -B$(build_tooldir)/lib/system -isystem $(build_tooldir)/include -isystem $(build_tooldir)/sys-include'
  fi
-
+ 
  if test "x${use_gnu_ld}" = x &&

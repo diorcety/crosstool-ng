@@ -2,7 +2,16 @@
 # Copyright 2007 Yann E. MORIN
 # Licensed under the GPL v2. See COPYING in the root of this package
 
-CC_LLVMGCC_SUFFIX=".source"
+# So we can easily switch between Apple's and llvm's.
+# CC_LLVMGCC_SUFFIX=".source"
+# CC_LLVMGCC_FULLNAME="llvm-gcc-4.2-${CT_CC_LLVMGCC_VERSION}${CC_LLVMGCC_SUFFIX}"
+# CC_LLVMGCC_URL="http://llvm.org/releases/${CT_CC_LLVMGCC_VERSION}/"
+
+CC_LLVMGCC_SUFFIX=".1"
+CC_LLVMGCC_FULLNAME="llvmgcc42-${CT_CC_LLVMGCC_VERSION}${CC_LLVMGCC_SUFFIX}"
+CC_LLVMGCC_URL="http://www.opensource.apple.com/tarballs/llvmgcc42/${CT_CC_LLVMGCC_VERSION}/"
+
+CC_LLVMGCC_PATCHDIR="llvm-gcc"
 
 # Download gcc
 do_llvmgcc_get() {
@@ -12,16 +21,16 @@ do_llvmgcc_get() {
     # Arrgghh! Some of those versions does not follow this convention:
     # gcc-3.3.3 lives in releases/gcc-3.3.3, while gcc-2.95.* isn't in a
     # subdirectory! You bastard!
-    CT_GetFile "llvm-gcc-4.2-${CT_CC_LLVMGCC_VERSION}${CC_LLVMGCC_SUFFIX}"     \
-               http://llvm.org/releases/${CT_CC_LLVMGCC_VERSION}/  
+    CT_GetFile "${CC_LLVMGCC_FULLNAME}"     \
+               "${CC_LLVMGCC_URL}"
 
 }
 
 # Extract gcc
 do_llvmgcc_extract() {
-    CT_Extract "llvm-gcc-4.2-${CT_CC_LLVMGCC_VERSION}${CC_LLVMGCC_SUFFIX}"
-    CT_Pushd "${CT_SRC_DIR}/llvm-gcc-4.2-${CT_CC_LLVMGCC_VERSION}${CC_LLVMGCC_SUFFIX}"
-    CT_Patch nochdir "llvm-gcc" "${CT_CC_LLVMGCC_VERSION}"
+    CT_Extract "${CC_LLVMGCC_FULLNAME}"
+    CT_Pushd "${CT_SRC_DIR}/${CC_LLVMGCC_FULLNAME}"
+    CT_Patch nochdir "${CC_LLVMGCC_PATCHDIR}" "${CT_CC_LLVMGCC_VERSION}"
     CT_Popd
 }
 
@@ -317,7 +326,7 @@ do_llvmgcc_core_backend() {
     CC_FOR_BUILD="${CT_BUILD}-gcc"                  \
     CFLAGS="${cflags}"                              \
     LDFLAGS="${core_LDFLAGS[*]}"                    \
-    "${CT_SRC_DIR}/llvm-gcc-4.2-${CT_CC_LLVMGCC_VERSION}${CC_LLVMGCC_SUFFIX}/configure"  \
+    "${CT_SRC_DIR}/${CC_LLVMGCC_FULLNAME}/configure"  \
         --build=${CT_BUILD}                         \
         --host=${host}                              \
         --target=${CT_TARGET}                       \
@@ -348,7 +357,7 @@ do_llvmgcc_core_backend() {
         # so we configure then build it.
         # Next we have to configure gcc, create libgcc.mk then edit it...
         # So much easier if we just edit the source tree, but hey...
-        if [ ! -f "${CT_SRC_DIR}/llvm-gcc-4.2-${CT_CC_LLVMGCC_VERSION}${CC_LLVMGCC_SUFFIX}/gcc/BASE-VER" ]; then
+        if [ ! -f "${CT_SRC_DIR}/${CC_LLVMGCC_FULLNAME}/gcc/BASE-VER" ]; then
             CT_DoExecLog CFG make ${JOBSFLAGS} configure-libiberty
             CT_DoExecLog ALL make ${JOBSFLAGS} -C libiberty libiberty.a
             CT_DoExecLog CFG make ${JOBSFLAGS} configure-gcc configure-libcpp
@@ -358,7 +367,7 @@ do_llvmgcc_core_backend() {
             CT_DoExecLog ALL make ${JOBSFLAGS} all-libcpp all-build-libiberty
         fi
         # HACK: gcc-4.2 uses libdecnumber to build libgcc.mk, so build it here.
-        if [ -d "${CT_SRC_DIR}/llvm-gcc-4.2-${CT_CC_LLVMGCC_VERSION}${CC_LLVMGCC_SUFFIX}/libdecnumber" ]; then
+        if [ -d "${CT_SRC_DIR}/${CC_LLVMGCC_FULLNAME}/libdecnumber" ]; then
             CT_DoExecLog CFG make ${JOBSFLAGS} configure-libdecnumber
             CT_DoExecLog ALL make ${JOBSFLAGS} -C libdecnumber libdecnumber.a
         fi
@@ -727,7 +736,7 @@ do_llvmgcc_backend() {
     CFLAGS_FOR_TARGET="${CT_TARGET_CFLAGS}"         \
     CXXFLAGS_FOR_TARGET="${CT_TARGET_CFLAGS}"       \
     LDFLAGS_FOR_TARGET="${CT_TARGET_LDFLAGS}"       \
-    "${CT_SRC_DIR}/llvm-gcc-4.2-${CT_CC_LLVMGCC_VERSION}${CC_LLVMGCC_SUFFIX}/configure"  \
+    "${CT_SRC_DIR}/${CC_LLVMGCC_FULLNAME}/configure"  \
         --build=${CT_BUILD}                         \
         --host=${host}                              \
         --target=${CT_TARGET}                       \

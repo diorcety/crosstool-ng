@@ -1,37 +1,6 @@
---- gcc-5666.3/gcc/configure.ac.orig	2010-10-14 21:27:54 +0100
-+++ gcc-5666.3/gcc/configure.ac	2012-04-08 20:30:02 +0100
-@@ -1130,6 +1130,7 @@
- 
- gcc_AC_CHECK_DECLS(getrlimit setrlimit getrusage, , ,[
- #include "ansidecl.h"
-+#include "unistd.h"
- #include "system.h"
- #ifdef HAVE_SYS_RESOURCE_H
- #include <sys/resource.h>
-@@ -2256,7 +2257,7 @@
-     gcc_cv_as_eh_frame=no
-   fi])
- 
--if test $gcc_cv_as_eh_frame = buggy; then
-+if test $gcc_cv_as_eh_frame = buggy && test x$host = x$target ; then
-   AC_DEFINE(USE_AS_TRADITIONAL_FORMAT, 1,
-   [Define if your assembler mis-optimizes .eh_frame data.])
- fi
-@@ -3252,8 +3253,12 @@
-         fi
-         ;;
-        *-*-darwin*)
-+      if test x$host != x$target || test "x$TARGET_SYSTEM_ROOT" != x; then
-+          gcc_cv_libc_provides_ssp=yes
-+      else
-          AC_CHECK_FUNC(__stack_chk_fail,[gcc_cv_libc_provides_ssp=yes],
-            [echo "no __stack_chk_fail on this target"])
-+      fi
-         ;;
-   *) gcc_cv_libc_provides_ssp=no ;;
-     esac])
---- gcc-5666.3/gcc/configure.orig	2010-10-14 21:27:54 +0100
-+++ gcc-5666.3/gcc/configure	2012-04-08 20:34:59 +0100
+diff -urN a/gcc/configure b/gcc/configure
+--- a/gcc/configure	2013-05-31 00:54:28.145299683 +0100
++++ b/gcc/configure	2013-05-31 00:54:28.418301835 +0100
 @@ -9702,6 +9702,37 @@
  _ACEOF
  
@@ -105,3 +74,36 @@
  
          ;;
    *) gcc_cv_libc_provides_ssp=no ;;
+diff -urN a/gcc/configure.ac b/gcc/configure.ac
+--- a/gcc/configure.ac	2013-05-31 00:54:28.140299644 +0100
++++ b/gcc/configure.ac	2013-05-31 00:54:28.412301788 +0100
+@@ -1130,6 +1130,7 @@
+ 
+ gcc_AC_CHECK_DECLS(getrlimit setrlimit getrusage, , ,[
+ #include "ansidecl.h"
++#include "unistd.h"
+ #include "system.h"
+ #ifdef HAVE_SYS_RESOURCE_H
+ #include <sys/resource.h>
+@@ -2256,7 +2257,7 @@
+     gcc_cv_as_eh_frame=no
+   fi])
+ 
+-if test $gcc_cv_as_eh_frame = buggy; then
++if test $gcc_cv_as_eh_frame = buggy && test x$host = x$target ; then
+   AC_DEFINE(USE_AS_TRADITIONAL_FORMAT, 1,
+   [Define if your assembler mis-optimizes .eh_frame data.])
+ fi
+@@ -3252,8 +3253,12 @@
+         fi
+         ;;
+        *-*-darwin*)
++      if test x$host != x$target || test "x$TARGET_SYSTEM_ROOT" != x; then
++          gcc_cv_libc_provides_ssp=yes
++      else
+          AC_CHECK_FUNC(__stack_chk_fail,[gcc_cv_libc_provides_ssp=yes],
+            [echo "no __stack_chk_fail on this target"])
++      fi
+         ;;
+   *) gcc_cv_libc_provides_ssp=no ;;
+     esac])

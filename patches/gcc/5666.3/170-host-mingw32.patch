@@ -1,5 +1,6 @@
---- gcc-5666.3/gcc/config/i386/host-mingw32.c.orig	1970-01-01 00:00:00 +0000
-+++ gcc-5666.3/gcc/config/i386/host-mingw32.c	2012-03-29 03:32:13 +0100
+diff -urN a/gcc/config/i386/host-mingw32.c b/gcc/config/i386/host-mingw32.c
+--- a/gcc/config/i386/host-mingw32.c	1970-01-01 01:00:00.000000000 +0100
++++ b/gcc/config/i386/host-mingw32.c	2013-05-31 00:54:27.904297784 +0100
 @@ -0,0 +1,148 @@
 +/* mingw32 host-specific hook definitions.
 +   Copyright (C) 2004 Free Software Foundation, Inc.
@@ -149,8 +150,26 @@
 +}
 +
 +const struct host_hooks host_hooks = HOST_HOOKS_INITIALIZER;
---- gcc-5666.3/gcc/config/i386/xm-mingw32.h.orig	1970-01-01 00:00:00 +0000
-+++ gcc-5666.3/gcc/config/i386/xm-mingw32.h	2012-03-29 03:32:59 +0100
+diff -urN a/gcc/config/i386/x-mingw32 b/gcc/config/i386/x-mingw32
+--- a/gcc/config/i386/x-mingw32	1970-01-01 01:00:00.000000000 +0100
++++ b/gcc/config/i386/x-mingw32	2013-05-31 00:54:27.905297792 +0100
+@@ -0,0 +1,13 @@
++#
++# Make local_includedir relative to EXEC_PREFIX 
++#
++local_includedir=$(libsubdir)/$(unlibsubdir)/..`echo $(exec_prefix) | sed -e 's|^$(prefix)||' -e 's|/[^/]*|/..|g'`/include
++
++# On MinGW, we use "%IA64d" to print 64-bit integers, and the format-checking
++# code does not handle that, so we have to disable checking here.
++WERROR_FLAGS += -Wno-format
++
++host-mingw32.o : $(srcdir)/config/i386/host-mingw32.c $(CONFIG_H) $(SYSTEM_H) \
++  coretypes.h hosthooks.h hosthooks-def.h toplev.h diagnostic.h $(HOOKS_H)
++	$(CC) -c $(ALL_CFLAGS) $(ALL_CPPFLAGS) $(INCLUDES) \
++		$(srcdir)/config/i386/host-mingw32.c
+diff -urN a/gcc/config/i386/xm-mingw32.h b/gcc/config/i386/xm-mingw32.h
+--- a/gcc/config/i386/xm-mingw32.h	1970-01-01 01:00:00.000000000 +0100
++++ b/gcc/config/i386/xm-mingw32.h	2013-05-31 00:54:27.904297784 +0100
 @@ -0,0 +1,40 @@
 +/* Configuration for GCC for hosting on Windows32.
 +   using GNU tools and the Windows32 API Library.
@@ -192,19 +211,3 @@
 +#else
 + #define HOST_LONG_LONG_FORMAT "ll"
 +#endif
---- gcc-5666.3/gcc/config/i386/x-mingw32.orig	1970-01-01 00:00:00 +0000
-+++ gcc-5666.3/gcc/config/i386/x-mingw32	2004-12-02 12:12:09 +0000
-@@ -0,0 +1,13 @@
-+#
-+# Make local_includedir relative to EXEC_PREFIX 
-+#
-+local_includedir=$(libsubdir)/$(unlibsubdir)/..`echo $(exec_prefix) | sed -e 's|^$(prefix)||' -e 's|/[^/]*|/..|g'`/include
-+
-+# On MinGW, we use "%IA64d" to print 64-bit integers, and the format-checking
-+# code does not handle that, so we have to disable checking here.
-+WERROR_FLAGS += -Wno-format
-+
-+host-mingw32.o : $(srcdir)/config/i386/host-mingw32.c $(CONFIG_H) $(SYSTEM_H) \
-+  coretypes.h hosthooks.h hosthooks-def.h toplev.h diagnostic.h $(HOOKS_H)
-+	$(CC) -c $(ALL_CFLAGS) $(ALL_CPPFLAGS) $(INCLUDES) \
-+		$(srcdir)/config/i386/host-mingw32.c

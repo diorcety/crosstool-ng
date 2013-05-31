@@ -1,5 +1,6 @@
---- gcc-5666.3/gcc/config/t-slibgcc-darwin.orig	Thu Oct 14 21:27:53 2010
-+++ gcc-5666.3/gcc/config/t-slibgcc-darwin	Sun Jun 10 00:06:27 2012
+diff -urN a/gcc/config/t-slibgcc-darwin b/gcc/config/t-slibgcc-darwin
+--- a/gcc/config/t-slibgcc-darwin	2013-05-31 00:32:23.153860007 +0100
++++ b/gcc/config/t-slibgcc-darwin	2013-05-31 00:32:23.770864899 +0100
 @@ -51,12 +51,6 @@
  	# libraries are expected to exist in the multilib directory.
  	MLIBS=`$(GCC_FOR_TARGET) --print-multi-lib \

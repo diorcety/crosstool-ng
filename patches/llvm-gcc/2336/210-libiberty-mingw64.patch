@@ -1,5 +1,6 @@
---- gcc-5666.3/libiberty/configure.ac.orig	Thu Oct 14 21:27:57 2010
-+++ gcc-5666.3/libiberty/configure.ac	Sat Jun  9 13:14:47 2012
+diff -urN a/libiberty/configure.ac b/libiberty/configure.ac
+--- a/libiberty/configure.ac	2013-05-31 00:32:21.885849952 +0100
++++ b/libiberty/configure.ac	2013-05-31 00:32:22.460854511 +0100
 @@ -297,7 +297,15 @@
  # This is the list of functions which libiberty will provide if they
  # are not available on the host.
@@ -34,8 +35,9 @@
  	  ;;
  	*)
  	  n=HAVE_`echo $f | tr 'abcdefghijklmnopqrstuvwxyz' 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'`
---- gcc-5666.3/libiberty/getcwd.orig.c	Thu Oct 14 21:27:57 2010
-+++ gcc-5666.3/libiberty/getcwd.c	Fri Jun  8 23:10:43 2012
+diff -urN a/libiberty/getcwd.c b/libiberty/getcwd.c
+--- a/libiberty/getcwd.c	2013-05-31 00:32:21.884849944 +0100
++++ b/libiberty/getcwd.c	2013-05-31 00:32:22.461854519 +0100
 @@ -30,13 +30,19 @@
  #include <stdlib.h>
  #endif
