@@ -26,7 +26,7 @@ do_binutils_extract() {
     mkdir "${CT_SRC_DIR}/cctools-${CT_BINUTILS_VERSION}/dyld/"
     mkdir "${CT_SRC_DIR}/cctools-${CT_BINUTILS_VERSION}/libprunetrie/"
     mv -f "${CT_SRC_DIR}/ld64-${CT_LD64_VERSION}"/*                                 "${CT_SRC_DIR}/cctools-${CT_BINUTILS_VERSION}/ld64/"
-    mv -f "${CT_SRC_DIR}/llvmgcc42-${CT_GCCLLVM_VERSION}"/llvmCore/include/llvm-c/* "${CT_SRC_DIR}/cctools-${CT_BINUTILS_VERSION}/include/"
+    cp -rf "${CT_SRC_DIR}/llvmgcc42-${CT_GCCLLVM_VERSION}"/llvmCore/include/llvm-c  "${CT_SRC_DIR}/cctools-${CT_BINUTILS_VERSION}/include/"
     mv -f "${CT_SRC_DIR}/dyld-${CT_DYLD_VERSION}"/*                                 "${CT_SRC_DIR}/cctools-${CT_BINUTILS_VERSION}/dyld/"
     cp "${CT_SRC_DIR}/cctools-${CT_BINUTILS_VERSION}/ld64/src/other/PruneTrie.cpp"  "${CT_SRC_DIR}/cctools-${CT_BINUTILS_VERSION}/libprunetrie/"
     cp "${CT_SRC_DIR}/cctools-${CT_BINUTILS_VERSION}/ld64/src/other/prune_trie.h"   "${CT_SRC_DIR}/cctools-${CT_BINUTILS_VERSION}/include/mach-o/"

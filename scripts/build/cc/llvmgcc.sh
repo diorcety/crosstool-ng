@@ -1,15 +1,9 @@
-# This file adds the function to build the gcc C compiler
+# This file adds the function to build the llvmgcc C compiler
 # Copyright 2007 Yann E. MORIN
 # Licensed under the GPL v2. See COPYING in the root of this package
 
-# So we can easily switch between Apple's and llvm's.
-# CC_LLVMGCC_SUFFIX=".source"
-# CC_LLVMGCC_FULLNAME="llvm-gcc-4.2-${CT_CC_LLVMGCC_VERSION}${CC_LLVMGCC_SUFFIX}"
-# CC_LLVMGCC_URL="http://llvm.org/releases/${CT_CC_LLVMGCC_VERSION}/"
-
-CC_LLVMGCC_SUFFIX=".1"
-CC_LLVMGCC_FULLNAME="llvmgcc42-${CT_CC_LLVMGCC_VERSION}${CC_LLVMGCC_SUFFIX}"
-CC_LLVMGCC_URL="http://www.opensource.apple.com/tarballs/llvmgcc42/${CT_CC_LLVMGCC_VERSION}/"
+CC_LLVMGCC_FULLNAME="${CT_CC_LLVMGCC_PREFIX}-${CT_CC_LLVMGCC_VERSION}${CT_CC_LLVMGCC_SUFFIX}"
+CC_LLVMGCC_URL="${CT_CC_LLVMGCC_URL}/${CT_CC_LLVMGCC_VERSION}/"
 
 CC_LLVMGCC_PATCHDIR="llvm-gcc"
 
@@ -31,6 +25,7 @@ do_llvmgcc_extract() {
     CT_Extract "${CC_LLVMGCC_FULLNAME}"
     CT_Pushd "${CT_SRC_DIR}/${CC_LLVMGCC_FULLNAME}"
     CT_Patch nochdir "${CC_LLVMGCC_PATCHDIR}" "${CT_CC_LLVMGCC_VERSION}"
+    autoreconf -vi
     CT_Popd
 }
 

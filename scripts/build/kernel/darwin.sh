@@ -1,9 +1,9 @@
-# This file declares functions to install the kernel headers for mingw
+# This file declares functions to install the kernel headers for Darwin.
 # Copyright 2012 Yann Diorcet
 # Licensed under the GPL v2. See COPYING in the root of this package
 
 CT_DoKernelTupleValues() {
-    CT_TARGET_KERNEL="darwin10"
+    CT_TARGET_KERNEL="darwin${CT_TARGET_DARWIN_VERSION}"
     CT_TARGET_SYS=
 }
 
@@ -50,12 +50,12 @@ do_kernel_extract() {
     ln -sf "SDKs/${SDK_NAME}/usr" "usr"
 
     CT_DoExecLog ALL \
-    ln -sf "i686-apple-darwin10" "usr/lib/x86_64-apple-darwin10"
+    ln -sf "i686-apple-darwin${CT_TARGET_DARWIN_VERSION}" "usr/lib/${CT_TARGET_ARCH}-apple-darwin${CT_TARGET_DARWIN_VERSION}"
 
     mkdir -p "usr/lib/gcc/" 
 
     CT_DoExecLog ALL \
-    ln -sf "i686-apple-darwin10" "usr/lib/gcc/x86_64-apple-darwin10"
+    ln -sf "i686-apple-darwin${CT_TARGET_DARWIN_VERSION}" "usr/lib/gcc/${CT_TARGET_ARCH}-apple-darwin${CT_TARGET_DARWIN_VERSION}"
 
     CT_DoExecLog ALL \
     ln -sf "usr/lib" "lib"
