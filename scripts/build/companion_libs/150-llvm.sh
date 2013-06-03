@@ -18,6 +18,11 @@ fi
 
 LLVM_FULLNAME="${CT_LLVM_PREFIX}-${CT_LLVM_VERSION}${CT_LLVM_SUFFIX}"
 LLVM_URL="${CT_LLVM_URL}/${CT_LLVM_VERSION}/"
+if [ "${CT_LLVM_PREFIX}" = "llvmgcc42" ]; then
+    LLVM_CONFIGURE=${LLVM_FULLNAME}/llvmCore/configure
+else
+    LLVM_CONFIGURE=${LLVM_FULLNAME}/configure
+fi
 
 # Download LLVM
 do_llvm_get() {
@@ -27,9 +32,9 @@ do_llvm_get() {
 
 # Extract LLVM
 do_llvm_extract() {
-    CT_Extract "llvm-${CT_LLVM_VERSION}${LLVM_SUFFIX}"
+    CT_Extract "${LLVM_FULLNAME}"
     
-    CT_Pushd "${CT_SRC_DIR}/llvm-${CT_LLVM_VERSION}${LLVM_SUFFIX}"
+    CT_Pushd "${CT_SRC_DIR}/${LLVM_FULLNAME}"
     CT_Patch nochdir ${CT_LLVM_PATCHDIR} "${CT_LLVM_VERSION}"
     CT_Popd
 }
@@ -89,13 +94,13 @@ do_llvm_backend() {
 
     CT_DoLog EXTRA "Configuring LLVM"
 
-    CT_DoExecLog CFG                                      \
-    CFLAGS="${cflags}"                                    \
-    "${CT_SRC_DIR}/llvm-${CT_LLVM_VERSION}${LLVM_SUFFIX}/configure" \
-        --build=${CT_BUILD}                               \
-        --host=${host}                                    \
-        --prefix="${prefix}"                              \
-        --target=${CT_TARGET}                             \
+    CT_DoExecLog CFG                  \
+    CFLAGS="${cflags}"                \
+    "${CT_SRC_DIR}/${LLVM_CONFIGURE}" \
+        --build=${CT_BUILD}           \
+        --host=${host}                \
+        --prefix="${prefix}"          \
+        --target=${CT_TARGET}         \
 
     CT_DoLog EXTRA "Building LLVM"
     CT_DoExecLog ALL make ${JOBSFLAGS}
