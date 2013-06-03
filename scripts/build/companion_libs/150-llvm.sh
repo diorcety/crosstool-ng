@@ -15,11 +15,14 @@ if [ "${CC_LLVM_V_3_1}" = "y" ]; then
 else
 	LLVM_SUFFIX=""
 fi
-	
+
+LLVM_FULLNAME="${CT_LLVM_PREFIX}-${CT_LLVM_VERSION}${CT_LLVM_SUFFIX}"
+LLVM_URL="${CT_LLVM_URL}/${CT_LLVM_VERSION}/"
+
 # Download LLVM
 do_llvm_get() {
-    CT_GetFile "llvm-${CT_LLVM_VERSION}${LLVM_SUFFIX}" \
-               http://llvm.org/releases/${CT_LLVM_VERSION}
+    CT_GetFile "${LLVM_FULLNAME}" \
+               "${LLVM_URL}"
 }
 
 # Extract LLVM
@@ -27,7 +30,7 @@ do_llvm_extract() {
     CT_Extract "llvm-${CT_LLVM_VERSION}${LLVM_SUFFIX}"
     
     CT_Pushd "${CT_SRC_DIR}/llvm-${CT_LLVM_VERSION}${LLVM_SUFFIX}"
-    CT_Patch nochdir "llvm" "${CT_LLVM_VERSION}"
+    CT_Patch nochdir ${CT_LLVM_PATCHDIR} "${CT_LLVM_VERSION}"
     CT_Popd
 }
 

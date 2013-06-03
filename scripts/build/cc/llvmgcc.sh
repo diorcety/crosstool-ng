@@ -5,8 +5,6 @@
 CC_LLVMGCC_FULLNAME="${CT_CC_LLVMGCC_PREFIX}-${CT_CC_LLVMGCC_VERSION}${CT_CC_LLVMGCC_SUFFIX}"
 CC_LLVMGCC_URL="${CT_CC_LLVMGCC_URL}/${CT_CC_LLVMGCC_VERSION}/"
 
-CC_LLVMGCC_PATCHDIR="llvm-gcc"
-
 # Download gcc
 do_llvmgcc_get() {
     # Ah! gcc folks are kind of 'different': they store the tarballs in
@@ -24,7 +22,7 @@ do_llvmgcc_get() {
 do_llvmgcc_extract() {
     CT_Extract "${CC_LLVMGCC_FULLNAME}"
     CT_Pushd "${CT_SRC_DIR}/${CC_LLVMGCC_FULLNAME}"
-    CT_Patch nochdir "${CC_LLVMGCC_PATCHDIR}" "${CT_CC_LLVMGCC_VERSION}"
+    CT_Patch nochdir "${CT_CC_LLVMGCC_PATCHDIR}" "${CT_CC_LLVMGCC_VERSION}"
     autoreconf -vi
     CT_Popd
 }
