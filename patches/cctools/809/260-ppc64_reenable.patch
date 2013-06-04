@@ -1,6 +1,6 @@
 diff -urN a/include/mach/ppc/_structs.h b/include/mach/ppc/_structs.h
---- a/include/mach/ppc/_structs.h	2013-04-02 23:44:56.527313151 +0100
-+++ b/include/mach/ppc/_structs.h	2013-04-02 23:44:56.679311239 +0100
+--- a/include/mach/ppc/_structs.h	2013-06-04 22:01:56.220836983 +0100
++++ b/include/mach/ppc/_structs.h	2013-06-04 22:01:56.404838655 +0100
 @@ -136,7 +136,7 @@
  };
  #endif /* __DARWIN_UNIX03 */
@@ -38,8 +38,8 @@ diff -urN a/include/mach/ppc/_structs.h b/include/mach/ppc/_structs.h
  #pragma pack()
  
 diff -urN a/include/mach/ppc/thread_status.h b/include/mach/ppc/thread_status.h
---- a/include/mach/ppc/thread_status.h	2013-04-02 23:44:56.523313201 +0100
-+++ b/include/mach/ppc/thread_status.h	2013-04-02 23:44:56.679311239 +0100
+--- a/include/mach/ppc/thread_status.h	2013-06-04 22:01:56.220836983 +0100
++++ b/include/mach/ppc/thread_status.h	2013-06-04 22:01:56.404838655 +0100
 @@ -70,9 +70,9 @@
  */
  

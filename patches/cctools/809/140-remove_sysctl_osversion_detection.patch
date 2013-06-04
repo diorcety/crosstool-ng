@@ -1,6 +1,6 @@
 diff -urN a/libstuff/macosx_deployment_target.c b/libstuff/macosx_deployment_target.c
---- a/libstuff/macosx_deployment_target.c	2013-04-02 23:44:34.831585902 +0100
-+++ b/libstuff/macosx_deployment_target.c	2013-04-02 23:44:35.107582433 +0100
+--- a/libstuff/macosx_deployment_target.c	2013-06-04 22:01:49.717777936 +0100
++++ b/libstuff/macosx_deployment_target.c	2013-06-04 22:01:49.964780179 +0100
 @@ -115,8 +115,8 @@
  	osversion_name[0] = CTL_KERN;
  	osversion_name[1] = KERN_OSRELEASE;

@@ -1,6 +1,6 @@
 diff -urN a/as/driver.c b/as/driver.c
---- a/as/driver.c	2013-06-04 21:37:19.336903817 +0100
-+++ b/as/driver.c	2013-06-04 21:40:24.742394946 +0100
+--- a/as/driver.c	2013-06-04 22:01:54.613822392 +0100
++++ b/as/driver.c	2013-06-04 22:01:54.852824563 +0100
 @@ -53,17 +53,25 @@
  	 */
  	bufsize = MAXPATHLEN;
@@ -33,8 +33,8 @@ diff -urN a/as/driver.c b/as/driver.c
  	 * Process the assembler flags exactly like the assembler would (except
  	 * let the assembler complain about multiple flags, bad combinations of
 diff -urN a/libstuff/execute.c b/libstuff/execute.c
---- a/libstuff/execute.c	2013-06-04 21:37:18.897900380 +0100
-+++ b/libstuff/execute.c	2013-06-04 21:38:42.905566668 +0100
+--- a/libstuff/execute.c	2013-06-04 22:01:54.608822347 +0100
++++ b/libstuff/execute.c	2013-06-04 22:01:54.847824516 +0100
 @@ -161,10 +161,16 @@
  	    p = allocate(bufsize);
  	    _NSGetExecutablePath(p, &bufsize);

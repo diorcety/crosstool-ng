@@ -1,6 +1,6 @@
 diff -urN a/ar/archive.c b/ar/archive.c
---- a/ar/archive.c	2013-04-02 23:44:59.259278805 +0100
-+++ b/ar/archive.c	2013-04-02 23:44:59.431276643 +0100
+--- a/ar/archive.c	2013-06-04 22:01:57.096844938 +0100
++++ b/ar/archive.c	2013-06-04 22:01:57.287846672 +0100
 @@ -68,6 +68,7 @@
  
  #include <sys/param.h>
@@ -10,8 +10,8 @@ diff -urN a/ar/archive.c b/ar/archive.c
  #include <ar.h>
  #include <dirent.h>
 diff -urN a/ar/contents.c b/ar/contents.c
---- a/ar/contents.c	2013-04-02 23:44:59.259278805 +0100
-+++ b/ar/contents.c	2013-04-02 23:44:59.431276643 +0100
+--- a/ar/contents.c	2013-06-04 22:01:57.096844938 +0100
++++ b/ar/contents.c	2013-06-04 22:01:57.287846672 +0100
 @@ -78,6 +78,8 @@
  #include <string.h>
  #include <tzfile.h>
@@ -22,8 +22,8 @@ diff -urN a/ar/contents.c b/ar/contents.c
  #include "archive.h"
  #include "extern.h"
 diff -urN a/as/obstack.c b/as/obstack.c
---- a/as/obstack.c	2013-04-02 23:44:59.315278102 +0100
-+++ b/as/obstack.c	2013-04-02 23:44:59.491275887 +0100
+--- a/as/obstack.c	2013-06-04 22:01:57.142845356 +0100
++++ b/as/obstack.c	2013-06-04 22:01:57.339847145 +0100
 @@ -16,6 +16,8 @@
  Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.  */
  
@@ -34,8 +34,8 @@ diff -urN a/as/obstack.c b/as/obstack.c
  
  #ifdef __STDC__
 diff -urN a/as/sections.c b/as/sections.c
---- a/as/sections.c	2013-04-02 23:44:59.319278051 +0100
-+++ b/as/sections.c	2013-04-02 23:44:59.491275887 +0100
+--- a/as/sections.c	2013-06-04 22:01:57.139845329 +0100
++++ b/as/sections.c	2013-06-04 22:01:57.336847118 +0100
 @@ -25,6 +25,8 @@
   */
  #include <stdlib.h>
@@ -46,8 +46,8 @@ diff -urN a/as/sections.c b/as/sections.c
  #include "obstack.h"
  #include "xmalloc.h"
 diff -urN a/ld64/include/mach-o/dyld_images.h b/ld64/include/mach-o/dyld_images.h
---- a/ld64/include/mach-o/dyld_images.h	2013-04-02 23:44:59.203279508 +0100
-+++ b/ld64/include/mach-o/dyld_images.h	2013-04-02 23:44:59.367277446 +0100
+--- a/ld64/include/mach-o/dyld_images.h	2013-06-04 22:01:57.191845800 +0100
++++ b/ld64/include/mach-o/dyld_images.h	2013-06-04 22:01:57.389847598 +0100
 @@ -25,6 +25,9 @@
  
  #include <stdbool.h>

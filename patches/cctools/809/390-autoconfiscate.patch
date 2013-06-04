@@ -1,6 +1,6 @@
 diff -urN a/ar/Makefile.in b/ar/Makefile.in
 --- a/ar/Makefile.in	1970-01-01 01:00:00.000000000 +0100
-+++ b/ar/Makefile.in	2013-05-30 17:39:57.252385977 +0100
++++ b/ar/Makefile.in	2013-06-04 22:02:03.933907019 +0100
 @@ -0,0 +1,71 @@
 +builddir = @builddir@
 +top_builddir = @top_builddir@
@@ -75,7 +75,7 @@ diff -urN a/ar/Makefile.in b/ar/Makefile.in
 +	rm -f ar
 diff -urN a/as/arm/Makefile.in b/as/arm/Makefile.in
 --- a/as/arm/Makefile.in	1970-01-01 01:00:00.000000000 +0100
-+++ b/as/arm/Makefile.in	2013-05-30 17:39:57.215719309 +0100
++++ b/as/arm/Makefile.in	2013-06-04 22:02:03.980907446 +0100
 @@ -0,0 +1,5 @@
 +ARCH	=	arm
 +
@@ -84,7 +84,7 @@ diff -urN a/as/arm/Makefile.in b/as/arm/Makefile.in
 +MYLIBS_arm	=	-lstuff
 diff -urN a/as/i386/Makefile.in b/as/i386/Makefile.in
 --- a/as/i386/Makefile.in	1970-01-01 01:00:00.000000000 +0100
-+++ b/as/i386/Makefile.in	2013-05-30 17:39:57.215719309 +0100
++++ b/as/i386/Makefile.in	2013-06-04 22:02:03.980907446 +0100
 @@ -0,0 +1,6 @@
 +ARCH	=	i386
 +
@@ -94,7 +94,7 @@ diff -urN a/as/i386/Makefile.in b/as/i386/Makefile.in
 +
 diff -urN a/as/Makefile.arch.in b/as/Makefile.arch.in
 --- a/as/Makefile.arch.in	1970-01-01 01:00:00.000000000 +0100
-+++ b/as/Makefile.arch.in	2013-05-30 17:39:57.215719309 +0100
++++ b/as/Makefile.arch.in	2013-06-04 22:02:03.982907464 +0100
 @@ -0,0 +1,63 @@
 +builddir = @builddir@
 +top_builddir = @top_builddir@
@@ -159,9 +159,81 @@ diff -urN a/as/Makefile.arch.in b/as/Makefile.arch.in
 +clean:
 +	rm -r -f *.o
 +	rm -f as
+diff -urN a/as/Makefile.arch.in.orig b/as/Makefile.arch.in.orig
+--- a/as/Makefile.arch.in.orig	1970-01-01 01:00:00.000000000 +0100
++++ b/as/Makefile.arch.in.orig	2013-06-04 22:02:03.982907464 +0100
+@@ -0,0 +1,68 @@
++builddir = @builddir@
++top_builddir = @top_builddir@
++srcdir = @srcdir@
++top_srcdir = @top_srcdir@
++
++prefix	= @prefix@
++exec_prefix	= @exec_prefix@
++libexecdir	= @libexecdir@
++
++VPATH = @srcdir@:@srcdir@/..
++
++CC              = @CC@
++WARNINGS	= @WARNINGS@
++CFLAGS          = @CFLAGS@
++MDYNAMICNOPIC   = @MDYNAMICNOPIC@
++CPPFLAGS        = @CPPFLAGS@
++DEFS            = @DEFS@ @ENDIAN_FLAG@
++LDFLAGS         = @LDFLAGS@
++HAVE_PRIVEXT    = @HAVE_PRIVEXT@
++HAVE_FOREIGN_HEADERS    = @HAVE_FOREIGN_HEADERS@
++
++ifeq ($(HAVE_PRIVEXT),NO)
++INCPRIVEXT      = -include $(top_srcdir)/include/extern.h
++endif
++
++ifeq ($(HAVE_FOREIGN_HEADERS),YES)
++FORHDRS         = -I$(top_srcdir)/include/foreign
++endif
++
++INSTALL		= @INSTALL@
++INSTALL_PROGRAM	= @INSTALL_PROGRAM@
++ASLIBEXECDIR    = @ASLIBEXECDIR@
++
++MYINCLUDES      = -I$(builddir) -I$(srcdir)/.. -I$(top_builddir)/include \
++			-I$(top_srcdir)/include $(INCPRIVEXT) -include $(top_builddir)/include/config.h $(FORHDRS)
++MYWARNINGS      =
++MYDEFS          = -DNeXT_MOD -DASLIBEXECDIR="\"$(ASLIBEXECDIR)/\"" $(MYDEFS_$(ARCH))
++MYLDFLAGS	= -L$(top_builddir)/libstuff
++MYLIBS		= $(MYLIBS_$(ARCH))
++
++MYCOMPILEFLAGS  = $(WARNINGS) $(MYWARNINGS) $(DEFS) $(MYDEFS) \
++	$(CPPFLAGS) $(MYINCLUDES) $(CFLAGS) $(MDYNAMICNOPIC) 
++
++MYLINKFLAGS	= $(LDFLAGS) $(MYLDFLAGS) $(MYLIBS)
++
++CFILES = app.c as.c atof-generic.c atof-ieee.c expr.c fixes.c flonum-const.c \
++         flonum-copy.c flonum-mult.c frags.c hash.c hex-value.c input-file.c \
++         input-scrub.c layout.c messages.c obstack.c read.c sections.c \
++         symbols.c write_object.c xmalloc.c dwarf2dbg.c $(CFILES_$(ARCH))
++
++OBJS = $(CFILES:.c=.o) 
++.c.o:
++	$(CC) $(MYCOMPILEFLAGS) -c -o $@ $<
++
++.PHONY: default clean distclean install
++
++default: as
++
++as: $(OBJS)
++	$(CC) -o $@ $^ $(MYLINKFLAGS)
++
++install: as
++	mkdir -p $(DESTDIR)/$(ASLIBEXECDIR)/$(ARCH)
++	$(INSTALL_PROGRAM) as $(DESTDIR)/$(ASLIBEXECDIR)/$(ARCH)/as
++
++clean:
++	rm -r -f *.o
++	rm -f as
 diff -urN a/as/Makefile.in b/as/Makefile.in
 --- a/as/Makefile.in	1970-01-01 01:00:00.000000000 +0100
-+++ b/as/Makefile.in	2013-05-30 17:39:57.215719309 +0100
++++ b/as/Makefile.in	2013-06-04 22:02:03.982907464 +0100
 @@ -0,0 +1,78 @@
 +builddir = @builddir@
 +top_builddir = @top_builddir@
@@ -241,9 +313,95 @@ diff -urN a/as/Makefile.in b/as/Makefile.in
 +	for ast in $(ASTARGETS); do			\
 +		(cd $${ast} && $(MAKE) $@) || exit 1;	\
 +	done
+diff -urN a/as/Makefile.in.orig b/as/Makefile.in.orig
+--- a/as/Makefile.in.orig	1970-01-01 01:00:00.000000000 +0100
++++ b/as/Makefile.in.orig	2013-06-04 22:02:03.981907455 +0100
+@@ -0,0 +1,82 @@
++builddir = @builddir@
++top_builddir = @top_builddir@
++srcdir = @srcdir@
++top_srcdir = @top_srcdir@
++
++prefix	= @prefix@
++exec_prefix	= @exec_prefix@
++libexecdir	= @libexecdir@
++bindir		= @bindir@
++
++VPATH = @srcdir@
++
++CC              = @CC@
++CFLAGS          = @CFLAGS@
++WARNINGS	= @WARNINGS@
++MDYNAMICNOPIC   = @MDYNAMICNOPIC@
++CPPFLAGS        = @CPPFLAGS@
++DEFS            = @DEFS@ @ENDIAN_FLAG@
++LDFLAGS         = @LDFLAGS@
++HAVE_PRIVEXT    = @HAVE_PRIVEXT@
++HAVE_FOREIGN_HEADERS    = @HAVE_FOREIGN_HEADERS@
++
++ifeq ($(HAVE_PRIVEXT),NO)
++INCPRIVEXT      = -include $(top_srcdir)/include/extern.h
++endif
++
++ifeq ($(HAVE_FOREIGN_HEADERS),YES)
++FORHDRS         = -I$(top_srcdir)/include/foreign
++endif
++
++INSTALL		= @INSTALL@
++INSTALL_PROGRAM = @INSTALL_PROGRAM@
++ASLIBEXECDIR    = @ASLIBEXECDIR@
++transform	= @program_transform_name@
++
++MYINCLUDES      = -I$(srcdir) -I$(top_builddir)/include \
++			-I$(top_srcdir)/include $(INCPRIVEXT) -include $(top_builddir)/include/config.h \
++			$(FORHDRS)
++MYWARNINGS      = 
++MYDEFS          = -DNeXT_MOD -DASLIBEXECDIR="\"$(ASLIBEXECDIR)/\""
++MYLDFLAGS	= -L$(top_builddir)/libstuff
++MYLIBS		= -lstuff
++
++MYCOMPILEFLAGS	= $(WARNINGS) $(MYWARNINGS) $(DEFS) $(MYDEFS) \
++	$(CPPFLAGS) $(MYINCLUDES) $(CFLAGS) $(MDYNAMICNOPIC) 
++
++MYLINKFLAGS	= $(LDFLAGS) $(MYLDFLAGS) $(MYLIBS)
++
++ASTARGETS = @ASTARGETS@
++
++CFILES = driver.c
++OBJS = $(CFILES:.c=.o)
++
++.c.o:
++	$(CC) $(MYCOMPILEFLAGS) -c -o $@ $<
++
++.PHONY: default install clean distclean $(ASTARGETS)
++
++default: driver $(ASTARGETS)
++
++$(ASTARGETS):
++	cd $@ && $(MAKE)
++
++driver: $(OBJS)
++	$(CC) -o $@ $^ $(MYLINKFLAGS)
++
++install: driver install-arch
++	mkdir -p $(DESTDIR)/$(bindir)
++	$(INSTALL_PROGRAM) driver \
++		$(DESTDIR)/$(bindir)/`echo as | sed '$(transform)'`
++
++install-arch:
++	for ast in $(ASTARGETS); do				\
++		(cd $${ast} && $(MAKE) install) || exit 1;	\
++	done
++
++clean:
++	rm -r -f *.o
++	rm -f driver
++	for ast in $(ASTARGETS); do			\
++		(cd $${ast} && $(MAKE) $@) || exit 1;	\
++	done
 diff -urN a/as/ppc/Makefile.in b/as/ppc/Makefile.in
 --- a/as/ppc/Makefile.in	1970-01-01 01:00:00.000000000 +0100
-+++ b/as/ppc/Makefile.in	2013-05-30 17:39:57.209052642 +0100
++++ b/as/ppc/Makefile.in	2013-06-04 22:02:03.978907428 +0100
 @@ -0,0 +1,5 @@
 +ARCH	=	ppc
 +
@@ -252,7 +410,7 @@ diff -urN a/as/ppc/Makefile.in b/as/ppc/Makefile.in
 +MYLIBS_ppc	=	-lstuff
 diff -urN a/as/ppc64/Makefile.in b/as/ppc64/Makefile.in
 --- a/as/ppc64/Makefile.in	1970-01-01 01:00:00.000000000 +0100
-+++ b/as/ppc64/Makefile.in	2013-05-30 17:39:57.215719309 +0100
++++ b/as/ppc64/Makefile.in	2013-06-04 22:02:03.981907455 +0100
 @@ -0,0 +1,5 @@
 +ARCH	=	ppc64
 +
@@ -261,7 +419,7 @@ diff -urN a/as/ppc64/Makefile.in b/as/ppc64/Makefile.in
 +MYLIBS_ppc64	=	-lstuff
 diff -urN a/as/x86_64/Makefile.in b/as/x86_64/Makefile.in
 --- a/as/x86_64/Makefile.in	1970-01-01 01:00:00.000000000 +0100
-+++ b/as/x86_64/Makefile.in	2013-05-30 17:39:57.215719309 +0100
++++ b/as/x86_64/Makefile.in	2013-06-04 22:02:03.978907428 +0100
 @@ -0,0 +1,6 @@
 +ARCH	=	x86_64
 +
@@ -271,7 +429,7 @@ diff -urN a/as/x86_64/Makefile.in b/as/x86_64/Makefile.in
 +
 diff -urN a/config.guess b/config.guess
 --- a/config.guess	1970-01-01 01:00:00.000000000 +0100
-+++ b/config.guess	2013-05-30 17:39:57.219052642 +0100
++++ b/config.guess	2013-06-04 22:02:03.977907419 +0100
 @@ -0,0 +1,1388 @@
 +#! /bin/sh
 +# Attempt to guess a canonical system name.
@@ -1663,7 +1821,7 @@ diff -urN a/config.guess b/config.guess
 +# End:
 diff -urN a/config.sub b/config.sub
 --- a/config.sub	1970-01-01 01:00:00.000000000 +0100
-+++ b/config.sub	2013-05-30 17:39:57.219052642 +0100
++++ b/config.sub	2013-06-04 22:02:03.939907074 +0100
 @@ -0,0 +1,1489 @@
 +#! /bin/sh
 +# Configuration validation subroutine script.
@@ -3156,7 +3314,7 @@ diff -urN a/config.sub b/config.sub
 +# End:
 diff -urN a/configure.ac b/configure.ac
 --- a/configure.ac	1970-01-01 01:00:00.000000000 +0100
-+++ b/configure.ac	2013-05-30 17:39:57.275719311 +0100
++++ b/configure.ac	2013-06-04 22:02:03.977907419 +0100
 @@ -0,0 +1,710 @@
 +AC_INIT([ccctools], [809], [Ray Donnelly <mingw.android@gmail.com>])
 +AC_PREREQ([2.62])
@@ -3870,7 +4028,7 @@ diff -urN a/configure.ac b/configure.ac
 +AC_OUTPUT
 diff -urN a/include/CommonCrypto/CommonDigest.h.in b/include/CommonCrypto/CommonDigest.h.in
 --- a/include/CommonCrypto/CommonDigest.h.in	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/CommonCrypto/CommonDigest.h.in	2013-05-30 17:39:57.205719308 +0100
++++ b/include/CommonCrypto/CommonDigest.h.in	2013-06-04 22:02:04.038907973 +0100
 @@ -0,0 +1,13 @@
 +#ifndef COMMONDIGEST_H_INCLUDED
 +#define COMMONDIGEST_H_INCLUDED
@@ -3887,7 +4045,7 @@ diff -urN a/include/CommonCrypto/CommonDigest.h.in b/include/CommonCrypto/Common
 +#endif /* COMMONDIGEST_H_INCLUDED */
 diff -urN a/include/config.h.in b/include/config.h.in
 --- a/include/config.h.in	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/config.h.in	2013-05-30 17:39:57.205719308 +0100
++++ b/include/config.h.in	2013-06-04 22:02:04.034907937 +0100
 @@ -0,0 +1,454 @@
 +/* include/config.h.in.  Generated from configure.ac by autoheader.  */
 +
@@ -4345,7 +4503,7 @@ diff -urN a/include/config.h.in b/include/config.h.in
 +
 diff -urN a/include/configure.h.in b/include/configure.h.in
 --- a/include/configure.h.in	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/configure.h.in	2013-05-30 17:39:57.202385975 +0100
++++ b/include/configure.h.in	2013-06-04 22:02:04.034907937 +0100
 @@ -0,0 +1,4 @@
 +#ifndef FAKE_CONFIGURE_H_INCLUDED
 +#define FAKE_CONFIGURE_H_INCLUDED
@@ -4353,7 +4511,7 @@ diff -urN a/include/configure.h.in b/include/configure.h.in
 +#endif /* FAKE_CONFIGURE_H_INCLUDED */
 diff -urN a/include/dlfcn.h.in b/include/dlfcn.h.in
 --- a/include/dlfcn.h.in	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/dlfcn.h.in	2013-05-30 17:39:57.202385975 +0100
++++ b/include/dlfcn.h.in	2013-06-04 22:02:04.048908064 +0100
 @@ -0,0 +1,27 @@
 +#ifndef FAKE_DLFCN_H_INCLUDED
 +#define FAKE_DLFCN_H_INCLUDED
@@ -4384,7 +4542,7 @@ diff -urN a/include/dlfcn.h.in b/include/dlfcn.h.in
 +#endif /* FAKE_DLFCN_H_INCLUDED */
 diff -urN a/include/emulated.h b/include/emulated.h
 --- a/include/emulated.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/emulated.h	2013-05-30 17:39:57.205719308 +0100
++++ b/include/emulated.h	2013-06-04 22:02:04.047908055 +0100
 @@ -0,0 +1,164 @@
 +#ifndef EMULATED_H_INCLUDED
 +#define EMULATED_H_INCLUDED
@@ -4552,7 +4710,7 @@ diff -urN a/include/emulated.h b/include/emulated.h
 +#endif /* EMULATED_H_INCLUDED */
 diff -urN a/include/err.h.in b/include/err.h.in
 --- a/include/err.h.in	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/err.h.in	2013-05-30 17:39:57.202385975 +0100
++++ b/include/err.h.in	2013-06-04 22:02:04.048908064 +0100
 @@ -0,0 +1,28 @@
 +#ifndef ERR_H_INCLUDED
 +#define ERR_H_INCLUDED
@@ -4584,7 +4742,7 @@ diff -urN a/include/err.h.in b/include/err.h.in
 +#endif /* ERR_H_INCLUDED */
 diff -urN a/include/execinfo.h.in b/include/execinfo.h.in
 --- a/include/execinfo.h.in	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/execinfo.h.in	2013-05-30 17:39:57.205719308 +0100
++++ b/include/execinfo.h.in	2013-06-04 22:02:04.034907937 +0100
 @@ -0,0 +1,4 @@
 +#ifndef EXECINFO_H_INCLUDED
 +#define EXECINFO_H_INCLUDED
@@ -4592,7 +4750,7 @@ diff -urN a/include/execinfo.h.in b/include/execinfo.h.in
 +#endif /* EXECINFO_H_INCLUDED */
 diff -urN a/include/extern.h b/include/extern.h
 --- a/include/extern.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/extern.h	2013-05-30 17:39:57.205719308 +0100
++++ b/include/extern.h	2013-06-04 22:02:04.034907937 +0100
 @@ -0,0 +1,26 @@
 +/*
 +   These includes are needed by all .cpp
@@ -4622,7 +4780,7 @@ diff -urN a/include/extern.h b/include/extern.h
 +#include <sys/sysctl.h>
 diff -urN a/include/libc_cxx.h.in b/include/libc_cxx.h.in
 --- a/include/libc_cxx.h.in	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/libc_cxx.h.in	2013-05-30 17:39:57.205719308 +0100
++++ b/include/libc_cxx.h.in	2013-06-04 22:02:04.040907991 +0100
 @@ -0,0 +1,26 @@
 +/*
 +   These includes are needed by all .cpp
@@ -4652,7 +4810,7 @@ diff -urN a/include/libc_cxx.h.in b/include/libc_cxx.h.in
 +#include <sys/sysctl.h>
 diff -urN a/include/libc.h.in b/include/libc.h.in
 --- a/include/libc.h.in	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/libc.h.in	2013-05-30 17:39:57.202385975 +0100
++++ b/include/libc.h.in	2013-06-04 22:02:04.037907964 +0100
 @@ -0,0 +1,22 @@
 +#ifndef FAKE_LIBC_H_INCLUDED
 +#define FAKE_LIBC_H_INCLUDED
@@ -4678,7 +4836,7 @@ diff -urN a/include/libc.h.in b/include/libc.h.in
 +#endif /* FAKE_LIBC_H_INCLUDED */
 diff -urN a/include/mach-o/arch-install.h b/include/mach-o/arch-install.h
 --- a/include/mach-o/arch-install.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach-o/arch-install.h	2013-05-30 17:39:57.205719308 +0100
++++ b/include/mach-o/arch-install.h	2013-06-04 22:02:04.039907982 +0100
 @@ -0,0 +1,110 @@
 +/*
 + * Copyright (c) 1999 Apple Computer, Inc. All rights reserved.
@@ -4792,7 +4950,7 @@ diff -urN a/include/mach-o/arch-install.h b/include/mach-o/arch-install.h
 +#endif /* _MACH_O_ARCH_H_ */
 diff -urN a/include/Makefile.in b/include/Makefile.in
 --- a/include/Makefile.in	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/Makefile.in	2013-05-30 17:39:57.202385975 +0100
++++ b/include/Makefile.in	2013-06-04 22:02:04.048908064 +0100
 @@ -0,0 +1,33 @@
 +builddir = @builddir@
 +top_builddir = @top_builddir@
@@ -4829,7 +4987,7 @@ diff -urN a/include/Makefile.in b/include/Makefile.in
 +clean:
 diff -urN a/include/malloc/malloc.h.in b/include/malloc/malloc.h.in
 --- a/include/malloc/malloc.h.in	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/malloc/malloc.h.in	2013-05-30 17:39:57.205719308 +0100
++++ b/include/malloc/malloc.h.in	2013-06-04 22:02:04.040907991 +0100
 @@ -0,0 +1,4 @@
 +#ifndef FAKE_MALLOC_H_INCLUDED
 +#define FAKE_MALLOC_H_INCLUDED
@@ -4837,7 +4995,7 @@ diff -urN a/include/malloc/malloc.h.in b/include/malloc/malloc.h.in
 +#endif /* FAKE_MALLOC_H_INCLUDED */
 diff -urN a/include/paths.h.in b/include/paths.h.in
 --- a/include/paths.h.in	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/paths.h.in	2013-05-30 17:39:57.205719308 +0100
++++ b/include/paths.h.in	2013-06-04 22:02:04.034907937 +0100
 @@ -0,0 +1,4 @@
 +#ifndef FAKE_PATHS_H_INCLUDED
 +#define FAKE_PATHS_H_INCLUDED
@@ -4845,7 +5003,7 @@ diff -urN a/include/paths.h.in b/include/paths.h.in
 +#endif /* FAKE_PATHS_H_INCLUDED */
 diff -urN a/include/servers/bootstrap.h.in b/include/servers/bootstrap.h.in
 --- a/include/servers/bootstrap.h.in	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/servers/bootstrap.h.in	2013-05-30 17:39:57.205719308 +0100
++++ b/include/servers/bootstrap.h.in	2013-06-04 22:02:04.047908055 +0100
 @@ -0,0 +1,4 @@
 +#ifndef FAKE_SERVER_BOOTSTRAP_H_INCLUDED
 +#define FAKE_SERVER_BOOTSTRAP_H_INCLUDED
@@ -4853,7 +5011,7 @@ diff -urN a/include/servers/bootstrap.h.in b/include/servers/bootstrap.h.in
 +#endif /* FAKE_SERVER_BOOTSTRAP_H_INCLUDED */
 diff -urN a/include/sys/cdefs.h.in b/include/sys/cdefs.h.in
 --- a/include/sys/cdefs.h.in	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/sys/cdefs.h.in	2013-05-30 17:39:57.205719308 +0100
++++ b/include/sys/cdefs.h.in	2013-06-04 22:02:04.035907946 +0100
 @@ -0,0 +1,14 @@
 +#ifndef SYS_CDEFS_H_INCLUDED
 +#define SYS_CDEFS_H_INCLUDED
@@ -4871,7 +5029,7 @@ diff -urN a/include/sys/cdefs.h.in b/include/sys/cdefs.h.in
 +#endif /* SYS_CDEFS_H_INCLUDED */
 diff -urN a/include/sys/_endian.h.in b/include/sys/_endian.h.in
 --- a/include/sys/_endian.h.in	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/sys/_endian.h.in	2013-05-30 17:39:57.205719308 +0100
++++ b/include/sys/_endian.h.in	2013-06-04 22:02:04.035907946 +0100
 @@ -0,0 +1,14 @@
 +#ifndef SYS__ENDIAN_H_INCLUDED
 +#define SYS__ENDIAN_H_INCLUDED
@@ -4889,7 +5047,7 @@ diff -urN a/include/sys/_endian.h.in b/include/sys/_endian.h.in
 +#endif /* SYS__ENDIAN_H_INCLUDED */
 diff -urN a/include/sys/mman.h.in b/include/sys/mman.h.in
 --- a/include/sys/mman.h.in	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/sys/mman.h.in	2013-05-30 17:39:57.205719308 +0100
++++ b/include/sys/mman.h.in	2013-06-04 22:02:04.035907946 +0100
 @@ -0,0 +1,4 @@
 +#ifndef SYS_MMAN_H_INCLUDED
 +#define SYS_MMAN_H_INCLUDED
@@ -4897,7 +5055,7 @@ diff -urN a/include/sys/mman.h.in b/include/sys/mman.h.in
 +#endif /* SYS_MMAN_H_INCLUDED */
 diff -urN a/include/sys/sysctl.h.in b/include/sys/sysctl.h.in
 --- a/include/sys/sysctl.h.in	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/sys/sysctl.h.in	2013-05-30 17:39:57.205719308 +0100
++++ b/include/sys/sysctl.h.in	2013-06-04 22:02:04.035907946 +0100
 @@ -0,0 +1,4 @@
 +#ifndef SYS_SYSCTL_H_INCLUDED
 +#define SYS_SYSCTL_H_INCLUDED
@@ -4905,7 +5063,7 @@ diff -urN a/include/sys/sysctl.h.in b/include/sys/sysctl.h.in
 +#endif /* SYS_SYSCTL_H_INCLUDED */
 diff -urN a/include/tzfile.h.in b/include/tzfile.h.in
 --- a/include/tzfile.h.in	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/tzfile.h.in	2013-05-30 17:39:57.205719308 +0100
++++ b/include/tzfile.h.in	2013-06-04 22:02:04.034907937 +0100
 @@ -0,0 +1,4 @@
 +#ifndef FAKE_TZFILE_H_INCLUDED
 +#define FAKE_TZFILE_H_INCLUDED
@@ -4913,7 +5071,7 @@ diff -urN a/include/tzfile.h.in b/include/tzfile.h.in
 +#endif /* FAKE_TZFLIE_H_INCLUDED */
 diff -urN a/install-sh b/install-sh
 --- a/install-sh	1970-01-01 01:00:00.000000000 +0100
-+++ b/install-sh	2013-05-30 17:39:57.229052643 +0100
++++ b/install-sh	2013-06-04 22:02:03.977907419 +0100
 @@ -0,0 +1,276 @@
 +#!/bin/sh
 +#
@@ -5193,7 +5351,7 @@ diff -urN a/install-sh b/install-sh
 +}
 diff -urN a/ld/Makefile.in b/ld/Makefile.in
 --- a/ld/Makefile.in	1970-01-01 01:00:00.000000000 +0100
-+++ b/ld/Makefile.in	2013-05-30 17:39:57.225719309 +0100
++++ b/ld/Makefile.in	2013-06-04 22:02:03.986907501 +0100
 @@ -0,0 +1,72 @@
 +builddir = @builddir@
 +top_builddir = @top_builddir@
@@ -5267,9 +5425,110 @@ diff -urN a/ld/Makefile.in b/ld/Makefile.in
 +clean:
 +	rm -r -f *.o
 +	rm -f ld
+diff -urN a/ld/Makefile.in.orig b/ld/Makefile.in.orig
+--- a/ld/Makefile.in.orig	1970-01-01 01:00:00.000000000 +0100
++++ b/ld/Makefile.in.orig	2013-06-04 22:02:03.985907492 +0100
+@@ -0,0 +1,75 @@
++builddir = @builddir@
++top_builddir = @top_builddir@
++srcdir = @srcdir@
++top_srcdir = @top_srcdir@
++
++prefix		= @prefix@
++exec_prefix	= @exec_prefix@
++bindir		= @bindir@
++
++VPATH = @srcdir@
++
++CC              = @CC@
++CFLAGS          = @CFLAGS@
++WARNINGS	= @WARNINGS@
++MDYNAMICNOPIC   = @MDYNAMICNOPIC@
++CPPFLAGS        = @CPPFLAGS@
++DEFS            = @DEFS@ @ENDIAN_FLAG@
++LDFLAGS         = @LDFLAGS@
++HAVE_PRIVEXT    = @HAVE_PRIVEXT@
++HAVE_FOREIGN_HEADERS    = @HAVE_FOREIGN_HEADERS@
++
++UUID_LIBS	= @UUID_LIBS@
++SSL_LIBS	= @SSL_LIBS@
++ifeq ($(HAVE_PRIVEXT),NO)
++INCPRIVEXT      = -include $(top_srcdir)/include/extern.h
++endif
++
++ifeq ($(HAVE_FOREIGN_HEADERS),YES)
++FORHDRS         = -I$(top_srcdir)/include/foreign
++endif
++
++INSTALL		= @INSTALL@
++INSTALL_PROGRAM	= @INSTALL_PROGRAM@
++transform       = @program_transform_name@
++LD64PROG	= $(shell echo ld64 | sed '$(transform)')
++
++MYINCLUDES      = -I$(builddir) -I$(srcdir) -I$(top_builddir)/include \
++			-I$(top_srcdir)/include $(INCPRIVEXT) -include $(top_builddir)/include/config.h $(FORHDRS)
++MYWARNINGS      = 
++MYDEFS          = -DDEBUG -DBINDIR="\"$(bindir)\"" -DLD64PROG="\"$(LD64PROG)\""
++MYLDFLAGS	= -L$(top_builddir)/libstuff
++MYLIBS		= -lstuff
++
++MYCOMPILEFLAGS	= $(WARNINGS) $(MYWARNINGS) $(DEFS) $(MYDEFS) \
++	$(CPPFLAGS) $(MYINCLUDES) $(CFLAGS) $(MDYNAMICNOPIC) 
++
++MYLINKFLAGS	= $(LDFLAGS) $(MYLDFLAGS) $(MYLIBS) $(SSL_LIBS) $(UUID_LIBS)
++
++CFILES = ld.c pass1.c objects.c sections.c cstring_literals.c symbols.c \
++         fvmlibs.c layout.c specs.c pass2.c generic_reloc.c rld.c sets.c \
++         4byte_literals.c 8byte_literals.c literal_pointers.c dylibs.c \
++         indirect_sections.c mod_sections.c i860_reloc.c ppc_reloc.c \
++         m88k_reloc.c hppa_reloc.c sparc_reloc.c coalesced_sections.c uuid.c \
++         debugcompunit.c debugline.c arm_reloc.c
++
++OBJS = $(CFILES:.c=.o) 
++
++.c.o:
++	$(CC) $(MYCOMPILEFLAGS) -c -o $@ $<
++
++.PHONY: default clean distclean install
++
++default: ld_classic
++
++ld_classic: $(OBJS)
++	$(CC) -o $@ $^ $(MYLINKFLAGS)
++
++install: ld_classic
++	mkdir -p $(DESTDIR)/$(bindir)
++	$(INSTALL_PROGRAM) ld_classic \
++		$(DESTDIR)/$(bindir)/`echo ld_classic | sed '$(transform)'`
++
++clean:
++	rm -r -f *.o
++	rm -f ld
+diff -urN a/ld/Makefile.in.rej b/ld/Makefile.in.rej
+--- a/ld/Makefile.in.rej	1970-01-01 01:00:00.000000000 +0100
++++ b/ld/Makefile.in.rej	2013-06-04 22:02:03.986907501 +0100
+@@ -0,0 +1,18 @@
++--- cctools2odcctools/files/ld/Makefile.in
+++++ cctools2odcctools/files/ld/Makefile.in
++@@ -33,13 +33,13 @@
++ MYINCLUDES      = -I$(builddir) -I$(srcdir) -I$(top_builddir)/include \
++                   -I$(top_srcdir)/include -include $(top_builddir)/include/config.h $(FORHDRS)
++ 
++-MYWARNINGS      = 
+++MYWARNINGS      =
++ MYDEFS          = -DDEBUG -DBINDIR="\"$(bindir)\"" -DLD64PROG="\"$(LD64PROG)\""
++ MYLDFLAGS	= -L$(top_builddir)/libstuff
++ MYLIBS		= -lstuff
++ 
++ MYCOMPILEFLAGS	= $(WARNINGS) $(MYWARNINGS) $(DEFS) $(MYDEFS) \
++-	$(CPPFLAGS) $(MYINCLUDES) $(CFLAGS) $(MDYNAMICNOPIC) 
+++	$(CPPFLAGS) $(MYINCLUDES) $(CFLAGS) $(MDYNAMICNOPIC)
++ 
++ MYLINKFLAGS	= $(LDFLAGS) $(MYLDFLAGS) $(MYLIBS) $(SSL_LIBS) $(UUID_LIBS)
++ 
 diff -urN a/ld64/Makefile.in b/ld64/Makefile.in
 --- a/ld64/Makefile.in	1970-01-01 01:00:00.000000000 +0100
-+++ b/ld64/Makefile.in	2013-05-30 17:39:57.229052643 +0100
++++ b/ld64/Makefile.in	2013-06-04 22:02:04.032907918 +0100
 @@ -0,0 +1,103 @@
 +builddir        = @builddir@
 +top_builddir    = @top_builddir@
@@ -5374,9 +5633,117 @@ diff -urN a/ld64/Makefile.in b/ld64/Makefile.in
 +clean:
 +	rm -r -f *.o */*.o
 +	rm -f ld
+diff -urN a/ld64/Makefile.in.127.2.orig b/ld64/Makefile.in.127.2.orig
+--- a/ld64/Makefile.in.127.2.orig	1970-01-01 01:00:00.000000000 +0100
++++ b/ld64/Makefile.in.127.2.orig	2013-06-04 22:02:04.031907909 +0100
+@@ -0,0 +1,104 @@
++builddir = @builddir@
++top_builddir = @top_builddir@
++srcdir = @srcdir@
++top_srcdir = @top_srcdir@
++
++prefix		= @prefix@
++exec_prefix	= @exec_prefix@
++bindir		= @bindir@
++
++VPATH = @srcdir@:@srcdir@/src
++
++CC		= @CC@
++CXX             = @CXX@
++CFLAGS          = @CFLAGS@
++CXXFLAGS	= @CXXFLAGS@
++WARNINGS	= @WARNINGS@
++MDYNAMICNOPIC   = @MDYNAMICNOPIC@
++CPPFLAGS        = @CPPFLAGS@
++DEFS            = @DEFS@ @ENDIAN_FLAG@
++LDFLAGS         = @LDFLAGS@
++HAVE_PRIVEXT    = @HAVE_PRIVEXT@
++HAVE_FOREIGN_HEADERS    = @HAVE_FOREIGN_HEADERS@
++UUID_LIBS	= @UUID_LIBS@
++SSL_LIBS	= @SSL_LIBS@
++LTO_DEFS	= @LTO_DEFS@
++LTO_LIBS	= @LTO_LIBS@
++DL_LIBS		= @DL_LIBS@
++
++ifeq ($(HAVE_PRIVEXT),NO)
++INCPRIVEXT      = -include $(top_srcdir)/include/extern.h
++endif
++
++ifeq ($(HAVE_FOREIGN_HEADERS),YES)
++FORHDRS         = -I$(top_srcdir)/include/foreign
++endif
++
++INSTALL		= @INSTALL@
++INSTALL_PROGRAM	= @INSTALL_PROGRAM@
++transform       = @program_transform_name@
++LDPROG          = $(shell echo ld_classic | sed '$(transform)')
++ASPROG          = $(shell echo as | sed '$(transform)')
++
++# -I$(builddir)
++MYINCLUDES      = -I$(srcdir)/include -I$(srcdir)/Readers \
++		-I$(srcdir)/Writers -I$(top_builddir)/include \
++		-I$(top_srcdir)/include -I$(top_srcdir)/ld64/src/ld \
++		-I$(top_srcdir)/ld64/src/abstraction -I$(top_srcdir)/ld64/src/ld/parsers \
++		$(INCPRIVEXT) -include $(top_builddir)/include/config.h $(FORHDRS)
++
++MYWARNINGS      = 
++MYDEFS          = -DDEBUG -DBINDIR="\"$(bindir)\"" -DLDPROG="\"$(LDPROG)\"" \
++		  -DASPROG="\"$(ASPROG)\"" $(LTO_DEFS)
++
++MYLDFLAGS	= -L$(top_builddir)/libstuff
++MYLIBS		= -lstuff $(SSL_LIBS) $(UUID_LIBS) $(DL_LIBS) $(LTO_LIBS)
++
++MYCOMPILEFLAGS	= $(WARNINGS) $(MYWARNINGS) $(DEFS) $(MYDEFS) \
++		$(CPPFLAGS) $(MYINCLUDES) $(CFLAGS) $(MDYNAMICNOPIC)
++
++MYLINKFLAGS	= $(LDFLAGS) $(MYLDFLAGS) $(MYLIBS)
++
++CXXFILES = src/ld/ld.cpp src/ld/Options.cpp src/ld/InputFiles.cpp \
++		src/ld/SymbolTable.cpp src/ld/Resolver.cpp src/ld/OutputFile.cpp \
++		src/ld/passes/branch_island.cpp src/ld/passes/branch_shim.cpp \
++		src/ld/passes/compact_unwind.cpp src/ld/passes/dtrace_dof.cpp \
++		src/ld/passes/dylibs.cpp src/ld/passes/got.cpp \
++		src/ld/passes/huge.cpp src/ld/passes/objc.cpp \
++		src/ld/passes/order_file.cpp src/ld/passes/stubs/stubs.cpp \
++		src/ld/passes/tlvp.cpp \
++		src/ld/parsers/opaque_section_file.cpp src/ld/parsers/lto_file.cpp \
++		src/ld/parsers/archive_file.cpp \
++		src/ld/parsers/macho_relocatable_file.cpp src/ld/parsers/macho_dylib_file.cpp
++
++# Probably want to build this program too:
++# src/other/dyldinfo.cpp
++
++CFILES = src/ld/debugline.c
++
++OBJS = $(CXXFILES:.cpp=.o)
++OBJS += $(CFILES:.c=.o) 
++
++.cpp.o:
++	mkdir -p `dirname $@`
++	$(CXX) $(MYCOMPILEFLAGS) $(CXXFLAGS) -c -o $@ $<
++
++.c.o:
++	mkdir -p `dirname $@`
++	$(CC) $(MYCOMPILEFLAGS) -c -o $@ $<
++
++.PHONY: default clean distclean install
++
++default: ld
++
++ld: $(OBJS)
++	$(CXX) -o $@ $^ $(MYLINKFLAGS)
++
++install: ld
++	mkdir -p $(DESTDIR)/$(bindir)
++	$(INSTALL_PROGRAM) ld \
++		$(DESTDIR)/$(bindir)/`echo ld | sed '$(transform)'`
++
++clean:
++	rm -r -f *.o */*.o
++	rm -f ld
 diff -urN a/ld64/Makefile.in.85.2.1 b/ld64/Makefile.in.85.2.1
 --- a/ld64/Makefile.in.85.2.1	1970-01-01 01:00:00.000000000 +0100
-+++ b/ld64/Makefile.in.85.2.1	2013-05-30 17:39:57.232385976 +0100
++++ b/ld64/Makefile.in.85.2.1	2013-06-04 22:02:04.032907918 +0100
 @@ -0,0 +1,78 @@
 +builddir = @builddir@
 +top_builddir = @top_builddir@
@@ -5456,15 +5823,117 @@ diff -urN a/ld64/Makefile.in.85.2.1 b/ld64/Makefile.in.85.2.1
 +clean:
 +	rm -r -f *.o */*.o
 +	rm -f ld
+diff -urN a/ld64/Makefile.in.85.2.1.orig b/ld64/Makefile.in.85.2.1.orig
+--- a/ld64/Makefile.in.85.2.1.orig	1970-01-01 01:00:00.000000000 +0100
++++ b/ld64/Makefile.in.85.2.1.orig	2013-06-04 22:02:04.031907909 +0100
+@@ -0,0 +1,83 @@
++builddir = @builddir@
++top_builddir = @top_builddir@
++srcdir = @srcdir@
++top_srcdir = @top_srcdir@
++
++prefix		= @prefix@
++exec_prefix	= @exec_prefix@
++bindir		= @bindir@
++
++VPATH = @srcdir@:@srcdir@/src
++
++CC		= @CC@
++CXX             = @CXX@
++CFLAGS          = @CFLAGS@
++CXXFLAGS	= @CXXFLAGS@
++WARNINGS	= @WARNINGS@
++MDYNAMICNOPIC   = @MDYNAMICNOPIC@
++CPPFLAGS        = @CPPFLAGS@
++DEFS            = @DEFS@ @ENDIAN_FLAG@
++LDFLAGS         = @LDFLAGS@
++HAVE_PRIVEXT    = @HAVE_PRIVEXT@
++HAVE_FOREIGN_HEADERS    = @HAVE_FOREIGN_HEADERS@
++UUID_LIBS	= @UUID_LIBS@
++SSL_LIBS	= @SSL_LIBS@
++LTO_DEFS	= @LTO_DEFS@
++LTO_LIBS	= @LTO_LIBS@
++
++ifeq ($(HAVE_PRIVEXT),NO)
++INCPRIVEXT      = -include $(top_srcdir)/include/extern.h
++endif
++
++ifeq ($(HAVE_FOREIGN_HEADERS),YES)
++FORHDRS         = -I$(top_srcdir)/include/foreign
++endif
++
++INSTALL		= @INSTALL@
++INSTALL_PROGRAM	= @INSTALL_PROGRAM@
++transform       = @program_transform_name@
++LDPROG          = $(shell echo ld_classic | sed '$(transform)')
++ASPROG          = $(shell echo as | sed '$(transform)')
++
++MYINCLUDES      = -I$(builddir) -I$(srcdir) -I$(srcdir) -I$(srcdir)/Readers \
++			-I$(srcdir)/Writers -I$(top_builddir)/include \
++			-I$(top_srcdir)/include $(INCPRIVEXT) -include $(top_builddir)/include/config.h $(FORHDRS)
++MYWARNINGS      = 
++MYDEFS          = -DDEBUG -DBINDIR="\"$(bindir)\"" -DLDPROG="\"$(LDPROG)\"" \
++		  -DASPROG="\"$(ASPROG)\"" $(LTO_DEFS)
++
++MYLDFLAGS	= -L$(top_builddir)/libstuff
++MYLIBS		= -lstuff $(SSL_LIBS) $(UUID_LIBS) $(LTO_LIBS)
++
++MYCOMPILEFLAGS	= $(WARNINGS) $(MYWARNINGS) $(DEFS) $(MYDEFS) \
++	$(CPPFLAGS) $(MYINCLUDES) $(CFLAGS) $(MDYNAMICNOPIC) 
++
++MYLINKFLAGS	= $(LDFLAGS) $(MYLDFLAGS) $(MYLIBS)
++
++CXXFILES = ld.cpp Options.cpp
++CFILES = debugline.c
++
++OBJS = $(CXXFILES:.cpp=.o)
++OBJS += $(CFILES:.c=.o) 
++
++.cpp.o:
++	$(CXX) $(MYCOMPILEFLAGS) $(CXXFLAGS) -c -o $@ $<
++
++.c.o:
++	$(CC) $(MYCOMPILEFLAGS) -c -o $@ $<
++
++.PHONY: default clean distclean install
++
++default: ld
++
++ld: $(OBJS)
++	$(CXX) -o $@ $^ $(MYLINKFLAGS)
++
++install: ld
++	mkdir -p $(DESTDIR)/$(bindir)
++	$(INSTALL_PROGRAM) ld \
++		$(DESTDIR)/$(bindir)/`echo ld | sed '$(transform)'`
++
++clean:
++	rm -r -f *.o */*.o
++	rm -f ld
+diff -urN a/ld64/Makefile.in.85.2.1.rej b/ld64/Makefile.in.85.2.1.rej
+--- a/ld64/Makefile.in.85.2.1.rej	1970-01-01 01:00:00.000000000 +0100
++++ b/ld64/Makefile.in.85.2.1.rej	2013-06-04 22:02:04.031907909 +0100
+@@ -0,0 +1,11 @@
++--- cctools2odcctools/files/ld64/Makefile.in.85.2.1
+++++ cctools2odcctools/files/ld64/Makefile.in.85.2.1
++@@ -37,7 +37,7 @@
++ MYINCLUDES      = -I$(builddir) -I$(srcdir) -I$(srcdir) -I$(srcdir)/Readers \
++ 			-I$(srcdir)/Writers -I$(top_builddir)/include \
++ 			-I$(top_srcdir)/include -include $(top_builddir)/include/config.h $(FORHDRS)
++-MYWARNINGS      = 
+++MYWARNINGS      =
++ MYDEFS          = -DDEBUG -DBINDIR="\"$(bindir)\"" -DLDPROG="\"$(LDPROG)\"" \
++ 		  -DASPROG="\"$(ASPROG)\"" $(LTO_DEFS)
++ 
 diff -urN a/ld64/src/ld/configure.h b/ld64/src/ld/configure.h
 --- a/ld64/src/ld/configure.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/ld64/src/ld/configure.h	2013-05-30 17:39:57.229052643 +0100
++++ b/ld64/src/ld/configure.h	2013-06-04 22:02:04.028907882 +0100
 @@ -0,0 +1,2 @@
 +
 +
 diff -urN a/libmacho/Makefile.in b/libmacho/Makefile.in
 --- a/libmacho/Makefile.in	1970-01-01 01:00:00.000000000 +0100
-+++ b/libmacho/Makefile.in	2013-05-30 17:39:57.229052643 +0100
++++ b/libmacho/Makefile.in	2013-06-04 22:02:04.049908073 +0100
 @@ -0,0 +1,68 @@
 +builddir = @builddir@
 +top_builddir = @top_builddir@
@@ -5536,7 +6005,7 @@ diff -urN a/libmacho/Makefile.in b/libmacho/Makefile.in
 +	$(RANLIB) $(DESTDIR)/$(libdir)/$<
 diff -urN a/libprunetrie/Makefile.in b/libprunetrie/Makefile.in
 --- a/libprunetrie/Makefile.in	1970-01-01 01:00:00.000000000 +0100
-+++ b/libprunetrie/Makefile.in	2013-05-30 17:39:57.219052642 +0100
++++ b/libprunetrie/Makefile.in	2013-06-04 22:02:04.048908064 +0100
 @@ -0,0 +1,69 @@
 +builddir = @builddir@
 +top_builddir = @top_builddir@
@@ -5609,13 +6078,13 @@ diff -urN a/libprunetrie/Makefile.in b/libprunetrie/Makefile.in
 +install:
 diff -urN a/libstuff/apple_version.c b/libstuff/apple_version.c
 --- a/libstuff/apple_version.c	1970-01-01 01:00:00.000000000 +0100
-+++ b/libstuff/apple_version.c	2013-05-30 17:39:57.219052642 +0100
++++ b/libstuff/apple_version.c	2013-06-04 22:02:03.976907410 +0100
 @@ -0,0 +1,2 @@
 +const char apple_version[]= PACKAGE_NAME "-" PACKAGE_VERSION;
 +const char ldVersionString[]= "@(#)PROGRAM:ld  PROJECT:" PACKAGE_NAME "-" PACKAGE_VERSION "\n";
 diff -urN a/libstuff/emulated.c b/libstuff/emulated.c
 --- a/libstuff/emulated.c	1970-01-01 01:00:00.000000000 +0100
-+++ b/libstuff/emulated.c	2013-05-30 17:39:57.219052642 +0100
++++ b/libstuff/emulated.c	2013-06-04 22:02:03.977907419 +0100
 @@ -0,0 +1,715 @@
 +#if (HAVE_DECL_MMAP==0) || (HAVE_DECL_FCHMOD==0) || (HAVE_DECL_FCHDIR==0) || (HAVE_DECL_UTIMES==0)
 +
@@ -6334,7 +6803,7 @@ diff -urN a/libstuff/emulated.c b/libstuff/emulated.c
 +vm_size_t vm_page_size = 4096; /* hardcoded to match expectations of darwin */
 diff -urN a/libstuff/Makefile.in b/libstuff/Makefile.in
 --- a/libstuff/Makefile.in	1970-01-01 01:00:00.000000000 +0100
-+++ b/libstuff/Makefile.in	2013-05-30 17:39:57.219052642 +0100
++++ b/libstuff/Makefile.in	2013-06-04 22:02:03.977907419 +0100
 @@ -0,0 +1,62 @@
 +builddir = @builddir@
 +top_builddir = @top_builddir@
@@ -6400,7 +6869,7 @@ diff -urN a/libstuff/Makefile.in b/libstuff/Makefile.in
 +install:
 diff -urN a/m4/ax_append_compile_flags.m4 b/m4/ax_append_compile_flags.m4
 --- a/m4/ax_append_compile_flags.m4	1970-01-01 01:00:00.000000000 +0100
-+++ b/m4/ax_append_compile_flags.m4	2013-05-30 17:39:57.219052642 +0100
++++ b/m4/ax_append_compile_flags.m4	2013-06-04 22:02:04.049908073 +0100
 @@ -0,0 +1,65 @@
 +# ===========================================================================
 +#  http://www.gnu.org/software/autoconf-archive/ax_append_compile_flags.html
@@ -6469,7 +6938,7 @@ diff -urN a/m4/ax_append_compile_flags.m4 b/m4/ax_append_compile_flags.m4
 +])dnl AX_APPEND_COMPILE_FLAGS
 diff -urN a/m4/ax_append_flag.m4 b/m4/ax_append_flag.m4
 --- a/m4/ax_append_flag.m4	1970-01-01 01:00:00.000000000 +0100
-+++ b/m4/ax_append_flag.m4	2013-05-30 17:39:57.219052642 +0100
++++ b/m4/ax_append_flag.m4	2013-06-04 22:02:04.049908073 +0100
 @@ -0,0 +1,69 @@
 +# ===========================================================================
 +#      http://www.gnu.org/software/autoconf-archive/ax_append_flag.html
@@ -6542,7 +7011,7 @@ diff -urN a/m4/ax_append_flag.m4 b/m4/ax_append_flag.m4
 +])dnl AX_APPEND_FLAG
 diff -urN a/m4/ax_check_compile_flag.m4 b/m4/ax_check_compile_flag.m4
 --- a/m4/ax_check_compile_flag.m4	1970-01-01 01:00:00.000000000 +0100
-+++ b/m4/ax_check_compile_flag.m4	2013-05-30 17:39:57.219052642 +0100
++++ b/m4/ax_check_compile_flag.m4	2013-06-04 22:02:04.049908073 +0100
 @@ -0,0 +1,72 @@
 +# ===========================================================================
 +#   http://www.gnu.org/software/autoconf-archive/ax_check_compile_flag.html
@@ -6618,7 +7087,7 @@ diff -urN a/m4/ax_check_compile_flag.m4 b/m4/ax_check_compile_flag.m4
 +])dnl AX_CHECK_COMPILE_FLAGS
 diff -urN a/m4/check_enum.m4 b/m4/check_enum.m4
 --- a/m4/check_enum.m4	1970-01-01 01:00:00.000000000 +0100
-+++ b/m4/check_enum.m4	2013-05-30 17:39:57.219052642 +0100
++++ b/m4/check_enum.m4	2013-06-04 22:02:04.049908073 +0100
 @@ -0,0 +1,47 @@
 +dnl CHECK_ENUM and GET_DEFINE autoconf macros are
 +dnl Copyright 2004,2006 Bernhard R. Link
@@ -6669,7 +7138,7 @@ diff -urN a/m4/check_enum.m4 b/m4/check_enum.m4
 +])dnl GET_DEFINE
 diff -urN a/Makefile.in b/Makefile.in
 --- a/Makefile.in	1970-01-01 01:00:00.000000000 +0100
-+++ b/Makefile.in	2013-05-30 17:39:57.219052642 +0100
++++ b/Makefile.in	2013-06-04 22:02:04.049908073 +0100
 @@ -0,0 +1,52 @@
 +CFLAGS = @CFLAGS@
 +CPPFLAGS = @CPPFLAGS@
@@ -6725,7 +7194,7 @@ diff -urN a/Makefile.in b/Makefile.in
 +
 diff -urN a/man/Makefile.in b/man/Makefile.in
 --- a/man/Makefile.in	1970-01-01 01:00:00.000000000 +0100
-+++ b/man/Makefile.in	2013-05-30 17:39:57.229052643 +0100
++++ b/man/Makefile.in	2013-06-04 22:02:04.034907937 +0100
 @@ -0,0 +1,50 @@
 +builddir = @builddir@
 +top_builddir = @top_builddir@
@@ -6779,7 +7248,7 @@ diff -urN a/man/Makefile.in b/man/Makefile.in
 +clean:
 diff -urN a/misc/Makefile.in b/misc/Makefile.in
 --- a/misc/Makefile.in	1970-01-01 01:00:00.000000000 +0100
-+++ b/misc/Makefile.in	2013-05-30 17:39:57.225719309 +0100
++++ b/misc/Makefile.in	2013-06-04 22:02:03.937907056 +0100
 @@ -0,0 +1,162 @@
 +builddir = @builddir@
 +top_builddir = @top_builddir@
@@ -6943,9 +7412,192 @@ diff -urN a/misc/Makefile.in b/misc/Makefile.in
 +clean:
 +	rm -r -f *.o
 +	rm -f $(PROGRAMS)
+diff -urN a/misc/Makefile.in.orig b/misc/Makefile.in.orig
+--- a/misc/Makefile.in.orig	1970-01-01 01:00:00.000000000 +0100
++++ b/misc/Makefile.in.orig	2013-06-04 22:02:03.936907047 +0100
+@@ -0,0 +1,165 @@
++builddir = @builddir@
++top_builddir = @top_builddir@
++srcdir = @srcdir@
++top_srcdir = @top_srcdir@
++
++prefix		= @prefix@
++exec_prefix	= @exec_prefix@
++bindir		= @bindir@
++
++VPATH = @srcdir@
++
++CC              = @CC@
++CFLAGS          = @CFLAGS@ -DLTO_SUPPORT -DTRIE_SUPPORT
++WARNINGS	= @WARNINGS@
++MDYNAMICNOPIC   = @MDYNAMICNOPIC@
++CPPFLAGS        = @CPPFLAGS@
++DEFS            = @DEFS@ @ENDIAN_FLAG@
++LDFLAGS         = @LDFLAGS@
++HAVE_PRIVEXT    = @HAVE_PRIVEXT@
++HAVE_FOREIGN_HEADERS    = @HAVE_FOREIGN_HEADERS@
++LTO_DEFS	= @LTO_DEFS@
++LTO_LIBS	= @LTO_LIBS@
++
++ifeq ($(HAVE_PRIVEXT),NO)
++INCPRIVEXT      = -include $(top_srcdir)/include/extern.h
++endif
++
++ifeq ($(HAVE_FOREIGN_HEADERS),YES)
++FORHDRS         = -I$(top_srcdir)/include/foreign
++endif
++
++INSTALL		= @INSTALL@
++INSTALL_PROGRAM	= @INSTALL_PROGRAM@
++transform       = @program_transform_name@
++LDPROG		= $(shell echo ld | sed '$(transform)')
++LIPOPROG	= $(shell echo lipo | sed '$(transform)')
++
++MYINCLUDES      = -I$(builddir) -I$(srcdir) -I$(top_builddir)/include \
++			-I$(top_srcdir)/include -I$(top_srcdir)/libprunetrie $(INCPRIVEXT) -include $(top_builddir)/include/config.h $(FORHDRS)
++MYWARNINGS      = 
++MYDEFS          = -DBINDIR="\"$(bindir)\"" -DLDPROG="\"$(LDPROG)\"" \
++		  -DLIPOPROG="\"$(LIPOPROG)\"" $(LTO_DEFS)
++MYLDFLAGS	= -L$(top_builddir)/libstuff
++MYLIBS		= -lstuff @DL_LIBS@
++
++MYCOMPILEFLAGS	= $(WARNINGS) $(MYWARNINGS) $(DEFS) $(MYDEFS) \
++	$(CPPFLAGS) $(MYINCLUDES) $(CFLAGS) $(MDYNAMICNOPIC) 
++
++MYLINKFLAGS	= $(LDFLAGS) $(MYLDFLAGS) $(MYLIBS)
++
++PROGRAMS = lipo size strings nm libtool @NOT_FOR_WINDOWS_PROG@ \
++		seg_hack install_name_tool indr strip nmedit segedit pagestuff \
++		ranlib codesign_allocate
++
++CFILES_checksyms	= checksyms.c
++OBJS_checksyms	= $(CFILES_checksyms:.c=.o)
++
++CFILES_lipo	= lipo.c
++OBJS_lipo	= $(CFILES_lipo:.c=.o)
++
++CFILES_size	= size.c
++OBJS_size	= $(CFILES_size:.c=.o)
++
++CFILES_strings	= strings.c
++OBJS_strings	= $(CFILES_strings:.c=.o)
++
++CFILES_nm	= nm.c
++OBJS_nm		= $(CFILES_nm:.c=.o)
++
++CFILES_libtool	= libtool.c
++OBJS_libtool	= $(CFILES_libtool:.c=.o)
++
++CFILES_ranlib	= libtool.c
++OBJS_ranlib	= ranlib.o
++
++CFILES_redo_prebinding	= redo_prebinding.o
++OBJS_redo_prebinding	= $(CFILES_redo_prebinding:.c=.o)
++
++CFILES_seg_addr_table	= seg_addr_table.c
++OBJS_seg_addr_table	= $(CFILES_seg_addr_table:.c=.o)
++
++CFILES_seg_hack	= seg_hack.c
++OBJS_seg_hack	= $(CFILES_seg_hack:.c=.o)
++
++CFILES_install_name_tool	= install_name_tool.c
++OBJS_install_name_tool		= $(CFILES_install_name_tool:.c=.o)
++
++CFILES_indr	= indr.c
++OBJS_indr	= $(CFILES_indr:.c=.o)
++
++CFILES_strip	= strip.c
++OBJS_strip	= $(CFILES_strip:.c=.o)
++
++CFILES_codesign_allocate	= codesign_allocate.c
++OBJS_codesign_allocate	= $(CFILES_codesign_allocate:.c=.o)
++
++CFILES_nmedit	= strip.c
++OBJS_nmedit	= nmedit.o
++
++CFILES_segedit	= segedit.c
++OBJS_segedit	= $(CFILES_segedit:.c=.o)
++
++CFILES_pagestuff	= pagestuff.c
++OBJS_pagestuff	= $(CFILES_pagestuff:.c=.o)
++
++.c.o:
++	$(CC) $(MYCOMPILEFLAGS) -c -o $@ $<
++
++.o:
++	$(CC) $(MYCOMPILEFLAGS) -c -o $@ $<
++
++.PHONY: default clean distclean install
++
++default: $(PROGRAMS)
++
++ranlib.o: libtool.c
++	$(CC) -DRANLIB $(MYCOMPILEFLAGS) -c -o $@ $<
++
++nmedit.o: strip.c
++	$(CC) -DNMEDIT $(MYCOMPILEFLAGS) -c -o $@ $<
++
++checksyms: $(OBJS_checksyms)
++	$(CC) -o $@ $^ $(MYLINKFLAGS)
++lipo: $(OBJS_lipo)
++	$(CC) -o $@ $^ $(MYLINKFLAGS)
++size: $(OBJS_size)
++	$(CC) -o $@ $^ $(MYLINKFLAGS)
++strings: $(OBJS_strings)
++	$(CC) -o $@ $^ $(MYLINKFLAGS)
++nm: $(OBJS_nm)
++	$(CC) -o $@ $^ $(MYLINKFLAGS)
++libtool: $(OBJS_libtool)
++	$(CC) -o $@ $^ $(MYLINKFLAGS)
++redo_prebinding: $(OBJS_redo_prebinding)
++	$(CC) -o $@ $^ $(MYLINKFLAGS)
++seg_addr_table: $(OBJS_seg_addr_table)
++	$(CC) -o $@ $^ $(MYLINKFLAGS)
++seg_hack: $(OBJS_seg_hack)
++	$(CC) -o $@ $^ $(MYLINKFLAGS)
++install_name_tool: $(OBJS_install_name_tool)
++	$(CC) -o $@ $^ $(MYLINKFLAGS)
++indr: $(OBJS_indr)
++	$(CC) -o $@ $^ $(MYLINKFLAGS)
++strip: $(OBJS_strip)
++	$(CXX) -o $@ $^ $(MYLINKFLAGS) -L$(top_builddir)/libprunetrie -lprunetrie
++codesign_allocate: $(OBJS_codesign_allocate)
++	$(CC) -o $@ $^ $(MYLINKFLAGS)
++nmedit: $(OBJS_nmedit)
++	$(CC) -o $@ $^ $(MYLINKFLAGS)
++segedit: $(OBJS_segedit)
++	$(CC) -o $@ $^ $(MYLINKFLAGS)
++pagestuff: $(OBJS_pagestuff)
++	$(CC) -o $@ $^ $(MYLINKFLAGS)
++ranlib: $(OBJS_ranlib)
++	$(CC) -o $@ $^ $(MYLINKFLAGS)
++
++install: $(PROGRAMS)
++	mkdir -p $(DESTDIR)/$(bindir)
++	for p in $(PROGRAMS); do					\
++		$(INSTALL_PROGRAM) $$p 					\
++			$(DESTDIR)/$(bindir)/`echo $$p | sed '$(transform)'`;	\
++	done
++clean:
++	rm -r -f *.o
++	rm -f $(PROGRAMS)
+diff -urN a/misc/Makefile.in.rej b/misc/Makefile.in.rej
+--- a/misc/Makefile.in.rej	1970-01-01 01:00:00.000000000 +0100
++++ b/misc/Makefile.in.rej	2013-06-04 22:02:03.937907056 +0100
+@@ -0,0 +1,10 @@
++--- cctools2odcctools/files/misc/Makefile.in
+++++ cctools2odcctools/files/misc/Makefile.in
++@@ -10,6 +10,7 @@
++ VPATH = @srcdir@
++ 
++ CC                   = @CC@
+++CXX                  = @CXX@
++ CFLAGS               = @CFLAGS@ -DLTO_SUPPORT -DTRIE_SUPPORT
++ WARNINGS             = @WARNINGS@
++ MDYNAMICNOPIC        = @MDYNAMICNOPIC@
 diff -urN a/otool/Makefile.in b/otool/Makefile.in
 --- a/otool/Makefile.in	1970-01-01 01:00:00.000000000 +0100
-+++ b/otool/Makefile.in	2013-05-30 17:39:57.222385976 +0100
++++ b/otool/Makefile.in	2013-06-04 22:02:03.939907074 +0100
 @@ -0,0 +1,81 @@
 +builddir = @builddir@
 +top_builddir = @top_builddir@
