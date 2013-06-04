@@ -315,22 +315,27 @@ do_llvmgcc_core_backend() {
     CT_DoLog DEBUG "Extra config passed: '${extra_config[*]}'"
 
     # Use --with-local-prefix so older gccs don't look in /usr/local (http://gcc.gnu.org/PR10532)
-    CT_DoExecLog CFG                                \
-    CC_FOR_BUILD="${CT_BUILD}-gcc"                  \
-    CFLAGS="${cflags}"                              \
-    LDFLAGS="${core_LDFLAGS[*]}"                    \
-    "${CT_SRC_DIR}/${CC_LLVMGCC_FULLNAME}/configure"  \
-        --build=${CT_BUILD}                         \
-        --host=${host}                              \
-        --target=${CT_TARGET}                       \
-        --prefix="${prefix}"                        \
-        --with-local-prefix="${CT_SYSROOT_DIR}"     \
-        --program-prefix=${CT_TARGET}-llvm-         \
-        --enable-llvm=${CT_BUILD_DIR}/build-LLVM-host-${CT_HOST} \
-        --disable-libmudflap                        \
-        ${CC_CORE_SYSROOT_ARG}                      \
-        "${extra_config[@]}"                        \
-        --enable-languages="${lang_list}"           \
+    CT_DoExecLog CFG                                                \
+    CC_FOR_BUILD="${CT_BUILD}-gcc"                                  \
+    CFLAGS="${cflags}"                                              \
+    LDFLAGS="${core_LDFLAGS[*]}"                                    \
+    "${CT_SRC_DIR}/${CC_LLVMGCC_FULLNAME}/configure"                \
+        --build=${CT_BUILD}                                         \
+        --host=${host}                                              \
+        --target=${CT_TARGET}                                       \
+        --prefix="${prefix}"                                        \
+        --with-local-prefix="${CT_SYSROOT_DIR}"                     \
+        --with-ld=${CT_PREFIX_DIR}/bin/${CT_TARGET}-ld${EXEEXT}     \
+        --with-ar=${CT_PREFIX_DIR}/bin/${CT_TARGET}-ar${EXEEXT}     \
+        --with-as=${CT_PREFIX_DIR}/bin/${CT_TARGET}-as${EXEEXT}     \
+        --with-ranlib=${CT_PREFIX_DIR}/bin/${CT_TARGET}-ranlib${EXEEXT} \
+        --with-lipo=${CT_PREFIX_DIR}/bin/${CT_TARGET}-lipo${EXEEXT}     \
+        --program-prefix=${CT_TARGET}-llvm-                         \
+        --enable-llvm=${CT_BUILD_DIR}/build-LLVM-host-${CT_HOST}    \
+        --disable-libmudflap                                        \
+        ${CC_CORE_SYSROOT_ARG}                                      \
+        "${extra_config[@]}"                                        \
+        --enable-languages="${lang_list}"                           \
         "${CT_CC_LLVMGCC_CORE_EXTRA_CONFIG_ARRAY[@]}"
 
     if [ "${build_libgcc}" = "yes" ]; then
@@ -722,25 +727,30 @@ do_llvmgcc_backend() {
 
     CT_DoLog DEBUG "Extra config passed: '${extra_config[*]}'"
 
-    CT_DoExecLog CFG                                \
-    CC_FOR_BUILD="${CT_BUILD}-gcc"                  \
-    CFLAGS="${cflags}"                              \
-    LDFLAGS="${final_LDFLAGS[*]}"                   \
-    CFLAGS_FOR_TARGET="${CT_TARGET_CFLAGS}"         \
-    CXXFLAGS_FOR_TARGET="${CT_TARGET_CFLAGS}"       \
-    LDFLAGS_FOR_TARGET="${CT_TARGET_LDFLAGS}"       \
-    "${CT_SRC_DIR}/${CC_LLVMGCC_FULLNAME}/configure"  \
-        --build=${CT_BUILD}                         \
-        --host=${host}                              \
-        --target=${CT_TARGET}                       \
-        --prefix="${prefix}"                        \
-        --program-prefix=${CT_TARGET}-llvm-         \
-        --enable-llvm=${CT_BUILD_DIR}/build-LLVM-host-${CT_HOST} \
-        ${CC_SYSROOT_ARG}                           \
-        "${extra_config[@]}"                        \
-        --with-local-prefix="${CT_SYSROOT_DIR}"     \
-        --enable-c99                                \
-        --enable-long-long                          \
+    CT_DoExecLog CFG                                                \
+    CC_FOR_BUILD="${CT_BUILD}-gcc"                                  \
+    CFLAGS="${cflags}"                                              \
+    LDFLAGS="${final_LDFLAGS[*]}"                                   \
+    CFLAGS_FOR_TARGET="${CT_TARGET_CFLAGS}"                         \
+    CXXFLAGS_FOR_TARGET="${CT_TARGET_CFLAGS}"                       \
+    LDFLAGS_FOR_TARGET="${CT_TARGET_LDFLAGS}"                       \
+    "${CT_SRC_DIR}/${CC_LLVMGCC_FULLNAME}/configure"                \
+        --build=${CT_BUILD}                                         \
+        --host=${host}                                              \
+        --target=${CT_TARGET}                                       \
+        --prefix="${prefix}"                                        \
+        --program-prefix=${CT_TARGET}-llvm-                         \
+        --enable-llvm=${CT_BUILD_DIR}/build-LLVM-host-${CT_HOST}    \
+        --with-ld=${CT_PREFIX_DIR}/bin/${CT_TARGET}-ld${EXEEXT}     \
+        --with-ar=${CT_PREFIX_DIR}/bin/${CT_TARGET}-ar${EXEEXT}     \
+        --with-as=${CT_PREFIX_DIR}/bin/${CT_TARGET}-as${EXEEXT}     \
+        --with-ranlib=${CT_PREFIX_DIR}/bin/${CT_TARGET}-ranlib${EXEEXT} \
+        --with-lipo=${CT_PREFIX_DIR}/bin/${CT_TARGET}-lipo${EXEEXT}     \
+        ${CC_SYSROOT_ARG}                                           \
+        "${extra_config[@]}"                                        \
+        --with-local-prefix="${CT_SYSROOT_DIR}"                     \
+        --enable-c99                                                \
+        --enable-long-long                                          \
         "${CT_CC_LLVMGCC_EXTRA_CONFIG_ARRAY[@]}"
 
     if [ "${CT_CANADIAN}" = "y" ]; then

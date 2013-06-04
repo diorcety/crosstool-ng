@@ -1,7 +1,7 @@
 diff -urN a/as/driver.c b/as/driver.c
---- a/as/driver.c	2013-05-30 22:36:57.883482681 +0100
-+++ b/as/driver.c	2013-05-30 22:36:58.124484723 +0100
-@@ -53,17 +53,22 @@
+--- a/as/driver.c	2013-06-04 21:37:19.336903817 +0100
++++ b/as/driver.c	2013-06-04 21:40:24.742394946 +0100
+@@ -53,17 +53,25 @@
  	 */
  	bufsize = MAXPATHLEN;
  	p = buf;
@@ -13,23 +13,28 @@ diff -urN a/as/driver.c b/as/driver.c
  	    p = allocate(bufsize);
  	    _NSGetExecutablePath(p, &bufsize);
  	}
+-	prefix = realpath(p, resolved_name);
+-	if(realpath == NULL)
 +	if(p != NULL){
 +	    p = rindex(p, '/');
 +	    if(p != NULL)
 +		    p[1] = '\0';
 +	}
- 	prefix = realpath(p, resolved_name);
- 	if(realpath == NULL)
++	prefix = realpath(buf, resolved_name);
++	if(prefix == NULL)
  	    system_fatal("realpath(3) for %s failed", p);
 -	p = rindex(prefix, '/');
 -	if(p != NULL)
 -	    p[1] = '\0';
++    if(strlen(prefix)<(MAXPATHLEN-1) && prefix[strlen(prefix)-1] != '/'){
++        prefix[strlen(prefix)] = '/';
++    }
  	/*
  	 * Process the assembler flags exactly like the assembler would (except
  	 * let the assembler complain about multiple flags, bad combinations of
 diff -urN a/libstuff/execute.c b/libstuff/execute.c
---- a/libstuff/execute.c	2013-05-30 22:36:57.878482639 +0100
-+++ b/libstuff/execute.c	2013-05-30 22:36:58.118484672 +0100
+--- a/libstuff/execute.c	2013-06-04 21:37:18.897900380 +0100
++++ b/libstuff/execute.c	2013-06-04 21:38:42.905566668 +0100
 @@ -161,10 +161,16 @@
  	    p = allocate(bufsize);
  	    _NSGetExecutablePath(p, &bufsize);
