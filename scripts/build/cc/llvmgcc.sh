@@ -3,7 +3,11 @@
 # Licensed under the GPL v2. See COPYING in the root of this package
 
 CC_LLVMGCC_FULLNAME="${CT_CC_LLVMGCC_PREFIX}-${CT_CC_LLVMGCC_VERSION}${CT_CC_LLVMGCC_SUFFIX}"
-CC_LLVMGCC_URL="${CT_CC_LLVMGCC_URL}/${CT_CC_LLVMGCC_VERSION}/"
+if [[ "$CT_CC_LLVMGCC_URL" == *apple* ]] ; then
+	CC_LLVMGCC_URL="${CT_CC_LLVMGCC_URL}"
+else
+	CC_LLVMGCC_URL="${CT_CC_LLVMGCC_URL}/${CT_CC_LLVMGCC_VERSION}"
+fi
 
 # Download gcc
 do_llvmgcc_get() {

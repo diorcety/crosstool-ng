@@ -17,7 +17,12 @@ else
 fi
 
 LLVM_FULLNAME="${CT_LLVM_PREFIX}-${CT_LLVM_VERSION}${CT_LLVM_SUFFIX}"
-LLVM_URL="${CT_LLVM_URL}/${CT_LLVM_VERSION}/"
+if [[ "$CT_CC_LLVMGCC_URL" == *apple* ]] ; then
+	LLVM_URL="${CT_LLVM_URL}"
+else
+	LLVM_URL="${CT_LLVM_URL}/${CT_LLVM_VERSION}"
+fi
+
 if [ "${CT_LLVM_PREFIX}" = "llvmgcc42" ]; then
     LLVM_CONFIGURE=${LLVM_FULLNAME}/llvmCore/configure
 else
