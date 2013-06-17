@@ -68,3 +68,15 @@ diff -urN a/libstuff/execute.c b/libstuff/execute.c
  
  	return(makestr(prefix, str, NULL));
  }
+diff -urN a/misc/libtool.c b/misc/libtool.c
+--- a/misc/libtool.c	2013-06-17 18:36:08.645299133 +0200
++++ b/misc/libtool.c	2013-06-17 19:59:07.616853484 +0200
+@@ -374,7 +374,7 @@
+ 	    p++;
+ 	else
+ 	    p = argv[0];
+-	if(strncmp(p, "ranlib", sizeof("ranlib") - 1) == 0)
++	if(strstr(p, "ranlib") != NULL)
+ 	    cmd_flags.ranlib = TRUE;
+ 
+ 	/* The default is to used long names */
