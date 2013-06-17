@@ -1,7 +1,7 @@
 diff -urN a/as/driver.c b/as/driver.c
---- a/as/driver.c	2013-06-04 22:01:54.613822392 +0100
-+++ b/as/driver.c	2013-06-04 22:01:54.852824563 +0100
-@@ -53,17 +53,25 @@
+--- a/as/driver.c	2013-06-17 18:36:41.368674337 +0200
++++ b/as/driver.c	2013-06-17 19:31:25.789650383 +0200
+@@ -53,17 +53,30 @@
  	 */
  	bufsize = MAXPATHLEN;
  	p = buf;
@@ -26,31 +26,44 @@ diff -urN a/as/driver.c b/as/driver.c
 -	p = rindex(prefix, '/');
 -	if(p != NULL)
 -	    p[1] = '\0';
-+    if(strlen(prefix)<(MAXPATHLEN-1) && prefix[strlen(prefix)-1] != '/'){
-+        prefix[strlen(prefix)] = '/';
-+    }
++	
++	/* Append slash at the end if not exist */
++	p = prefix + strlen(prefix);
++	if((p-prefix)<(MAXPATHLEN-1) && prefix[p-prefix-1] != '/'){
++	   *(p++) = '/';
++	   *(p++) = '\0';
++	}
++
  	/*
  	 * Process the assembler flags exactly like the assembler would (except
  	 * let the assembler complain about multiple flags, bad combinations of
 diff -urN a/libstuff/execute.c b/libstuff/execute.c
---- a/libstuff/execute.c	2013-06-04 22:01:54.608822347 +0100
-+++ b/libstuff/execute.c	2013-06-04 22:01:54.847824516 +0100
-@@ -161,10 +161,16 @@
+--- a/libstuff/execute.c	2013-06-17 18:36:08.637299289 +0200
++++ b/libstuff/execute.c	2013-06-17 19:27:02.830001754 +0200
+@@ -161,10 +161,23 @@
  	    p = allocate(bufsize);
  	    _NSGetExecutablePath(p, &bufsize);
  	}
+-	prefix = realpath(p, resolved_name);
+-	p = rindex(prefix, '/');
+-	if(p != NULL)
+-	    p[1] = '\0';
 +	if(p != NULL){
 +	    p = rindex(p, '/');
 +	    if(p != NULL)
 +		    p[1] = '\0';
 +	}
-+	strcpy(resolved_name,p);
- 	prefix = realpath(p, resolved_name);
--	p = rindex(prefix, '/');
--	if(p != NULL)
--	    p[1] = '\0';
++	strcpy(resolved_name, buf);
++	prefix = realpath(buf, resolved_name);
 +	if(prefix == NULL){
-+        prefix = resolved_name;
++	    prefix = resolved_name;
++	}
++	
++	/* Append slash at the end if not exist */
++	p = prefix + strlen(prefix);
++	if((p-prefix)<(MAXPATHLEN-1) && prefix[p-prefix-1] != '/'){
++	   *(p++) = '/';
++	   *(p++) = '\0';
 +	}
  
  	return(makestr(prefix, str, NULL));
