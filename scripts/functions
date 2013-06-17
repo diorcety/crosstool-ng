@@ -1158,6 +1158,7 @@ CT_DoSaveState() {
                            /^(UID|EUID)=/d;
                            /^(FUNCNAME|GROUPS|PPID|SHELLOPTS)=/d;' >"${state_dir}/env.sh"
 
+    CT_DoTarballIfExists "${CT_BUILD_DIR}" "${state_dir}/build_dir"
     CT_DoTarballIfExists "${CT_BUILDTOOLS_PREFIX_DIR}" "${state_dir}/buildtools_dir"
     CT_DoTarballIfExists "${CT_CONFIG_DIR}" "${state_dir}/config_dir"
     CT_DoTarballIfExists "${CT_PREFIX_DIR}" "${state_dir}/prefix_dir" --exclude '*.log'
@@ -1189,6 +1190,7 @@ CT_DoLoadState(){
     # Log this to the log level required by the user
     CT_DoLog ${CT_LOG_LEVEL_MAX} "Restoring state at step '${state_name}', as requested."
 
+    CT_DoExtractTarballIfExists "${state_dir}/build_dir" "${CT_BUILD_DIR}"
     CT_DoExtractTarballIfExists "${state_dir}/prefix_dir" "${CT_PREFIX_DIR}"
     CT_DoExtractTarballIfExists "${state_dir}/config_dir" "${CT_CONFIG_DIR}"
     CT_DoExtractTarballIfExists "${state_dir}/buildtools_dir" "${CT_BUILDTOOLS_PREFIX_DIR}"
