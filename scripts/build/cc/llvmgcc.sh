@@ -329,11 +329,11 @@ do_llvmgcc_core_backend() {
         --target=${CT_TARGET}                                       \
         --prefix="${prefix}"                                        \
         --with-local-prefix="${CT_SYSROOT_DIR}"                     \
-        --with-ld=${CT_PREFIX_DIR}/bin/${CT_TARGET}-ld${EXEEXT}     \
-        --with-ar=${CT_PREFIX_DIR}/bin/${CT_TARGET}-ar${EXEEXT}     \
-        --with-as=${CT_PREFIX_DIR}/bin/${CT_TARGET}-as${EXEEXT}     \
-        --with-ranlib=${CT_PREFIX_DIR}/bin/${CT_TARGET}-ranlib${EXEEXT} \
-        --with-lipo=${CT_PREFIX_DIR}/bin/${CT_TARGET}-lipo${EXEEXT}     \
+        --with-ld=${prefix}/bin/${CT_TARGET}-ld${EXEEXT}            \
+        --with-ar=${prefix}/bin/${CT_TARGET}-ar${EXEEXT}            \
+        --with-as=${prefix}/bin/${CT_TARGET}-as${EXEEXT}            \
+        --with-ranlib=${prefix}/bin/${CT_TARGET}-ranlib${EXEEXT}    \
+        --with-lipo=${prefix}/bin/${CT_TARGET}-lipo${EXEEXT}        \
         --program-prefix=${CT_TARGET}-llvm-                         \
         --enable-llvm=${CT_BUILD_DIR}/build-LLVM-host-${CT_HOST}    \
         --disable-libmudflap                                        \
@@ -745,11 +745,11 @@ do_llvmgcc_backend() {
         --prefix="${prefix}"                                        \
         --program-prefix=${CT_TARGET}-llvm-                         \
         --enable-llvm=${CT_BUILD_DIR}/build-LLVM-host-${CT_HOST}    \
-        --with-ld=${CT_PREFIX_DIR}/bin/${CT_TARGET}-ld${EXEEXT}     \
-        --with-ar=${CT_PREFIX_DIR}/bin/${CT_TARGET}-ar${EXEEXT}     \
-        --with-as=${CT_PREFIX_DIR}/bin/${CT_TARGET}-as${EXEEXT}     \
-        --with-ranlib=${CT_PREFIX_DIR}/bin/${CT_TARGET}-ranlib${EXEEXT} \
-        --with-lipo=${CT_PREFIX_DIR}/bin/${CT_TARGET}-lipo${EXEEXT}     \
+        --with-ld=${prefix}/bin/${CT_TARGET}-ld${EXEEXT}            \
+        --with-ar=${prefix}/bin/${CT_TARGET}-ar${EXEEXT}            \
+        --with-as=${prefix}/bin/${CT_TARGET}-as${EXEEXT}            \
+        --with-ranlib=${prefix}/bin/${CT_TARGET}-ranlib${EXEEXT}    \
+        --with-lipo=${prefix}/bin/${CT_TARGET}-lipo${EXEEXT}        \
         ${CC_SYSROOT_ARG}                                           \
         "${extra_config[@]}"                                        \
         --with-local-prefix="${CT_SYSROOT_DIR}"                     \
