@@ -1,0 +1,18 @@
+diff -urN a/gcc/config/i386/t-darwin64 b/gcc/config/i386/t-darwin64
+--- a/gcc/config/i386/t-darwin64	2010-10-14 22:27:48.000000000 +0200
++++ b/gcc/config/i386/t-darwin64	2013-06-26 00:28:53.159379496 +0200
+@@ -2,6 +2,14 @@
+ LIB2_SIDITI_CONV_FUNCS=yes
+ LIB2FUNCS_EXTRA = $(srcdir)/config/darwin-64.c
+ 
++# LLVM LOCAL begin
++MULTILIB_OPTIONS = m32
++MULTILIB_DIRNAMES = i386
++
++LIBGCC = stmp-multilib
++INSTALL_LIBGCC = install-multilib
++# LLVM LOCAL end
++
+ # APPLE LOCAL begin gcov 5573505
+ # -pipe because there's an assembler bug, 4077127, which causes
+ # it to not properly process the first # directive, causing temporary
