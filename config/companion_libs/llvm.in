@@ -25,6 +25,10 @@ config LLVM_V_2_8
 config LLVM_V_2_7
     bool
     prompt "2.7"
+
+config LLVM_V_2336
+    bool
+    prompt "2336"
     
 endchoice
 
@@ -37,3 +41,4 @@ config LLVM_VERSION
     default "2.9" if LLVM_V_2_9
     default "2.8" if LLVM_V_2_8
     default "2.7" if LLVM_V_2_7
+    default "2336" if LLVM_V_2336

@@ -2,6 +2,12 @@
 # Copyright 2007 Yann E. MORIN
 # Licensed under the GPL v2. See COPYING in the root of this package
 
+# For Apple's tarball (the only one I've made patches for so far):
+CT_CC_LLVMGCC_PREFIX="llvmgcc42"
+CT_CC_LLVMGCC_SUFFIX=".1"
+CT_CC_LLVMGCC_URL="http://www.opensource.apple.com/tarballs/llvmgcc42"
+CT_CC_LLVMGCC_PATCHDIR="llvm-gcc"
+
 CC_LLVMGCC_FULLNAME="${CT_CC_LLVMGCC_PREFIX}-${CT_CC_LLVMGCC_VERSION}${CT_CC_LLVMGCC_SUFFIX}"
 if [[ "$CT_CC_LLVMGCC_URL" == *apple* ]] ; then
 	CC_LLVMGCC_URL="${CT_CC_LLVMGCC_URL}"

@@ -27,6 +27,11 @@ config DARWIN_IOS_V_5_0
 
 endchoice
 
+config DARWIN_VERSION
+    string
+    prompt "Darwin version"
+    default "10"
+
 config DARWIN_SDK_PATH
     string
     prompt "Darwin SDK path"

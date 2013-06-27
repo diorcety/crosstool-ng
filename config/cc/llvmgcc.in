@@ -31,8 +31,13 @@ config CC_LLVMGCC_V_2_8
     
 config CC_LLVMGCC_V_2_7
     bool
-     depends on LLVM_V_2_7
+    depends on LLVM_V_2_7
     prompt "2.7"
+
+config CC_LLVMGCC_V_2336
+    bool
+    depends on LLVM_V_2336
+    prompt "2336"
     
 endchoice
 
@@ -43,6 +48,7 @@ config CC_LLVMGCC_VERSION
     default "2.9" if CC_LLVMGCC_V_2_9
     default "2.8" if CC_LLVMGCC_V_2_8
     default "2.7" if CC_LLVMGCC_V_2_7
+    default "2336" if CC_LLVMGCC_V_2336
 
 config CC_LLVMGCC_HAS_GRAPHITE
     bool

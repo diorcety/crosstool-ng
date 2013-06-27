@@ -7,6 +7,11 @@ do_llvm_extract() { :; }
 do_llvm_for_build() { :; }
 do_llvm_for_host() { :; }
 
+CT_LLVM_PREFIX="llvmgcc42"
+CT_LLVM_SUFFIX=".1"
+CT_LLVM_URL="http://www.opensource.apple.com/tarballs/llvmgcc42"
+CT_LLVM_PATCHDIR="llvm-gcc"
+
 # Overide functions depending on configuration
 if [ "${CT_LLVM}" = "y" ]; then
 
