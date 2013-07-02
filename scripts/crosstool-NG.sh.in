@@ -392,7 +392,18 @@ if [ -z "${CT_RESTART}" ]; then
             t="${!r}-"
         fi
 
-        for tool in ar as dlltool gcc g++ c++ gcj gnatbind gnatmake ld nm objcopy objdump ranlib strip windres; do
+        # Format is toolname,varname. If varname specified and CT_EXPORT_BUILD_TOOLS then export it.
+        for tool in ar,AR as,AS dlltool,DLLTOOL gcc,CC g++,CXX c++ gcj gnatbind gnatmake ld,LD nm,NM objcopy,OBJCOPY objdump,OBJDUMP ranlib,RANLIB strip,STRIP windres,WINDRES; do
+            case "${tool}" in
+                *,*)
+                    expvar=$(echo "${tool}" | sed "s,^.*\,\(.*\),\1,")
+                    tool=$(echo "${tool}" | sed "s,^\(.*\)\,.*,\1,")
+                    ;;
+                *)
+                    expvar=
+                    ;;
+            esac
+
             # First try with prefix + suffix
             # Then try with prefix only
             # Then try with suffix only, but only for BUILD, and HOST iff REAL_BUILD == REAL_HOST
@@ -419,6 +430,11 @@ if [ -z "${CT_RESTART}" ]; then
                 CT_DoLog DEBUG "  '${!v}-${tool}' -> '${where}'"
                 printf "#${BANG}${CT_CONFIG_SHELL}\nexec '${where}' \"\${@}\"\n" >"${CT_BUILDTOOLS_PREFIX_DIR}/bin/${!v}-${tool}"
                 CT_DoExecLog ALL chmod 700 "${CT_BUILDTOOLS_PREFIX_DIR}/bin/${!v}-${tool}"
+                CT_EXPORT_BUILD_TOOLS=yes
+                if [ -n "$expvar" -a "$CT_EXPORT_BUILD_TOOLS" = "yes" ]; then
+                    CT_DoLog ALL "export '$expvar=${!v}-${tool}'"
+                    eval export "'$expvar=${!v}-${tool}'"
+                fi
             else
                 case "${tool}" in
                     # We'll at least need some of them...
