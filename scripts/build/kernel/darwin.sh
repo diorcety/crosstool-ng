@@ -23,10 +23,10 @@ do_kernel_extract() {
     CT_Pushd "${CT_SYSROOT_DIR}"
 
     CT_DoExecLog ALL \
-    mkdir -p "SDKs/${SDK_NAME}"
+    mkdir -p "SDKs"
 
     CT_DoExecLog ALL \
-    cp -aT "${CT_DARWIN_SDK_PATH}" "SDKs/${SDK_NAME}"
+    cp -R "${CT_DARWIN_SDK_PATH}" "SDKs/${SDK_NAME}"
 
     CT_DoExecLog ALL \
     rm -rf "SDKs/${SDK_NAME}/Library/Frameworks"
