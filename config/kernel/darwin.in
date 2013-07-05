@@ -31,6 +31,7 @@ config DARWIN_VERSION
     string
     prompt "Darwin version"
     default "10" if DARWIN_MAC_OSX_V_10_6
+    default "10" if DARWIN_IOS_V_5_0 
     default "11" if DARWIN_MAC_OSX_V_10_7
 
 config DARWIN_SDK_PATH

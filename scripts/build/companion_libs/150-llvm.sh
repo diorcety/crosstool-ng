@@ -65,6 +65,8 @@ do_llvm_for_build() {
 
     llvm_opts+=( "host=${CT_BUILD}" )
     llvm_opts+=( "prefix=${CT_BUILDTOOLS_PREFIX_DIR}" )
+    llvm_opts+=( "cflags=${CT_CFLAGS_FOR_BUILD}" )
+    llvm_opts+=( "ldflags=${CT_LDFLAGS_FOR_BUILD}" )     
     do_llvm_backend "${llvm_opts[@]}"
 
     CT_Popd
@@ -81,6 +83,7 @@ do_llvm_for_host() {
     llvm_opts+=( "host=${CT_HOST}" )
     llvm_opts+=( "prefix=${CT_PREFIX_DIR}" )
     llvm_opts+=( "cflags=${CT_CFLAGS_FOR_HOST}" )
+    llvm_opts+=( "ldflags=${CT_LDFLAGS_FOR_HOST}" )     
     do_llvm_backend "${llvm_opts[@]}"
 
     CT_Popd
@@ -96,6 +99,7 @@ do_llvm_backend() {
     local host
     local prefix
     local cflags
+    local ldflags
     local arg
 
     for arg in "$@"; do
@@ -106,6 +110,8 @@ do_llvm_backend() {
 
     CT_DoExecLog CFG                  \
     CFLAGS="${cflags}"                \
+    CXXFLAGS="${cflags}"              \
+    LDFLAGS="${ldflags}"              \
     "${CT_SRC_DIR}/${LLVM_CONFIGURE}" \
         --build=${CT_BUILD}           \
         --host=${host}                \
@@ -113,7 +119,11 @@ do_llvm_backend() {
         --target=${CT_TARGET}         \
 
     CT_DoLog EXTRA "Building LLVM"
-    CT_DoExecLog ALL make ${JOBSFLAGS}
+    CT_DoExecLog ALL                  \
+    make ${JOBSFLAGS}                 \
+    CFLAGS="${cflags}"                \
+    CXXFLAGS="${cflags}"              \
+    LDFLAGS="${ldflags}"              \
 
     CT_DoLog EXTRA "Installing LLVM"
     CT_DoExecLog ALL make install
