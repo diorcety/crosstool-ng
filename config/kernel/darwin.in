@@ -25,14 +25,24 @@ config DARWIN_IOS_V_5_0
     bool
     prompt "iOS 5.0"
 
+config DARWIN_IOS_V_6_0
+    bool
+    prompt "iOS 6.0"
+
+config DARWIN_IOS_V_6_1
+    bool
+    prompt "iOS 6.1"
+
 endchoice
 
 config DARWIN_VERSION
     string
     prompt "Darwin version"
     default "10" if DARWIN_MAC_OSX_V_10_6
-    default "10" if DARWIN_IOS_V_5_0 
     default "11" if DARWIN_MAC_OSX_V_10_7
+    default "10" if DARWIN_IOS_V_5_0 
+    default "10" if DARWIN_IOS_V_6_0 
+    default "10" if DARWIN_IOS_V_6_1 
 
 config DARWIN_SDK_PATH
     string
@@ -46,3 +56,5 @@ config DARWIN_SDK
     default "MacOSX10.7.sdk" if DARWIN_MAC_OSX_V_10_7
     default "MacOSX10.6.sdk" if DARWIN_MAC_OSX_V_10_6
     default "iPhoneOS5.0.sdk" if DARWIN_IOS_V_5_0
+    default "iPhoneOS6.0.sdk" if DARWIN_IOS_V_6_0
+    default "iPhoneOS6.1.sdk" if DARWIN_IOS_V_6_1
