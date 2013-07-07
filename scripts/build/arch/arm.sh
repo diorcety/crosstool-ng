@@ -2,7 +2,7 @@
 
 CT_DoArchTupleValues() {
     # The architecture part of the tuple:
-    CT_TARGET_ARCH="${CT_ARCH}${target_endian_eb}"
+    CT_TARGET_ARCH="${CT_ARCH}${CT_ARCH_SUFFIX:-${target_endian_eb}}"
 
     # The system part of the tuple:
     case "${CT_LIBC},${CT_ARCH_ARM_EABI}" in
@@ -23,5 +23,9 @@ CT_DoArchTupleValues() {
 
     if [ "${CT_ARCH_ARM_INTERWORKING}" = "y" ]; then
         CT_ARCH_TARGET_CFLAGS+=" -mthumb-interwork"
+    fi
+
+    if [ "${CT_ARCH_ARM_TUPLE_USE_EABIHF}" = "y" ]; then
+        CT_TARGET_SYS="${CT_TARGET_SYS}hf"
     fi
 }

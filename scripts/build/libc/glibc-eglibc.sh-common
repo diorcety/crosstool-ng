@@ -214,6 +214,8 @@ do_libc_backend_once() {
             else
                 OPTIMIZE=-O2
             fi
+            # always include rpc, the user can still override it with TI-RPC
+            extra_config+=( --enable-obsolete-rpc )
             ;;
         glibc)
             # glibc can't be built without -O2 (reference needed!)
@@ -274,10 +276,8 @@ do_libc_backend_once() {
         *)  extra_config+=("--enable-add-ons=$(do_libc_add_ons_list ,)");;
     esac
 
-    if [ "${CT_LIBC_EGLIBC_HAS_PKGVERSION_BUGURL}" = "y" ]; then
-        extra_config+=("--with-pkgversion=${CT_PKGVERSION}")
-        [ -n "${CT_TOOLCHAIN_BUGURL}" ] && extra_config+=("--with-bugurl=${CT_TOOLCHAIN_BUGURL}")
-    fi
+    extra_config+=("--with-pkgversion=${CT_PKGVERSION}")
+    [ -n "${CT_TOOLCHAIN_BUGURL}" ] && extra_config+=("--with-bugurl=${CT_TOOLCHAIN_BUGURL}")
 
     # Extract the endianness options if any
     # This should cover all possible endianness options
@@ -325,7 +325,7 @@ do_libc_backend_once() {
     # So we can safely bypass bash detection at compile time.
     # Should this change in a future eglibc release, we'd better
     # directly mangle the generated scripts _after_ they get built,
-    # or even after they get installed... eglibc is such a sucker...
+    # or even after they get installed...
     echo "ac_cv_path_BASH_SHELL=/bin/bash" >>config.cache
 
     # Configure with --prefix the way we want it on the target...
@@ -402,10 +402,20 @@ do_libc_backend_once() {
             #  error: bits/syscall.h: No such file or directory
             # solved by following copy; see http://sourceware.org/ml/crossgcc/2005-05/msg00168.html
             # but it breaks arm, see http://sourceware.org/ml/crossgcc/2006-01/msg00091.html
+            # Of course, only copy it if it does not already exist
             case "${CT_ARCH}" in
                 arm)    ;;
-                *)  CT_DoExecLog ALL cp -v "misc/syscall-list.h"            \
-                                           "${CT_HEADERS_DIR}/bits/syscall.h"
+                *)  if [ -f "${CT_HEADERS_DIR}/bits/syscall.h" ]; then
+                        CT_DoLog ALL "Not over-writing existing bits/syscall.h"
+                    elif [ -f "misc/bits/syscall.h" ]; then
+                        CT_DoExecLog ALL cp -v "misc/bits/syscall.h"            \
+                                               "${CT_HEADERS_DIR}/bits/syscall.h"
+                    else
+                        # "Old" glibces do not have the above file,
+                        # but provide this one:
+                        CT_DoExecLog ALL cp -v "misc/syscall-list.h"            \
+                                               "${CT_HEADERS_DIR}/bits/syscall.h"
+                    fi
                     ;;
             esac
         fi
@@ -453,23 +463,22 @@ do_libc_backend_once() {
             # Omit JOBSFLAGS as GLIBC has problems building the
             # manuals in parallel
             CT_DoExecLog ALL make pdf html
-            # EGLIBC doesn't have a install-{pdf.html} and leaves the manuals
-            # in the source directory
+            # EGLIBC doesn't have a install-{pdf.html}, and older
+            # versions leave the manuals in the source directory
             CT_DoExecLog ALL mkdir -p ${CT_PREFIX_DIR}/share/doc
-            CT_DoExecLog ALL cp -av ${src_dir}/manual/*.pdf ${src_dir}/manual/libc \
-                ${CT_PREFIX_DIR}/share/doc
+            if [ "${CT_LIBC_EGLIBC_2_16_or_later}" = "y" ]; then
+                CT_DoExecLog ALL cp -av manual/*.pdf manual/libc \
+                    ${CT_PREFIX_DIR}/share/doc
+            else
+                CT_DoExecLog ALL cp -av ${src_dir}/manual/*.pdf ${src_dir}/manual/libc \
+                    ${CT_PREFIX_DIR}/share/doc
+            fi
         fi
 
         if [ "${CT_LIBC_LOCALES}" = "y" ]; then
             do_libc_locales
         fi
     fi # libc_full == y
-}
-
-# This function finishes the C library install
-# This is a no-op
-do_libc_finish() {
-    :
 }
 
 # Build up the addons list, separated with $1

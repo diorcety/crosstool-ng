@@ -1,9 +1,10 @@
 # eglibc options
 
-## depends on ! MINGW32 && ! BARE_METAL && ARCH_USE_MMU
+## depends on ! WINDOWS && ! BARE_METAL && ARCH_USE_MMU
 ##
 ## select LIBC_SUPPORT_NPTL
 ## select LIBC_SUPPORT_LINUXTHREADS
+## select CC_CORE_PASSES_NEEDED
 ##
 ## help EGLIBC (Embedded GLIBC) is a variant of the standard GNU GLIBC
 ## help that is designed to work well on embedded systems.  EGLIBC strives
@@ -18,6 +19,11 @@ choice
 # Don't remove next line
 # CT_INSERT_VERSION_BELOW
 
+config LIBC_EGLIBC_V_2_17
+    bool
+    prompt "2_17"
+    select LIBC_EGLIBC_2_16_or_later
+
 config LIBC_EGLIBC_V_2_16
     bool
     prompt "2_16"
@@ -26,62 +32,35 @@ config LIBC_EGLIBC_V_2_16
 config LIBC_EGLIBC_V_2_15
     bool
     prompt "2_15"
-    select LIBC_EGLIBC_2_15_or_later
 
 config LIBC_EGLIBC_V_2_14
     bool
     prompt "2_14"
-    select LIBC_EGLIBC_2_14_or_later
 
 config LIBC_EGLIBC_V_2_13
     bool
     prompt "2_13"
-    select LIBC_EGLIBC_2_13_or_later
 
 config LIBC_EGLIBC_V_2_12
     bool
     prompt "2_12"
-    select LIBC_EGLIBC_2_12_or_later
 
 config LIBC_EGLIBC_V_2_11
     bool
     prompt "2_11"
-    select LIBC_EGLIBC_2_11_or_later
 
 config LIBC_EGLIBC_V_2_10
     bool
     prompt "2_10"
-    select LIBC_EGLIBC_2_10_or_later
 
 config LIBC_EGLIBC_V_2_9
     bool
     prompt "2_9"
-    select LIBC_EGLIBC_2_9_or_later
-
-config LIBC_EGLIBC_V_2_8
-    bool
-    prompt "2_8 (OBSOLETE)"
-    depends on OBSOLETE
-
-config LIBC_EGLIBC_V_2_7
-    bool
-    prompt "2_7 (OBSOLETE)"
-    depends on OBSOLETE
-
-config LIBC_EGLIBC_V_2_6
-    bool
-    prompt "2_6 (OBSOLETE)"
-    depends on OBSOLETE
-
-config LIBC_EGLIBC_V_2_5
-    bool
-    prompt "2_5 (OBSOLETE)"
-    depends on OBSOLETE
 
 config LIBC_EGLIBC_V_TRUNK
     bool
     prompt "'trunk'"
-    select LIBC_EGLIBC_2_14_or_later
+    select LIBC_EGLIBC_2_16_or_later
     help
       Selecting this will export the trunk of the eglibc subversion repository.
 
@@ -91,6 +70,7 @@ config LIBC_VERSION
     string
 # Don't remove next line
 # CT_INSERT_VERSION_STRING_BELOW
+    default "2_17" if LIBC_EGLIBC_V_2_17
     default "2_16" if LIBC_EGLIBC_V_2_16
     default "2_15" if LIBC_EGLIBC_V_2_15
     default "2_14" if LIBC_EGLIBC_V_2_14
@@ -99,45 +79,9 @@ config LIBC_VERSION
     default "2_11" if LIBC_EGLIBC_V_2_11
     default "2_10" if LIBC_EGLIBC_V_2_10
     default "2_9" if LIBC_EGLIBC_V_2_9
-    default "2_8" if LIBC_EGLIBC_V_2_8
-    default "2_7" if LIBC_EGLIBC_V_2_7
-    default "2_6" if LIBC_EGLIBC_V_2_6
-    default "2_5" if LIBC_EGLIBC_V_2_5
     default "trunk" if LIBC_EGLIBC_V_TRUNK
 
 config LIBC_EGLIBC_2_16_or_later
-    bool
-    select LIBC_EGLIBC_2_15_or_later
-
-config LIBC_EGLIBC_2_15_or_later
-    bool
-    select LIBC_EGLIBC_2_14_or_later
-
-config LIBC_EGLIBC_2_14_or_later
-    bool
-    select LIBC_EGLIBC_2_13_or_later
-
-config LIBC_EGLIBC_2_13_or_later
-    bool
-    select LIBC_EGLIBC_2_12_or_later
-
-config LIBC_EGLIBC_2_12_or_later
-    bool
-    select LIBC_EGLIBC_2_11_or_later
-
-config LIBC_EGLIBC_2_11_or_later
-    bool
-    select LIBC_EGLIBC_2_10_or_later
-
-config LIBC_EGLIBC_2_10_or_later
-    bool
-    select LIBC_EGLIBC_2_9_or_later
-
-config LIBC_EGLIBC_2_9_or_later
-    bool
-    select LIBC_EGLIBC_HAS_PKGVERSION_BUGURL
-
-config LIBC_EGLIBC_HAS_PKGVERSION_BUGURL
     bool
 
 if CONFIGURE_has_svn
