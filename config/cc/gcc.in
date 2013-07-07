@@ -17,8 +17,7 @@ if ! DARWIN
 
 config CC_GCC_SHOW_LINARO
     bool
-    prompt "Show Linaro versions (EXPERIMENTAL)"
-    depends on EXPERIMENTAL
+    prompt "Show Linaro versions"
     help
       Linaro is maintaining some advanced/more stable/experimental versions
       of gcc, especially for the ARM architecture.
@@ -38,39 +37,64 @@ endif
 choice
     bool
     prompt "gcc version"
+
 # Don't remove next line
 # CT_INSERT_VERSION_BELOW
 
-config CC_V_apple_5666_3
+config CC_GCC_V_apple_5666_3
     bool
     prompt "apple-5666.3"
     depends on EXPERIMENTAL && DARWIN
     select CC_GCC_APPLE
     
-#if ! DARWIN
+if ! DARWIN
 
-config CC_GCC_V_linaro_4_7_2012_07
+config CC_GCC_V_linaro_4_8
     bool
-    prompt "linaro-4.7-2012.07 (EXPERIMENTAL)"
+    prompt "linaro-4.8-2013.04"
     depends on CC_GCC_SHOW_LINARO
+    select CC_GCC_4_8
+
+config CC_GCC_V_4_8_0
+    bool
+    prompt "4.8.0"
+    select CC_GCC_4_8
+
+config CC_GCC_V_linaro_4_7
+    bool
+    prompt "linaro-4.7-2013.04"
+    depends on CC_GCC_SHOW_LINARO
+    select CC_GCC_4_7
+
+config CC_GCC_V_4_7_3
+    bool
+    prompt "4.7.3"
+    select CC_GCC_4_7
+
+config CC_GCC_V_4_7_2
+    bool
+    prompt "4.7.2"
     select CC_GCC_4_7
 
 config CC_GCC_V_4_7_1
     bool
-    prompt "4.7.1 (EXPERIMENTAL)"
-    depends on EXPERIMENTAL
+    prompt "4.7.1"
     select CC_GCC_4_7
 
 config CC_GCC_V_4_7_0
     bool
-    prompt "4.7.0 (EXPERIMENTAL)"
-    depends on EXPERIMENTAL
+    prompt "4.7.0"
     select CC_GCC_4_7
 
-config CC_GCC_V_linaro_4_6_2012_07
+config CC_GCC_V_linaro_4_6
     bool
-    prompt "linaro-4.6-2012.07 (EXPERIMENTAL)"
+    prompt "linaro-4.6-2013.04"
     depends on CC_GCC_SHOW_LINARO
+    select CC_GCC_4_6
+
+config CC_GCC_V_4_6_4
+    bool
+    prompt "4.6.4"
     select CC_GCC_4_6
 
 config CC_GCC_V_4_6_3
@@ -93,9 +117,9 @@ config CC_GCC_V_4_6_0
     prompt "4.6.0"
     select CC_GCC_4_6
 
-config CC_GCC_V_linaro_4_5_2012_03
+config CC_GCC_V_linaro_4_5
     bool
-    prompt "linaro-4.5-2012.03 (EXPERIMENTAL)"
+    prompt "linaro-4.5-2012.03"
     depends on CC_GCC_SHOW_LINARO
     select CC_GCC_4_5
 
@@ -120,9 +144,9 @@ config CC_GCC_V_4_5_0
     select CC_GCC_4_5
 
 
-config CC_GCC_V_linaro_4_4_2011_02_0
+config CC_GCC_V_linaro_4_4
     bool
-    prompt "linaro-4.4-2011.02-0 (EXPERIMENTAL)"
+    prompt "linaro-4.4-2011.02-0"
     depends on CC_GCC_SHOW_LINARO
     select CC_GCC_4_4
 
@@ -201,28 +225,12 @@ config CC_GCC_V_4_2_4
     prompt "4.2.4"
     select CC_GCC_4_2
 
-config CC_GCC_V_4_2_3
-    bool
-    prompt "4.2.3 (OBSOLETE)"
-    select CC_GCC_4_2
-    depends on OBSOLETE
-
+# We need that one, it's the only version with avr32 support
+# because we have a patch for it
 config CC_GCC_V_4_2_2
     bool
     prompt "4.2.2"
     select CC_GCC_4_2
-
-config CC_GCC_V_4_2_1
-    bool
-    prompt "4.2.1 (OBSOLETE)"
-    select CC_GCC_4_2
-    depends on OBSOLETE
-
-config CC_GCC_V_4_2_0
-    bool
-    prompt "4.2.0 (OBSOLETE)"
-    select CC_GCC_4_2
-    depends on OBSOLETE
 
 config CC_GCC_V_4_1_2
     bool
@@ -239,9 +247,27 @@ config CC_GCC_V_3_4_6
     prompt "3.4.6 (OBSOLETE)"
     depends on OBSOLETE
 
-#endif
+config CC_GCC_CUSTOM
+    bool
+    prompt "Custom gcc"
+    depends on EXPERIMENTAL
+    select CC_GCC_latest
+
+endif
 
 endchoice
+
+if CC_GCC_CUSTOM
+
+config CC_GCC_CUSTOM_LOCATION
+    string
+    prompt "Full path to custom gcc source"
+    default ""
+    help
+      Enter the path to the directory (or tarball) of your source for gcc,
+      or leave blank to use default CT_CUSTOM_LOCATION_ROOT_DIR/gcc
+
+endif #CC_GCC_CUSTOM
 
 config CC_GCC_4_2
     bool
@@ -316,14 +342,59 @@ config CC_GCC_4_7_or_later
     bool
     select CC_GCC_4_6_or_later
 
+config CC_GCC_4_8
+    bool
+    select CC_GCC_4_8_or_later
+    select CC_GCC_USE_GMP_MPFR
+    select CC_GCC_USE_MPC
+    select CC_GCC_HAS_GRAPHITE
+    select CC_GCC_HAS_LTO
+    select CC_GCC_HAS_PKGVERSION_BUGURL
+    select CC_GCC_HAS_BUILD_ID
+    select CC_GCC_HAS_LNK_HASH_STYLE
+    select CC_GCC_HAS_LIBQUADMATH
+
+config CC_GCC_4_8_or_later
+    bool
+    select CC_GCC_4_7_or_later
+
+config CC_GCC_latest
+    bool
+    select CC_GCC_4_8_or_later
+    select CC_GCC_USE_GMP_MPFR
+    select CC_GCC_USE_MPC
+    select CC_GCC_HAS_GRAPHITE
+    select CC_GCC_HAS_LTO
+    select CC_GCC_HAS_PKGVERSION_BUGURL
+    select CC_GCC_HAS_BUILD_ID
+    select CC_GCC_HAS_LNK_HASH_STYLE
+    select CC_GCC_HAS_LIBQUADMATH
+
 config CC_GCC_APPLE
     bool
-    select CC_GCC_USE_GMP_MPFR
+    select GMP_NEEDED
+    select MPFR_NEEDED
     select GMP_V_4_3_2
     select MPFR_V_2_2_1
 
 config CC_GCC_HAS_GRAPHITE
     bool
+
+# For graphite: gcc 4.4..4.7 need ppl, while 4.8.. need isl
+# Prompt in config/cc/gcc.in.2
+config CC_GCC_USE_GRAPHITE
+    bool
+    default y
+    depends on CC_GCC_HAS_GRAPHITE
+    select CLOOG_NEEDED
+    select PPL_NEEDED if !CC_GCC_4_8_or_later
+    select ISL_NEEDED if CC_GCC_4_8_or_later
+    help
+      Enable the GRAPHITE loop optimsations.
+      
+      On some systems (eg. Cygwin), PPL and/or CLooG (required to enable
+      GRAPHITE) may not build properly (yet), so you'll have to say 'N'
+      here (or help debug the issues)
 
 # The way LTO works is a bit twisted.
 # See: http://gcc.gnu.org/wiki/LinkTimeOptimization#Requirements
@@ -335,6 +406,15 @@ config CC_GCC_HAS_GRAPHITE
 # advantage of it
 config CC_GCC_HAS_LTO
     bool
+
+# Prompt in config/cc/gcc.in.2
+config CC_GCC_USE_LTO
+    bool
+    default y
+    depends on CC_GCC_HAS_LTO
+    select CC_GCC_USE_LIBELF if CC_GCC_4_5
+    help
+      Enable the Link Time Optimisations.
 
 config CC_GCC_HAS_PKGVERSION_BUGURL
     bool
@@ -365,9 +445,6 @@ config CC_GCC_USE_GMP_MPFR
     select GMP_NEEDED
     select MPFR_NEEDED
 
-config CC_GCC_USE_PPL_CLOOG
-    bool
-    select PPL_NEEDED
     select CLOOG_NEEDED
 
 config CC_GCC_USE_MPC
@@ -385,21 +462,26 @@ config CC_GCC_VERSION
     string
 # Don't remove next line
 # CT_INSERT_VERSION_STRING_BELOW
-    default "5666.3" if CC_V_apple_5666_3 
-    default "linaro-4.7-2012.07" if CC_GCC_V_linaro_4_7_2012_07
+    default "5666.3" if CC_GCC_V_apple_5666_3 
+    default "linaro-4.8-2013.04" if CC_GCC_V_linaro_4_8
+    default "4.8.0" if CC_GCC_V_4_8_0
+    default "linaro-4.7-2013.04" if CC_GCC_V_linaro_4_7
+    default "4.7.3" if CC_GCC_V_4_7_3
+    default "4.7.2" if CC_GCC_V_4_7_2
     default "4.7.1" if CC_GCC_V_4_7_1
     default "4.7.0" if CC_GCC_V_4_7_0
-    default "linaro-4.6-2012.07" if CC_GCC_V_linaro_4_6_2012_07
+    default "linaro-4.6-2013.04" if CC_GCC_V_linaro_4_6
+    default "4.6.4" if CC_GCC_V_4_6_4
     default "4.6.3" if CC_GCC_V_4_6_3
     default "4.6.2" if CC_GCC_V_4_6_2
     default "4.6.1" if CC_GCC_V_4_6_1
     default "4.6.0" if CC_GCC_V_4_6_0
-    default "linaro-4.5-2012.03" if CC_GCC_V_linaro_4_5_2012_03
+    default "linaro-4.5-2012.03" if CC_GCC_V_linaro_4_5
     default "4.5.3" if CC_GCC_V_4_5_3
     default "4.5.2" if CC_GCC_V_4_5_2
     default "4.5.1" if CC_GCC_V_4_5_1
     default "4.5.0" if CC_GCC_V_4_5_0
-    default "linaro-4.4-2011.02-0" if CC_GCC_V_linaro_4_4_2011_02_0
+    default "linaro-4.4-2011.02-0" if CC_GCC_V_linaro_4_4
     default "4.4.7" if CC_GCC_V_4_4_7
     default "4.4.6" if CC_GCC_V_4_4_6
     default "4.4.5" if CC_GCC_V_4_4_5
@@ -416,13 +498,11 @@ config CC_GCC_VERSION
     default "4.3.1" if CC_GCC_V_4_3_1
     default "4.3.0" if CC_GCC_V_4_3_0
     default "4.2.4" if CC_GCC_V_4_2_4
-    default "4.2.3" if CC_GCC_V_4_2_3
     default "4.2.2" if CC_GCC_V_4_2_2
-    default "4.2.1" if CC_GCC_V_4_2_1
-    default "4.2.0" if CC_GCC_V_4_2_0
     default "4.1.2" if CC_GCC_V_4_1_2
     default "4.0.4" if CC_GCC_V_4_0_4
     default "3.4.6" if CC_GCC_V_3_4_6
+    default "custom" if CC_GCC_CUSTOM
 
 config CC_LANG_JAVA_USE_ECJ
     bool

@@ -5,14 +5,16 @@
 # Prepare the fault handler
 CT_OnError() {
     local ret=$?
+    local result
+    local old_trap
     local intro
     local file line func
     local step step_depth
 
     # To avoid printing the backtace for each sub-shell
     # up to the top-level, just remember we've dumped it
-    if [ ! -f "${CT_BUILD_DIR}/backtrace" ]; then
-        touch "${CT_BUILD_DIR}/backtrace"
+    if [ ! -f "${CT_WORK_DIR}/backtrace" ]; then
+        touch "${CT_WORK_DIR}/backtrace"
 
         # Print steps backtrace
         step_depth=${CT_STEP_COUNT}
@@ -35,6 +37,61 @@ CT_OnError() {
             CT_DoLog ERROR ">>  ${intro}: ${func}[${file}${line}]"
             intro="      called from"
         done
+
+        # If the user asked for interactive debugging, dump him/her to a shell
+        if [ "${CT_DEBUG_INTERACTIVE}" = "y" ]; then
+            # We do not want this sub-shell exit status to be caught, because
+            # it is absolutely legit that it exits with non-zero.
+            # Save the trap handler to restore it after our debug-shell
+            old_trap="$(trap -p ERR)"
+            trap -- ERR
+            (
+                exec >&6 2>&7 <&8
+                printf "\r         \n\nCurrent command"
+                if [ -n "${cur_cmd}" ]; then
+                    printf ":\n  %s\n" "${cur_cmd}"
+                else
+                    printf " (unknown), "
+                fi
+                printf "exited with error code: %d\n" ${ret}
+                printf "Please fix it up and finish by exiting the shell with one of these values:\n"
+                printf "    1  fixed, continue with next build command\n"
+                if [ -n "${cur_cmd}" ]; then
+                    printf "    2  repeat this build command\n"
+                fi
+                printf "    3  abort build\n\n"
+                while true; do
+                    ${bash} --rcfile <(printf "PS1='ct-ng:\w> '\nPROMPT_COMMAND=''\n") -i
+                    result=$?
+                    case $result in
+                        1)  printf "\nContinuing past the failed command.\n\n"
+                            break
+                            ;;
+                        2)  if [ -n "${cur_cmd}" ]; then
+                                printf "\nRe-trying last command.\n\n"
+                                break
+                            fi
+                            ;;
+                        3)  break;;
+                    esac
+                    printf "\nPlease exit with one of these values:\n"
+                    printf "    1  fixed, continue with next build command\n"
+                    if [ -n "${cur_cmd}" ]; then
+                        printf "    2  repeat this build command\n"
+                    fi
+                    printf "    3  abort build\n"
+                done
+                exit $result
+            )
+            result=$?
+            # Restore the trap handler
+            eval "${old_trap}"
+            case "${result}" in
+                1)  rm -f "${CT_WORK_DIR}/backtrace"; touch "${CT_BUILD_DIR}/skip"; return;;
+                2)  rm -f "${CT_WORK_DIR}/backtrace"; touch "${CT_BUILD_DIR}/repeat"; return;;
+                # 3 is an abort, continue...
+            esac
+        fi
     fi
 
     # And finally, in top-level shell, print some hints
@@ -50,7 +107,7 @@ CT_OnError() {
 
         CT_DoLog ERROR ""
         CT_DoEnd ERROR
-        rm -f "${CT_BUILD_DIR}/backtrace"
+        rm -f "${CT_WORK_DIR}/backtrace"
     fi
     exit $ret
 }
@@ -73,7 +130,8 @@ set +o hashall
 
 # Log policy:
 #  - first of all, save stdout so we can see the live logs: fd #6
-exec 6>&1
+# (also save stdin and stderr for use by CT_DEBUG_INTERACTIVE)
+exec 6>&1 7>&2 8<&0
 #  - then point stdout to the log file
 tmp_log_file="${CT_TOP_DIR}/build.log"
 rm -f "${tmp_log_file}"
@@ -157,10 +215,12 @@ CT_DoLog() {
 # Usage: CT_DoExecLog <level> [VAR=val...] <command> [parameters...]
 CT_DoExecLog() {
     local level="$1"
+    local cur_cmd
+    local ret
     shift
     (
     for i in "$@"; do
-        tmp_log+="'${i}' "
+        cur_cmd+="'${i}' "
     done
     while true; do
         case "${1}" in
@@ -168,8 +228,46 @@ CT_DoExecLog() {
             *)      break;;
         esac
     done
-    CT_DoLog DEBUG "==> Executing: ${tmp_log}"
-    "${@}" 2>&1 |CT_DoLog "${level}"
+    # This while-loop goes hand-in-hand with the ERR trap handler:
+    # - if the command terminates successfully, then we hit the break
+    #   statement, and we exit the loop
+    # - if the command terminates in error, then the ERR handler kicks
+    #   in, then:
+    #     - if the user did *not* ask for interactive debugging, the ERR
+    #       handler exits, and we hit the end of the sub-shell
+    #     - if the user did ask for interactive debugging, the ERR handler
+    #       spawns a shell. Upon termination of this shell, the ERR handler
+    #       examines the exit status of the shell:
+    #         - if 1, the ERR handler returns; then we hit the else statement,
+    #           then the break, and we exit the 'while' loop, to continue the
+    #           build;
+    #         - if 2, the ERR handler touches the repeat file, and returns;
+    #           then we hit the if statement, and we loop for one more
+    #           iteration;
+    #         - if 3, the ERR handler exits with the command's exit status,
+    #           and we're dead;
+    #         - for any other exit status of the shell, the ERR handler
+    #           prints an informational message, and respawns the shell
+    #
+    # This allows a user to get an interactive shell that has the same
+    # environment (PATH and so on) that the failed command was ran with.
+    while true; do
+        rm -f "${CT_BUILD_DIR}/repeat"
+        CT_DoLog DEBUG "==> Executing: ${cur_cmd}"
+        "${@}" 2>&1 |CT_DoLog "${level}"
+        ret="${?}"
+        if [ -f "${CT_BUILD_DIR}/repeat" ]; then
+            rm -f "${CT_BUILD_DIR}/repeat"
+            continue
+        elif [ -f "${CT_BUILD_DIR}/skip" ]; then
+            rm -f "${CT_BUILD_DIR}/skip"
+            ret=0
+            break
+        else
+            break
+        fi
+    done
+    exit ${ret}
     )
     # Catch failure of the sub-shell
     [ $? -eq 0 ]
@@ -230,7 +328,7 @@ CT_SanitiseVarDir() {
 # Usage: CT_Abort <message>
 CT_Abort() {
     CT_DoLog ERROR "$1"
-    exit 1
+    false
 }
 
 # Test a condition, and print a message if satisfied
@@ -281,9 +379,8 @@ CT_HasOrAbort() {
     return 0
 }
 
-# Search a program: wrap "which" for those system where
-# "which" verbosely says there is no match (Mandriva is
-# such a sucker...)
+# Search a program: wrap "which" for those system where "which"
+# verbosely says there is no match (such as on Mandriva).
 # Usage: CT_Which <filename>
 CT_Which() {
   which "$1" 2>/dev/null || true
@@ -327,6 +424,7 @@ CT_EndStep() {
 
 # Pushes into a directory, and pops back
 CT_Pushd() {
+    CT_DoLog DEBUG "Entering '$1'"
     pushd "$1" >/dev/null 2>&1
 }
 CT_Popd() {
@@ -439,6 +537,7 @@ CT_DoListTarballExt() {
     printf ".tar.bz2\n"
     printf ".tar.gz\n.tgz\n"
     printf ".tar\n"
+    printf ".zip\n"
 }
 
 # Get the file name extension of a component
@@ -494,9 +593,11 @@ CT_DoGetFile() {
     then
         # Success, we got it, good!
         mv "${tmp}" "${dest}"
+        CT_DoLog DEBUG "Got it from: \"${url}\""
     else
         # Woops...
         rm -f "${tmp}"
+        CT_DoLog DEBUG "Not at this location: \"${url}\""
     fi
 }
 
@@ -528,6 +629,42 @@ CT_GetLocal() {
         done
     fi
     return 1
+}
+
+# This function gets the custom source from either a tarball or directory
+# Usage: CT_GetCustom <component> <custom_version> <custom_location>
+CT_GetCustom() {
+    local custom_component="$1"
+    local custom_version="$2"
+    local custom_location="$3"
+    local custom_name="${custom_component}-${custom_version}"
+
+    CT_TestAndAbort "${custom_name}: CT_CUSTOM_LOCATION_ROOT_DIR or ${custom_component}'s CUSTOM_LOCATION must be set." \
+                    -z "${CT_CUSTOM_LOCATION_ROOT_DIR}" -a -z "${custom_location}"
+
+    if [ -n "${CT_CUSTOM_LOCATION_ROOT_DIR}" \
+         -a -z "${custom_location}"          ]; then
+        custom_location="${CT_CUSTOM_LOCATION_ROOT_DIR}/${custom_component}"
+    fi
+
+    CT_DoLog EXTRA "Using '${custom_name}' from custom location"
+    if [ ! -d "${custom_location}" ]; then
+        # We need to know the custom tarball extension,
+        # so we can create a properly-named symlink, which
+        # we use later on in 'extract'
+        case "${custom_location}" in
+            *.tar.xz)       custom_name="${custom_name}.tar.xz";;
+            *.tar.bz2)      custom_name="${custom_name}.tar.bz2";;
+            *.tar.gz|*.tgz) custom_name="${custom_name}.tar.gz";;
+            *.tar)          custom_name="${custom_name}.tar";;
+            *)  CT_Abort "Unknown extension for custom tarball '${custom_location}'";;
+        esac
+        CT_DoExecLog DEBUG ln -sf "${custom_location}"  \
+                                  "${CT_TARBALLS_DIR}/${custom_name}"
+    else
+        CT_DoExecLog DEBUG ln -snf "${custom_location}" \
+                                   "${CT_SRC_DIR}/${custom_name}"
+    fi
 }
 
 # This function saves the specified to local storage if possible,
@@ -569,6 +706,12 @@ CT_GetFile() {
     fi
     # No, it does not...
 
+    # If not allowed to download from the Internet, don't
+    if [ "${CT_FORBID_DOWNLOAD}" = "y" ]; then
+        CT_DoLog DEBUG "Not allowed to download from the Internet, aborting ${file} download"
+        return 1
+    fi
+
     # Try to retrieve the file
     CT_DoLog EXTRA "Retrieving '${file}'"
 
@@ -579,7 +722,7 @@ CT_GetFile() {
         URLS+=( "${CT_MIRROR_BASE_URL}" )
     fi
 
-    if [ "${CT_FORBID_DOWNLOAD}" != "y" ]; then
+    if [ "${CT_FORCE_MIRROR}" != "y" ]; then
         URLS+=( "${@}" )
     fi
 
@@ -734,7 +877,7 @@ CT_GetGit() {
 # by the caller, that did a 'cd' into the correct path before calling us
 # and sets nochdir to 'nochdir'.
 # Note also that this function handles the git trees!
-# Usage: CT_Extract <basename> [nochdir] [options]
+# Usage: CT_Extract [nochdir] <basename> [options]
 # where 'options' are dependent on the source (eg. git branch/tag...)
 CT_Extract() {
     local nochdir="$1"
@@ -799,6 +942,7 @@ CT_Extract() {
         .tar.bz2)     bzip2 -dc "${full_file}" | CT_DoExecLog FILE tar "${tar_opts[@]}" -f -;;
         .tar.gz|.tgz) gzip -dc "${full_file}" | CT_DoExecLog FILE tar "${tar_opts[@]}" -f -;;
         .tar)         CT_DoExecLog FILE tar "${tar_opts[@]}" -f "${full_file}";;
+        .zip)         CT_DoExecLog FILE unzip "${@}" "${full_file}";;
         /.git)        CT_ExtractGit "${basename}" "${@}";;
         *)            CT_DoLog WARN "Don't know how to handle '${basename}${ext}': unknown extension"
                       return 1
@@ -928,8 +1072,7 @@ CT_Patch() {
         if [ -n "${d}" -a -d "${d}" ]; then
             for p in "${d}"/*.patch; do
                 if [ -f "${p}" ]; then
-                    CT_DoLog DEBUG "Applying patch '${p}'"
-                    CT_DoExecLog ALL patch --no-backup-if-mismatch -g0 -F1 -p1 -f <"${p}"
+                    CT_DoExecLog ALL patch --no-backup-if-mismatch -g0 -F1 -p1 -f -i "${p}"
                 fi
             done
             if [ "${CT_PATCH_SINGLE}" = "y" ]; then
@@ -995,7 +1138,7 @@ CT_DoBuildTargetTuple() {
     esac
 
     # Build the default architecture tuple part
-    CT_TARGET_ARCH="${CT_ARCH}"
+    CT_TARGET_ARCH="${CT_ARCH}${CT_ARCH_SUFFIX}"
 
     # Set defaults for the system part of the tuple. Can be overriden
     # by architecture-specific values.

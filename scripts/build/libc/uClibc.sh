@@ -10,12 +10,13 @@ uclibc_local_tarball="uClibc-locale-${uclibc_locales_version}"
 # Download uClibc
 do_libc_get() {
     libc_src="http://www.uclibc.org/downloads
-              http://www.uclibc.org/downloads/snapshots
               http://www.uclibc.org/downloads/old-releases"
-    # For uClibc, we have almost every thing: releases, and snapshots
-    # for the last month or so. We'll have to deal with svn revisions
-    # later...
-    CT_GetFile "uClibc-${CT_LIBC_VERSION}" ${libc_src}
+    if [ "${CT_LIBC_UCLIBC_CUSTOM}" = "y" ]; then
+        CT_GetCustom "uClibc" "${CT_LIBC_VERSION}" \
+                     "${CT_LIBC_UCLIBC_CUSTOM_LOCATION}"
+    else
+        CT_GetFile "uClibc-${CT_LIBC_VERSION}" ${libc_src}
+    fi
     # uClibc locales
     if [ "${CT_LIBC_UCLIBC_LOCALES_PREGEN_DATA}" = "y" ]; then
         CT_GetFile "${uclibc_local_tarball}" ${libc_src}
@@ -26,11 +27,14 @@ do_libc_get() {
 
 # Extract uClibc
 do_libc_extract() {
-    CT_Extract "uClibc-${CT_LIBC_VERSION}"
-    # Don't patch snapshots
-    if [    -z "${CT_LIBC_UCLIBC_V_snapshot}"      \
-         -a -z "${CT_LIBC_UCLIBC_V_specific_date}" \
-       ]; then
+    # If not using custom directory location, extract and patch
+    # Note: we do the inverse test we do in other components,
+    # because here we still need to extract the locales, even for
+    # custom location directory. Just use negate the whole test,
+    # to keep it the same as for other components.
+    if ! [ "${CT_LIBC_UCLIBC_CUSTOM}" = "y" \
+         -a -d "${CT_SRC_DIR}/uClibc-${CT_LIBC_VERSION}" ]; then
+        CT_Extract "uClibc-${CT_LIBC_VERSION}"
         CT_Patch "uClibc" "${CT_LIBC_VERSION}"
     fi
 
@@ -226,11 +230,6 @@ do_libc() {
          install
 
     CT_EndStep
-}
-
-# This function is used to install those components needing the final C compiler
-do_libc_finish() {
-    :
 }
 
 # Initialises the .config file to sensible values
@@ -457,8 +456,6 @@ mungeuClibcConfig() {
     fi
 
     # Push the threading model
-    # Note: we take into account all of the .28, .29, .30 and .31
-    #       versions, here. Even snapshots with NPTL.
     case "${CT_THREADS}:${CT_LIBC_UCLIBC_LNXTHRD}" in
         none:)
             cat <<-ENDSED

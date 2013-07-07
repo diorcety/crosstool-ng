@@ -7,7 +7,7 @@ menu "Operating System"
 config BARE_METAL
     bool
 
-config MINGW32
+config WINDOWS
     bool
 
 config DARWIN

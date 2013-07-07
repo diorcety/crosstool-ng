@@ -11,16 +11,20 @@ choice
 # Don't remove next line
 # CT_INSERT_VERSION_BELOW
 
+config BINUTILS_V_2_23_1
+    bool
+    prompt "2.23.1 (EXPERIMENTAL)"
+    depends on EXPERIMENTAL
+    select BINUTILS_2_23_or_later
+
 config BINUTILS_V_2_22
     bool
-    prompt "2.22 (EXPERIMENTAL)"
-    depends on EXPERIMENTAL
+    prompt "2.22"
     select BINUTILS_2_22_or_later
 
 config BINUTILS_V_2_21_53
     bool
-    prompt "2.21.53 (EXPERIMENTAL)"
-    depends on EXPERIMENTAL
+    prompt "2.21.53"
     select BINUTILS_2_21_or_later
 
 config BINUTILS_V_2_21_1a
@@ -43,30 +47,44 @@ config BINUTILS_V_2_18a
     prompt "2.18a"
     select BINUTILS_2_18_or_later
 
-config BINUTILS_V_2_17a
+config BINUTILS_CUSTOM
     bool
-    prompt "2.17a (OBSOLETE)"
-    depends on OBSOLETE
-
-config BINUTILS_V_2_16_1a
-    bool
-    prompt "2.16.1a (OBSOLETE)"
-    depends on OBSOLETE
+    prompt "Custom binutils"
+    depends on EXPERIMENTAL
+    select BINUTILS_2_22_or_later
 
 endchoice
+
+if BINUTILS_CUSTOM
+
+config BINUTILS_CUSTOM_LOCATION
+    string
+    prompt "Full path to custom binutils source"
+    default ""
+    help
+      Enter the path to the directory (or tarball) of your source for binutils,
+      or leave blank to use default CT_CUSTOM_LOCATION_ROOT_DIR/binutils
+
+endif # BINUTILS_CUSTOM
 
 config BINUTILS_VERSION
     string
 # Don't remove next line
 # CT_INSERT_VERSION_STRING_BELOW
+    default "2.23.1" if BINUTILS_V_2_23_1
     default "2.22" if BINUTILS_V_2_22
     default "2.21.53" if BINUTILS_V_2_21_53
     default "2.21.1a" if BINUTILS_V_2_21_1a
     default "2.20.1a" if BINUTILS_V_2_20_1a
     default "2.19.1a" if BINUTILS_V_2_19_1a
     default "2.18a" if BINUTILS_V_2_18a
-    default "2.17a" if BINUTILS_V_2_17a
-    default "2.16.1a" if BINUTILS_V_2_16_1a
+    default "custom" if BINUTILS_CUSTOM
+
+config BINUTILS_2_23_or_later
+    bool
+    select BINUTILS_2_22_or_later
+    select BINUTILS_HAS_GOLD
+    select BINUTILS_HAS_PLUGINS
 
 config BINUTILS_2_22_or_later
     bool
@@ -99,8 +117,11 @@ config BINUTILS_HAS_HASH_STYLE
 config BINUTILS_HAS_GOLD
     bool
 
+# gold only suports the listed architectures
 config BINUTILS_GOLD_SUPPORTS_ARCH
     bool
+    default y if ARCH_arm
+    default y if ARCH_x86
 
 config BINUTILS_HAS_PLUGINS
     bool
@@ -130,7 +151,6 @@ config BINUTILS_LINKER_GOLD
     depends on BINUTILS_HAS_GOLD
     depends on BINUTILS_GOLD_SUPPORTS_ARCH
     depends on ! BINUTILS_FORCE_LD_BFD
-    depends on EXPERIMENTAL
     select BINUTILS_GOLD_INSTALLED
     help
       gold is a new, optimised, multi-threaded linker with support
@@ -143,7 +163,6 @@ config BINUTILS_LINKER_LD_GOLD
     prompt "ld, gold"
     depends on BINUTILS_HAS_GOLD
     depends on BINUTILS_GOLD_SUPPORTS_ARCH
-    depends on EXPERIMENTAL
     select BINUTILS_GOLD_INSTALLED
     select BINUTILS_LINKER_BOTH
     help
@@ -157,7 +176,6 @@ config BINUTILS_LINKER_GOLD_LD
     prompt "gold, ld"
     depends on BINUTILS_HAS_GOLD
     depends on BINUTILS_GOLD_SUPPORTS_ARCH
-    depends on EXPERIMENTAL
     select BINUTILS_GOLD_INSTALLED
     select BINUTILS_LINKER_BOTH
     select BINUTILS_LD_WRAPPER if BINUTILS_FORCE_LD_BFD

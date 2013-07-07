@@ -41,14 +41,28 @@ config TARGET_LDFLAGS
 
 source "config.gen/arch.in"
 
+config ARCH_SUFFIX
+    string
+    prompt "Suffix to the arch-part"
+    help
+      Some architectures have multiple variants and being able to specify
+      the variant instead of the arch is quite convenient. This is commonly
+      seen for instance when "armv5tel-" is used as a prefix instead of the
+      more generic "arm-", or with "alphaev6-" instead of "alpha-".
+      
+      Whatever you enter here will be appended to the architecture-part of the
+      tuple, just before the first '-'. It will override any architecture-
+      specific suffix that crosstool-NG may compute.
+      
+      If you are not sure about what this is, leave it blank.
+
 #--------------------------------------
 comment "Generic target options"
 
 #--------------------------------------
 config MULTILIB
     bool
-    prompt "Build a multilib toolchain (EXPERIMENTAL)"
-    depends on EXPERIMENTAL
+    prompt "Build a multilib toolchain (READ HELP!!!)"
     help
       If you say 'y' here, then the toolchain will also contain the C library
       optimised for some variants of the selected architecture, besides the
@@ -59,6 +73,9 @@ config MULTILIB
       The list of variants is dependent on the architecture, and is hard-coded
       in gcc, so it is not possible to say what variants to support, only
       whether hard-coded variants should be supported or not.
+      
+      NOTE: The multilib feature in crosstool-NG is not well-tested.
+            Use at your own risk, and report success and/or failure.
 
 #--------------------------------------
 config ARCH_SUPPORTS_BOTH_MMU
@@ -294,18 +311,9 @@ config ARCH_FLOAT_HW
       binary blobs from different vendors that are compiling this way and
       can't (don't wan't to) change.
 
-config ARCH_FLOAT_SW
-    bool
-    prompt "software"
-    help
-      Do not emit any hardware floating point opcode.
-      
-      If your processor has no FPU, then you most probably want this, as it
-      is faster than emulating the FPU in the kernel.
-
 config ARCH_FLOAT_SOFTFP
     bool
-    prompt "softfp"
+    prompt "softfp (FPU)"
     depends on ARCH_SUPPORTS_SOFTFP
     help
       Emit hardware floating point opcodes but use the software
@@ -318,6 +326,15 @@ config ARCH_FLOAT_SOFTFP
       interoperate with legacy software only code.
 
       If in doubt, use 'software' or 'hardware' mode instead.
+
+config ARCH_FLOAT_SW
+    bool
+    prompt "software (no FPU)"
+    help
+      Do not emit any hardware floating point opcode.
+      
+      If your processor has no FPU, then you most probably want this, as it
+      is faster than emulating the FPU in the kernel.
 
 endchoice
 

@@ -21,11 +21,8 @@ help-env::
 CT_STEPS := libc_check_config        \
             companion_libs_for_build \
             binutils_for_build       \
-            elf2flt_for_build        \
             companion_libs_for_host  \
             binutils_for_host        \
-            elf2flt_for_host         \
-            sstrip_for_host          \
             cc_core_pass_1           \
             kernel_headers           \
             libc_start_files         \
@@ -33,7 +30,6 @@ CT_STEPS := libc_check_config        \
             libc                     \
             cc_for_build             \
             cc_for_host              \
-            libc_finish              \
             libelf_for_target        \
             binutils_for_target      \
             debug                    \

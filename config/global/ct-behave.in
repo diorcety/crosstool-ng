@@ -29,6 +29,37 @@ config EXPERIMENTAL
         - non-existant, in which case you could also try hacking it in and send me
           the result
 
+config ALLOW_BUILD_AS_ROOT
+    bool
+    prompt "Allow building as root user (READ HELP!)"
+    depends on EXPERIMENTAL
+    help
+      You normally do *not* need to be root to build a toolchain using
+      crosstool-NG. In fact, it is *VERY* dangerous to run as root, as
+      crosstool-NG will, as part of the build process, remove a few
+      directories. If anything goes wrong, running as root can ruin
+      your host distribution.
+      
+      I can't stress it enough:  DO  NOT  RUN  AS  ROOT  !!
+      
+      Do not run as root, you've been warned.
+      Do not come whining, if it nukes your host system.
+      Do not come whining, if you lose any data.
+      Do not run as root.
+      
+      Do not run as root, you've been warned.
+      Do not come whining, if the Earth stops rotating.
+      Do not come whining, if kittens are smashed.
+      Do not run as root.
+      
+      Do not run as root, do not run as root!
+      (ad libitum)
+
+config ALLOW_BUILD_AS_ROOT_SURE
+    bool
+    prompt "Are you sure?"
+    depends on ALLOW_BUILD_AS_ROOT
+
 config DEBUG_CT
     bool
     prompt "Debug crosstool-NG"
@@ -86,5 +117,24 @@ config NO_OVERIDE_LC_MESSAGES
       to print messages, instead of plain english.
       
       Say N, please.
+
+config DEBUG_INTERACTIVE
+    bool
+    prompt "Interactive shell on failed commands"
+    help
+      If you say 'y' here, then an interactive shell will be spawned for
+      each failed command.
+      
+      This shell will have the same environment that the failed command
+      was run with, and the working directory will be set to the directory
+      the failed command was run in.
+      
+      After you fix the issue, you can exit the interactive shell with any
+      of these exit codes:
+        1  the issue was fixed, continue the build with the next command
+        2  the issue was fixed, re-run the failed command
+        3  abort the build
+      
+      Note: '2' is only possible for commands run via CT_DoExecLog, though.
 
 endif
