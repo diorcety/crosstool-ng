@@ -311,4 +311,13 @@ config TOOLCHAIN_ENABLE_NLS
     help
       Say 'Y' here to enable native language support (nls).
 
+config DARWIN_COPY_SDK_TO_SYSROOT
+    bool
+    depends on DARWIN
+    prompt "Copy SDK to sysroot"
+    default y
+    help
+      Say 'Y' here to copy SDK to the sysroot directory
+      (should NOT be used for a redistributable toolchain)
+
 endmenu

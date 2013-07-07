@@ -330,6 +330,10 @@ do_llvmgcc_core_backend() {
         extra_config+=("--disable-multilib")
     fi
 
+    if [ "${CT_TARGET_VENDOR}" = "apple" ]; then
+        extra_config+=("--with-gxx-include-dir=/usr/include/c++/4.2.1")
+    fi
+
     CT_DoLog DEBUG "Extra config passed: '${extra_config[*]}'"
 
     # Use --with-local-prefix so older gccs don't look in /usr/local (http://gcc.gnu.org/PR10532)
@@ -741,6 +745,10 @@ do_llvmgcc_backend() {
         extra_config+=("--enable-multilib")
     else
         extra_config+=("--disable-multilib")
+    fi
+
+    if [ "${CT_TARGET_VENDOR}" = "apple" ]; then
+        extra_config+=("--with-gxx-include-dir=/usr/include/c++/4.2.1")
     fi
 
     CT_DoLog DEBUG "Extra config passed: '${extra_config[*]}'"
