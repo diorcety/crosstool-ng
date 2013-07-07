@@ -315,7 +315,7 @@ config DARWIN_COPY_SDK_TO_SYSROOT
     bool
     depends on DARWIN
     prompt "Copy SDK to sysroot"
-    default y
+    default n
     help
       Say 'Y' here to copy SDK to the sysroot directory
       (should NOT be used for a redistributable toolchain)

@@ -41,10 +41,11 @@ config LIBC_SUPPORT_THREADS_NONE
 
 config THREADS
     string
-    default "nptl"          if THREADS_NPTL
+    default "nptl"          if THREADS_NPTL || DARWIN
     default "linuxthreads"  if THREADS_LINUXTHREADS
     default "win32"         if THREADS_WIN32THREADS
-    default "none"          if THREADS_NONE || LIBC_none
+    default "darwin"        if THREADS_DARWINTHREADS
+    default "none"          if THREADS_NONE || LIBC_none && !DARWIN
 #                              No C library, no threads!
 
 if ! LIBC_none
@@ -86,6 +87,7 @@ config LIBC_XLDD
     prompt "Install a cross ldd-like helper"
     depends on SHARED_LIBS
     depends on ! BARE_METAL
+    depends on ! DARWIN
     default y
     help
       Say 'Y' here if you want to have a ldd-like helper that
@@ -98,7 +100,6 @@ config LIBC_XLDD
       with '--help' for more explanations.
 
 source "config.gen/libc.in.2"
-
 endif # ! LIBC_none
 
 endmenu
