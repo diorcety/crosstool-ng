@@ -318,6 +318,9 @@ config CC_GCC_4_7_or_later
 
 config CC_GCC_APPLE
     bool
+    select CC_GCC_USE_GMP_MPFR
+    select GMP_V_4_3_2
+    select MPFR_V_2_2_1
 
 config CC_GCC_HAS_GRAPHITE
     bool
