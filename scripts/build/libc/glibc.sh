@@ -6,7 +6,6 @@
 #   do_libc_extract
 #   do_libc_start_files
 #   do_libc
-#   do_libc_finish
 #   do_libc_add_ons_list
 #   do_libc_min_kernel_config
 . "${CT_LIB_DIR}/scripts/build/libc/glibc-eglibc.sh-common"
@@ -96,7 +95,7 @@ do_libc_locales() {
     # So we can safely bypass bash detection at compile time.
     # Should this change in a future eglibc release, we'd better
     # directly mangle the generated scripts _after_ they get built,
-    # or even after they get installed... eglibc is such a sucker...
+    # or even after they get installed...
     echo "ac_cv_path_BASH_SHELL=/bin/bash" >>config.cache
 
     # Configure with --prefix the way we want it on the target...

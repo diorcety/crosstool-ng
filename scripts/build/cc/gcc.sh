@@ -8,27 +8,29 @@ do_cc_get() {
     local linaro_series
     local linaro_base_url="http://launchpad.net/gcc-linaro"
 
+    if [ "${CT_CC_CUSTOM}" = "y" ]; then
+        CT_GetCustom "gcc" "${CT_CC_VERSION}" "${CT_CC_CUSTOM_LOCATION}"
+    else
+        # Account for the Linaro versioning
+        linaro_version="$( echo "${CT_CC_VERSION}"      \
+                           |sed -r -e 's/^linaro-//;'   \
+                         )"
+        linaro_series="$( echo "${linaro_version}"      \
+                          |sed -r -e 's/-.*//;'         \
+                        )"
 
-    # Account for the Linaro versioning
-    linaro_version="$( echo "${CT_CC_VERSION}"      \
-                       |sed -r -e 's/^linaro-//;'   \
-                     )"
-    linaro_series="$( echo "${linaro_version}"      \
-                      |sed -r -e 's/-.*//;'         \
-                    )"
+        # Ah! gcc folks are kind of 'different': they store the tarballs in
+        # subdirectories of the same name!
+        # Arrgghh! Some of those versions does not follow this convention:
+        # gcc-3.3.3 lives in releases/gcc-3.3.3, while gcc-2.95.* isn't in a
+        # subdirectory!
+        CT_GetFile "gcc-${CT_CC_VERSION}"                                                       \
+                   {ftp,http}://ftp.gnu.org/gnu/gcc{,{,/releases}/gcc-${CT_CC_VERSION}}         \
+                   ftp://ftp.irisa.fr/pub/mirrors/gcc.gnu.org/gcc/releases/gcc-${CT_CC_VERSION} \
+                   ftp://ftp.uvsq.fr/pub/gcc/snapshots/${CT_CC_VERSION}                         \
+                   "${linaro_base_url}/${linaro_series}/${linaro_version}/+download"
 
-    # Ah! gcc folks are kind of 'different': they store the tarballs in
-    # subdirectories of the same name! That's because gcc is such /crap/ that
-    # it is such /big/ that it needs being splitted for distribution! Sad. :-(
-    # Arrgghh! Some of those versions does not follow this convention:
-    # gcc-3.3.3 lives in releases/gcc-3.3.3, while gcc-2.95.* isn't in a
-    # subdirectory! You bastard!
-    CT_GetFile "gcc-${CT_CC_VERSION}"                                                       \
-               {ftp,http}://ftp.gnu.org/gnu/gcc{,{,/releases}/gcc-${CT_CC_VERSION}}         \
-               ftp://ftp.irisa.fr/pub/mirrors/gcc.gnu.org/gcc/releases/gcc-${CT_CC_VERSION} \
-               ftp://ftp.uvsq.fr/pub/gcc/snapshots/${CT_CC_VERSION}                         \
-               "${linaro_base_url}/${linaro_series}/${linaro_version}/+download"
-
+    fi # ! custom location
     # Starting with GCC 4.3, ecj is used for Java, and will only be
     # built if the configure script finds ecj.jar at the top of the
     # GCC source tree, which will not be there unless we get it and
@@ -41,6 +43,12 @@ do_cc_get() {
 
 # Extract gcc
 do_cc_extract() {
+    # If using custom directory location, nothing to do
+    if [ "${CT_CC_CUSTOM}" = "y"                    \
+         -a -d "${CT_SRC_DIR}/gcc-${CT_CC_VERSION}" ]; then
+        return 0
+    fi
+
     CT_Extract "gcc-${CT_CC_VERSION}"
     CT_Patch "gcc" "${CT_CC_VERSION}"
 
@@ -75,11 +83,16 @@ cc_gcc_lang_list() {
 do_cc_core_pass_1() {
     local -a core_opts
 
+    if [ "${CT_CC_CORE_PASSES_NEEDED}" != "y" ]; then
+        return 0
+    fi
+
     core_opts+=( "mode=static" )
     core_opts+=( "host=${CT_BUILD}" )
     core_opts+=( "complibs=${CT_BUILDTOOLS_PREFIX_DIR}" )
     core_opts+=( "prefix=${CT_BUILDTOOLS_PREFIX_DIR}" )
     core_opts+=( "cflags=${CT_CFLAGS_FOR_HOST}" )
+    core_opts+=( "ldflags=${CT_LDFLAGS_FOR_HOST}" )
     core_opts+=( "lang_list=c" )
 
     CT_DoStep INFO "Installing pass-1 core C compiler"
@@ -95,11 +108,16 @@ do_cc_core_pass_1() {
 do_cc_core_pass_2() {
     local -a core_opts
 
+    if [ "${CT_CC_CORE_PASSES_NEEDED}" != "y" ]; then
+        return 0
+    fi
+
     # Common options:
     core_opts+=( "host=${CT_BUILD}" )
     core_opts+=( "prefix=${CT_BUILDTOOLS_PREFIX_DIR}" )
     core_opts+=( "complibs=${CT_BUILDTOOLS_PREFIX_DIR}" )
     core_opts+=( "cflags=${CT_CFLAGS_FOR_HOST}" )
+    core_opts+=( "ldflags=${CT_LDFLAGS_FOR_HOST}" )
     core_opts+=( "lang_list=c" )
 
     # Different conditions are at stake here:
@@ -147,7 +165,8 @@ do_cc_core_pass_2() {
 #   build_libstdcxx     : build libstdc++ or not                    : bool      : no
 #   build_staticlinked  : build statically linked or not            : bool      : no
 #   build_manuals       : whether to build manuals or not           : bool      : no
-#   cflags              : host CFLAGS to use                        : string    : (empty)
+#   cflags              : cflags to use                             : string    : (empty)
+#   ldflags             : ldflags to use                            : string    : (empty)
 # Usage: do_cc_core_backend mode=[static|shared|baremetal] build_libgcc=[yes|no] build_staticlinked=[yes|no]
 do_cc_core_backend() {
     local mode
@@ -160,6 +179,7 @@ do_cc_core_backend() {
     local complibs
     local lang_list
     local cflags
+    local ldflags
     local tmp
     local -a host_libstdcxx_flags
     local -a extra_config
@@ -171,7 +191,7 @@ do_cc_core_backend() {
         eval "${arg// /\\ }"
     done
 
-    CT_DoLog EXTRA "Configuring core C compiler"
+    CT_DoLog EXTRA "Configuring gcc"
 
     case "${mode}" in
         static)
@@ -219,6 +239,8 @@ do_cc_core_backend() {
         extra_config+=("--disable-__cxa_atexit")
     fi
 
+    core_LDFLAGS+=("${ldflags}")
+
     # *** WARNING ! ***
     # Keep this full if-else-if-elif-fi-fi block in sync
     # with the same block in do_cc, below.
@@ -260,15 +282,21 @@ do_cc_core_backend() {
         extra_config+=("--with-mpc=${complibs}")
     fi
     if [ "${CT_CC_GCC_USE_GRAPHITE}" = "y" ]; then
-        extra_config+=("--with-ppl=${complibs}")
-        # With PPL 0.11+, also pull libpwl if needed
-        if [ "${CT_PPL_NEEDS_LIBPWL}" = "y" ]; then
-            host_libstdcxx_flags+=("-L${complibs}/lib")
-            host_libstdcxx_flags+=("-lpwl")
+        if [ "${CT_PPL}" = "y" ]; then
+            extra_config+=("--with-ppl=${complibs}")
+            # With PPL 0.11+, also pull libpwl if needed
+            if [ "${CT_PPL_NEEDS_LIBPWL}" = "y" ]; then
+                host_libstdcxx_flags+=("-L${complibs}/lib")
+                host_libstdcxx_flags+=("-lpwl")
+            fi
+        fi
+        if [ "${CT_ISL}" = "y" ]; then
+            extra_config+=("--with-isl=${complibs}")
         fi
         extra_config+=("--with-cloog=${complibs}")
     elif [ "${CT_CC_GCC_HAS_GRAPHITE}" = "y" ]; then
         extra_config+=("--with-ppl=no")
+        extra_config+=("--with-isl=no")
         extra_config+=("--with-cloog=no")
     fi
     if [ "${CT_CC_GCC_USE_LTO}" = "y" ]; then
@@ -387,6 +415,11 @@ do_cc_core_backend() {
             CT_DoExecLog CFG make ${JOBSFLAGS} configure-libdecnumber
             CT_DoExecLog ALL make ${JOBSFLAGS} -C libdecnumber libdecnumber.a
         fi
+        # HACK: gcc-4.8 uses libbacktrace to make libgcc.mvars, so make it here.
+        if [ -d "${CT_SRC_DIR}/gcc-${CT_CC_VERSION}/libbacktrace" ]; then
+            CT_DoExecLog CFG make ${JOBSFLAGS} configure-libbacktrace
+            CT_DoExecLog ALL make ${JOBSFLAGS} -C libbacktrace
+        fi
 
         # Starting with GCC 4.3, libgcc.mk is no longer built,
         # and libgcc.mvars is used instead.
@@ -405,6 +438,7 @@ do_cc_core_backend() {
         # configurations.
         if [ "${CT_BARE_METAL},${CT_CANADIAN}" = "y,y" ]; then
             repair_cc="CC_FOR_BUILD=${CT_BUILD}-gcc \
+                       CXX_FOR_BUILD=${CT_BUILD}-g++ \
                        GCC_FOR_TARGET=${CT_TARGET}-gcc"
         else
             repair_cc=""
@@ -422,10 +456,10 @@ do_cc_core_backend() {
         core_targets+=( target-libstdc++-v3 )
     fi
 
-    CT_DoLog EXTRA "Building core C compiler"
+    CT_DoLog EXTRA "Building gcc"
     CT_DoExecLog ALL make ${JOBSFLAGS} "${core_targets[@]/#/all-}"
 
-    CT_DoLog EXTRA "Installing core C compiler"
+    CT_DoLog EXTRA "Installing gcc"
     CT_DoExecLog ALL make ${JOBSFLAGS} "${core_targets[@]/#/install-}"
 
     if [ "${build_manuals}" = "yes" ]; then
@@ -443,17 +477,22 @@ do_cc_core_backend() {
     CT_DoExecLog ALL ln -sfv "${CT_TARGET}-gcc${ext}" "${prefix}/bin/${CT_TARGET}-cc${ext}"
 
     if [ "${CT_MULTILIB}" = "y" ]; then
-        multilibs=( $( "${prefix}/bin/${CT_TARGET}-gcc" -print-multi-lib   \
-                       |tail -n +2 ) )
-        if [ ${#multilibs[@]} -ne 0 ]; then
-            CT_DoLog EXTRA "gcc configured with these multilibs (besides the default):"
-            for i in "${multilibs[@]}"; do
-                dir="${i%%;*}"
-                flags="${i#*;}"
-                CT_DoLog EXTRA "   ${flags//@/ -}  -->  ${dir}/"
-            done
+        if [ "${CT_CANADIAN}" = "y" -a "${mode}" = "baremetal" \
+             -a "${host}" = "${CT_HOST}" ]; then
+            CT_DoLog WARN "Canadian Cross unable to confirm multilibs configured correctly"
         else
-            CT_DoLog WARN "gcc configured for multilib, but none available"
+            multilibs=( $( "${prefix}/bin/${CT_TARGET}-gcc" -print-multi-lib   \
+                           |tail -n +2 ) )
+            if [ ${#multilibs[@]} -ne 0 ]; then
+                CT_DoLog EXTRA "gcc configured with these multilibs (besides the default):"
+                for i in "${multilibs[@]}"; do
+                    dir="${i%%;*}"
+                    flags="${i#*;}"
+                    CT_DoLog EXTRA "   ${flags//@/ -}  -->  ${dir}/"
+                done
+            else
+                CT_DoLog WARN "gcc configured for multilib, but none available"
+           fi
         fi
     fi
 }
@@ -508,6 +547,7 @@ do_cc_for_host() {
     final_opts+=( "prefix=${CT_PREFIX_DIR}" )
     final_opts+=( "complibs=${CT_HOST_COMPLIBS_DIR}" )
     final_opts+=( "cflags=${CT_CFLAGS_FOR_HOST}" )
+    final_opts+=( "ldflags=${CT_LDFLAGS_FOR_HOST}" )
     final_opts+=( "lang_list=$( cc_gcc_lang_list )" )
     if [ "${CT_BUILD_MANUALS}" = "y" ]; then
         final_opts+=( "build_manuals=yes" )
@@ -540,7 +580,8 @@ do_cc_for_host() {
 #   host          : the host we run onto                : tuple     : (none)
 #   prefix        : the runtime prefix                  : dir       : (none)
 #   complibs      : the companion libraries prefix      : dir       : (none)
-#   cflags        : the host CFLAGS                     : string    : (empty)
+#   cflags        : cflags to use                       : string    : (empty)
+#   ldflags       : ldflags to use                      : string    : (empty)
 #   lang_list     : the list of languages to build      : string    : (empty)
 #   build_manuals : whether to build manuals or not     : bool      : no
 do_cc_backend() {
@@ -548,6 +589,7 @@ do_cc_backend() {
     local prefix
     local complibs
     local cflags
+    local ldflags
     local lang_list
     local build_manuals
     local -a host_libstdcxx_flags
@@ -560,7 +602,7 @@ do_cc_backend() {
         eval "${arg// /\\ }"
     done
 
-    CT_DoLog EXTRA "Configuring final compiler"
+    CT_DoLog EXTRA "Configuring gcc"
 
     # Enable selected languages
     extra_config+=("--enable-languages=${lang_list}")
@@ -615,6 +657,8 @@ do_cc_backend() {
         fi
     fi
 
+    final_LDFLAGS+=("${ldflags}")
+
     # *** WARNING ! ***
     # Keep this full if-else-if-elif-fi-fi block in sync
     # with the same block in do_cc_core, above.
@@ -656,15 +700,21 @@ do_cc_backend() {
         extra_config+=("--with-mpc=${complibs}")
     fi
     if [ "${CT_CC_GCC_USE_GRAPHITE}" = "y" ]; then
-        extra_config+=("--with-ppl=${complibs}")
-        # With PPL 0.11+, also pull libpwl if needed
-        if [ "${CT_PPL_NEEDS_LIBPWL}" = "y" ]; then
-            host_libstdcxx_flags+=("-L${complibs}/lib")
-            host_libstdcxx_flags+=("-lpwl")
+        if [ "${CT_PPL}" = "y" ]; then
+            extra_config+=("--with-ppl=${complibs}")
+            # With PPL 0.11+, also pull libpwl if needed
+            if [ "${CT_PPL_NEEDS_LIBPWL}" = "y" ]; then
+                host_libstdcxx_flags+=("-L${complibs}/lib")
+                host_libstdcxx_flags+=("-lpwl")
+            fi
+        fi
+        if [ "${CT_ISL}" = "y" ]; then
+            extra_config+=("--with-isl=${complibs}")
         fi
         extra_config+=("--with-cloog=${complibs}")
     elif [ "${CT_CC_GCC_HAS_GRAPHITE}" = "y" ]; then
         extra_config+=("--with-ppl=no")
+        extra_config+=("--with-isl=no")
         extra_config+=("--with-cloog=no")
     fi
     if [ "${CT_CC_GCC_USE_LTO}" = "y" ]; then
@@ -777,10 +827,10 @@ do_cc_backend() {
         CT_DoExecLog ALL make ${JOBSFLAGS} all-build-libiberty
     fi
 
-    CT_DoLog EXTRA "Building final compiler"
+    CT_DoLog EXTRA "Building gcc"
     CT_DoExecLog ALL make ${JOBSFLAGS} all
 
-    CT_DoLog EXTRA "Installing final compiler"
+    CT_DoLog EXTRA "Installing gcc"
     CT_DoExecLog ALL make ${JOBSFLAGS} install
 
     if [ "${build_manuals}" = "yes" ]; then
@@ -798,17 +848,21 @@ do_cc_backend() {
     CT_DoExecLog ALL ln -sfv "${CT_TARGET}-gcc${ext}" "${CT_PREFIX_DIR}/bin/${CT_TARGET}-cc${ext}"
 
     if [ "${CT_MULTILIB}" = "y" ]; then
-        multilibs=( $( "${CT_PREFIX_DIR}/bin/${CT_TARGET}-gcc" -print-multi-lib \
-                       |tail -n +2 ) )
-        if [ ${#multilibs[@]} -ne 0 ]; then
-            CT_DoLog EXTRA "gcc configured with these multilibs (besides the default):"
-            for i in "${multilibs[@]}"; do
-                dir="${i%%;*}"
-                flags="${i#*;}"
-                CT_DoLog EXTRA "   ${flags//@/ -}  -->  ${dir}/"
-            done
+        if [ "${CT_CANADIAN}" = "y" ]; then
+            CT_DoLog WARN "Canadian Cross unable to confirm multilibs configured correctly"
         else
-            CT_DoLog WARN "gcc configured for multilib, but none available"
+            multilibs=( $( "${prefix}/bin/${CT_TARGET}-gcc" -print-multi-lib \
+                           |tail -n +2 ) )
+            if [ ${#multilibs[@]} -ne 0 ]; then
+                CT_DoLog EXTRA "gcc configured with these multilibs (besides the default):"
+                for i in "${multilibs[@]}"; do
+                    dir="${i%%;*}"
+                    flags="${i#*;}"
+                    CT_DoLog EXTRA "   ${flags//@/ -}  -->  ${dir}/"
+                done
+            else
+                CT_DoLog WARN "gcc configured for multilib, but none available"
+            fi
         fi
     fi
 }

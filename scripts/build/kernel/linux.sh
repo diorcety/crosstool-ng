@@ -6,12 +6,14 @@ CT_DoKernelTupleValues() {
     if [ "${CT_ARCH_USE_MMU}" = "y" ]; then
         CT_TARGET_KERNEL="linux"
     else
-    # Sometime, noMMU linux targets have a -uclinux tuple, while
-    # sometime it's -linux. We currently have only one noMMU linux
-    # target, and it uses -linux, so let's just use that. Time
-    # to fix that later...
-    #    CT_TARGET_KERNEL="uclinux"
-        CT_TARGET_KERNEL="linux"
+        # Some no-mmu linux targets requires a -uclinux tuple (like m68k/cf),
+        # while others must have a -linux tuple (like bfin).  Other targets
+        # should be added here when someone starts to care about them.
+        case "${CT_ARCH}" in
+            blackfin)   CT_TARGET_KERNEL="linux" ;;
+            m68k)       CT_TARGET_KERNEL="uclinux" ;;
+            *)          CT_Abort "Unsupported no-mmu arch '${CT_ARCH}'"
+        esac
     fi
 }
 
@@ -27,23 +29,8 @@ do_kernel_get() {
     fi
 
     if [ "${CT_KERNEL_LINUX_CUSTOM}" = "y" ]; then
-        if [ ! -d "${CT_KERNEL_LINUX_CUSTOM_LOCATION}" ]; then
-            # Wee need to know the custom tarball extension,
-            # so we can create a properly-named symlink, which
-            # we use later on in 'extract'
-            case "${CT_KERNEL_LINUX_CUSTOM_LOCATION}" in
-                *.tar.bz2)      custom_name="linux-custom.tar.bz2";;
-                *.tar.gz|*.tgz) custom_name="linux-custom.tar.gz";;
-                *.tar)          custom_name="linux-custom.tar";;
-                *)  CT_Abort "Unknown extension for custom linux tarball '${CT_KERNEL_LINUX_CUSTOM_LOCATION}'";;
-            esac
-            CT_DoExecLog DEBUG ln -sf "${CT_KERNEL_LINUX_CUSTOM_LOCATION}"  \
-                                      "${CT_TARBALLS_DIR}/${custom_name}"
-        else
-            custom_name="linux-custom"
-            CT_DoExecLog DEBUG ln -s "${CT_KERNEL_LINUX_CUSTOM_LOCATION}"  \
-                                      "${CT_SRC_DIR}/${custom_name}"
-        fi
+        CT_GetCustom "linux" "${CT_KERNEL_VERSION}"     \
+                     "${CT_KERNEL_LINUX_CUSTOM_LOCATION}"
     else # Not a custom tarball
         case "${CT_KERNEL_VERSION}" in
             2.6.*.*|3.*.*)
@@ -72,13 +59,25 @@ do_kernel_get() {
 
 # Extract kernel
 do_kernel_extract() {
-    if [ "${CT_KERNEL_LINUX_USE_CUSTOM_HEADERS}" = "y" \
-         -o -d "${CT_KERNEL_LINUX_CUSTOM_LOCATION}" ]; then
+    # If using a custom headers tree, nothing to do
+    if [ "${CT_KERNEL_LINUX_USE_CUSTOM_HEADERS}" = "y" ]; then
         return 0
     fi
-   
-    # This also handles the custom tarball
+
+    # If using a custom directory location, nothing to do
+    if [ "${CT_KERNEL_LINUX_CUSTOM}" = "y"    \
+         -a -d "${CT_SRC_DIR}/linux-${CT_KERNEL_VERSION}" ]; then
+        return 0
+    fi
+
+    # Otherwise, we're using either a mainstream tarball, or a custom
+    # tarball; in either case, we need to extract
     CT_Extract "linux-${CT_KERNEL_VERSION}"
+
+    # If using a custom tarball, no need to patch
+    if [ "${CT_KERNEL_LINUX_CUSTOM}" = "y" ]; then
+        return 0
+    fi
     CT_Patch "linux" "${CT_KERNEL_VERSION}"
 }
 
@@ -155,6 +154,7 @@ do_kernel_custom() {
             *.tgz)      tar_opt=--gzip;;
             *.tar.gz)   tar_opt=--gzip;;
             *.tar.bz2)  tar_opt=--bzip2;;
+            *.tar.xz)   tar_opt=--xz;;
         esac
         CT_DoExecLog ALL tar x ${tar_opt} -vf ${CT_KERNEL_LINUX_CUSTOM_PATH}
     else
