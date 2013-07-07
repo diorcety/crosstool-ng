@@ -159,7 +159,9 @@ do_kernel_extract_copy_sdk() {
     mkdir usr
     
     for _SRCDIR in $_SRC/usr/include $_SRC/usr/lib $_SRC/usr/X11 $_SRC/usr/X11R6; do
-        cp -fR $_SRCDIR usr/
+        if [ -d $_SRCDIR ]; then
+            cp -fR $_SRCDIR usr/
+        fi
     done
 
     CT_Popd
