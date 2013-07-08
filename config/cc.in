@@ -8,9 +8,6 @@ config CC
 config CC_CORE_PASSES_NEEDED
 	bool
 
-config CC_CORE_PASSES_NEEDED
-	bool
-
 source "config.gen/cc.in"
 
 config CC_SUPPORT_CXX
