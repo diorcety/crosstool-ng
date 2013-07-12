@@ -3315,7 +3315,7 @@ diff -urN a/config.sub b/config.sub
 diff -urN a/configure.ac b/configure.ac
 --- a/configure.ac	1970-01-01 01:00:00.000000000 +0100
 +++ b/configure.ac	2013-06-16 21:17:08.354529695 +0200
-@@ -0,0 +1,710 @@
+@@ -0,0 +1,711 @@
 +AC_INIT([ccctools], [809], [Ray Donnelly <mingw.android@gmail.com>])
 +AC_PREREQ([2.62])
 +AC_REVISION([m4_esyscmd_s([git describe --always])])
@@ -3363,6 +3363,7 @@ diff -urN a/configure.ac b/configure.ac
 +case $host_os in
 +    mingw*)
 +      AX_APPEND_COMPILE_FLAGS([-D__USE_MINGW_ANSI_STDIO=1 -D_POSIX -D_POSIX_C_SOURCE],CFLAGS)
++      AX_APPEND_COMPILE_FLAGS([-D__USE_MINGW_ANSI_STDIO=1 -D_POSIX -D_POSIX_C_SOURCE],CXXFLAGS)
 +      PRIVEXT=
 +      PRIVEXT_DESC="private extern as nothing"
 +      ;;
