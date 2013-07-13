@@ -1299,6 +1299,9 @@ CT_DoSaveState() {
               $0 == "}" { _p = 1; }
               ' |sed -r -e '/^BASH_(ARGC|ARGV|LINENO|SOURCE|VERSINFO)=/d;
                            /^(UID|EUID)=/d;
+                           /^.*\(.*\).*=/d;
+                           /^!::=/d;
+                           /^ASL\.LOG=/d;
                            /^(FUNCNAME|GROUPS|PPID|SHELLOPTS)=/d;' >"${state_dir}/env.sh"
 
     CT_DoTarballIfExists "${CT_BUILD_DIR}" "${state_dir}/build_dir"
