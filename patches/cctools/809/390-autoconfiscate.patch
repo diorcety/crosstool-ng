@@ -10,8 +10,8 @@ diff -urN a/ar/Makefile.in b/ar/Makefile.in
 +prefix	= @prefix@
 +exec_prefix	= @exec_prefix@
 +bindir		= @bindir@
++datarootdir	= @datarootdir@
 +mandir		= @mandir@
-+datarootdir     = @datarootdir@
 +
 +VPATH = @srcdir@
 +
@@ -42,12 +42,12 @@ diff -urN a/ar/Makefile.in b/ar/Makefile.in
 +MYLIBS		= -lstuff
 +
 +MYCOMPILEFLAGS	= $(WARNINGS) $(MYWARNINGS) $(DEFS) $(MYDEFS) \
-+	$(CPPFLAGS) $(MYINCLUDES) $(CFLAGS) $(MDYNAMICNOPIC) 
-+	
++	$(CPPFLAGS) $(MYINCLUDES) $(CFLAGS) $(MDYNAMICNOPIC)
++
 +MYLINKFLAGS	= $(LDFLAGS) $(MYLDFLAGS) $(MYLIBS)
 +
 +CFILES = append.c ar.c archive.c contents.c delete.c extract.c misc.c \
-+	move.c print.c replace.c 
++	move.c print.c replace.c
 +OBJS = $(CFILES:.c=.o)
 +
 +.c.o:
@@ -61,11 +61,11 @@ diff -urN a/ar/Makefile.in b/ar/Makefile.in
 +	$(CC) -o $@ $^ $(MYLINKFLAGS)
 +
 +install: ar
-+	mkdir -p $(DESTDIR)/$(bindir)
++	mkdir -p $(DESTDIR)$(bindir)
 +	mkdir -p $(DESTDIR)$(mandir)/man1
 +	mkdir -p $(DESTDIR)$(mandir)/man5
 +	$(INSTALL_PROGRAM) ar \
-+		$(DESTDIR)/$(bindir)/`echo ar | sed '$(transform)'`
++		$(DESTDIR)$(bindir)/`echo ar | sed '$(transform)'`
 +	$(INSTALL_DATA) $(srcdir)/ar.1 $(DESTDIR)$(mandir)/man1
 +	$(INSTALL_DATA) $(srcdir)/ar.5 $(DESTDIR)$(mandir)/man5
 +
@@ -153,80 +153,8 @@ diff -urN a/as/Makefile.arch.in b/as/Makefile.arch.in
 +	$(CC) -o $@ $^ $(MYLINKFLAGS)
 +
 +install: as
-+	mkdir -p $(DESTDIR)/$(ASLIBEXECDIR)/$(ARCH)
-+	$(INSTALL_PROGRAM) as $(DESTDIR)/$(ASLIBEXECDIR)/$(ARCH)/as
-+
-+clean:
-+	rm -r -f *.o
-+	rm -f as
-diff -urN a/as/Makefile.arch.in.orig b/as/Makefile.arch.in.orig
---- a/as/Makefile.arch.in.orig	1970-01-01 01:00:00.000000000 +0100
-+++ b/as/Makefile.arch.in.orig	2013-06-16 21:17:08.342529920 +0200
-@@ -0,0 +1,68 @@
-+builddir = @builddir@
-+top_builddir = @top_builddir@
-+srcdir = @srcdir@
-+top_srcdir = @top_srcdir@
-+
-+prefix	= @prefix@
-+exec_prefix	= @exec_prefix@
-+libexecdir	= @libexecdir@
-+
-+VPATH = @srcdir@:@srcdir@/..
-+
-+CC              = @CC@
-+WARNINGS	= @WARNINGS@
-+CFLAGS          = @CFLAGS@
-+MDYNAMICNOPIC   = @MDYNAMICNOPIC@
-+CPPFLAGS        = @CPPFLAGS@
-+DEFS            = @DEFS@ @ENDIAN_FLAG@
-+LDFLAGS         = @LDFLAGS@
-+HAVE_PRIVEXT    = @HAVE_PRIVEXT@
-+HAVE_FOREIGN_HEADERS    = @HAVE_FOREIGN_HEADERS@
-+
-+ifeq ($(HAVE_PRIVEXT),NO)
-+INCPRIVEXT      = -include $(top_srcdir)/include/extern.h
-+endif
-+
-+ifeq ($(HAVE_FOREIGN_HEADERS),YES)
-+FORHDRS         = -I$(top_srcdir)/include/foreign
-+endif
-+
-+INSTALL		= @INSTALL@
-+INSTALL_PROGRAM	= @INSTALL_PROGRAM@
-+ASLIBEXECDIR    = @ASLIBEXECDIR@
-+
-+MYINCLUDES      = -I$(builddir) -I$(srcdir)/.. -I$(top_builddir)/include \
-+			-I$(top_srcdir)/include $(INCPRIVEXT) -include $(top_builddir)/include/config.h $(FORHDRS)
-+MYWARNINGS      =
-+MYDEFS          = -DNeXT_MOD -DASLIBEXECDIR="\"$(ASLIBEXECDIR)/\"" $(MYDEFS_$(ARCH))
-+MYLDFLAGS	= -L$(top_builddir)/libstuff
-+MYLIBS		= $(MYLIBS_$(ARCH))
-+
-+MYCOMPILEFLAGS  = $(WARNINGS) $(MYWARNINGS) $(DEFS) $(MYDEFS) \
-+	$(CPPFLAGS) $(MYINCLUDES) $(CFLAGS) $(MDYNAMICNOPIC) 
-+
-+MYLINKFLAGS	= $(LDFLAGS) $(MYLDFLAGS) $(MYLIBS)
-+
-+CFILES = app.c as.c atof-generic.c atof-ieee.c expr.c fixes.c flonum-const.c \
-+         flonum-copy.c flonum-mult.c frags.c hash.c hex-value.c input-file.c \
-+         input-scrub.c layout.c messages.c obstack.c read.c sections.c \
-+         symbols.c write_object.c xmalloc.c dwarf2dbg.c $(CFILES_$(ARCH))
-+
-+OBJS = $(CFILES:.c=.o) 
-+.c.o:
-+	$(CC) $(MYCOMPILEFLAGS) -c -o $@ $<
-+
-+.PHONY: default clean distclean install
-+
-+default: as
-+
-+as: $(OBJS)
-+	$(CC) -o $@ $^ $(MYLINKFLAGS)
-+
-+install: as
-+	mkdir -p $(DESTDIR)/$(ASLIBEXECDIR)/$(ARCH)
-+	$(INSTALL_PROGRAM) as $(DESTDIR)/$(ASLIBEXECDIR)/$(ARCH)/as
++	mkdir -p $(DESTDIR)$(ASLIBEXECDIR)/$(ARCH)
++	$(INSTALL_PROGRAM) as $(DESTDIR)$(ASLIBEXECDIR)/$(ARCH)/as
 +
 +clean:
 +	rm -r -f *.o
@@ -298,95 +226,9 @@ diff -urN a/as/Makefile.in b/as/Makefile.in
 +	$(CC) -o $@ $^ $(MYLINKFLAGS)
 +
 +install: driver install-arch
-+	mkdir -p $(DESTDIR)/$(bindir)
++	mkdir -p $(DESTDIR)$(bindir)
 +	$(INSTALL_PROGRAM) driver \
-+		$(DESTDIR)/$(bindir)/`echo as | sed '$(transform)'`
-+
-+install-arch:
-+	for ast in $(ASTARGETS); do				\
-+		(cd $${ast} && $(MAKE) install) || exit 1;	\
-+	done
-+
-+clean:
-+	rm -r -f *.o
-+	rm -f driver
-+	for ast in $(ASTARGETS); do			\
-+		(cd $${ast} && $(MAKE) $@) || exit 1;	\
-+	done
-diff -urN a/as/Makefile.in.orig b/as/Makefile.in.orig
---- a/as/Makefile.in.orig	1970-01-01 01:00:00.000000000 +0100
-+++ b/as/Makefile.in.orig	2013-06-16 21:17:08.342529920 +0200
-@@ -0,0 +1,82 @@
-+builddir = @builddir@
-+top_builddir = @top_builddir@
-+srcdir = @srcdir@
-+top_srcdir = @top_srcdir@
-+
-+prefix	= @prefix@
-+exec_prefix	= @exec_prefix@
-+libexecdir	= @libexecdir@
-+bindir		= @bindir@
-+
-+VPATH = @srcdir@
-+
-+CC              = @CC@
-+CFLAGS          = @CFLAGS@
-+WARNINGS	= @WARNINGS@
-+MDYNAMICNOPIC   = @MDYNAMICNOPIC@
-+CPPFLAGS        = @CPPFLAGS@
-+DEFS            = @DEFS@ @ENDIAN_FLAG@
-+LDFLAGS         = @LDFLAGS@
-+HAVE_PRIVEXT    = @HAVE_PRIVEXT@
-+HAVE_FOREIGN_HEADERS    = @HAVE_FOREIGN_HEADERS@
-+
-+ifeq ($(HAVE_PRIVEXT),NO)
-+INCPRIVEXT      = -include $(top_srcdir)/include/extern.h
-+endif
-+
-+ifeq ($(HAVE_FOREIGN_HEADERS),YES)
-+FORHDRS         = -I$(top_srcdir)/include/foreign
-+endif
-+
-+INSTALL		= @INSTALL@
-+INSTALL_PROGRAM = @INSTALL_PROGRAM@
-+ASLIBEXECDIR    = @ASLIBEXECDIR@
-+transform	= @program_transform_name@
-+
-+MYINCLUDES      = -I$(srcdir) -I$(top_builddir)/include \
-+			-I$(top_srcdir)/include $(INCPRIVEXT) -include $(top_builddir)/include/config.h \
-+			$(FORHDRS)
-+MYWARNINGS      = 
-+MYDEFS          = -DNeXT_MOD -DASLIBEXECDIR="\"$(ASLIBEXECDIR)/\""
-+MYLDFLAGS	= -L$(top_builddir)/libstuff
-+MYLIBS		= -lstuff
-+
-+MYCOMPILEFLAGS	= $(WARNINGS) $(MYWARNINGS) $(DEFS) $(MYDEFS) \
-+	$(CPPFLAGS) $(MYINCLUDES) $(CFLAGS) $(MDYNAMICNOPIC) 
-+
-+MYLINKFLAGS	= $(LDFLAGS) $(MYLDFLAGS) $(MYLIBS)
-+
-+ASTARGETS = @ASTARGETS@
-+
-+CFILES = driver.c
-+OBJS = $(CFILES:.c=.o)
-+
-+.c.o:
-+	$(CC) $(MYCOMPILEFLAGS) -c -o $@ $<
-+
-+.PHONY: default install clean distclean $(ASTARGETS)
-+
-+default: driver $(ASTARGETS)
-+
-+$(ASTARGETS):
-+	cd $@ && $(MAKE)
-+
-+driver: $(OBJS)
-+	$(CC) -o $@ $^ $(MYLINKFLAGS)
-+
-+install: driver install-arch
-+	mkdir -p $(DESTDIR)/$(bindir)
-+	$(INSTALL_PROGRAM) driver \
-+		$(DESTDIR)/$(bindir)/`echo as | sed '$(transform)'`
++		$(DESTDIR)$(bindir)/`echo as | sed '$(transform)'`
 +
 +install-arch:
 +	for ast in $(ASTARGETS); do				\
@@ -3362,8 +3204,8 @@ diff -urN a/configure.ac b/configure.ac
 +# 2. __attribute__((visibility("hidden"))) doesn't work on MinGW.
 +case $host_os in
 +    mingw*)
-+      AX_APPEND_COMPILE_FLAGS([-D__USE_MINGW_ANSI_STDIO=1 -D_POSIX -D_POSIX_C_SOURCE],CFLAGS)
-+      AX_APPEND_COMPILE_FLAGS([-D__USE_MINGW_ANSI_STDIO=1 -D_POSIX -D_POSIX_C_SOURCE],CXXFLAGS)
++      AX_APPEND_COMPILE_FLAGS([-D__USE_MINGW_ANSI_STDIO=1 -D_POSIX -D_POSIX_C_SOURCE -D_GNU_SOURCE],CFLAGS)
++      AX_APPEND_COMPILE_FLAGS([-D__USE_MINGW_ANSI_STDIO=1 -D_POSIX -D_POSIX_C_SOURCE -D_GNU_SOURCE],CXXFLAGS)
 +      PRIVEXT=
 +      PRIVEXT_DESC="private extern as nothing"
 +      ;;
@@ -4974,16 +4816,16 @@ diff -urN a/include/Makefile.in b/include/Makefile.in
 +default:
 +
 +install:
-+	mkdir -p $(DESTDIR)/$(includedir)
-+	mkdir -p $(DESTDIR)/$(includedir)/mach-o
++	mkdir -p $(DESTDIR)$(includedir)
++	mkdir -p $(DESTDIR)$(includedir)/mach-o
 +	for h in loader.h fat.h; do		\
 +		$(INSTALL_DATA) $(srcdir)/mach-o/$$h		\
-+			$(DESTDIR)/$(includedir)/mach-o/$$h;	\
++			$(DESTDIR)$(includedir)/mach-o/$$h;	\
 +	done
 +	$(INSTALL_DATA) $(srcdir)/mach-o/arch-install.h \
-+		$(DESTDIR)/$(includedir)/mach-o/arch.h
++		$(DESTDIR)$(includedir)/mach-o/arch.h
 +	$(INSTALL_DATA) $(srcdir)/mach/machine.h \
-+		$(DESTDIR)/$(includedir)/mach-o/
++		$(DESTDIR)$(includedir)/mach-o/
 +
 +clean:
 diff -urN a/include/malloc/malloc.h.in b/include/malloc/malloc.h.in
@@ -5419,114 +5261,13 @@ diff -urN a/ld/Makefile.in b/ld/Makefile.in
 +	$(CC) -o $@ $^ $(MYLINKFLAGS)
 +
 +install: ld_classic
-+	mkdir -p $(DESTDIR)/$(bindir)
++	mkdir -p $(DESTDIR)$(bindir)
 +	$(INSTALL_PROGRAM) ld_classic \
-+		$(DESTDIR)/$(bindir)/`echo ld_classic | sed '$(transform)'`
++		$(DESTDIR)$(bindir)/`echo ld_classic | sed '$(transform)'`
 +
 +clean:
 +	rm -r -f *.o
 +	rm -f ld
-diff -urN a/ld/Makefile.in.orig b/ld/Makefile.in.orig
---- a/ld/Makefile.in.orig	1970-01-01 01:00:00.000000000 +0100
-+++ b/ld/Makefile.in.orig	2013-06-16 21:17:08.370529395 +0200
-@@ -0,0 +1,75 @@
-+builddir = @builddir@
-+top_builddir = @top_builddir@
-+srcdir = @srcdir@
-+top_srcdir = @top_srcdir@
-+
-+prefix		= @prefix@
-+exec_prefix	= @exec_prefix@
-+bindir		= @bindir@
-+
-+VPATH = @srcdir@
-+
-+CC              = @CC@
-+CFLAGS          = @CFLAGS@
-+WARNINGS	= @WARNINGS@
-+MDYNAMICNOPIC   = @MDYNAMICNOPIC@
-+CPPFLAGS        = @CPPFLAGS@
-+DEFS            = @DEFS@ @ENDIAN_FLAG@
-+LDFLAGS         = @LDFLAGS@
-+HAVE_PRIVEXT    = @HAVE_PRIVEXT@
-+HAVE_FOREIGN_HEADERS    = @HAVE_FOREIGN_HEADERS@
-+
-+UUID_LIBS	= @UUID_LIBS@
-+SSL_LIBS	= @SSL_LIBS@
-+ifeq ($(HAVE_PRIVEXT),NO)
-+INCPRIVEXT      = -include $(top_srcdir)/include/extern.h
-+endif
-+
-+ifeq ($(HAVE_FOREIGN_HEADERS),YES)
-+FORHDRS         = -I$(top_srcdir)/include/foreign
-+endif
-+
-+INSTALL		= @INSTALL@
-+INSTALL_PROGRAM	= @INSTALL_PROGRAM@
-+transform       = @program_transform_name@
-+LD64PROG	= $(shell echo ld64 | sed '$(transform)')
-+
-+MYINCLUDES      = -I$(builddir) -I$(srcdir) -I$(top_builddir)/include \
-+			-I$(top_srcdir)/include $(INCPRIVEXT) -include $(top_builddir)/include/config.h $(FORHDRS)
-+MYWARNINGS      = 
-+MYDEFS          = -DDEBUG -DBINDIR="\"$(bindir)\"" -DLD64PROG="\"$(LD64PROG)\""
-+MYLDFLAGS	= -L$(top_builddir)/libstuff
-+MYLIBS		= -lstuff
-+
-+MYCOMPILEFLAGS	= $(WARNINGS) $(MYWARNINGS) $(DEFS) $(MYDEFS) \
-+	$(CPPFLAGS) $(MYINCLUDES) $(CFLAGS) $(MDYNAMICNOPIC) 
-+
-+MYLINKFLAGS	= $(LDFLAGS) $(MYLDFLAGS) $(MYLIBS) $(SSL_LIBS) $(UUID_LIBS)
-+
-+CFILES = ld.c pass1.c objects.c sections.c cstring_literals.c symbols.c \
-+         fvmlibs.c layout.c specs.c pass2.c generic_reloc.c rld.c sets.c \
-+         4byte_literals.c 8byte_literals.c literal_pointers.c dylibs.c \
-+         indirect_sections.c mod_sections.c i860_reloc.c ppc_reloc.c \
-+         m88k_reloc.c hppa_reloc.c sparc_reloc.c coalesced_sections.c uuid.c \
-+         debugcompunit.c debugline.c arm_reloc.c
-+
-+OBJS = $(CFILES:.c=.o) 
-+
-+.c.o:
-+	$(CC) $(MYCOMPILEFLAGS) -c -o $@ $<
-+
-+.PHONY: default clean distclean install
-+
-+default: ld_classic
-+
-+ld_classic: $(OBJS)
-+	$(CC) -o $@ $^ $(MYLINKFLAGS)
-+
-+install: ld_classic
-+	mkdir -p $(DESTDIR)/$(bindir)
-+	$(INSTALL_PROGRAM) ld_classic \
-+		$(DESTDIR)/$(bindir)/`echo ld_classic | sed '$(transform)'`
-+
-+clean:
-+	rm -r -f *.o
-+	rm -f ld
-diff -urN a/ld/Makefile.in.rej b/ld/Makefile.in.rej
---- a/ld/Makefile.in.rej	1970-01-01 01:00:00.000000000 +0100
-+++ b/ld/Makefile.in.rej	2013-06-16 21:17:08.370529395 +0200
-@@ -0,0 +1,18 @@
-+--- cctools2odcctools/files/ld/Makefile.in
-++++ cctools2odcctools/files/ld/Makefile.in
-+@@ -33,13 +33,13 @@
-+ MYINCLUDES      = -I$(builddir) -I$(srcdir) -I$(top_builddir)/include \
-+                   -I$(top_srcdir)/include -include $(top_builddir)/include/config.h $(FORHDRS)
-+ 
-+-MYWARNINGS      = 
-++MYWARNINGS      =
-+ MYDEFS          = -DDEBUG -DBINDIR="\"$(bindir)\"" -DLD64PROG="\"$(LD64PROG)\""
-+ MYLDFLAGS	= -L$(top_builddir)/libstuff
-+ MYLIBS		= -lstuff
-+ 
-+ MYCOMPILEFLAGS	= $(WARNINGS) $(MYWARNINGS) $(DEFS) $(MYDEFS) \
-+-	$(CPPFLAGS) $(MYINCLUDES) $(CFLAGS) $(MDYNAMICNOPIC) 
-++	$(CPPFLAGS) $(MYINCLUDES) $(CFLAGS) $(MDYNAMICNOPIC)
-+ 
-+ MYLINKFLAGS	= $(LDFLAGS) $(MYLDFLAGS) $(MYLIBS) $(SSL_LIBS) $(UUID_LIBS)
-+ 
 diff -urN a/ld64/Makefile.in b/ld64/Makefile.in
 --- a/ld64/Makefile.in	1970-01-01 01:00:00.000000000 +0100
 +++ b/ld64/Makefile.in	2013-06-16 21:17:08.370529395 +0200
@@ -5627,117 +5368,9 @@ diff -urN a/ld64/Makefile.in b/ld64/Makefile.in
 +	$(CXX) -o $@ $^ $(MYLINKFLAGS)
 +
 +install: ld
-+	mkdir -p $(DESTDIR)/$(bindir)
++	mkdir -p $(DESTDIR)$(bindir)
 +	$(INSTALL_PROGRAM) ld \
-+	 $(DESTDIR)/$(bindir)/`echo ld | sed '$(transform)'`
-+
-+clean:
-+	rm -r -f *.o */*.o
-+	rm -f ld
-diff -urN a/ld64/Makefile.in.127.2.orig b/ld64/Makefile.in.127.2.orig
---- a/ld64/Makefile.in.127.2.orig	1970-01-01 01:00:00.000000000 +0100
-+++ b/ld64/Makefile.in.127.2.orig	2013-06-16 21:17:08.370529395 +0200
-@@ -0,0 +1,104 @@
-+builddir = @builddir@
-+top_builddir = @top_builddir@
-+srcdir = @srcdir@
-+top_srcdir = @top_srcdir@
-+
-+prefix		= @prefix@
-+exec_prefix	= @exec_prefix@
-+bindir		= @bindir@
-+
-+VPATH = @srcdir@:@srcdir@/src
-+
-+CC		= @CC@
-+CXX             = @CXX@
-+CFLAGS          = @CFLAGS@
-+CXXFLAGS	= @CXXFLAGS@
-+WARNINGS	= @WARNINGS@
-+MDYNAMICNOPIC   = @MDYNAMICNOPIC@
-+CPPFLAGS        = @CPPFLAGS@
-+DEFS            = @DEFS@ @ENDIAN_FLAG@
-+LDFLAGS         = @LDFLAGS@
-+HAVE_PRIVEXT    = @HAVE_PRIVEXT@
-+HAVE_FOREIGN_HEADERS    = @HAVE_FOREIGN_HEADERS@
-+UUID_LIBS	= @UUID_LIBS@
-+SSL_LIBS	= @SSL_LIBS@
-+LTO_DEFS	= @LTO_DEFS@
-+LTO_LIBS	= @LTO_LIBS@
-+DL_LIBS		= @DL_LIBS@
-+
-+ifeq ($(HAVE_PRIVEXT),NO)
-+INCPRIVEXT      = -include $(top_srcdir)/include/extern.h
-+endif
-+
-+ifeq ($(HAVE_FOREIGN_HEADERS),YES)
-+FORHDRS         = -I$(top_srcdir)/include/foreign
-+endif
-+
-+INSTALL		= @INSTALL@
-+INSTALL_PROGRAM	= @INSTALL_PROGRAM@
-+transform       = @program_transform_name@
-+LDPROG          = $(shell echo ld_classic | sed '$(transform)')
-+ASPROG          = $(shell echo as | sed '$(transform)')
-+
-+# -I$(builddir)
-+MYINCLUDES      = -I$(srcdir)/include -I$(srcdir)/Readers \
-+		-I$(srcdir)/Writers -I$(top_builddir)/include \
-+		-I$(top_srcdir)/include -I$(top_srcdir)/ld64/src/ld \
-+		-I$(top_srcdir)/ld64/src/abstraction -I$(top_srcdir)/ld64/src/ld/parsers \
-+		$(INCPRIVEXT) -include $(top_builddir)/include/config.h $(FORHDRS)
-+
-+MYWARNINGS      = 
-+MYDEFS          = -DDEBUG -DBINDIR="\"$(bindir)\"" -DLDPROG="\"$(LDPROG)\"" \
-+		  -DASPROG="\"$(ASPROG)\"" $(LTO_DEFS)
-+
-+MYLDFLAGS	= -L$(top_builddir)/libstuff
-+MYLIBS		= -lstuff $(SSL_LIBS) $(UUID_LIBS) $(DL_LIBS) $(LTO_LIBS)
-+
-+MYCOMPILEFLAGS	= $(WARNINGS) $(MYWARNINGS) $(DEFS) $(MYDEFS) \
-+		$(CPPFLAGS) $(MYINCLUDES) $(CFLAGS) $(MDYNAMICNOPIC)
-+
-+MYLINKFLAGS	= $(LDFLAGS) $(MYLDFLAGS) $(MYLIBS)
-+
-+CXXFILES = src/ld/ld.cpp src/ld/Options.cpp src/ld/InputFiles.cpp \
-+		src/ld/SymbolTable.cpp src/ld/Resolver.cpp src/ld/OutputFile.cpp \
-+		src/ld/passes/branch_island.cpp src/ld/passes/branch_shim.cpp \
-+		src/ld/passes/compact_unwind.cpp src/ld/passes/dtrace_dof.cpp \
-+		src/ld/passes/dylibs.cpp src/ld/passes/got.cpp \
-+		src/ld/passes/huge.cpp src/ld/passes/objc.cpp \
-+		src/ld/passes/order_file.cpp src/ld/passes/stubs/stubs.cpp \
-+		src/ld/passes/tlvp.cpp \
-+		src/ld/parsers/opaque_section_file.cpp src/ld/parsers/lto_file.cpp \
-+		src/ld/parsers/archive_file.cpp \
-+		src/ld/parsers/macho_relocatable_file.cpp src/ld/parsers/macho_dylib_file.cpp
-+
-+# Probably want to build this program too:
-+# src/other/dyldinfo.cpp
-+
-+CFILES = src/ld/debugline.c
-+
-+OBJS = $(CXXFILES:.cpp=.o)
-+OBJS += $(CFILES:.c=.o) 
-+
-+.cpp.o:
-+	mkdir -p `dirname $@`
-+	$(CXX) $(MYCOMPILEFLAGS) $(CXXFLAGS) -c -o $@ $<
-+
-+.c.o:
-+	mkdir -p `dirname $@`
-+	$(CC) $(MYCOMPILEFLAGS) -c -o $@ $<
-+
-+.PHONY: default clean distclean install
-+
-+default: ld
-+
-+ld: $(OBJS)
-+	$(CXX) -o $@ $^ $(MYLINKFLAGS)
-+
-+install: ld
-+	mkdir -p $(DESTDIR)/$(bindir)
-+	$(INSTALL_PROGRAM) ld \
-+		$(DESTDIR)/$(bindir)/`echo ld | sed '$(transform)'`
++	 $(DESTDIR)$(bindir)/`echo ld | sed '$(transform)'`
 +
 +clean:
 +	rm -r -f *.o */*.o
@@ -5817,115 +5450,13 @@ diff -urN a/ld64/Makefile.in.85.2.1 b/ld64/Makefile.in.85.2.1
 +	$(CXX) -o $@ $^ $(MYLINKFLAGS)
 +
 +install: ld
-+	mkdir -p $(DESTDIR)/$(bindir)
++	mkdir -p $(DESTDIR)$(bindir)
 +	$(INSTALL_PROGRAM) ld \
-+		$(DESTDIR)/$(bindir)/`echo ld | sed '$(transform)'`
++		$(DESTDIR)$(bindir)/`echo ld | sed '$(transform)'`
 +
 +clean:
 +	rm -r -f *.o */*.o
 +	rm -f ld
-diff -urN a/ld64/Makefile.in.85.2.1.orig b/ld64/Makefile.in.85.2.1.orig
---- a/ld64/Makefile.in.85.2.1.orig	1970-01-01 01:00:00.000000000 +0100
-+++ b/ld64/Makefile.in.85.2.1.orig	2013-06-16 21:17:08.370529395 +0200
-@@ -0,0 +1,83 @@
-+builddir = @builddir@
-+top_builddir = @top_builddir@
-+srcdir = @srcdir@
-+top_srcdir = @top_srcdir@
-+
-+prefix		= @prefix@
-+exec_prefix	= @exec_prefix@
-+bindir		= @bindir@
-+
-+VPATH = @srcdir@:@srcdir@/src
-+
-+CC		= @CC@
-+CXX             = @CXX@
-+CFLAGS          = @CFLAGS@
-+CXXFLAGS	= @CXXFLAGS@
-+WARNINGS	= @WARNINGS@
-+MDYNAMICNOPIC   = @MDYNAMICNOPIC@
-+CPPFLAGS        = @CPPFLAGS@
-+DEFS            = @DEFS@ @ENDIAN_FLAG@
-+LDFLAGS         = @LDFLAGS@
-+HAVE_PRIVEXT    = @HAVE_PRIVEXT@
-+HAVE_FOREIGN_HEADERS    = @HAVE_FOREIGN_HEADERS@
-+UUID_LIBS	= @UUID_LIBS@
-+SSL_LIBS	= @SSL_LIBS@
-+LTO_DEFS	= @LTO_DEFS@
-+LTO_LIBS	= @LTO_LIBS@
-+
-+ifeq ($(HAVE_PRIVEXT),NO)
-+INCPRIVEXT      = -include $(top_srcdir)/include/extern.h
-+endif
-+
-+ifeq ($(HAVE_FOREIGN_HEADERS),YES)
-+FORHDRS         = -I$(top_srcdir)/include/foreign
-+endif
-+
-+INSTALL		= @INSTALL@
-+INSTALL_PROGRAM	= @INSTALL_PROGRAM@
-+transform       = @program_transform_name@
-+LDPROG          = $(shell echo ld_classic | sed '$(transform)')
-+ASPROG          = $(shell echo as | sed '$(transform)')
-+
-+MYINCLUDES      = -I$(builddir) -I$(srcdir) -I$(srcdir) -I$(srcdir)/Readers \
-+			-I$(srcdir)/Writers -I$(top_builddir)/include \
-+			-I$(top_srcdir)/include $(INCPRIVEXT) -include $(top_builddir)/include/config.h $(FORHDRS)
-+MYWARNINGS      = 
-+MYDEFS          = -DDEBUG -DBINDIR="\"$(bindir)\"" -DLDPROG="\"$(LDPROG)\"" \
-+		  -DASPROG="\"$(ASPROG)\"" $(LTO_DEFS)
-+
-+MYLDFLAGS	= -L$(top_builddir)/libstuff
-+MYLIBS		= -lstuff $(SSL_LIBS) $(UUID_LIBS) $(LTO_LIBS)
-+
-+MYCOMPILEFLAGS	= $(WARNINGS) $(MYWARNINGS) $(DEFS) $(MYDEFS) \
-+	$(CPPFLAGS) $(MYINCLUDES) $(CFLAGS) $(MDYNAMICNOPIC) 
-+
-+MYLINKFLAGS	= $(LDFLAGS) $(MYLDFLAGS) $(MYLIBS)
-+
-+CXXFILES = ld.cpp Options.cpp
-+CFILES = debugline.c
-+
-+OBJS = $(CXXFILES:.cpp=.o)
-+OBJS += $(CFILES:.c=.o) 
-+
-+.cpp.o:
-+	$(CXX) $(MYCOMPILEFLAGS) $(CXXFLAGS) -c -o $@ $<
-+
-+.c.o:
-+	$(CC) $(MYCOMPILEFLAGS) -c -o $@ $<
-+
-+.PHONY: default clean distclean install
-+
-+default: ld
-+
-+ld: $(OBJS)
-+	$(CXX) -o $@ $^ $(MYLINKFLAGS)
-+
-+install: ld
-+	mkdir -p $(DESTDIR)/$(bindir)
-+	$(INSTALL_PROGRAM) ld \
-+		$(DESTDIR)/$(bindir)/`echo ld | sed '$(transform)'`
-+
-+clean:
-+	rm -r -f *.o */*.o
-+	rm -f ld
-diff -urN a/ld64/Makefile.in.85.2.1.rej b/ld64/Makefile.in.85.2.1.rej
---- a/ld64/Makefile.in.85.2.1.rej	1970-01-01 01:00:00.000000000 +0100
-+++ b/ld64/Makefile.in.85.2.1.rej	2013-06-16 21:17:08.382529170 +0200
-@@ -0,0 +1,11 @@
-+--- cctools2odcctools/files/ld64/Makefile.in.85.2.1
-++++ cctools2odcctools/files/ld64/Makefile.in.85.2.1
-+@@ -37,7 +37,7 @@
-+ MYINCLUDES      = -I$(builddir) -I$(srcdir) -I$(srcdir) -I$(srcdir)/Readers \
-+ 			-I$(srcdir)/Writers -I$(top_builddir)/include \
-+ 			-I$(top_srcdir)/include -include $(top_builddir)/include/config.h $(FORHDRS)
-+-MYWARNINGS      = 
-++MYWARNINGS      =
-+ MYDEFS          = -DDEBUG -DBINDIR="\"$(bindir)\"" -DLDPROG="\"$(LDPROG)\"" \
-+ 		  -DASPROG="\"$(ASPROG)\"" $(LTO_DEFS)
-+ 
 diff -urN a/ld64/src/ld/configure.h b/ld64/src/ld/configure.h
 --- a/ld64/src/ld/configure.h	1970-01-01 01:00:00.000000000 +0100
 +++ b/ld64/src/ld/configure.h	2013-06-16 21:17:08.386529095 +0200
@@ -5967,7 +5498,7 @@ diff -urN a/libmacho/Makefile.in b/libmacho/Makefile.in
 +MYINCLUDES      = -I$(top_builddir)/include -I$(top_srcdir)/include \
 +                  -include $(top_builddir)/include/config.h $(FORHDRS)
 +
-+MYWARNINGS	= 
++MYWARNINGS	=
 +MYDEFS		=
 +
 +MYCOMPILEFLAGS	= $(WARNINGS) $(MYWARNINGS) $(DEFS) $(MYDEFS) \
@@ -6001,9 +5532,9 @@ diff -urN a/libmacho/Makefile.in b/libmacho/Makefile.in
 +	rm -f libmacho.a
 +
 +install: libmacho.a
-+	mkdir -p $(DESTDIR)/$(libdir)
-+	$(INSTALL_DATA) $< $(DESTDIR)/$(libdir)/$<
-+	$(RANLIB) $(DESTDIR)/$(libdir)/$<
++	mkdir -p $(DESTDIR)$(libdir)
++	$(INSTALL_DATA) $< $(DESTDIR)$(libdir)/$<
++	$(RANLIB) $(DESTDIR)$(libdir)/$<
 diff -urN a/libprunetrie/Makefile.in b/libprunetrie/Makefile.in
 --- a/libprunetrie/Makefile.in	1970-01-01 01:00:00.000000000 +0100
 +++ b/libprunetrie/Makefile.in	2013-06-16 21:17:08.386529095 +0200
@@ -6156,7 +5687,7 @@ diff -urN a/libstuff/emulated.c b/libstuff/emulated.c
 +    off_t PageDelta = offset%(off_t)SysInfo.dwAllocationGranularity;
 +	uint64_t o = offset-(uint64_t)PageDelta;
 +
-+	DWORD Protect = PAGE_READONLY; 
++	DWORD Protect = PAGE_READONLY;
 +	DWORD DesiredAccess = FILE_MAP_COPY;
 +	if (prot != PROT_READ)
 +	{
@@ -6415,7 +5946,7 @@ diff -urN a/libstuff/emulated.c b/libstuff/emulated.c
 +{
 +    /* Note that LONGLONG is a 64-bit value */
 +    LONGLONG ll;
-+   
++
 +    ll = Int32x32To64(t.tv_sec, 10000000LL) + t.tv_usec*10 + 116444736000000000;
 +    pft->dwLowDateTime = (DWORD)ll;
 +    pft->dwHighDateTime = ll >> 32;
@@ -6519,7 +6050,7 @@ diff -urN a/libstuff/emulated.c b/libstuff/emulated.c
 +    res = write(fd, buf, count);
 +    lseek(fd, old_pos, SEEK_SET);
 +
-+    return res;    
++    return res;
 +}
 +#endif /* HAVE_DECL_PWRITE */
 +
@@ -6837,7 +6368,7 @@ diff -urN a/libstuff/Makefile.in b/libstuff/Makefile.in
 +MYINCLUDES      = -I$(top_builddir)/include -I$(top_srcdir)/include \
 +                  -include $(top_builddir)/include/config.h $(FORHDRS)
 +
-+MYWARNINGS	= 
++MYWARNINGS	=
 +MYDEFS		=
 +
 +MYCOMPILEFLAGS	= $(WARNINGS) $(MYWARNINGS) $(DEFS) $(MYDEFS) \
@@ -7104,7 +6635,7 @@ diff -urN a/m4/check_enum.m4 b/m4/check_enum.m4
 +AC_CACHE_CHECK([for $1 in $2], check_Enum,
 +[AC_COMPILE_IFELSE([AC_LANG_PROGRAM([AC_INCLUDES_DEFAULT([$5])
 +@%:@include <$2>],
-+[ if( $1 == 0 ) 
++[ if( $1 == 0 )
 +	return 0;
 +])],
 +		[AS_VAR_SET(check_Enum, yes)],
@@ -7231,22 +6762,22 @@ diff -urN a/man/Makefile.in b/man/Makefile.in
 +
 +default:
 +
-+install: 
-+	mkdir -p $(DESTDIR)/$(mandir)
-+	mkdir -p $(DESTDIR)/$(mandir)/man1
-+	mkdir -p $(DESTDIR)/$(mandir)/man3
-+	mkdir -p $(DESTDIR)/$(mandir)/man5
++install:
++	mkdir -p $(DESTDIR)$(mandir)
++	mkdir -p $(DESTDIR)$(mandir)/man1
++	mkdir -p $(DESTDIR)$(mandir)/man3
++	mkdir -p $(DESTDIR)$(mandir)/man5
 +	for m in $(MANPAGES1); do				\
 +		$(INSTALL_DATA) $(srcdir)/$$m			\
-+			$(DESTDIR)/$(mandir)/man1/$$m;		\
++			$(DESTDIR)$(mandir)/man1/$$m;		\
 +	done
 +	for m in $(MANPAGES3); do				\
 +		$(INSTALL_DATA) $(srcdir)/$$m			\
-+			$(DESTDIR)/$(mandir)/man3/$$m;		\
++			$(DESTDIR)$(mandir)/man3/$$m;		\
 +	done
 +	for m in $(MANPAGES5); do				\
 +		$(INSTALL_DATA) $(srcdir)/$$m			\
-+			$(DESTDIR)/$(mandir)/man5/$$m;		\
++			$(DESTDIR)$(mandir)/man5/$$m;		\
 +	done
 +
 +
@@ -7291,14 +6822,14 @@ diff -urN a/misc/Makefile.in b/misc/Makefile.in
 +MYINCLUDES      = -I$(builddir) -I$(srcdir) -I$(top_builddir)/include \
 +                  -I$(top_srcdir)/include -I$(top_srcdir)/libprunetrie -include $(top_builddir)/include/config.h $(FORHDRS)
 +
-+MYWARNINGS      = 
++MYWARNINGS      =
 +MYDEFS          = -DBINDIR="\"$(bindir)\"" -DLDPROG="\"$(LDPROG)\"" \
 +		  -DLIPOPROG="\"$(LIPOPROG)\"" $(LTO_DEFS)
 +MYLDFLAGS	= -L$(top_builddir)/libstuff
 +MYLIBS		= -lstuff @DL_LIBS@
 +
 +MYCOMPILEFLAGS	= $(WARNINGS) $(MYWARNINGS) $(DEFS) $(MYDEFS) \
-+	$(CPPFLAGS) $(MYINCLUDES) $(CFLAGS) $(MDYNAMICNOPIC) 
++	$(CPPFLAGS) $(MYINCLUDES) $(CFLAGS) $(MDYNAMICNOPIC)
 +
 +MYLINKFLAGS	= $(LDFLAGS) $(MYLDFLAGS) $(MYLIBS)
 +
@@ -7409,197 +6940,14 @@ diff -urN a/misc/Makefile.in b/misc/Makefile.in
 +	$(CC) -o $@ $^ $(MYLINKFLAGS)
 +
 +install: $(PROGRAMS)
-+	mkdir -p $(DESTDIR)/$(bindir)
++	mkdir -p $(DESTDIR)$(bindir)
 +	for p in $(PROGRAMS); do					\
 +		$(INSTALL_PROGRAM) $$p 					\
-+			$(DESTDIR)/$(bindir)/`echo $$p | sed '$(transform)'`;	\
++			$(DESTDIR)$(bindir)/`echo $$p | sed '$(transform)'`;	\
 +	done
 +clean:
 +	rm -r -f *.o
 +	rm -f $(PROGRAMS)
-diff -urN a/misc/Makefile.in.orig b/misc/Makefile.in.orig
---- a/misc/Makefile.in.orig	1970-01-01 01:00:00.000000000 +0100
-+++ b/misc/Makefile.in.orig	2013-06-16 21:17:08.394528943 +0200
-@@ -0,0 +1,165 @@
-+builddir = @builddir@
-+top_builddir = @top_builddir@
-+srcdir = @srcdir@
-+top_srcdir = @top_srcdir@
-+
-+prefix		= @prefix@
-+exec_prefix	= @exec_prefix@
-+bindir		= @bindir@
-+
-+VPATH = @srcdir@
-+
-+CC              = @CC@
-+CFLAGS          = @CFLAGS@ -DLTO_SUPPORT -DTRIE_SUPPORT
-+WARNINGS	= @WARNINGS@
-+MDYNAMICNOPIC   = @MDYNAMICNOPIC@
-+CPPFLAGS        = @CPPFLAGS@
-+DEFS            = @DEFS@ @ENDIAN_FLAG@
-+LDFLAGS         = @LDFLAGS@
-+HAVE_PRIVEXT    = @HAVE_PRIVEXT@
-+HAVE_FOREIGN_HEADERS    = @HAVE_FOREIGN_HEADERS@
-+LTO_DEFS	= @LTO_DEFS@
-+LTO_LIBS	= @LTO_LIBS@
-+
-+ifeq ($(HAVE_PRIVEXT),NO)
-+INCPRIVEXT      = -include $(top_srcdir)/include/extern.h
-+endif
-+
-+ifeq ($(HAVE_FOREIGN_HEADERS),YES)
-+FORHDRS         = -I$(top_srcdir)/include/foreign
-+endif
-+
-+INSTALL		= @INSTALL@
-+INSTALL_PROGRAM	= @INSTALL_PROGRAM@
-+transform       = @program_transform_name@
-+LDPROG		= $(shell echo ld | sed '$(transform)')
-+LIPOPROG	= $(shell echo lipo | sed '$(transform)')
-+
-+MYINCLUDES      = -I$(builddir) -I$(srcdir) -I$(top_builddir)/include \
-+			-I$(top_srcdir)/include -I$(top_srcdir)/libprunetrie $(INCPRIVEXT) -include $(top_builddir)/include/config.h $(FORHDRS)
-+MYWARNINGS      = 
-+MYDEFS          = -DBINDIR="\"$(bindir)\"" -DLDPROG="\"$(LDPROG)\"" \
-+		  -DLIPOPROG="\"$(LIPOPROG)\"" $(LTO_DEFS)
-+MYLDFLAGS	= -L$(top_builddir)/libstuff
-+MYLIBS		= -lstuff @DL_LIBS@
-+
-+MYCOMPILEFLAGS	= $(WARNINGS) $(MYWARNINGS) $(DEFS) $(MYDEFS) \
-+	$(CPPFLAGS) $(MYINCLUDES) $(CFLAGS) $(MDYNAMICNOPIC) 
-+
-+MYLINKFLAGS	= $(LDFLAGS) $(MYLDFLAGS) $(MYLIBS)
-+
-+PROGRAMS = lipo size strings nm libtool @NOT_FOR_WINDOWS_PROG@ \
-+		seg_hack install_name_tool indr strip nmedit segedit pagestuff \
-+		ranlib codesign_allocate
-+
-+CFILES_checksyms	= checksyms.c
-+OBJS_checksyms	= $(CFILES_checksyms:.c=.o)
-+
-+CFILES_lipo	= lipo.c
-+OBJS_lipo	= $(CFILES_lipo:.c=.o)
-+
-+CFILES_size	= size.c
-+OBJS_size	= $(CFILES_size:.c=.o)
-+
-+CFILES_strings	= strings.c
-+OBJS_strings	= $(CFILES_strings:.c=.o)
-+
-+CFILES_nm	= nm.c
-+OBJS_nm		= $(CFILES_nm:.c=.o)
-+
-+CFILES_libtool	= libtool.c
-+OBJS_libtool	= $(CFILES_libtool:.c=.o)
-+
-+CFILES_ranlib	= libtool.c
-+OBJS_ranlib	= ranlib.o
-+
-+CFILES_redo_prebinding	= redo_prebinding.o
-+OBJS_redo_prebinding	= $(CFILES_redo_prebinding:.c=.o)
-+
-+CFILES_seg_addr_table	= seg_addr_table.c
-+OBJS_seg_addr_table	= $(CFILES_seg_addr_table:.c=.o)
-+
-+CFILES_seg_hack	= seg_hack.c
-+OBJS_seg_hack	= $(CFILES_seg_hack:.c=.o)
-+
-+CFILES_install_name_tool	= install_name_tool.c
-+OBJS_install_name_tool		= $(CFILES_install_name_tool:.c=.o)
-+
-+CFILES_indr	= indr.c
-+OBJS_indr	= $(CFILES_indr:.c=.o)
-+
-+CFILES_strip	= strip.c
-+OBJS_strip	= $(CFILES_strip:.c=.o)
-+
-+CFILES_codesign_allocate	= codesign_allocate.c
-+OBJS_codesign_allocate	= $(CFILES_codesign_allocate:.c=.o)
-+
-+CFILES_nmedit	= strip.c
-+OBJS_nmedit	= nmedit.o
-+
-+CFILES_segedit	= segedit.c
-+OBJS_segedit	= $(CFILES_segedit:.c=.o)
-+
-+CFILES_pagestuff	= pagestuff.c
-+OBJS_pagestuff	= $(CFILES_pagestuff:.c=.o)
-+
-+.c.o:
-+	$(CC) $(MYCOMPILEFLAGS) -c -o $@ $<
-+
-+.o:
-+	$(CC) $(MYCOMPILEFLAGS) -c -o $@ $<
-+
-+.PHONY: default clean distclean install
-+
-+default: $(PROGRAMS)
-+
-+ranlib.o: libtool.c
-+	$(CC) -DRANLIB $(MYCOMPILEFLAGS) -c -o $@ $<
-+
-+nmedit.o: strip.c
-+	$(CC) -DNMEDIT $(MYCOMPILEFLAGS) -c -o $@ $<
-+
-+checksyms: $(OBJS_checksyms)
-+	$(CC) -o $@ $^ $(MYLINKFLAGS)
-+lipo: $(OBJS_lipo)
-+	$(CC) -o $@ $^ $(MYLINKFLAGS)
-+size: $(OBJS_size)
-+	$(CC) -o $@ $^ $(MYLINKFLAGS)
-+strings: $(OBJS_strings)
-+	$(CC) -o $@ $^ $(MYLINKFLAGS)
-+nm: $(OBJS_nm)
-+	$(CC) -o $@ $^ $(MYLINKFLAGS)
-+libtool: $(OBJS_libtool)
-+	$(CC) -o $@ $^ $(MYLINKFLAGS)
-+redo_prebinding: $(OBJS_redo_prebinding)
-+	$(CC) -o $@ $^ $(MYLINKFLAGS)
-+seg_addr_table: $(OBJS_seg_addr_table)
-+	$(CC) -o $@ $^ $(MYLINKFLAGS)
-+seg_hack: $(OBJS_seg_hack)
-+	$(CC) -o $@ $^ $(MYLINKFLAGS)
-+install_name_tool: $(OBJS_install_name_tool)
-+	$(CC) -o $@ $^ $(MYLINKFLAGS)
-+indr: $(OBJS_indr)
-+	$(CC) -o $@ $^ $(MYLINKFLAGS)
-+strip: $(OBJS_strip)
-+	$(CXX) -o $@ $^ $(MYLINKFLAGS) -L$(top_builddir)/libprunetrie -lprunetrie
-+codesign_allocate: $(OBJS_codesign_allocate)
-+	$(CC) -o $@ $^ $(MYLINKFLAGS)
-+nmedit: $(OBJS_nmedit)
-+	$(CC) -o $@ $^ $(MYLINKFLAGS)
-+segedit: $(OBJS_segedit)
-+	$(CC) -o $@ $^ $(MYLINKFLAGS)
-+pagestuff: $(OBJS_pagestuff)
-+	$(CC) -o $@ $^ $(MYLINKFLAGS)
-+ranlib: $(OBJS_ranlib)
-+	$(CC) -o $@ $^ $(MYLINKFLAGS)
-+
-+install: $(PROGRAMS)
-+	mkdir -p $(DESTDIR)/$(bindir)
-+	for p in $(PROGRAMS); do					\
-+		$(INSTALL_PROGRAM) $$p 					\
-+			$(DESTDIR)/$(bindir)/`echo $$p | sed '$(transform)'`;	\
-+	done
-+clean:
-+	rm -r -f *.o
-+	rm -f $(PROGRAMS)
-diff -urN a/misc/Makefile.in.rej b/misc/Makefile.in.rej
---- a/misc/Makefile.in.rej	1970-01-01 01:00:00.000000000 +0100
-+++ b/misc/Makefile.in.rej	2013-06-16 21:17:08.394528943 +0200
-@@ -0,0 +1,10 @@
-+--- cctools2odcctools/files/misc/Makefile.in
-++++ cctools2odcctools/files/misc/Makefile.in
-+@@ -10,6 +10,7 @@
-+ VPATH = @srcdir@
-+ 
-+ CC                   = @CC@
-++CXX                  = @CXX@
-+ CFLAGS               = @CFLAGS@ -DLTO_SUPPORT -DTRIE_SUPPORT
-+ WARNINGS             = @WARNINGS@
-+ MDYNAMICNOPIC        = @MDYNAMICNOPIC@
 diff -urN a/otool/Makefile.in b/otool/Makefile.in
 --- a/otool/Makefile.in	1970-01-01 01:00:00.000000000 +0100
 +++ b/otool/Makefile.in	2013-06-16 21:17:08.394528943 +0200
@@ -7639,13 +6987,13 @@ diff -urN a/otool/Makefile.in b/otool/Makefile.in
 +MYINCLUDES      = -I$(builddir) -I$(srcdir) -I$(top_builddir)/include \
 +                  -I$(top_srcdir)/include -include $(top_builddir)/include/config.h $(FORHDRS)
 +
-+MYWARNINGS      = 
++MYWARNINGS      =
 +MYDEFS          =
 +MYLDFLAGS	= -L$(top_builddir)/libstuff
 +MYLIBS		= @DL_LIBS@
 +
 +MYCOMPILEFLAGS	= $(WARNINGS) $(MYWARNINGS) $(DEFS) $(MYDEFS) \
-+	$(CPPFLAGS) $(MYINCLUDES) $(CFLAGS) $(MDYNAMICNOPIC) 
++	$(CPPFLAGS) $(MYINCLUDES) $(CFLAGS) $(MDYNAMICNOPIC)
 +
 +MYLINKFLAGS	= $(LDFLAGS) $(MYLDFLAGS) $(MYLIBS)
 +MYLINKFLAGSO	= $(LDFLAGS) $(MYLDFLAGS) -lstuff $(MYLIBS)
@@ -7656,9 +7004,9 @@ diff -urN a/otool/Makefile.in b/otool/Makefile.in
 +
 +#ifneq ($(OBJC),)
 +OBJCFILES = print_objc.c print_objc2_32bit.c print_objc2_64bit.c
-+OBJCOBJS = $(OBJCFILES:.c=.o) 
++OBJCOBJS = $(OBJCFILES:.c=.o)
 +#endif
-+OBJS = $(CFILES:.c=.o) 
++OBJS = $(CFILES:.c=.o)
 +
 +.PHONY: default clean distclean install
 +
@@ -7678,9 +7026,9 @@ diff -urN a/otool/Makefile.in b/otool/Makefile.in
 +	$(CC) -DOTOOL $(MYCOMPILEFLAGS) -c -o $@ $<
 +
 +install: otool
-+	mkdir -p $(DESTDIR)/$(bindir)
++	mkdir -p $(DESTDIR)$(bindir)
 +	$(INSTALL_PROGRAM) otool \
-+		$(DESTDIR)/$(bindir)/`echo otool | sed '$(transform)'`
++		$(DESTDIR)$(bindir)/`echo otool | sed '$(transform)'`
 +
 +clean:
 +	rm -r -f *.o
