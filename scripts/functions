@@ -1304,22 +1304,10 @@ CT_DoSaveState() {
                            /^ASL\.LOG=/d;
                            /^(FUNCNAME|GROUPS|PPID|SHELLOPTS)=/d;' >"${state_dir}/env.sh"
 
-    # Workaround "file changed as we read it" on directories that MSYS/Cygwin tar
-    # sometimes claims: http://cygwin.com/ml/cygwin/2011-01/msg00058.html
-    # I'm hoping to switch to MSYS2 and that this won't be needed there.
-    local extra_tar_args=""
-    case "$CT_SYS_OS" in
-        MINGW*|CYGWIN|MSYS*)
-            extra_tar_args="--ignore-failed-read"
-            ;;
-        *)
-            ;;
-    esac
-
-    CT_DoTarballIfExists "${CT_BUILD_DIR}" "${state_dir}/build_dir" "${extra_tar_args}"
-    CT_DoTarballIfExists "${CT_BUILDTOOLS_PREFIX_DIR}" "${state_dir}/buildtools_dir" "${extra_tar_args}"
-    CT_DoTarballIfExists "${CT_CONFIG_DIR}" "${state_dir}/config_dir" "${extra_tar_args}"
-    CT_DoTarballIfExists "${CT_PREFIX_DIR}" "${state_dir}/prefix_dir" --exclude '*.log' "${extra_tar_args}"
+    CT_DoTarballIfExists "${CT_BUILD_DIR}" "${state_dir}/build_dir"
+    CT_DoTarballIfExists "${CT_BUILDTOOLS_PREFIX_DIR}" "${state_dir}/buildtools_dir"
+    CT_DoTarballIfExists "${CT_CONFIG_DIR}" "${state_dir}/config_dir"
+    CT_DoTarballIfExists "${CT_PREFIX_DIR}" "${state_dir}/prefix_dir" --exclude '*.log'
 
     CT_DoLog STATE "  Saving log file"
     exec >/dev/null
