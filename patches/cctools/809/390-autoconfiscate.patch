@@ -3773,12 +3773,12 @@ diff -urN a/configure.ac b/configure.ac
 +     ;;
 +esac
 +
-+AC_CHECK_SIZEOF([long])
-+if test $ac_cv_sizeof_long >=8; then
-+    LD_CLASSIC=
-+else
-+    LD_CLASSIC=ld
-+fi
++# ldclassic has been deprecated by ld64.
++# If you want to enable it you can do so
++# here, but be warned; this has not been
++# tested for an unsigned long long time.
++LD_CLASSIC=
++# LD_CLASSIC=ld
 +COMPONENTS="libstuff ar as include libprunetrie libmacho ${LD_CLASSIC} misc otool man ld64"
 +AC_SUBST([COMPONENTS], [$COMPONENTS])
 +
