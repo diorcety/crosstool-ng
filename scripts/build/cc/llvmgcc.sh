@@ -339,6 +339,7 @@ do_llvmgcc_core_backend() {
     # Use --with-local-prefix so older gccs don't look in /usr/local (http://gcc.gnu.org/PR10532)
     CT_DoExecLog CFG                                                \
     CC_FOR_BUILD="${CT_BUILD}-gcc"                                  \
+    CFLAGS_FOR_BUILD="${CT_EXTRA_CFLAGS_FOR_BUILD-${cflags}}"       \
     CFLAGS="${cflags}"                                              \
     LDFLAGS="${core_LDFLAGS[*]}"                                    \
     "${CT_SRC_DIR}/${CC_LLVMGCC_FULLNAME}/configure"                \
@@ -755,6 +756,7 @@ do_llvmgcc_backend() {
 
     CT_DoExecLog CFG                                                \
     CC_FOR_BUILD="${CT_BUILD}-gcc"                                  \
+    CFLAGS_FOR_BUILD="${CT_EXTRA_CFLAGS_FOR_BUILD-${cflags}}"       \
     CFLAGS="${cflags}"                                              \
     LDFLAGS="${final_LDFLAGS[*]}"                                   \
     CFLAGS_FOR_TARGET="${CT_TARGET_CFLAGS}"                         \
