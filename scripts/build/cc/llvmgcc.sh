@@ -159,6 +159,7 @@ do_llvmgcc_core_backend() {
     local -a core_LDFLAGS
     local -a core_targets
     local arg
+    local exeext
 
     for arg in "$@"; do
         eval "${arg// /\\ }"
@@ -334,6 +335,10 @@ do_llvmgcc_core_backend() {
         extra_config+=("--with-gxx-include-dir=/usr/include/c++/4.2.1")
     fi
 
+    if [ ! "${host/mingw/}" = "${host}" -o ! "${host/cygwin/}" = "${host}" ]; then
+        exeext=".exe"
+    fi
+
     CT_DoLog DEBUG "Extra config passed: '${extra_config[*]}'"
 
     # Use --with-local-prefix so older gccs don't look in /usr/local (http://gcc.gnu.org/PR10532)
@@ -348,11 +353,11 @@ do_llvmgcc_core_backend() {
         --target=${CT_TARGET}                                       \
         --prefix="${prefix}"                                        \
         --with-local-prefix="${CT_SYSROOT_DIR}"                     \
-        --with-ld=${prefix}/bin/${CT_TARGET}-ld${EXEEXT}            \
-        --with-ar=${prefix}/bin/${CT_TARGET}-ar${EXEEXT}            \
-        --with-as=${prefix}/bin/${CT_TARGET}-as${EXEEXT}            \
-        --with-ranlib=${prefix}/bin/${CT_TARGET}-ranlib${EXEEXT}    \
-        --with-lipo=${prefix}/bin/${CT_TARGET}-lipo${EXEEXT}        \
+        --with-ld=${CT_PREFIX_DIR}/bin/${CT_TARGET}-ld${exeext}         \
+        --with-ar=${CT_PREFIX_DIR}/bin/${CT_TARGET}-ar${exeext}         \
+        --with-as=${CT_PREFIX_DIR}/bin/${CT_TARGET}-as${exeext}         \
+        --with-ranlib=${CT_PREFIX_DIR}/bin/${CT_TARGET}-ranlib${exeext} \
+        --with-lipo=${CT_PREFIX_DIR}/bin/${CT_TARGET}-lipo${exeext}     \
         --program-prefix=${CT_TARGET}-llvm-                         \
         --enable-llvm=${CT_BUILD_DIR}/build-LLVM-host-${CT_HOST}    \
         --disable-libmudflap                                        \
@@ -552,6 +557,7 @@ do_llvmgcc_backend() {
     local -a final_LDFLAGS
     local tmp
     local arg
+    local exeext
 
     for arg in "$@"; do
         eval "${arg// /\\ }"
@@ -752,6 +758,10 @@ do_llvmgcc_backend() {
         extra_config+=("--with-gxx-include-dir=/usr/include/c++/4.2.1")
     fi
 
+    if [ ! "${host/mingw/}" = "${host}" -o ! "${host/cygwin/}" = "${host}" ]; then
+        exeext=".exe"
+    fi
+
     CT_DoLog DEBUG "Extra config passed: '${extra_config[*]}'"
 
     CT_DoExecLog CFG                                                \
@@ -769,11 +779,11 @@ do_llvmgcc_backend() {
         --prefix="${prefix}"                                        \
         --program-prefix=${CT_TARGET}-llvm-                         \
         --enable-llvm=${CT_BUILD_DIR}/build-LLVM-host-${CT_HOST}    \
-        --with-ld=${prefix}/bin/${CT_TARGET}-ld${EXEEXT}            \
-        --with-ar=${prefix}/bin/${CT_TARGET}-ar${EXEEXT}            \
-        --with-as=${prefix}/bin/${CT_TARGET}-as${EXEEXT}            \
-        --with-ranlib=${prefix}/bin/${CT_TARGET}-ranlib${EXEEXT}    \
-        --with-lipo=${prefix}/bin/${CT_TARGET}-lipo${EXEEXT}        \
+        --with-ld=${prefix}/bin/${CT_TARGET}-ld${exeext}            \
+        --with-ar=${prefix}/bin/${CT_TARGET}-ar${exeext}            \
+        --with-as=${prefix}/bin/${CT_TARGET}-as${exeext}            \
+        --with-ranlib=${prefix}/bin/${CT_TARGET}-ranlib${exeext}    \
+        --with-lipo=${prefix}/bin/${CT_TARGET}-lipo${exeext}        \
         ${CC_SYSROOT_ARG}                                           \
         "${extra_config[@]}"                                        \
         --with-local-prefix="${CT_SYSROOT_DIR}"                     \

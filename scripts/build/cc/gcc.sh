@@ -187,6 +187,7 @@ do_gcc_core_backend() {
     local -a core_LDFLAGS
     local -a core_targets
     local arg
+    local exeext
 
     for arg in "$@"; do
         eval "${arg// /\\ }"
@@ -366,8 +367,20 @@ do_gcc_core_backend() {
         extra_config+=("--disable-multilib")
     fi
 
+    if [ ! "${host/mingw/}" = "${host}" -o ! "${host/cygwin/}" = "${host}" ]; then
+        exeext=".exe"
+    fi
+
     if [ "${CT_TARGET_VENDOR}" = "apple" ]; then
         extra_config+=("--with-gxx-include-dir=/usr/include/c++/4.2.1")
+        # cctools no longer does:
+        # ln -sv "${CT_PREFIX_DIR}/bin/${CT_TARGET}-${t}" "${CT_BUILDTOOLS_PREFIX_DIR}/${CT_TARGET}/bin/${t}"
+        # .. so must pass the binutil tools into configure.
+        extra_config+=("--with-ld=${CT_PREFIX_DIR}/bin/${CT_TARGET}-ld${exeext}")
+        extra_config+=("--with-ar=${CT_PREFIX_DIR}/bin/${CT_TARGET}-ar${exeext}")
+        extra_config+=("--with-as=${CT_PREFIX_DIR}/bin/${CT_TARGET}-as${exeext}")
+        extra_config+=("--with-ranlib=${CT_PREFIX_DIR}/bin/${CT_TARGET}-ranlib${exeext}")
+        extra_config+=("--with-lipo=${CT_PREFIX_DIR}/bin/${CT_TARGET}-lipo${exeext}")
     fi
 
     CT_DoLog DEBUG "Extra config passed: '${extra_config[*]}'"
@@ -604,6 +617,7 @@ do_gcc_backend() {
     local -a final_LDFLAGS
     local tmp
     local arg
+    local exeext
 
     for arg in "$@"; do
         eval "${arg// /\\ }"
@@ -808,8 +822,20 @@ do_gcc_backend() {
         extra_config+=("--disable-multilib")
     fi
 
+    if [ ! "${host/mingw/}" = "${host}" -o ! "${host/cygwin/}" = "${host}" ]; then
+        exeext=".exe"
+    fi
+
     if [ "${CT_TARGET_VENDOR}" = "apple" ]; then
         extra_config+=("--with-gxx-include-dir=/usr/include/c++/4.2.1")
+        # cctools no longer does:
+        # ln -sv "${CT_PREFIX_DIR}/bin/${CT_TARGET}-${t}" "${CT_BUILDTOOLS_PREFIX_DIR}/${CT_TARGET}/bin/${t}"
+        # .. so must pass the binutil tools into configure.
+        extra_config+=("--with-ld=${CT_PREFIX_DIR}/bin/${CT_TARGET}-ld${exeext}")
+        extra_config+=("--with-ar=${CT_PREFIX_DIR}/bin/${CT_TARGET}-ar${exeext}")
+        extra_config+=("--with-as=${CT_PREFIX_DIR}/bin/${CT_TARGET}-as${exeext}")
+        extra_config+=("--with-ranlib=${CT_PREFIX_DIR}/bin/${CT_TARGET}-ranlib${exeext}")
+        extra_config+=("--with-lipo=${CT_PREFIX_DIR}/bin/${CT_TARGET}-lipo${exeext}")
     fi
 
     CT_DoLog DEBUG "Extra config passed: '${extra_config[*]}'"

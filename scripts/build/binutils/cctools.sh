@@ -76,34 +76,11 @@ do_binutils_for_host() {
 
     do_cctools_backend "${cctools_opts[@]}"
 
+    # This is likely un-needed as it probably existed only for the old
+    # symlink stuff that's now removed.
     mkdir -p "${CT_BUILDTOOLS_PREFIX_DIR}/${CT_TARGET}/bin"
 
     CT_Popd
-
-    # Make those new tools available to the core C compilers to come.
-    # Note: some components want the ${TARGET}-{ar,as,ld,strip} commands as
-    # well. Create that.
-    # Don't do it for canadian or cross-native, because the binutils
-    # are not executable on the build machine.
-    case "${CT_TOOLCHAIN_TYPE}" in
-        cross|native)
-            binutils_tools=( ar as ld ld64 ld_classic strip dsymutil )
-            mkdir -p "${CT_BUILDTOOLS_PREFIX_DIR}/${CT_TARGET}/bin"
-            mkdir -p "${CT_BUILDTOOLS_PREFIX_DIR}/bin"
-            for t in "${binutils_tools[@]}"; do
-                CT_DoExecLog ALL ln -sv                                         \
-                                    "${CT_PREFIX_DIR}/bin/${CT_TARGET}-${t}"    \
-                                    "${CT_BUILDTOOLS_PREFIX_DIR}/${CT_TARGET}/bin/${t}"
-                CT_DoExecLog ALL ln -sv                                         \
-                                    "${CT_PREFIX_DIR}/bin/${CT_TARGET}-${t}"    \
-                                    "${CT_BUILDTOOLS_PREFIX_DIR}/bin/${CT_TARGET}-${t}"
-                CT_DoExecLog ALL ln -sv                                         \
-                                    "${CT_PREFIX_DIR}/bin/${CT_TARGET}-${t}"    \
-                                    "${CT_PREFIX_DIR}/${CT_TARGET}/bin/${t}" 
-            done
-            ;;
-        *)  ;;
-    esac
 
     CT_EndStep
 }
