@@ -101,6 +101,7 @@ do_llvm_backend() {
     local cflags
     local ldflags
     local arg
+    local copydlls
 
     for arg in "$@"; do
         eval "${arg// /\\ }"
@@ -127,6 +128,21 @@ do_llvm_backend() {
 
     CT_DoLog EXTRA "Installing LLVM"
     CT_DoExecLog ALL make install
+
+    # LLVM installs dlls into ${prefix}/lib instead of ${prefix}/bin
+    # so copy them to ${prefix}/bin so that executables load them in
+    # without requiring that ${prefix}/lib be added to PATH env. var
+    copydlls="no"
+    if [ ! "${host/mingw/}" = "${host}" -o ! "${host/cygwin/}" = "${host}" ]; then
+        copydlls="yes"
+    fi
+
+    if [[ "$copydlls" = "yes" ]] ; then
+        local dlls=$(find "${prefix}"/lib -name "*.dll")
+        for dll in $dlls ; do
+            cp -f "${dll}" "${prefix}"/bin/
+        done
+    fi
 }
 
 fi # CT_LLVM

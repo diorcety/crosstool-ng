@@ -120,8 +120,8 @@ do_finish() {
     # The symlinks are needed only during the build process.
     # The final gcc will still search those dirs, but will also search
     # the standard lib/ dirs, so we can get rid of the symlinks
-    CT_DoExecLog ALL rm -f "${CT_PREFIX_DIR}/lib32"
-    CT_DoExecLog ALL rm -f "${CT_PREFIX_DIR}/lib64"
+    CT_DoExecLog ALL rm -rf "${CT_PREFIX_DIR}/lib32"
+    CT_DoExecLog ALL rm -rf "${CT_PREFIX_DIR}/lib64"
 
     CT_EndStep
 }
