@@ -13,7 +13,7 @@
 +  */
 +  for (p = cpp_include_defaults; p->fname; p++)
 +  {
-+      if (p->fname[0] != '/')
++      if (p->fname[0] != '/' && p->fname[0] && p->fname[1] != ':')
 +      {
 +          char* temp_fname = (char*)xmalloc(strlen(p->fname)+2);
 +          strcpy(temp_fname,"/");
