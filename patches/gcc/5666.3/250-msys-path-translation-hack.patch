@@ -1,0 +1,26 @@
+\diff -urN a/gcc/c-incpath.c b/gcc/c-incpath.c
+--- a/gcc/c-incpath.c	2013-07-25 22:57:28 +0100
++++ b/gcc/c-incpath.c	2013-07-25 23:03:27 +0100
+@@ -143,6 +143,22 @@
+           p->add_sysroot = 0;
+       }
+   }
++  /* Ensure that each fname starts with a '/'. This is because we needed to make
++     sure that MSYS path transformation didn't happen to gcc_gxx_include_dir and
++     to do this, we started it with a '.' instead. For MSYS2, we are thinking of
++     adding a fname prefix like donttranslate:// which MSYS2 programs would take
++     to mean 'silently drop this prefix and pass remaining unaltered'; for now..
++  */
++  for (p = cpp_include_defaults; p->fname; p++)
++  {
++      if (p->fname[0] != '/')
++      {
++          char* temp_fname = (char*)xmalloc(strlen(p->fname)+2);
++          strcpy(temp_fname,"/");
++          strcat(temp_fname,p->fname);
++          p->fname = temp_fname;
++      }
++  }
+ }
+ 
+ /* Append the standard include chain defined in cppdefault.c.  */
