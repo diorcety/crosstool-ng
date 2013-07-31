@@ -333,7 +333,7 @@ do_llvmgcc_core_backend() {
     fi
 
     if [ "${CT_TARGET_VENDOR}" = "apple" ]; then
-        extra_config+=("--with-gxx-include-dir=/usr/include/c++/4.2.1")
+        extra_config+=("--with-gxx-include-dir=./usr/include/c++/4.2.1")
     fi
 
     if [ ! "${host/mingw/}" = "${host}" -o ! "${host/cygwin/}" = "${host}" ]; then

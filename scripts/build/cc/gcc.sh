@@ -827,7 +827,7 @@ do_gcc_backend() {
     fi
 
     if [ "${CT_TARGET_VENDOR}" = "apple" ]; then
-        extra_config+=("--with-gxx-include-dir=/usr/include/c++/4.2.1")
+        extra_config+=("--with-gxx-include-dir=./usr/include/c++/4.2.1")
         # cctools no longer does:
         # ln -sv "${CT_PREFIX_DIR}/bin/${CT_TARGET}-${t}" "${CT_BUILDTOOLS_PREFIX_DIR}/${CT_TARGET}/bin/${t}"
         # .. so must pass the binutil tools into configure.
