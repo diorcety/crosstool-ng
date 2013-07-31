@@ -54,6 +54,9 @@ do_binutils_for_build() {
     cctools_opts+=( "cflags=${CT_CFLAGS_FOR_BUILD}" )
     cctools_opts+=( "ldflags=${CT_LDFLAGS_FOR_BUILD}" )
     cctools_opts+=( "prefix=${CT_BUILDTOOLS_PREFIX_DIR}" )
+    if [ "${CT_STATIC_TOOLCHAIN}" = "y" ]; then
+        cctools_opts+=( "build_staticlinked=yes" )
+    fi
 
     do_cctools_backend "${cctools_opts[@]}"
 
@@ -73,6 +76,9 @@ do_binutils_for_host() {
     cctools_opts+=( "cflags=${CT_CFLAGS_FOR_HOST}" )
     cctools_opts+=( "ldflags=${CT_LDFLAGS_FOR_HOST}" )
     cctools_opts+=( "prefix=${CT_PREFIX_DIR}" )
+    if [ "${CT_STATIC_TOOLCHAIN}" = "y" ]; then
+        cctools_opts+=( "build_staticlinked=yes" )
+    fi
 
     do_cctools_backend "${cctools_opts[@]}"
 
@@ -90,16 +96,18 @@ do_binutils_for_target() {
 }
 
 # Build cctools for X -> target
-#     Parameter     : description               : type      : default
-#     host          : machine to run on         : tuple     : (none)
-#     prefix        : prefix to install into    : dir       : (none)
-#     cflags        : host cflags to use        : string    : (empty)
-#     ldflags       : host ldflags to use       : string    : (empty)
+#     Parameter          : description                    : type      : default
+#     host               : machine to run on              : tuple     : (none)
+#     prefix             : prefix to install into         : dir       : (none)
+#     cflags             : host cflags to use             : string    : (empty)
+#     ldflags            : host ldflags to use            : string    : (empty)
+#     build_staticlinked : build statically linked or not : bool      : no
 do_cctools_backend() {
     local host
     local prefix
     local cflags
     local ldflags
+    local build_staticlinked=no
     local -a extra_config
 
     for arg in "$@"; do
@@ -110,6 +118,14 @@ do_cctools_backend() {
         extra_config+=("--enable-multilib")
     else
         extra_config+=("--disable-multilib")
+    fi
+
+    if [ "${build_staticlinked}" = "yes" ]; then
+        extra_config+=("--enable-static")
+        extra_config+=("--disable-shared")
+    else
+        extra_config+=("--disable-static")
+        extra_config+=("--enable-shared")
     fi
 
     CT_DoLog EXTRA "Configuring cctools"
