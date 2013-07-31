@@ -445,7 +445,7 @@ config CC_GCC_USE_GMP_MPFR
     select GMP_NEEDED
     select MPFR_NEEDED
 
-    select CLOOG_NEEDED
+    #select CLOOG_NEEDED
 
 config CC_GCC_USE_MPC
     bool

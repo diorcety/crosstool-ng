@@ -3,7 +3,6 @@
 # Licensed under the GPL v2. See COPYING in the root of this package
 
 CT_LD64_VERSION=127.2
-CT_GCCLLVM_VERSION=2336.1
 CT_DYLD_VERSION=210.2.3
 
 do_binutils_get() {
@@ -11,8 +10,6 @@ do_binutils_get() {
                http://opensource.apple.com/tarballs/cctools/
     CT_GetFile "ld64-${CT_LD64_VERSION}" \
                http://opensource.apple.com/tarballs/ld64/
-    CT_GetFile "llvmgcc42-${CT_GCCLLVM_VERSION}" \
-               http://opensource.apple.com/tarballs/llvmgcc42/
     CT_GetFile "dyld-${CT_DYLD_VERSION}" \
                http://opensource.apple.com/tarballs/dyld/
 }
@@ -20,13 +17,14 @@ do_binutils_get() {
 do_binutils_extract() {
     CT_Extract "cctools-${CT_BINUTILS_VERSION}"
     CT_Extract "ld64-${CT_LD64_VERSION}"
-    CT_Extract "llvmgcc42-${CT_GCCLLVM_VERSION}"
     CT_Extract "dyld-${CT_DYLD_VERSION}"
-    mkdir "${CT_SRC_DIR}/cctools-${CT_BINUTILS_VERSION}/ld64/"
-    mkdir "${CT_SRC_DIR}/cctools-${CT_BINUTILS_VERSION}/dyld/"
-    mkdir "${CT_SRC_DIR}/cctools-${CT_BINUTILS_VERSION}/libprunetrie/"
+    
+    # Mixing
+    mkdir -p "${CT_SRC_DIR}/cctools-${CT_BINUTILS_VERSION}/ld64/"
+    mkdir -p  "${CT_SRC_DIR}/cctools-${CT_BINUTILS_VERSION}/dyld/"
+    mkdir -p "${CT_SRC_DIR}/cctools-${CT_BINUTILS_VERSION}/libprunetrie/"
     mv -f "${CT_SRC_DIR}/ld64-${CT_LD64_VERSION}"/*                                 "${CT_SRC_DIR}/cctools-${CT_BINUTILS_VERSION}/ld64/"
-    cp -rf "${CT_SRC_DIR}/llvmgcc42-${CT_GCCLLVM_VERSION}"/llvmCore/include/llvm-c  "${CT_SRC_DIR}/cctools-${CT_BINUTILS_VERSION}/include/"
+    cp -rf "${CT_SRC_DIR}/${CT_LLVM_FULLNAME}/include/llvm-c"                       "${CT_SRC_DIR}/cctools-${CT_BINUTILS_VERSION}/include/"
     mv -f "${CT_SRC_DIR}/dyld-${CT_DYLD_VERSION}"/*                                 "${CT_SRC_DIR}/cctools-${CT_BINUTILS_VERSION}/dyld/"
     cp "${CT_SRC_DIR}/cctools-${CT_BINUTILS_VERSION}/ld64/src/other/PruneTrie.cpp"  "${CT_SRC_DIR}/cctools-${CT_BINUTILS_VERSION}/libprunetrie/"
     cp "${CT_SRC_DIR}/cctools-${CT_BINUTILS_VERSION}/ld64/src/other/prune_trie.h"   "${CT_SRC_DIR}/cctools-${CT_BINUTILS_VERSION}/include/mach-o/"

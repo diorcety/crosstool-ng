@@ -7,46 +7,44 @@ do_llvm_extract() { :; }
 do_llvm_for_build() { :; }
 do_llvm_for_host() { :; }
 
-CT_LLVM_PREFIX="llvmgcc42"
-CT_LLVM_SUFFIX=".1"
-CT_LLVM_URL="http://www.opensource.apple.com/tarballs/llvmgcc42"
-CT_LLVM_PATCHDIR="llvm-gcc"
-
 # Overide functions depending on configuration
 if [ "${CT_LLVM}" = "y" ]; then
 
-if [ "${CC_LLVM_V_3_1}" = "y" ]; then
-	LLVM_SUFFIX=".src"
+# Override variable depending on configuration
+if [ "${CT_LLVM_V_3_1}" = "y" ]; then
+	CT_LLVM_SUFFIX=".src"
 else
-	LLVM_SUFFIX=""
+	CT_LLVM_SUFFIX=""
 fi
 
-LLVM_FULLNAME="${CT_LLVM_PREFIX}-${CT_LLVM_VERSION}${CT_LLVM_SUFFIX}"
-if [[ "$CT_CC_LLVMGCC_URL" == *apple* ]] ; then
-	LLVM_URL="${CT_LLVM_URL}"
-else
-	LLVM_URL="${CT_LLVM_URL}/${CT_LLVM_VERSION}"
-fi
-
-if [ "${CT_LLVM_PREFIX}" = "llvmgcc42" ]; then
-    LLVM_CONFIGURE=${LLVM_FULLNAME}/llvmCore/configure
-else
-    LLVM_CONFIGURE=${LLVM_FULLNAME}/configure
-fi
+CT_LLVM_FULLNAME="llvm-${CT_LLVM_VERSION}${CT_LLVM_SUFFIX}"
 
 # Download LLVM
 do_llvm_get() {
-    CT_GetFile "${LLVM_FULLNAME}" \
-               "${LLVM_URL}"
+    CT_GetFile "${CT_LLVM_FULLNAME}" \
+               http://llvm.org/releases/${CT_LLVM_VERSION}
+               
+    if [ "${CT_LLVM_COMPILER_RT}" = "y" ]; then
+        CT_GetFile "compiler-rt-${CT_LLVM_VERSION}.src" \
+               http://llvm.org/releases/${CT_LLVM_VERSION}
+    fi
 }
 
 # Extract LLVM
 do_llvm_extract() {
-    CT_Extract "${LLVM_FULLNAME}"
+    CT_Extract "${CT_LLVM_FULLNAME}"
     
-    CT_Pushd "${CT_SRC_DIR}/${LLVM_FULLNAME}"
-    CT_Patch nochdir ${CT_LLVM_PATCHDIR} "${CT_LLVM_VERSION}"
+    CT_Pushd "${CT_SRC_DIR}/${CT_LLVM_FULLNAME}"
+    CT_Patch nochdir "llvm" "${CT_LLVM_VERSION}"
     CT_Popd
+    
+    if [ "${CT_LLVM_COMPILER_RT}" = "y" ]; then
+        CT_Extract "compiler-rt-${CT_LLVM_VERSION}.src"
+        
+        CT_Pushd "${CT_SRC_DIR}/compiler-rt-${CT_LLVM_VERSION}.src"
+        CT_Patch nochdir "llvm-compiler-rt" "${CT_LLVM_VERSION}"
+        CT_Popd
+    fi
 }
 
 # Build LLVM for running on build
@@ -106,6 +104,12 @@ do_llvm_backend() {
     for arg in "$@"; do
         eval "${arg// /\\ }"
     done
+    
+    cp -r "${CT_SRC_DIR}/${CT_LLVM_FULLNAME}/"* "."
+    if [ "${CT_LLVM_COMPILER_RT}" = "y" ]; then
+	mkdir "projects/compiler-rt"
+	cp -r "${CT_SRC_DIR}/compiler-rt-${CT_LLVM_VERSION}.src/"* "projects/compiler-rt/"
+    fi
 
     CT_DoLog EXTRA "Configuring LLVM"
 
@@ -113,7 +117,7 @@ do_llvm_backend() {
     CFLAGS="${cflags}"                \
     CXXFLAGS="${cflags}"              \
     LDFLAGS="${ldflags}"              \
-    "${CT_SRC_DIR}/${LLVM_CONFIGURE}" \
+    ./configure                       \
         --build=${CT_BUILD}           \
         --host=${host}                \
         --prefix="${prefix}"          \

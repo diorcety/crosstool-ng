@@ -1,0 +1,72 @@
+diff -urN a/lib/Driver/ToolChains.cpp b/lib/Driver/ToolChains.cpp
+--- a/lib/Driver/ToolChains.cpp	2010-03-04 22:07:38.000000000 +0100
++++ b/lib/Driver/ToolChains.cpp	2013-07-31 21:03:29.169469508 +0200
+@@ -197,16 +197,16 @@
+     case Action::BindArchClass:
+       assert(0 && "Invalid tool kind.");
+     case Action::PreprocessJobClass:
+-      T = new tools::darwin::Preprocess(*this); break;
++      T = new tools::gcc::Preprocess(*this); break;
+     case Action::AnalyzeJobClass:
+       T = new tools::Clang(*this); break;
+     case Action::PrecompileJobClass:
+     case Action::CompileJobClass:
+-      T = new tools::darwin::Compile(*this); break;
++      T = new tools::gcc::Compile(*this); break;
+     case Action::AssembleJobClass:
+-      T = new tools::darwin::Assemble(*this); break;
++      T = new tools::gcc::Assemble(*this); break;
+     case Action::LinkJobClass:
+-      T = new tools::darwin::Link(*this); break;
++      T = new tools::gcc::Link(*this); break;
+     case Action::LipoJobClass:
+       T = new tools::darwin::Lipo(*this); break;
+     }
+@@ -807,9 +807,9 @@
+   if (!T) {
+     switch (Key) {
+     case Action::AssembleJobClass:
+-      T = new tools::openbsd::Assemble(*this); break;
++      T = new tools::gcc::Assemble(*this); break;
+     case Action::LinkJobClass:
+-      T = new tools::openbsd::Link(*this); break;
++      T = new tools::gcc::Link(*this); break;
+     default:
+       T = &Generic_GCC::SelectTool(C, JA);
+     }
+@@ -842,9 +842,9 @@
+   if (!T) {
+     switch (Key) {
+     case Action::AssembleJobClass:
+-      T = new tools::freebsd::Assemble(*this); break;
++      T = new tools::gcc::Assemble(*this); break;
+     case Action::LinkJobClass:
+-      T = new tools::freebsd::Link(*this); break;
++      T = new tools::gcc::Link(*this); break;
+     default:
+       T = &Generic_GCC::SelectTool(C, JA);
+     }
+@@ -879,9 +879,9 @@
+   if (!T) {
+     switch (Key) {
+     case Action::AssembleJobClass:
+-      T = new tools::auroraux::Assemble(*this); break;
++      T = new tools::gcc::Assemble(*this); break;
+     case Action::LinkJobClass:
+-      T = new tools::auroraux::Link(*this); break;
++      T = new tools::gcc::Link(*this); break;
+     default:
+       T = &Generic_GCC::SelectTool(C, JA);
+     }
+@@ -940,9 +940,9 @@
+   if (!T) {
+     switch (Key) {
+     case Action::AssembleJobClass:
+-      T = new tools::dragonfly::Assemble(*this); break;
++      T = new tools::gcc::Assemble(*this); break;
+     case Action::LinkJobClass:
+-      T = new tools::dragonfly::Link(*this); break;
++      T = new tools::gcc::Link(*this); break;
+     default:
+       T = &Generic_GCC::SelectTool(C, JA);
+     }

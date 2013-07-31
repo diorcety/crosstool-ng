@@ -3,19 +3,19 @@
 # Licensed under the GPL v2. See COPYING in the root of this package
 
 # For Apple's tarball (the only one I've made patches for so far):
-CT_CC_LLVMGCC_PREFIX="llvmgcc42"
-CT_CC_LLVMGCC_SUFFIX=".1"
-CT_CC_LLVMGCC_URL="http://www.opensource.apple.com/tarballs/llvmgcc42"
-CT_CC_LLVMGCC_PATCHDIR="llvm-gcc"
 
-CC_LLVMGCC_FULLNAME="${CT_CC_LLVMGCC_PREFIX}-${CT_CC_LLVMGCC_VERSION}${CT_CC_LLVMGCC_SUFFIX}"
-if [[ "$CT_CC_LLVMGCC_URL" == *apple* ]] ; then
-	CC_LLVMGCC_URL="${CT_CC_LLVMGCC_URL}"
+# Override variable depending on configuration
+if [ "${CT_CC_LLVMGCC_APPLE}" = "y" ]; then
+    CT_CC_LLVMGCC_PREFIX="llvmgcc42"
+    CT_CC_LLVMGCC_SUFFIX=""
 else
-	CC_LLVMGCC_URL="${CT_CC_LLVMGCC_URL}/${CT_CC_LLVMGCC_VERSION}"
+    CT_CC_LLVMGCC_PREFIX="llvm-gcc-4.2"
+    CT_CC_LLVMGCC_SUFFIX=".source"
 fi
 
-# Download gcc
+CC_LLVMGCC_FULLNAME="${CT_CC_LLVMGCC_PREFIX}-${CT_CC_LLVMGCC_VERSION}${CT_CC_LLVMGCC_SUFFIX}"
+
+# Download llvmgcc
 do_llvmgcc_get() {
     # Ah! gcc folks are kind of 'different': they store the tarballs in
     # subdirectories of the same name! That's because gcc is such /crap/ that
@@ -23,16 +23,17 @@ do_llvmgcc_get() {
     # Arrgghh! Some of those versions does not follow this convention:
     # gcc-3.3.3 lives in releases/gcc-3.3.3, while gcc-2.95.* isn't in a
     # subdirectory! You bastard!
-    CT_GetFile "${CC_LLVMGCC_FULLNAME}"     \
-               "${CC_LLVMGCC_URL}"
+    CT_GetFile "${CC_LLVMGCC_FULLNAME}"                              \
+               "http://www.opensource.apple.com/tarballs/llvmgcc42/" \
+               "http://llvm.org/releases/${CT_CC_LLVMGCC_VERSION}/"
 
 }
 
-# Extract gcc
+# Extract llvmgcc
 do_llvmgcc_extract() {
     CT_Extract "${CC_LLVMGCC_FULLNAME}"
     CT_Pushd "${CT_SRC_DIR}/${CC_LLVMGCC_FULLNAME}"
-    CT_Patch nochdir "${CT_CC_LLVMGCC_PATCHDIR}" "${CT_CC_LLVMGCC_VERSION}"
+    CT_Patch nochdir "llvm-gcc" "${CT_CC_LLVMGCC_VERSION}"
     autoreconf -vi
     CT_Popd
 }
@@ -56,7 +57,7 @@ cc_llvmgcc_lang_list() {
 }
 
 #------------------------------------------------------------------------------
-# Core gcc pass 1
+# Core llvmgcc pass 1
 do_llvmgcc_core_pass_1() {
     local -a core_opts
     
@@ -80,7 +81,7 @@ do_llvmgcc_core_pass_1() {
     CT_EndStep
 }
 
-# Core gcc pass 2
+# Core llvmgcc pass 2
 do_llvmgcc_core_pass_2() {
     local -a core_opts
     
@@ -127,7 +128,7 @@ do_llvmgcc_core_pass_2() {
 }
 
 #------------------------------------------------------------------------------
-# Build core gcc
+# Build core llvmgcc
 # This function is used to build the core C compiler.
 # Usage: do_llvmgcc_core_backend param=value [...]
 #   Parameter           : Definition                                : Type      : Default
@@ -501,7 +502,7 @@ do_llvmgcc_for_build() {
 }
 
 #------------------------------------------------------------------------------
-# Build final gcc to run on host
+# Build final llvmgcc to run on host
 do_llvmgcc_for_host() {
     local -a final_opts
     local final_backend
@@ -536,7 +537,7 @@ do_llvmgcc_for_host() {
 }
 
 #------------------------------------------------------------------------------
-# Build the final gcc
+# Build the final lllvmgcc
 # Usage: do_llvmgcc_backend param=value [...]
 #   Parameter     : Definition                          : Type      : Default
 #   host          : the host we run onto                : tuple     : (none)

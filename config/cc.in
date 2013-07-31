@@ -6,7 +6,7 @@ config CC
     string
 
 config CC_CORE_PASSES_NEEDED
-	bool
+    bool
 
 source "config.gen/cc.in"
 

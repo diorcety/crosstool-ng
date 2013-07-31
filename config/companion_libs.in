@@ -47,9 +47,9 @@ config LLVM_NEEDED
     select LLVM
     select COMPLIBS_NEEDED
     
-config LLVM_COMPILER_RT_NEEDED
+config LLVM_CLANG_NEEDED
     bool
-    select LLVM_COMPILER_RT
+    select LLVM
     select COMPLIBS_NEEDED
 
 config OPENSSL_NEEDED
@@ -105,10 +105,6 @@ config LIBELF_TARGET
 config LLVM
     bool
     select COMPLIBS
-    
-config LLVM_COMPILER_RT
-    bool
-    select COMPLIBS
 
 config OPENSSL
     bool
@@ -153,11 +149,6 @@ endif
 if LLVM
 source "config/companion_libs/llvm.in"
 endif
-
-if LLVM_COMPILER_RT
-source "config/companion_libs/llvm-compiler-rt.in"
-endif
-
 
 config FOO
     bool

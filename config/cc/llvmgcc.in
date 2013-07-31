@@ -34,10 +34,23 @@ config CC_LLVMGCC_V_2_7
     depends on LLVM_V_2_7
     prompt "2.7"
 
-config CC_LLVMGCC_V_2336
+config CC_LLVMGCC_V_2336_11
     bool
-    depends on LLVM_V_2336
-    prompt "2336"
+    depends on LLVM_V_2336_11 || LLVM_V_2_7
+    select CC_LLVMGCC_APPLE
+    prompt "2336.11"
+    
+config CC_LLVMGCC_V_2336_9
+    bool
+    depends on LLVM_V_2336_9 || LLVM_V_2_7
+    select CC_LLVMGCC_APPLE
+    prompt "2339.9"
+    
+config CC_LLVMGCC_V_2336_1
+    bool
+    depends on LLVM_V_2336_1 || LLVM_V_2_7
+    select CC_LLVMGCC_APPLE
+    prompt "2339.1"
     
 endchoice
 
@@ -48,7 +61,12 @@ config CC_LLVMGCC_VERSION
     default "2.9" if CC_LLVMGCC_V_2_9
     default "2.8" if CC_LLVMGCC_V_2_8
     default "2.7" if CC_LLVMGCC_V_2_7
-    default "2336" if CC_LLVMGCC_V_2336
+    default "2336.11" if CC_LLVMGCC_V_2336_11
+    default "2336.9" if CC_LLVMGCC_V_2336_9
+    default "2336.1" if CC_LLVMGCC_V_2336_1
+
+config CC_LLVMGCC_APPLE
+    bool
 
 config CC_LLVMGCC_HAS_GRAPHITE
     bool
