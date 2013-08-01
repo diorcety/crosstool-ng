@@ -29,8 +29,8 @@ diff -urN c/include/clang/Driver/ToolChain.h d/include/clang/Driver/ToolChain.h
  
 diff -urN c/lib/Driver/ToolChain.cpp d/lib/Driver/ToolChain.cpp
 --- c/lib/Driver/ToolChain.cpp	2013-08-01 22:52:42.027431869 +0200
-+++ d/lib/Driver/ToolChain.cpp	2013-08-01 23:17:47.768758750 +0200
-@@ -13,8 +13,14 @@
++++ d/lib/Driver/ToolChain.cpp	2013-08-02 01:05:14.931880564 +0200
+@@ -13,8 +13,17 @@
  #include "clang/Driver/Driver.h"
  #include "clang/Driver/HostInfo.h"
  
@@ -38,20 +38,23 @@ diff -urN c/lib/Driver/ToolChain.cpp d/lib/Driver/ToolChain.cpp
 +
  using namespace clang::driver;
  
++#define CLANG_STRINGIFY(x) #x
++#define CLANG_TOSTRING(x) CLANG_STRINGIFY(x)
 +#ifndef CLANG_GCC_VERSION
-+#define CLANG_GCC_VERSION ""
++#define CLANG_GCC_VERSION 
 +#endif
++#define CLANG_GCC_VERSION_STR CLANG_TOSTRING(CLANG_GCC_VERSION)
 +
  ToolChain::ToolChain(const HostInfo &_Host, const llvm::Triple &_Triple)
    : Host(_Host), Triple(_Triple) {
  }
-@@ -26,6 +32,39 @@
+@@ -26,6 +35,39 @@
   return Host.getDriver();
  }
  
 +void ToolChain::AddIncludeSearchPathArgs(const ArgList &Args, ArgStringList &CmdArgs) const {
 +  llvm::sys::Path P(getDriver().Dir);
-+  std::string GccVersion(CLANG_GCC_VERSION);
++  std::string GccVersion(CLANG_GCC_VERSION_STR);
 +
 +  // Checks
 +  if (P.isEmpty() || GccVersion.empty()) {
@@ -68,7 +71,7 @@ diff -urN c/lib/Driver/ToolChain.cpp d/lib/Driver/ToolChain.cpp
 +
 +void ToolChain::AddLinkSearchPathArgs(const ArgList &Args, ArgStringList &CmdArgs) const {
 +  llvm::sys::Path P(getDriver().Dir);
-+  std::string GccVersion(CLANG_GCC_VERSION);
++  std::string GccVersion(CLANG_GCC_VERSION_STR);
 +
 +  // Checks
 +  if (P.isEmpty() || GccVersion.empty()) {
