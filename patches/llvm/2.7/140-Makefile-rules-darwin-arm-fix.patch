@@ -1,0 +1,20 @@
+diff -urN a/Makefile.rules b/Makefile.rules
+--- a/Makefile.rules	2010-04-25 21:18:33.000000000 +0200
++++ b/Makefile.rules	2013-08-01 11:58:26.273542175 +0200
+@@ -388,6 +388,7 @@
+ # If REQUIRES_RTTI=1 is specified then don't disable run-time type id.
+ ifneq ($(REQUIRES_RTTI), 1)
+   CXX.Flags += -fno-rtti
++  CXXFLAGS += -fno-rtti
+ endif
+ 
+ ifdef ENABLE_COVERAGE
+@@ -577,8 +578,6 @@
+ ifeq ($(TARGET_OS),Darwin)
+   ifneq ($(ARCH),ARM)
+     TargetCommonOpts += -mmacosx-version-min=$(DARWIN_VERSION)
+-  else
+-    TargetCommonOpts += -marm
+   endif
+ endif
+ 
