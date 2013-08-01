@@ -140,11 +140,13 @@ do_clang_backend() {
         
     # Create default clang clang++
     for cc in clang clang++; do
+        gcc=${cc/clang/gcc}
+        gcc=${gcc/gcc++/g++}
 	cat > ${prefix}/bin/${CT_TARGET}-${cc} << EOF
 #!/bin/sh
-\`dirname \$0\`/${cc}           \
--ccc-gcc-name ${CT_TARGET}-gcc  \
--ccc-host-triple ${CT_TARGET}   \
+\`dirname \$0\`/${cc} \
+-ccc-gcc-name ${CT_TARGET}-${gcc} \
+-ccc-host-triple ${CT_TARGET} \
 \$*
 EOF
 	chmod +x ${prefix}/bin/${CT_TARGET}-${cc}

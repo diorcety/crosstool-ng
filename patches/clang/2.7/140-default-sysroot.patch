@@ -1,0 +1,26 @@
+diff -urN c/lib/Driver/Tools.cpp d/lib/Driver/Tools.cpp
+--- c/lib/Driver/Tools.cpp	2013-07-31 22:51:22.520344140 +0200
++++ d/lib/Driver/Tools.cpp	2013-08-01 00:55:11.877267872 +0200
+@@ -701,6 +701,22 @@
+   std::string TripleStr = getEffectiveClangTriple(D, getToolChain(), Args);
+   CmdArgs.push_back(Args.MakeArgString(TripleStr));
+ 
++  // Set default sysroot
++  // TODO check if we cross compile
++  if(!Args.hasArg(options::OPT_isysroot)) {
++    llvm::sys::Path P(D.Dir);
++    if (!P.isEmpty()) {
++      P.eraseComponent();  // Remove /bin   from foo/bin
++      
++      // Get foo/<triple>/sysroot
++      P.appendComponent(D.Host->getTriple().getTriple());
++      P.appendComponent("sysroot");
++      
++      CmdArgs.push_back("-isysroot");
++      CmdArgs.push_back(Args.MakeArgString(P.str()));
++    }
++  }
++
+   // Select the appropriate action.
+   if (isa<AnalyzeJobAction>(JA)) {
+     assert(JA.getType() == types::TY_Plist && "Invalid output type.");
