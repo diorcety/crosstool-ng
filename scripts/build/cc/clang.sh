@@ -134,6 +134,9 @@ do_clang_backend() {
 
     CT_DoLog EXTRA "Installing clang"
     CT_DoExecLog ALL make install     \
+        CFLAGS="${cflags}"            \
+        CXXFLAGS="${cflags}"          \
+        LDFLAGS="${ldflags}"          \
         ONLY_TOOLS="clang"            \
         
     CT_Popd
