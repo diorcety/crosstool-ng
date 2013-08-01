@@ -96,6 +96,7 @@ do_clang_backend() {
     local cflags
     local ldflags
     local arg
+    local -a final_CFLAGS
 
     for arg in "$@"; do
         eval "${arg// /\\ }"
@@ -109,11 +110,18 @@ do_clang_backend() {
 	cp -r "${CT_SRC_DIR}/compiler-rt-${CT_LLVM_VERSION}.src/"* "projects/compiler-rt/"
     fi
 
+    final_CFLAGS+=("${cflags}")
+    if [ "${CC_GCC_APPLE}" = "y" ]; then
+        final_CFLAGS+=("-DCLANG_GCC_VERSION=4.2.1")
+    else
+        final_CFLAGS+=("-DCLANG_GCC_VERSION=${CT_CC_GCC_VERSION}")
+    fi
+
     CT_DoLog EXTRA "Configuring clang"
 
     CT_DoExecLog CFG                  \
-    CFLAGS="${cflags}"                \
-    CXXFLAGS="${cflags}"              \
+    CFLAGS="${final_CFLAGS[*]}"       \
+    CXXFLAGS="${final_CFLAGS[*]}"     \
     LDFLAGS="${ldflags}"              \
     ./configure                       \
         --build=${CT_BUILD}           \
@@ -125,8 +133,8 @@ do_clang_backend() {
     CT_DoLog EXTRA "Building clang"
     CT_DoExecLog ALL                  \
     make ${JOBSFLAGS}                 \
-        CFLAGS="${cflags}"            \
-        CXXFLAGS="${cflags}"          \
+        CFLAGS="${final_CFLAGS[*]}"   \
+        CXXFLAGS="${final_CFLAGS[*]}" \
         LDFLAGS="${ldflags}"          \
         ONLY_TOOLS="clang"            \
 
@@ -134,8 +142,8 @@ do_clang_backend() {
 
     CT_DoLog EXTRA "Installing clang"
     CT_DoExecLog ALL make install     \
-        CFLAGS="${cflags}"            \
-        CXXFLAGS="${cflags}"          \
+        CFLAGS="${final_CFLAGS[*]}"   \
+        CXXFLAGS="${final_CFLAGS[*]}" \
         LDFLAGS="${ldflags}"          \
         ONLY_TOOLS="clang"            \
         

@@ -1,0 +1,104 @@
+diff -urN c/include/clang/Driver/ToolChain.h d/include/clang/Driver/ToolChain.h
+--- c/include/clang/Driver/ToolChain.h	2013-08-01 22:52:29.084059413 +0200
++++ d/include/clang/Driver/ToolChain.h	2013-08-01 23:18:20.976048921 +0200
+@@ -14,6 +14,7 @@
+ #include "llvm/ADT/Triple.h"
+ #include "llvm/System/Path.h"
+ #include <string>
++#include "Util.h"
+ 
+ namespace clang {
+ namespace driver {
+@@ -24,6 +25,7 @@
+   class InputArgList;
+   class JobAction;
+   class Tool;
++  class ArgList;
+ 
+ /// ToolChain - Access to tools for a single platform.
+ class ToolChain {
+@@ -61,6 +63,9 @@
+     return Triple.getTriple();
+   }
+ 
++  virtual void AddLinkSearchPathArgs(const ArgList &Args, ArgStringList &CmdArgs) const;
++  virtual void AddIncludeSearchPathArgs(const ArgList &Args, ArgStringList &CmdArgs) const;
++  
+   path_list &getFilePaths() { return FilePaths; }
+   const path_list &getFilePaths() const { return FilePaths; }
+ 
+diff -urN c/lib/Driver/ToolChain.cpp d/lib/Driver/ToolChain.cpp
+--- c/lib/Driver/ToolChain.cpp	2013-08-01 22:52:42.027431869 +0200
++++ d/lib/Driver/ToolChain.cpp	2013-08-01 23:17:47.768758750 +0200
+@@ -13,8 +13,14 @@
+ #include "clang/Driver/Driver.h"
+ #include "clang/Driver/HostInfo.h"
+ 
++#include "clang/Driver/ArgList.h"
++
+ using namespace clang::driver;
+ 
++#ifndef CLANG_GCC_VERSION
++#define CLANG_GCC_VERSION ""
++#endif
++
+ ToolChain::ToolChain(const HostInfo &_Host, const llvm::Triple &_Triple)
+   : Host(_Host), Triple(_Triple) {
+ }
+@@ -26,6 +32,39 @@
+  return Host.getDriver();
+ }
+ 
++void ToolChain::AddIncludeSearchPathArgs(const ArgList &Args, ArgStringList &CmdArgs) const {
++  llvm::sys::Path P(getDriver().Dir);
++  std::string GccVersion(CLANG_GCC_VERSION);
++
++  // Checks
++  if (P.isEmpty() || GccVersion.empty()) {
++    return;
++  }
++
++  P.eraseComponent(); // Remove /bin from foo/bin
++  std::string BaseDir = P.str() + std::string("/lib/gcc/") + Host.getTriple().getTriple() + std::string("/") + GccVersion;
++
++  CmdArgs.push_back(Args.MakeArgString("-I" + BaseDir + "/include"));
++  CmdArgs.push_back(Args.MakeArgString("-I" + BaseDir + "/include-fixed"));
++  CmdArgs.push_back(Args.MakeArgString("-I" + BaseDir + "/../../../../" + Host.getTriple().getTriple() + "/include"));
++}
++
++void ToolChain::AddLinkSearchPathArgs(const ArgList &Args, ArgStringList &CmdArgs) const {
++  llvm::sys::Path P(getDriver().Dir);
++  std::string GccVersion(CLANG_GCC_VERSION);
++
++  // Checks
++  if (P.isEmpty() || GccVersion.empty()) {
++    return;
++  }
++
++  P.eraseComponent(); // Remove /bin from foo/bin
++  std::string BaseDir = P.str() + std::string("/lib/gcc/") + Host.getTriple().getTriple() + std::string("/") + GccVersion;
++    
++  CmdArgs.push_back(Args.MakeArgString("-L" + BaseDir + "/lib"));
++  CmdArgs.push_back(Args.MakeArgString("-L" + BaseDir + "/../../../../" + Host.getTriple().getTriple() + "/lib"));
++}
++
+ std::string ToolChain::GetFilePath(const Compilation &C,
+                                    const char *Name) const {
+   return Host.getDriver().GetFilePath(Name, *this);
+diff -urN c/lib/Driver/Tools.cpp d/lib/Driver/Tools.cpp
+--- c/lib/Driver/Tools.cpp	2013-08-01 22:52:29.584034959 +0200
++++ d/lib/Driver/Tools.cpp	2013-08-01 23:20:20.273763315 +0200
+@@ -955,6 +955,13 @@
+   if (types::getPreprocessedType(InputType) != types::TY_INVALID)
+     AddPreprocessingOptions(D, Args, CmdArgs, Output, Inputs);
+ 
++  if (isa<LinkJobAction>(JA)) {
++     getToolChain().AddLinkSearchPathArgs(Args, CmdArgs);
++  } else {
++     getToolChain().AddIncludeSearchPathArgs(Args, CmdArgs);
++  }
++
++
+   // Manually translate -O to -O2 and -O4 to -O3; let clang reject
+   // others.
+   if (Arg *A = Args.getLastArg(options::OPT_O_Group)) {
