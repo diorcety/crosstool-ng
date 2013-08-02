@@ -3317,7 +3317,7 @@ diff -urN a/config.sub b/config.sub
 diff -urN a/configure.ac b/configure.ac
 --- a/configure.ac	1970-01-01 00:00:00 +0000
 +++ b/configure.ac	2013-07-30 01:35:01 +0100
-@@ -0,0 +1,735 @@
+@@ -0,0 +1,749 @@
 +AC_INIT([ccctools], [809], [Ray Donnelly <mingw.android@gmail.com>])
 +AC_PREREQ([2.62])
 +AC_REVISION([m4_esyscmd_s([git describe --always])])
@@ -3353,6 +3353,21 @@ diff -urN a/configure.ac b/configure.ac
 +    ;;
 +*)
 +    AC_MSG_ERROR([$PACKAGE_NAME only supports targeting Darwin])
++    ;;
++esac
++
++case $host_os in
++    darwin*)
++      LD_DYNAMIC=
++      LD_STATIC=
++      LD_STATIC_GROUP_START=
++      LD_STATIC_GROUP_END=
++    ;;
++    *)
++      LD_DYNAMIC="-Wl,-Bdynamic"
++      LD_STATIC="-Wl,-Bstatic"
++      LD_STATIC_GROUP_START="-Wl,-Bstatic -Wl,--start-group"
++      LD_STATIC_GROUP_END="-Wl,--end-group -Wl,-Bdynamic"
 +    ;;
 +esac
 +
@@ -3449,7 +3464,7 @@ diff -urN a/configure.ac b/configure.ac
 +AM_COND_IF([HAVE_TZFILE_H], [],
 + AC_CONFIG_HEADERS([include/tzfile.h]))
 +
-+AC_CHECK_HEADERS([CommonCrypto/CommonDigest.h], [], [SSL_LIBS="-Wl,-Bstatic -lssl -lcrypto -Wl,-Bdynamic"])
++AC_CHECK_HEADERS([CommonCrypto/CommonDigest.h], [], [SSL_LIBS="$LD_STATIC -lssl -lcrypto $LD_DYNAMIC"])
 +AC_SUBST(SSL_LIBS)
 +AM_CONDITIONAL([HAVE_COMMONCRYPTO_COMMONDIGEST_H], [test "x$ac_cv_header_CommonCrypto_CommonDigest_h" = xyes])
 +AM_COND_IF([HAVE_COMMONCRYPTO_COMMONDIGEST_H], [],
@@ -3960,7 +3975,7 @@ diff -urN a/configure.ac b/configure.ac
 +
 +AC_CHECK_FUNC([uuid_generate_random],[],
 +          [AC_CHECK_LIB([uuid],[uuid_generate_random],
-+                [UUID_LIBS="-Wl,-Bstatic -luuid -Wl,-Bdynamic"],
++                [UUID_LIBS="$LD_STATIC -luuid $LD_DYNAMIC"],
 +                [AC_MSG_ERROR(
 +                 [No uuid_generate_random function found])])])
 +AC_SUBST([UUID_LIBS])
@@ -3976,11 +3991,10 @@ diff -urN a/configure.ac b/configure.ac
 +# This chunk may not be needed, could just use -l$SHARED_LTO_SEARCH instead probably.
 +case $host_os in
 +    darwin*|linux*)
-+      SHARED_LTO_LIBS="-Wl,-Bdynamic -lpthread -lLTO"
++      SHARED_LTO_LIBS="$LD_DYNAMIC -lpthread -lLTO"
 +    ;;
 +    *)
-+      # Windows shared used to be .. LTO_LIBS="-Wl,-Bstatic -Wl,--start-group -lpthread -lssl -lcrypto -Wl,--end-group -Wl,-Bdynamic -llibLTO"
-+      SHARED_LTO_LIBS="-Wl,-Bdynamic -lpthread -llibLTO"
++      SHARED_LTO_LIBS="$LD_DYNAMIC -lpthread -llibLTO"
 +    ;;
 +esac
 +
@@ -4007,7 +4021,7 @@ diff -urN a/configure.ac b/configure.ac
 +         LTO_DEFS="-DLTO_SUPPORT"]
 +  )],
 +  [AC_CHECK_LIB([$SHARED_LTO_SEARCH],[lto_get_version],
-+        [LTO_LIBS="-Wl,-Bstatic -Wl,--start-group -lCompilerDriver -lEnhancedDisassembly -lLLVMAlphaAsmPrinter -lLLVMAlphaCodeGen -lLLVMAlphaInfo -lLLVMAnalysis -lLLVMArchive -lLLVMARMAsmParser -lLLVMARMAsmPrinter -lLLVMARMCodeGen -lLLVMARMInfo -lLLVMAsmParser -lLLVMAsmPrinter -lLLVMBitReader -lLLVMBitWriter -lLLVMBlackfinAsmPrinter -lLLVMBlackfinCodeGen -lLLVMBlackfinInfo -lLLVMCBackend -lLLVMCBackendInfo -lLLVMCellSPUAsmPrinter -lLLVMCellSPUCodeGen -lLLVMCellSPUInfo -lLLVMCodeGen -lLLVMCore -lLLVMCppBackend -lLLVMCppBackendInfo -lLLVMExecutionEngine -lLLVMInstCombine -lLLVMInstrumentation -lLLVMInterpreter -lLLVMipa -lLLVMipo -lLLVMJIT -lLLVMLinker -lLLVMMBlazeAsmPrinter -lLLVMMBlazeCodeGen -lLLVMMBlazeInfo -lLLVMMC -lLLVMMCParser -lLLVMMipsAsmPrinter -lLLVMMipsCodeGen -lLLVMMipsInfo -lLLVMMSIL -lLLVMMSILInfo -lLLVMMSP430AsmPrinter -lLLVMMSP430CodeGen -lLLVMMSP430Info -lLLVMPIC16AsmPrinter -lLLVMPIC16CodeGen -lLLVMPIC16Info -lLLVMpic16passes -lLLVMPowerPCAsmPrinter -lLLVMPowerPCCodeGen -lLLVMPowerPCInfo -lLLVMScalarOpts -lLLVMSelectionDAG -lLLVMSparcAsmPrinter -lLLVMSparcCodeGen -lLLVMSparcInfo -lLLVMSupport -lLLVMSystem -lLLVMSystemZAsmPrinter -lLLVMSystemZCodeGen -lLLVMSystemZInfo -lLLVMTarget -lLLVMTransformUtils -lLLVMX86AsmParser -lLLVMX86AsmPrinter -lLLVMX86CodeGen -lLLVMX86Disassembler -lLLVMX86Info -lLLVMXCoreAsmPrinter -lLLVMXCoreCodeGen -lLLVMXCoreInfo -lLTO -lplugin_llvmc_Base -lplugin_llvmc_Clang -lUnitTestMain $STATIC_LTO_EXTRA_LIBS -Wl,--end-group -Wl,-Bdynamic -lpthread"
++        [LTO_LIBS="$LD_STATIC_GROUP_START -lCompilerDriver -lEnhancedDisassembly -lLLVMAlphaAsmPrinter -lLLVMAlphaCodeGen -lLLVMAlphaInfo -lLLVMAnalysis -lLLVMArchive -lLLVMARMAsmParser -lLLVMARMAsmPrinter -lLLVMARMCodeGen -lLLVMARMInfo -lLLVMAsmParser -lLLVMAsmPrinter -lLLVMBitReader -lLLVMBitWriter -lLLVMBlackfinAsmPrinter -lLLVMBlackfinCodeGen -lLLVMBlackfinInfo -lLLVMCBackend -lLLVMCBackendInfo -lLLVMCellSPUAsmPrinter -lLLVMCellSPUCodeGen -lLLVMCellSPUInfo -lLLVMCodeGen -lLLVMCore -lLLVMCppBackend -lLLVMCppBackendInfo -lLLVMExecutionEngine -lLLVMInstCombine -lLLVMInstrumentation -lLLVMInterpreter -lLLVMipa -lLLVMipo -lLLVMJIT -lLLVMLinker -lLLVMMBlazeAsmPrinter -lLLVMMBlazeCodeGen -lLLVMMBlazeInfo -lLLVMMC -lLLVMMCParser -lLLVMMipsAsmPrinter -lLLVMMipsCodeGen -lLLVMMipsInfo -lLLVMMSIL -lLLVMMSILInfo -lLLVMMSP430AsmPrinter -lLLVMMSP430CodeGen -lLLVMMSP430Info -lLLVMPIC16AsmPrinter -lLLVMPIC16CodeGen -lLLVMPIC16Info -lLLVMpic16passes -lLLVMPowerPCAsmPrinter -lLLVMPowerPCCodeGen -lLLVMPowerPCInfo -lLLVMScalarOpts -lLLVMSelectionDAG -lLLVMSparcAsmPrinter -lLLVMSparcCodeGen -lLLVMSparcInfo -lLLVMSupport -lLLVMSystem -lLLVMSystemZAsmPrinter -lLLVMSystemZCodeGen -lLLVMSystemZInfo -lLLVMTarget -lLLVMTransformUtils -lLLVMX86AsmParser -lLLVMX86AsmPrinter -lLLVMX86CodeGen -lLLVMX86Disassembler -lLLVMX86Info -lLLVMXCoreAsmPrinter -lLLVMXCoreCodeGen -lLLVMXCoreInfo -lLTO -lplugin_llvmc_Base -lplugin_llvmc_Clang -lUnitTestMain $STATIC_LTO_EXTRA_LIBS $LD_STATIC_GROUP_END -lpthread"
 +         LTO_DEFS="-DLTO_SUPPORT"]
 +  )]
 +)
