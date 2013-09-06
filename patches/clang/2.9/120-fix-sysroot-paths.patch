@@ -1,0 +1,277 @@
+diff -urN a/include/clang/Driver/Driver.h b/include/clang/Driver/Driver.h
+--- a/include/clang/Driver/Driver.h	2011-03-07 02:15:29.000000000 +0100
++++ b/include/clang/Driver/Driver.h	2013-09-06 13:58:15.607765651 +0200
+@@ -77,6 +77,8 @@
+   typedef llvm::SmallVector<std::string, 4> prefix_list;
+   prefix_list PrefixDirs;
+ 
++  std::string SysrootDir;
++
+   /// Default host triple.
+   std::string DefaultHostTriple;
+ 
+diff -urN a/lib/Driver/Driver.cpp b/lib/Driver/Driver.cpp
+--- a/lib/Driver/Driver.cpp	2011-03-07 02:15:29.000000000 +0100
++++ b/lib/Driver/Driver.cpp	2013-09-06 13:58:15.607765651 +0200
+@@ -289,6 +289,18 @@
+   }
+ 
+   Host = GetHostInfo(DefaultHostTriple.c_str());
++  
++  if (const Arg *A = Args->getLastArg(options::OPT_isysroot)) {
++    SysrootDir = A->getValue(*Args);
++  } else {
++      llvm::sys::Path P(Dir);
++      if (!P.isEmpty()) {
++        P.eraseComponent(); // Remove /bin from foo/bin
++        P.appendComponent(Host->getTriple().getTriple());
++        P.appendComponent("sysroot");
++        SysrootDir = P.str();
++      }
++  }
+ 
+   // Perform the default argument translations.
+   DerivedArgList *TranslatedArgs = TranslateInputArgs(*Args);
+diff -urN a/lib/Driver/ToolChains.cpp b/lib/Driver/ToolChains.cpp
+--- a/lib/Driver/ToolChains.cpp	2011-03-21 22:29:27.000000000 +0100
++++ b/lib/Driver/ToolChains.cpp	2013-09-06 13:59:34.465544823 +0200
+@@ -297,17 +297,17 @@
+ void DarwinGCC::AddLinkSearchPathArgs(const ArgList &Args,
+                                       ArgStringList &CmdArgs) const {
+   std::string Tmp;
+-
++  std::string sysroot = getDriver().SysrootDir;
+   // FIXME: Derive these correctly.
+   if (getArchName() == "x86_64") {
+-    CmdArgs.push_back(Args.MakeArgString("-L/usr/lib/gcc/" + ToolChainDir +
++    CmdArgs.push_back(Args.MakeArgString("-L"+sysroot+"/usr/lib/gcc/" + ToolChainDir +
+                                          "/x86_64"));
+     // Intentionally duplicated for (temporary) gcc bug compatibility.
+-    CmdArgs.push_back(Args.MakeArgString("-L/usr/lib/gcc/" + ToolChainDir +
++    CmdArgs.push_back(Args.MakeArgString("-L"+sysroot+"/usr/lib/gcc/" + ToolChainDir +
+                                          "/x86_64"));
+   }
+ 
+-  CmdArgs.push_back(Args.MakeArgString("-L/usr/lib/" + ToolChainDir));
++  CmdArgs.push_back(Args.MakeArgString("-L"+sysroot+"/usr/lib/" + ToolChainDir));
+ 
+   Tmp = getDriver().Dir + "/../lib/gcc/" + ToolChainDir;
+   bool Exists;
+@@ -316,18 +316,18 @@
+   Tmp = getDriver().Dir + "/../lib/gcc";
+   if (!llvm::sys::fs::exists(Tmp, Exists) && Exists)
+     CmdArgs.push_back(Args.MakeArgString("-L" + Tmp));
+-  CmdArgs.push_back(Args.MakeArgString("-L/usr/lib/gcc/" + ToolChainDir));
++  CmdArgs.push_back(Args.MakeArgString("-L"+sysroot+"/usr/lib/gcc/" + ToolChainDir));
+   // Intentionally duplicated for (temporary) gcc bug compatibility.
+-  CmdArgs.push_back(Args.MakeArgString("-L/usr/lib/gcc/" + ToolChainDir));
++  CmdArgs.push_back(Args.MakeArgString("-L"+sysroot+"/usr/lib/gcc/" + ToolChainDir));
+   Tmp = getDriver().Dir + "/../lib/" + ToolChainDir;
+   if (!llvm::sys::fs::exists(Tmp, Exists) && Exists)
+     CmdArgs.push_back(Args.MakeArgString("-L" + Tmp));
+   Tmp = getDriver().Dir + "/../lib";
+   if (!llvm::sys::fs::exists(Tmp, Exists) && Exists)
+     CmdArgs.push_back(Args.MakeArgString("-L" + Tmp));
+-  CmdArgs.push_back(Args.MakeArgString("-L/usr/lib/gcc/" + ToolChainDir +
++  CmdArgs.push_back(Args.MakeArgString("-L"+sysroot+"/usr/lib/gcc/" + ToolChainDir +
+                                        "/../../../" + ToolChainDir));
+-  CmdArgs.push_back(Args.MakeArgString("-L/usr/lib/gcc/" + ToolChainDir +
++  CmdArgs.push_back(Args.MakeArgString("-L"+sysroot+"/usr/lib/gcc/" + ToolChainDir +
+                                        "/../../.."));
+ }
+ 
+@@ -392,15 +392,32 @@
+   // also add the GCC libexec paths. This is legiy code that can be removed once
+   // fallback is no longer useful.
+   std::string ToolChainDir = "i686-apple-darwin";
++  switch (getTriple().getArch()) {
++  default:
++    assert(0 && "Invalid Darwin arch!");
++  case llvm::Triple::x86:
++  case llvm::Triple::x86_64:
++    ToolChainDir = "i686-apple-darwin";
++    break;
++  case llvm::Triple::arm:
++  case llvm::Triple::thumb:
++    ToolChainDir = "arm-apple-darwin";
++    break;
++  case llvm::Triple::ppc:
++  case llvm::Triple::ppc64:
++    ToolChainDir = "powerpc-apple-darwin";
++    break;
++  }
+   ToolChainDir += llvm::utostr(DarwinVersion[0]);
+   ToolChainDir += "/4.2.1";
++  std::string sysroot = getDriver().SysrootDir;
+ 
+   std::string Path = getDriver().Dir;
+   Path += "/../libexec/gcc/";
+   Path += ToolChainDir;
+   getProgramPaths().push_back(Path);
+ 
+-  Path = "/usr/libexec/gcc/";
++  Path = sysroot+"/usr/libexec/gcc/";
+   Path += ToolChainDir;
+   getProgramPaths().push_back(Path);
+ }
+@@ -412,64 +429,77 @@
+   // Unfortunately, we still might depend on a few of the libraries that are
+   // only available in the gcc library directory (in particular
+   // libstdc++.dylib). For now, hardcode the path to the known install location.
+-  llvm::sys::Path P(getDriver().Dir);
+-  P.eraseComponent(); // .../usr/bin -> ../usr
+-  P.appendComponent("lib");
+-  P.appendComponent("gcc");
+-  switch (getTriple().getArch()) {
+-  default:
+-    assert(0 && "Invalid Darwin arch!");
+-  case llvm::Triple::x86:
+-  case llvm::Triple::x86_64:
+-    P.appendComponent("i686-apple-darwin10");
+-    break;
+-  case llvm::Triple::arm:
+-  case llvm::Triple::thumb:
+-    P.appendComponent("arm-apple-darwin10");
+-    break;
+-  case llvm::Triple::ppc:
+-  case llvm::Triple::ppc64:
+-    P.appendComponent("powerpc-apple-darwin10");
+-    break;
+-  }
+-  P.appendComponent("4.2.1");
++  std::list<llvm::sys::Path> PList;
++  llvm::sys::Path P1(getDriver().Dir);
++  P1.eraseComponent(); // .../usr/bin -> ../usr
++  P1.appendComponent("lib");
++  P1.appendComponent("gcc");
++  PList.push_back(P1);
++  
++  std::string sysroot = getDriver().SysrootDir;
++  llvm::sys::Path P2(sysroot+"/");
++  P2.appendComponent("usr");
++  P2.appendComponent("lib");
++  P2.appendComponent("gcc");
++  PList.push_back(P2);
++ 
++  for(std::list<llvm::sys::Path>::iterator it = PList.begin(); it != PList.end(); ++it) {
++    llvm::sys::Path P=*it; 
++    switch (getTriple().getArch()) {
++    default:
++      assert(0 && "Invalid Darwin arch!");
++    case llvm::Triple::x86:
++    case llvm::Triple::x86_64:
++      P.appendComponent("i686-apple-darwin"+llvm::utostr(DarwinVersion[0]));
++      break;
++    case llvm::Triple::arm:
++    case llvm::Triple::thumb:
++      P.appendComponent("arm-apple-darwin"+llvm::utostr(DarwinVersion[0]));
++      break;
++    case llvm::Triple::ppc:
++    case llvm::Triple::ppc64:
++      P.appendComponent("powerpc-apple-darwin"+llvm::utostr(DarwinVersion[0]));
++      break;
++    }
++    P.appendComponent("4.2.1");
+ 
+-  // Determine the arch specific GCC subdirectory.
+-  const char *ArchSpecificDir = 0;
+-  switch (getTriple().getArch()) {
+-  default:
+-    break;
+-  case llvm::Triple::arm:
+-  case llvm::Triple::thumb: {
+-    std::string Triple = ComputeLLVMTriple(Args);
+-    llvm::StringRef TripleStr = Triple;
+-    if (TripleStr.startswith("armv5") || TripleStr.startswith("thumbv5"))
+-      ArchSpecificDir = "v5";
+-    else if (TripleStr.startswith("armv6") || TripleStr.startswith("thumbv6"))
+-      ArchSpecificDir = "v6";
+-    else if (TripleStr.startswith("armv7") || TripleStr.startswith("thumbv7"))
+-      ArchSpecificDir = "v7";
+-    break;
+-  }
+-  case llvm::Triple::ppc64:
+-    ArchSpecificDir = "ppc64";
+-    break;
+-  case llvm::Triple::x86_64:
+-    ArchSpecificDir = "x86_64";
+-    break;
+-  }
++    // Determine the arch specific GCC subdirectory.
++    const char *ArchSpecificDir = 0;
++    switch (getTriple().getArch()) {
++    default:
++      break;
++    case llvm::Triple::arm:
++    case llvm::Triple::thumb: {
++      std::string Triple = ComputeLLVMTriple(Args);
++      llvm::StringRef TripleStr = Triple;
++      if (TripleStr.startswith("armv5") || TripleStr.startswith("thumbv5"))
++        ArchSpecificDir = "v5";
++      else if (TripleStr.startswith("armv6") || TripleStr.startswith("thumbv6"))
++        ArchSpecificDir = "v6";
++      else if (TripleStr.startswith("armv7") || TripleStr.startswith("thumbv7"))
++        ArchSpecificDir = "v7";
++      break;
++    }
++    case llvm::Triple::ppc64:
++      ArchSpecificDir = "ppc64";
++      break;
++    case llvm::Triple::x86_64:
++      ArchSpecificDir = "x86_64";
++      break;
++    }
++
++    if (ArchSpecificDir) {
++      P.appendComponent(ArchSpecificDir);
++      bool Exists;
++      if (!llvm::sys::fs::exists(P.str(), Exists) && Exists)
++        CmdArgs.push_back(Args.MakeArgString("-L" + P.str()));
++      P.eraseComponent();
++    }
+ 
+-  if (ArchSpecificDir) {
+-    P.appendComponent(ArchSpecificDir);
+     bool Exists;
+     if (!llvm::sys::fs::exists(P.str(), Exists) && Exists)
+       CmdArgs.push_back(Args.MakeArgString("-L" + P.str()));
+-    P.eraseComponent();
+   }
+-
+-  bool Exists;
+-  if (!llvm::sys::fs::exists(P.str(), Exists) && Exists)
+-    CmdArgs.push_back(Args.MakeArgString("-L" + P.str()));
+ }
+ 
+ void DarwinClang::AddLinkRuntimeLibArgs(const ArgList &Args,
+diff -urN a/lib/Driver/Tools.cpp b/lib/Driver/Tools.cpp
+--- a/lib/Driver/Tools.cpp	2011-03-07 00:31:01.000000000 +0100
++++ b/lib/Driver/Tools.cpp	2013-09-06 13:58:15.607765651 +0200
+@@ -893,6 +893,12 @@
+   std::string TripleStr = getToolChain().ComputeEffectiveClangTriple(Args);
+   CmdArgs.push_back(Args.MakeArgString(TripleStr));
+ 
++  // Set sysroot
++  if(!D.SysrootDir.empty()) {
++    CmdArgs.push_back("-isysroot");
++    CmdArgs.push_back(Args.MakeArgString(D.SysrootDir));
++  }
++
+   // Select the appropriate action.
+   bool IsRewriter = false;
+   if (isa<AnalyzeJobAction>(JA)) {
+@@ -2732,11 +2738,9 @@
+   Args.AddAllArgs(CmdArgs, options::OPT_sub__umbrella);
+ 
+   Args.AddAllArgsTranslated(CmdArgs, options::OPT_isysroot, "-syslibroot");
+-  if (getDarwinToolChain().isTargetIPhoneOS()) {
+-    if (!Args.hasArg(options::OPT_isysroot)) {
+-      CmdArgs.push_back("-syslibroot");
+-      CmdArgs.push_back("/Developer/SDKs/Extra");
+-    }
++  if (!D.SysrootDir.empty()) {
++    CmdArgs.push_back("-syslibroot");
++    CmdArgs.push_back(Args.MakeArgString(D.SysrootDir));
+   }
+ 
+   Args.AddLastArg(CmdArgs, options::OPT_twolevel__namespace);

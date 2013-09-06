@@ -1,0 +1,13 @@
+diff -urN a/Makefile.rules b/Makefile.rules
+--- a/Makefile.rules	2010-09-30 00:23:19.000000000 +0200
++++ b/Makefile.rules	2013-09-02 20:12:34.517187461 +0200
+@@ -328,6 +328,9 @@
+ ifdef LOADABLE_MODULE
+   SHARED_LIBRARY := 1
+   LINK_LIBS_IN_SHARED := 1
++  ifeq ($(HOST_OS),Darwin)
++  LD.Flags += -module
++  endif
+ endif
+ 
+ ifdef SHARED_LIBRARY
