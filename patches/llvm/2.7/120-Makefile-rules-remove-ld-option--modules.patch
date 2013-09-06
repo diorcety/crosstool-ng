@@ -1,6 +1,7 @@
---- llvmCore/Makefile.rules.orig	2012-05-08 21:24:57.142359266 +0100
-+++ llvmCore/Makefile.rules	2012-05-08 21:27:13.131047546 +0100
-@@ -585,7 +585,11 @@
+diff -urN a/Makefile.rules b/Makefile.rules
+--- a/Makefile.rules	2010-04-25 21:18:33.000000000 +0200
++++ b/Makefile.rules	2013-09-02 20:23:29.422897303 +0200
+@@ -586,7 +586,11 @@
  # that if LOADABLE_MODULE is specified then the resulting shared library can
  # be opened with dlopen.
  ifdef LOADABLE_MODULE

@@ -1,6 +1,7 @@
---- clang-2.7/clang/Analysis/Support/BumpVector.h.orig	2013-05-30 14:08:39.588788881 +0100
-+++ clang/include/clang/Analysis/Support/BumpVector.h	2013-05-30 14:08:44.768788652 +0100
-@@ -25,6 +25,7 @@
+diff -urN a/include/clang/Analysis/Support/BumpVector.h b/include/clang/Analysis/Support/BumpVector.h
+--- a/include/clang/Analysis/Support/BumpVector.h	2010-02-21 23:14:52.000000000 +0100
++++ b/include/clang/Analysis/Support/BumpVector.h	2013-09-02 20:27:23.248577650 +0200
+@@ -24,6 +24,7 @@
  #include "llvm/ADT/PointerIntPair.h"
  #include <algorithm>
  #include <cstring>
