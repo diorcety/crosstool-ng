@@ -1,0 +1,41 @@
+diff -urN a/otool/main.c b/otool/main.c
+--- a/otool/main.c	1970-01-01 01:00:00.000000000 +0100
++++ b/otool/main.c	2013-09-06 21:35:37.580055444 +0200
+@@ -2762,37 +2762,3 @@
+ 		break;
+ 	}
+ }
+-
+-#ifndef __DYNAMIC__
+-/*
+- * To avoid linking in libm.  These variables are defined as they are used in
+- * pthread_init() to put in place a fast sqrt().
+- */
+-size_t hw_sqrt_len = 0;
+-
+-double
+-sqrt(double x)
+-{
+-	return(0.0);
+-}
+-double
+-hw_sqrt(double x)
+-{
+-	return(0.0);
+-}
+-
+-/*
+- * More stubs to avoid linking in libm.  This works as along as we don't use
+- * long doubles.
+- */
+-int32_t
+-__fpclassifyd(double x)
+-{
+-	return(0);
+-}
+-int32_t
+-__fpclassify(long double x)
+-{
+-	return(0);
+-}
+-#endif /* !defined(__DYNAMIC__) */
