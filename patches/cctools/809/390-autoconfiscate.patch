@@ -3994,7 +3994,7 @@ diff -urN a/configure.ac b/configure.ac
 +      SHARED_LTO_LIBS="$LD_DYNAMIC -lpthread -lLTO"
 +    ;;
 +    *)
-+      SHARED_LTO_LIBS="$LD_DYNAMIC -lpthread -llibLTO"
++      SHARED_LTO_LIBS="$LD_DYNAMIC -lpthread -lLTO"
 +    ;;
 +esac
 +
