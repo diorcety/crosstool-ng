@@ -22,6 +22,18 @@ choice
 # Don't remove next line
 # CT_INSERT_VERSION_BELOW
 
+config CC_CLANG_V_3_3
+    bool
+    depends on LLVM_V_3_3
+    select CC_CLANG_NEED_COMPILER_RT
+    prompt "3.3"
+
+config CC_CLANG_V_3_2
+    bool
+    depends on LLVM_V_3_2
+    select CC_CLANG_NEED_COMPILER_RT
+    prompt "3.2"
+
 config CC_CLANG_V_3_1
     bool
     depends on LLVM_V_3_1
@@ -57,6 +69,8 @@ config CC_CLANG_VERSION
     string
 # Don't remove next line
 # CT_INSERT_VERSION_STRING_BELOW
+    default "3.3" if CC_CLANG_V_3_3
+    default "3.2" if CC_CLANG_V_3_2
     default "3.1" if CC_CLANG_V_3_1
     default "3.0" if CC_CLANG_V_3_0
     default "2.9" if CC_CLANG_V_2_9

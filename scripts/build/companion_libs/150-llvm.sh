@@ -14,7 +14,15 @@ if [ "${CT_LLVM}" = "y" ]; then
 if [ "${CT_LLVM_V_3_1}" = "y" ]; then
 	CT_LLVM_SUFFIX=".src"
 else
+if [ "${CT_LLVM_V_3_2}" = "y" ]; then
+	CT_LLVM_SUFFIX=".src"
+else
+if [ "${CT_LLVM_V_3_3}" = "y" ]; then
+	CT_LLVM_SUFFIX=".src"
+else
 	CT_LLVM_SUFFIX=""
+fi
+fi
 fi
 
 CT_LLVM_FULLNAME="llvm-${CT_LLVM_VERSION}${CT_LLVM_SUFFIX}"

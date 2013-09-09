@@ -6,7 +6,15 @@
 if [ "${CT_CC_CLANG_V_3_1}" = "y" ]; then
 	CLANG_SUFFIX=".src"
 else
+if [ "${CT_CC_CLANG_V_3_2}" = "y" ]; then
+	CLANG_SUFFIX=".src"
+else
+if [ "${CT_CC_CLANG_V_3_3}" = "y" ]; then
+	CLANG_SUFFIX=".src"
+else
 	CLANG_SUFFIX=""
+fi
+fi
 fi
 
 CT_CLANG_FULLNAME="clang-${CT_CC_CLANG_VERSION}${CLANG_SUFFIX}"
@@ -149,18 +157,21 @@ do_clang_backend() {
         
     CT_Popd
         
-    # Create default clang clang++
-    for cc in clang clang++; do
-        gcc=${cc/clang/gcc}
-        gcc=${gcc/gcc++/g++}
-	cat > ${prefix}/bin/${CT_TARGET}-${cc} << EOF
+    if [ "${CT_CC_CLANG_V_3_2}" != "y" ]; then
+    if [ "${CT_CC_CLANG_V_3_3}" != "y" ]; then
+        # Create default clang clang++
+        for cc in clang clang++; do
+           gcc=${cc/clang/gcc}
+           gcc=${gcc/gcc++/g++}
+           cat > ${prefix}/bin/${CT_TARGET}-${cc} << EOF
 #!/bin/sh
 \`dirname \$0\`/${cc} \
 -ccc-gcc-name ${CT_TARGET}-${gcc} \
 -ccc-host-triple ${CT_TARGET} \
 \$*
 EOF
-	chmod +x ${prefix}/bin/${CT_TARGET}-${cc}
-    done
-    
+           chmod +x ${prefix}/bin/${CT_TARGET}-${cc}
+        done
+    fi
+    fi
 }

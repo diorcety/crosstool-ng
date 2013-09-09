@@ -1,0 +1,21 @@
+diff -urN b/lib/Driver/ToolChain.cpp c/lib/Driver/ToolChain.cpp
+--- b/lib/Driver/ToolChain.cpp	2012-11-08 04:38:26.000000000 +0100
++++ c/lib/Driver/ToolChain.cpp	2013-09-08 17:09:29.083658138 +0200
+@@ -58,6 +58,17 @@
+ }
+ 
+ std::string ToolChain::GetProgramPath(const char *Name) const {
++  // don't try to prefix clang
++  if(strcmp(Name, "clang")) {
++    // try first with prefixed by triple
++    std::string targetName = getTripleString();
++    targetName += "-";
++    targetName += Name;
++    std::string targetProgram = D.GetProgramPath(targetName.c_str(), *this);
++    if(targetProgram != targetName) {
++      return targetProgram;
++    }
++  }
+   return D.GetProgramPath(Name, *this);
+ }
+ 

@@ -1,6 +1,6 @@
 diff -urN a/include/clang/Driver/ToolChain.h b/include/clang/Driver/ToolChain.h
---- a/include/clang/Driver/ToolChain.h	2012-02-29 04:43:52.000000000 +0100
-+++ b/include/clang/Driver/ToolChain.h	2013-09-08 17:12:14.644555471 +0200
+--- a/include/clang/Driver/ToolChain.h	2012-11-21 09:33:40.000000000 +0100
++++ b/include/clang/Driver/ToolChain.h	2013-09-08 19:01:32.846051140 +0200
 @@ -16,6 +16,7 @@
  #include "llvm/ADT/Triple.h"
  #include "llvm/Support/Path.h"
@@ -8,16 +8,16 @@ diff -urN a/include/clang/Driver/ToolChain.h b/include/clang/Driver/ToolChain.h
 +#include "Util.h"
  
  namespace clang {
- namespace driver {
-@@ -27,6 +28,7 @@
-   class JobAction;
    class ObjCRuntime;
+@@ -28,6 +29,7 @@
+   class InputArgList;
+   class JobAction;
    class Tool;
 +  class ArgList;
  
  /// ToolChain - Access to tools for a single platform.
  class ToolChain {
-@@ -88,6 +90,9 @@
+@@ -93,6 +95,9 @@
      return Triple.getTriple();
    }
  
@@ -28,13 +28,9 @@ diff -urN a/include/clang/Driver/ToolChain.h b/include/clang/Driver/ToolChain.h
    const path_list &getFilePaths() const { return FilePaths; }
  
 diff -urN a/lib/Driver/ToolChain.cpp b/lib/Driver/ToolChain.cpp
---- a/lib/Driver/ToolChain.cpp	2012-03-29 21:53:34.000000000 +0200
-+++ b/lib/Driver/ToolChain.cpp	2013-09-08 17:12:14.644555471 +0200
-@@ -18,9 +18,17 @@
- #include "clang/Driver/Options.h"
- #include "llvm/ADT/StringSwitch.h"
- #include "llvm/Support/ErrorHandling.h"
-+#include "clang/Driver/ArgList.h"
+--- a/lib/Driver/ToolChain.cpp	2012-11-08 04:38:26.000000000 +0100
++++ b/lib/Driver/ToolChain.cpp	2013-09-08 19:01:57.441417398 +0200
+@@ -22,6 +22,13 @@
  using namespace clang::driver;
  using namespace clang;
  
@@ -48,8 +44,8 @@ diff -urN a/lib/Driver/ToolChain.cpp b/lib/Driver/ToolChain.cpp
  ToolChain::ToolChain(const Driver &D, const llvm::Triple &T)
    : D(D), Triple(T) {
  }
-@@ -32,6 +40,39 @@
-  return D;
+@@ -52,6 +59,39 @@
+   return false;
  }
  
 +void ToolChain::AddIncludeSearchPathArgs(const ArgList &Args, ArgStringList &CmdArgs) const {
@@ -89,9 +85,9 @@ diff -urN a/lib/Driver/ToolChain.cpp b/lib/Driver/ToolChain.cpp
    return D.GetFilePath(Name, *this);
  
 diff -urN a/lib/Driver/Tools.cpp b/lib/Driver/Tools.cpp
---- a/lib/Driver/Tools.cpp	2012-04-18 23:32:25.000000000 +0200
-+++ b/lib/Driver/Tools.cpp	2013-09-08 17:12:14.644555471 +0200
-@@ -1904,6 +1904,13 @@
+--- a/lib/Driver/Tools.cpp	2012-11-21 08:56:23.000000000 +0100
++++ b/lib/Driver/Tools.cpp	2013-09-08 19:01:32.850051034 +0200
+@@ -2258,6 +2258,13 @@
    // preprocessed inputs and configure concludes that -fPIC is not supported.
    Args.ClaimAllArgs(options::OPT_D);
  
