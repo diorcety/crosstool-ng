@@ -1,7 +1,7 @@
 diff -urN a/Makefile.rules b/Makefile.rules
---- a/Makefile.rules	2010-09-30 00:23:19.000000000 +0200
-+++ b/Makefile.rules	2013-09-02 20:12:34.517187461 +0200
-@@ -328,6 +328,9 @@
+--- a/Makefile.rules	2011-03-25 06:26:58.000000000 +0000
++++ b/Makefile.rules	2013-09-09 00:50:59.985396700 +0100
+@@ -329,6 +329,9 @@
  ifdef LOADABLE_MODULE
    SHARED_LIBRARY := 1
    LINK_LIBS_IN_SHARED := 1

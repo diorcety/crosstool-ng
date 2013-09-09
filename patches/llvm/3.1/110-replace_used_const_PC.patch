@@ -1,7 +1,7 @@
 diff -urN a/include/llvm-c/Disassembler.h b/include/llvm-c/Disassembler.h
---- a/include/llvm-c/Disassembler.h	2011-10-05 00:44:48.000000000 +0200
-+++ b/include/llvm-c/Disassembler.h	2013-09-06 21:23:49.317480436 +0200
-@@ -40,7 +40,7 @@
+--- a/include/llvm-c/Disassembler.h	2012-03-21 03:54:29.000000000 +0000
++++ b/include/llvm-c/Disassembler.h	2013-09-08 22:11:43.973437300 +0100
+@@ -47,7 +47,7 @@
   * TagType for that Triple.  If symbolic information is returned the function
   * returns 1, otherwise it returns 0.
   */
@@ -10,7 +10,7 @@ diff -urN a/include/llvm-c/Disassembler.h b/include/llvm-c/Disassembler.h
                                    uint64_t Offset, uint64_t Size,
                                    int TagType, void *TagBuf);
  
-@@ -154,7 +154,7 @@
+@@ -161,7 +161,7 @@
   * no valid instruction.
   */
  size_t LLVMDisasmInstruction(LLVMDisasmContextRef DC, uint8_t *Bytes,
@@ -18,4 +18,4 @@ diff -urN a/include/llvm-c/Disassembler.h b/include/llvm-c/Disassembler.h
 +                             uint64_t BytesSize, uint64_t pc,
                               char *OutString, size_t OutStringSize);
  
- #ifdef __cplusplus
+ /**
