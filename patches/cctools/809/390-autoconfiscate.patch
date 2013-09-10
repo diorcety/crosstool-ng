@@ -4004,7 +4004,7 @@ diff -urN a/configure.ac b/configure.ac
 +case $host_os in
 +    mingw*)
 +      STATIC_LTO_EXTRA_LIBS="-ldbghelp -lpsapi"
-+      SHARED_LTO_SEARCH="libLTO"
++      SHARED_LTO_SEARCH="LTO"
 +      AS_IF([test "x$enable_shared" = "xno"],
 +            [AX_APPEND_COMPILE_FLAGS([--static-libgcc --static-libstdc++], LDFLAGS)])
 +      ;;
