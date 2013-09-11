@@ -76,7 +76,7 @@ dump_single_sample() {
             [ -z "${CT_LIBELF}" -a -z "${CT_LIBELF_TARGET}" ] || printf " libelf-%s"    "${CT_LIBELF_VERSION}"
             [ -z "${complibs}"  ] || printf "\n"
             printf  "    %-*s : %s\n" ${width} "binutils" "binutils-${CT_BINUTILS_VERSION}"
-            printf  "    %-*s : %s" ${width} "C compiler" "${CT_CC}-${CT_CC_GCC_VERSION} (C"
+            printf  "    %-*s : %s" ${width} "C compiler" "${CT_CC}-${CT_CC_VERSION} (C"
             [ "${CT_CC_LANG_CXX}" = "y"     ] && printf ",C++"
             [ "${CT_CC_LANG_FORTRAN}" = "y" ] && printf ",Fortran"
             [ "${CT_CC_LANG_JAVA}" = "y"    ] && printf ",Java"
@@ -120,7 +120,7 @@ dump_single_sample() {
         fi
         printf "|  ${CT_BINUTILS_VERSION}  "
         printf "|  ''${CT_CC}''  "
-        printf "|  ${CT_CC_GCC_VERSION}  "
+        printf "|  ${CT_CC_VERSION}  "
         printf "|  ''${CT_LIBC}''  |"
         if [ "${CT_LIBC}" != "none" ]; then
             printf "  ${CT_LIBC_VERSION}  "

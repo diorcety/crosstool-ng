@@ -1,4 +1,4 @@
-#!@@CT_bash@@
+#!/bin/bash
 # Copyright 2007 Yann E. MORIN
 # Licensed under the GPL v2. See COPYING in the root of this package.
 
