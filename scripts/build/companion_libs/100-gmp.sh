@@ -67,7 +67,8 @@ do_gmp_for_host() {
 #     Parameter     : description               : type      : default
 #     host          : machine to run on         : tuple     : (none)
 #     prefix        : prefix to install into    : dir       : (none)
-#     cflags        : host cflags to use        : string    : (empty)
+#     cflags        : cflags to use             : string    : (empty)
+#     ldflags       : ldflags to use            : string    : (empty)
 do_gmp_backend() {
     local host
     local prefix

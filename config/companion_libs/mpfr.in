@@ -34,11 +34,6 @@ config MPFR_V_2_4_0
     bool
     prompt "2.4.0"
 
-config MPFR_V_2_2_1
-    bool
-    prompt "2.2.1 (OBSOLETE)"
-    depends on OBSOLETE
-
 endchoice
 
 config MPFR_VERSION
@@ -52,4 +47,3 @@ config MPFR_VERSION
     default "2.4.2" if MPFR_V_2_4_2
     default "2.4.1" if MPFR_V_2_4_1
     default "2.4.0" if MPFR_V_2_4_0
-    default "2.2.1" if MPFR_V_2_2_1

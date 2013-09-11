@@ -15,9 +15,9 @@ do_test_suite_gcc_build() {
     CT_DoStep INFO "Installing GCC test suite"
 
     CT_DoExecLog ALL mkdir -p "${CT_TEST_SUITE_DIR}/gcc"
-    CT_DoExecLog ALL cp -av "${CT_LIB_DIR}/contrib/gcc-test-suite/default.cfg"  \
-                            "${CT_LIB_DIR}/contrib/gcc-test-suite/Makefile"     \
-                            "${CT_LIB_DIR}/contrib/gcc-test-suite/README"       \
+    CT_DoExecLog ALL cp -av "${CT_LIB_DIR}/contrib/gcc-test-suite/default.cfg"      \
+                            "${CT_LIB_DIR}/contrib/gcc-test-suite/Makefile"         \
+                            "${CT_LIB_DIR}/contrib/gcc-test-suite/README"           \
                             "${CT_SRC_DIR}/gcc-${CT_CC_GCC_VERSION}/gcc/testsuite"  \
                             "${CT_TEST_SUITE_DIR}/gcc"
 
