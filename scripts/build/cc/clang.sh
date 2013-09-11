@@ -5,19 +5,23 @@
 # Override variable depending on configuration
 if [ "${CT_CC_CLANG_V_3_1}" = "y" ]; then
 	CLANG_SUFFIX=".src"
+	CLANG_NAME="clang"
 else
 if [ "${CT_CC_CLANG_V_3_2}" = "y" ]; then
 	CLANG_SUFFIX=".src"
+	CLANG_NAME="clang"
 else
 if [ "${CT_CC_CLANG_V_3_3}" = "y" ]; then
 	CLANG_SUFFIX=".src"
+	CLANG_NAME="cfe"
 else
 	CLANG_SUFFIX=""
+	CLANG_NAME="clang"
 fi
 fi
 fi
 
-CT_CLANG_FULLNAME="clang-${CT_CC_CLANG_VERSION}${CLANG_SUFFIX}"
+CT_CLANG_FULLNAME="${CLANG_NAME}-${CT_CC_CLANG_VERSION}${CLANG_SUFFIX}"
 
 # Download clang
 do_clang_get() {

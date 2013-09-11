@@ -1,0 +1,28 @@
+diff -urN e/lib/Driver/Driver.cpp f/lib/Driver/Driver.cpp
+--- e/lib/Driver/Driver.cpp	2013-09-11 09:10:14.161544538 +0200
++++ f/lib/Driver/Driver.cpp	2013-09-11 09:15:05.437512907 +0200
+@@ -1666,24 +1666,6 @@
+ 
+   llvm::Triple Target(llvm::Triple::normalize(DefaultTargetTriple));
+ 
+-  // Handle Darwin-specific options available here.
+-  if (Target.isOSDarwin()) {
+-    // If an explict Darwin arch name is given, that trumps all.
+-    if (!DarwinArchName.empty()) {
+-      Target.setArch(
+-        tools::darwin::getArchTypeForDarwinArchName(DarwinArchName));
+-      return Target;
+-    }
+-
+-    // Handle the Darwin '-arch' flag.
+-    if (Arg *A = Args.getLastArg(options::OPT_arch)) {
+-      llvm::Triple::ArchType DarwinArch
+-        = tools::darwin::getArchTypeForDarwinArchName(A->getValue());
+-      if (DarwinArch != llvm::Triple::UnknownArch)
+-        Target.setArch(DarwinArch);
+-    }
+-  }
+-
+   // Handle pseudo-target flags '-EL' and '-EB'.
+   if (Arg *A = Args.getLastArg(options::OPT_EL, options::OPT_EB)) {
+     if (A->getOption().matches(options::OPT_EL)) {

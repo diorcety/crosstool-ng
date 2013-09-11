@@ -1,0 +1,69 @@
+diff -urN b/lib/Driver/Driver.cpp c/lib/Driver/Driver.cpp
+--- b/lib/Driver/Driver.cpp	2013-05-01 00:01:21.000000000 +0200
++++ c/lib/Driver/Driver.cpp	2013-09-11 09:10:14.161544538 +0200
+@@ -41,6 +41,10 @@
+ using namespace clang::driver;
+ using namespace clang;
+ 
++static llvm::Triple computeTargetTriple(StringRef DefaultTargetTriple,
++                                        const ArgList &Args,
++                                        StringRef DarwinArchName);
++
+ Driver::Driver(StringRef ClangExecutable,
+                StringRef DefaultTargetTriple,
+                StringRef DefaultImageName,
+@@ -287,8 +291,21 @@
+     A->claim();
+     PrefixDirs.push_back(A->getValue(0));
+   }
+-  if (const Arg *A = Args->getLastArg(options::OPT__sysroot_EQ))
++
++  // Owned by the host.
++  llvm::Triple Target = computeTargetTriple(DefaultTargetTriple, *Args, "");
++
++  if (const Arg *A = Args->getLastArg(options::OPT__sysroot_EQ)) {
+     SysRoot = A->getValue();
++  } else {
++      llvm::sys::Path P(Dir);
++      if (!P.isEmpty()) {
++        P.eraseComponent(); // Remove /bin from foo/bin
++        P.appendComponent(Target.getTriple());
++        P.appendComponent("sysroot");
++        SysRoot = P.str();
++      }
++  }
+   if (Args->hasArg(options::OPT_nostdlib))
+     UseStdLib = false;
+ 
+diff -urN b/lib/Driver/Tools.cpp c/lib/Driver/Tools.cpp
+--- b/lib/Driver/Tools.cpp	2013-09-11 09:09:03.599690889 +0200
++++ c/lib/Driver/Tools.cpp	2013-09-11 09:10:14.161544538 +0200
+@@ -1876,6 +1876,12 @@
+   std::string TripleStr = getToolChain().ComputeEffectiveClangTriple(Args);
+   CmdArgs.push_back(Args.MakeArgString(TripleStr));
+ 
++  // Set sysroot
++  if(!D.SysRoot.empty()) {
++    CmdArgs.push_back("-isysroot");
++    CmdArgs.push_back(Args.MakeArgString(D.SysRoot));
++  }
++
+   // Select the appropriate action.
+   RewriteKind rewriteKind = RK_None;
+   
+@@ -4503,6 +4509,15 @@
+     CmdArgs.push_back("-syslibroot");
+     CmdArgs.push_back(A->getValue());
+   }
++  
++  std::string libPath;
++  bool Exists;
++  libPath = D.Dir + "/../lib/gcc/" + DarwinTC.getTripleString() + "/4.2.1";
++  if (!llvm::sys::fs::exists(libPath, Exists) && Exists)
++    CmdArgs.push_back(Args.MakeArgString("-L" + libPath));
++  libPath = D.SysRoot + "/usr/lib/gcc/" + DarwinTC.getTripleString() + "/4.2.1";
++  if (!llvm::sys::fs::exists(libPath, Exists) && Exists)
++    CmdArgs.push_back(Args.MakeArgString("-L" + libPath));
+ 
+   Args.AddLastArg(CmdArgs, options::OPT_twolevel__namespace);
+   Args.AddLastArg(CmdArgs, options::OPT_twolevel__namespace__hints);
