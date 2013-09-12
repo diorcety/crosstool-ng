@@ -258,7 +258,7 @@ do_gcc_core_backend() {
         core_LDFLAGS+=("-lstdc++")
         core_LDFLAGS+=("-lm")
     else
-        if [ "${CT_CC_STATIC_LIBSTDCXX}" = "y" ]; then
+        if [ "${CT_CC_GCC_STATIC_LIBSTDCXX}" = "y" ]; then
             # this is from CodeSourcery arm-2010q1-202-arm-none-linux-gnueabi.src.tar.bz2
             # build script
             # INFO: if the host gcc is gcc-4.5 then presumably we could use -static-libstdc++,
