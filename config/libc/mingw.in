@@ -13,6 +13,11 @@ choice
 
 # Don't remove next line
 # CT_INSERT_VERSION_BELOW
+
+config WINAPI_V_2_0_8
+    bool
+    prompt "2.0.8"
+
 config WINAPI_V_2_0_7
     bool
     prompt "2.0.7"
@@ -28,6 +33,7 @@ config WINAPI_VERSION
     prompt "Windows API version" if WINAPI_V_select
 # Don't remove next line
 # CT_INSERT_VERSION_STRING_BELOW
+    default "2.0.8" if WINAPI_V_2_0_8
     default "2.0.7" if WINAPI_V_2_0_7
     help
       Enter the version number of the Windows API files to use
