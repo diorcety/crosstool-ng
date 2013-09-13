@@ -450,8 +450,7 @@ if [ -z "${CT_RESTART}" ]; then
                 CT_DoLog DEBUG "  '${!v}-${tool}' -> '${where}'"
                 printf "#${BANG}${CT_CONFIG_SHELL}\nexec '${where}' \"\${@}\"\n" >"${CT_BUILDTOOLS_PREFIX_DIR}/bin/${!v}-${tool}"
                 CT_DoExecLog ALL chmod 700 "${CT_BUILDTOOLS_PREFIX_DIR}/bin/${!v}-${tool}"
-                #CT_EXPORT_BUILD_TOOLS=yes
-                if [ -n "$expvar" -a "$CT_EXPORT_BUILD_TOOLS" = "yes" ]; then
+                if [ -n "$expvar" -a "$CT_EXPORT_BUILD_TOOLS" = "y" ]; then
                     CT_DoLog ALL "export '$expvar=${!v}-${tool}'"
                     eval export "'$expvar=${!v}-${tool}'"
                 fi
