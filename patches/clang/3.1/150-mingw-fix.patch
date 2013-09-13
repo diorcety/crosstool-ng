@@ -1,0 +1,73 @@
+diff -urN b/include/clang/Driver/ToolChain.h c/include/clang/Driver/ToolChain.h
+--- b/include/clang/Driver/ToolChain.h	2013-09-13 14:22:30.408590070 +0200
++++ c/include/clang/Driver/ToolChain.h	2013-09-13 14:23:07.907931984 +0200
+@@ -91,6 +91,7 @@
+   }
+ 
+   virtual void AddLinkSearchPathArgs(const ArgList &Args, ArgStringList &CmdArgs) const;
++  virtual void AddCPlusPlusIncludeSearchPathArgs(const ArgList &Args, ArgStringList &CmdArgs) const;
+   virtual void AddIncludeSearchPathArgs(const ArgList &Args, ArgStringList &CmdArgs) const;
+   
+   path_list &getFilePaths() { return FilePaths; }
+diff -urN b/lib/Driver/ToolChain.cpp c/lib/Driver/ToolChain.cpp
+--- b/lib/Driver/ToolChain.cpp	2013-09-13 14:22:30.408590070 +0200
++++ c/lib/Driver/ToolChain.cpp	2013-09-13 17:14:05.815732472 +0200
+@@ -57,6 +57,23 @@
+   CmdArgs.push_back(Args.MakeArgString("-I" + BaseDir + "/../../../../" + getTripleString() + "/include"));
+ }
+ 
++void ToolChain::AddCPlusPlusIncludeSearchPathArgs(const ArgList &Args, ArgStringList &CmdArgs) const {
++  llvm::sys::Path P(getDriver().Dir);
++  std::string GccVersion(CLANG_GCC_VERSION_STR);
++
++  // Checks
++  if (P.isEmpty() || GccVersion.empty()) {
++    return;
++  }
++
++  P.eraseComponent(); // Remove /bin from foo/bin
++  std::string BaseDir = P.str() + std::string("/lib/gcc/") + getTripleString() + std::string("/") + GccVersion;
++
++  CmdArgs.push_back(Args.MakeArgString("-I" + BaseDir + "/../../../../" + getTripleString() + "/include/c++/" + GccVersion));
++  CmdArgs.push_back(Args.MakeArgString("-I" + BaseDir + "/../../../../" + getTripleString() + "/include/c++/" + GccVersion + "/" + getTripleString()));
++  CmdArgs.push_back(Args.MakeArgString("-I" + BaseDir + "/../../../../" + getTripleString() + "/include/c++/" + GccVersion + "/backward"));
++}
++
+ void ToolChain::AddLinkSearchPathArgs(const ArgList &Args, ArgStringList &CmdArgs) const {
+   llvm::sys::Path P(getDriver().Dir);
+   std::string GccVersion(CLANG_GCC_VERSION_STR);
+diff -urN b/lib/Driver/Tools.cpp c/lib/Driver/Tools.cpp
+--- b/lib/Driver/Tools.cpp	2013-09-13 14:22:30.412589999 +0200
++++ c/lib/Driver/Tools.cpp	2013-09-13 14:23:07.911931914 +0200
+@@ -1913,6 +1913,9 @@
+   if (isa<LinkJobAction>(JA)) {
+      getToolChain().AddLinkSearchPathArgs(Args, CmdArgs);
+   } else {
++     if (types::isCXX(InputType)) {
++       getToolChain().AddCPlusPlusIncludeSearchPathArgs(Args, CmdArgs);
++     }
+      getToolChain().AddIncludeSearchPathArgs(Args, CmdArgs);
+   }
+ 
+diff -urN b/lib/Frontend/InitHeaderSearch.cpp c/lib/Frontend/InitHeaderSearch.cpp
+--- b/lib/Frontend/InitHeaderSearch.cpp	2012-03-26 00:46:17.000000000 +0200
++++ c/lib/Frontend/InitHeaderSearch.cpp	2013-09-13 14:23:07.911931914 +0200
+@@ -301,17 +301,13 @@
+   case llvm::Triple::MinGW32: { 
+       // mingw-w64 crt include paths
+       llvm::sys::Path P(HSOpts.ResourceDir);
+-      P.appendComponent("../../../i686-w64-mingw32/include"); // <sysroot>/i686-w64-mingw32/include
+-      AddPath(P.str(), System, true, false, false);
+-      P = llvm::sys::Path(HSOpts.ResourceDir);
+-      P.appendComponent("../../../x86_64-w64-mingw32/include"); // <sysroot>/x86_64-w64-mingw32/include
++      P.appendComponent("../../../" + triple.getTriple() + "/include"); // <sysroot>/i686-w64-mingw32/include
+       AddPath(P.str(), System, true, false, false);
+       // mingw.org crt include paths
+       P = llvm::sys::Path(HSOpts.ResourceDir);
+       P.appendComponent("../../../include"); // <sysroot>/include
+       AddPath(P.str(), System, true, false, false);
+       AddPath("/mingw/include", System, true, false, false);
+-      AddPath("c:/mingw/include", System, true, false, false); 
+     }
+     break;
+       
