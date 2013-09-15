@@ -42,6 +42,11 @@ do_openssl_for_build() {
 do_openssl_for_host() {
     local -a openssl_opts
 
+    # OpenSSL doesn't build, and isn't needed on Darwin.
+    case "${CT_HOST}" in
+        *darwin*)   return 0;;
+    esac
+
     CT_DoStep INFO "Installing openssl for host"
     CT_mkdir_pushd "${CT_BUILD_DIR}/build-openssl-host-${CT_HOST}"
 
