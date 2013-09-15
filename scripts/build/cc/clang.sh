@@ -129,6 +129,14 @@ do_clang_backend() {
         final_CFLAGS+=("-DCLANG_GCC_VERSION=${CT_CC_GCC_VERSION}")
     fi
 
+    if [ "${CT_DEBUGGABLE_TOOLCHAIN}" = "y" ]; then
+        OPTIM_CONFIG_FLAG="--enable-optimized=no"
+        OPTIM_MAKE_FLAG="ENABLE_OPTIMIZED=0"
+    else
+        OPTIM_CONFIG_FLAG="--enable-optimized=yes"
+        OPTIM_MAKE_FLAG="ENABLE_OPTIMIZED=1"
+    fi
+
     CT_DoLog EXTRA "Configuring clang"
 
     CT_DoExecLog CFG                  \
@@ -140,6 +148,7 @@ do_clang_backend() {
         --host=${host}                \
         --prefix="${prefix}"          \
         --target=${CT_TARGET}         \
+        ${OPTIM_CONFIG_FLAG}          \
         
 
     CT_DoLog EXTRA "Building clang"
@@ -149,6 +158,7 @@ do_clang_backend() {
         CXXFLAGS="${final_CFLAGS[*]}" \
         LDFLAGS="${ldflags}"          \
         ONLY_TOOLS="clang"            \
+        ${OPTIM_MAKE_FLAG}            \
 
     CT_Pushd "tools/clang/"
 
@@ -158,6 +168,7 @@ do_clang_backend() {
         CXXFLAGS="${final_CFLAGS[*]}" \
         LDFLAGS="${ldflags}"          \
         ONLY_TOOLS="clang"            \
+        ${OPTIM_MAKE_FLAG}            \
         
     CT_Popd
         

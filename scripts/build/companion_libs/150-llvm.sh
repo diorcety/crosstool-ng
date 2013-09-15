@@ -119,6 +119,14 @@ do_llvm_backend() {
 	cp -r "${CT_SRC_DIR}/compiler-rt-${CT_LLVM_VERSION}.src/"* "projects/compiler-rt/"
     fi
 
+    if [ "${CT_DEBUGGABLE_TOOLCHAIN}" = "y" ]; then
+        OPTIM_CONFIG_FLAG="--enable-optimized=no"
+        OPTIM_MAKE_FLAG="ENABLE_OPTIMIZED=0"
+    else
+        OPTIM_CONFIG_FLAG="--enable-optimized=yes"
+        OPTIM_MAKE_FLAG="ENABLE_OPTIMIZED=1"
+    fi
+
     CT_DoLog EXTRA "Configuring LLVM"
 
     CT_DoExecLog CFG                  \
@@ -130,6 +138,7 @@ do_llvm_backend() {
         --host=${host}                \
         --prefix="${prefix}"          \
         --target=${CT_TARGET}         \
+        ${OPTIM_CONFIG_FLAG}          \
 
     CT_DoLog EXTRA "Building LLVM"
     CT_DoExecLog ALL                  \
@@ -137,9 +146,11 @@ do_llvm_backend() {
     CFLAGS="${cflags}"                \
     CXXFLAGS="${cflags}"              \
     LDFLAGS="${ldflags}"              \
+    ${OPTIM_MAKE_FLAG}                \
 
     CT_DoLog EXTRA "Installing LLVM"
-    CT_DoExecLog ALL make install
+    CT_DoExecLog ALL make install     \
+    ${OPTIM_MAKE_FLAG}                \
 
     # LLVM installs dlls into ${prefix}/lib instead of ${prefix}/bin
     # so copy them to ${prefix}/bin so that executables load them in

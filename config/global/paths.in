@@ -121,6 +121,7 @@ config STRIP_ALL_TOOLCHAIN_EXECUTABLES
     bool
     prompt "Strip all toolchain executables"
     default y
+    depends on !DEBUGGABLE_TOOLCHAIN
     help
       All build host executables contain a lot of unnecessary info.
       By stripping all executables it slightly speeds up the compilation
