@@ -1,6 +1,6 @@
-diff -urN b/lib/Driver/Driver.cpp c/lib/Driver/Driver.cpp
---- b/lib/Driver/Driver.cpp	2013-05-01 00:01:21.000000000 +0200
-+++ c/lib/Driver/Driver.cpp	2013-09-11 09:10:14.161544538 +0200
+diff -urN a/lib/Driver/Driver.cpp b/lib/Driver/Driver.cpp
+--- a/lib/Driver/Driver.cpp	2013-05-01 00:01:21.000000000 +0200
++++ b/lib/Driver/Driver.cpp	2013-09-19 13:58:54.376890623 +0200
 @@ -41,6 +41,10 @@
  using namespace clang::driver;
  using namespace clang;
@@ -12,7 +12,7 @@ diff -urN b/lib/Driver/Driver.cpp c/lib/Driver/Driver.cpp
  Driver::Driver(StringRef ClangExecutable,
                 StringRef DefaultTargetTriple,
                 StringRef DefaultImageName,
-@@ -287,8 +291,21 @@
+@@ -287,8 +291,23 @@
      A->claim();
      PrefixDirs.push_back(A->getValue(0));
    }
@@ -23,6 +23,8 @@ diff -urN b/lib/Driver/Driver.cpp c/lib/Driver/Driver.cpp
 +
 +  if (const Arg *A = Args->getLastArg(options::OPT__sysroot_EQ)) {
      SysRoot = A->getValue();
++  } else if (const Arg *A = Args->getLastArg(options::OPT_isysroot)) {
++    SysRoot = A->getValue();
 +  } else {
 +      llvm::sys::Path P(Dir);
 +      if (!P.isEmpty()) {
@@ -35,9 +37,9 @@ diff -urN b/lib/Driver/Driver.cpp c/lib/Driver/Driver.cpp
    if (Args->hasArg(options::OPT_nostdlib))
      UseStdLib = false;
  
-diff -urN b/lib/Driver/Tools.cpp c/lib/Driver/Tools.cpp
---- b/lib/Driver/Tools.cpp	2013-09-11 09:09:03.599690889 +0200
-+++ c/lib/Driver/Tools.cpp	2013-09-11 09:10:14.161544538 +0200
+diff -urN a/lib/Driver/Tools.cpp b/lib/Driver/Tools.cpp
+--- a/lib/Driver/Tools.cpp	2013-09-19 13:57:36.262240121 +0200
++++ b/lib/Driver/Tools.cpp	2013-09-19 13:58:07.181702599 +0200
 @@ -1876,6 +1876,12 @@
    std::string TripleStr = getToolChain().ComputeEffectiveClangTriple(Args);
    CmdArgs.push_back(Args.MakeArgString(TripleStr));
