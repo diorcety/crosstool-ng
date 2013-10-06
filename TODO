@@ -33,3 +33,23 @@ Non-recurring tasks:
 
 - uClinux
   - check whether we can use newlib under uClinux (?)
+
+- Darwin / Clang
+  - driverdriver needs to be added to the project
+
+  - llvm-gcc needs to work again.
+
+  - CT_STATIC_TOOLCHAIN=y fails to build cctools ATM with recent LLVMs
+    as the libraries have changed name since this was last done, switch
+    to using "${program-prefix}-llvm-config --libs" to get list of libs.
+
+  - Windows can't link cctools either statically or shared ATM.
+
+  - HOST_LINK_VERSION is used instead of `${program-prefix}-ld --version`
+
+  - `${program-prefix}-ld -v` yields @(#)PROGRAM:ld  PROJECT:cctools-809
+    instead of e.g. @(#)PROGRAM:ld  PROJECT:ld64-127
+
+  - Add llvm-config-build and llvm-config-host for when going Canadian.
+
+  - Consider adding PPC support?
