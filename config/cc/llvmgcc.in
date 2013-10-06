@@ -44,13 +44,13 @@ config CC_LLVMGCC_V_2336_9
     bool
     depends on LLVM_V_2336_9 || LLVM_V_2_7
     select CC_LLVMGCC_APPLE
-    prompt "2339.9"
+    prompt "2336.9"
     
 config CC_LLVMGCC_V_2336_1
     bool
     depends on LLVM_V_2336_1 || LLVM_V_2_7
     select CC_LLVMGCC_APPLE
-    prompt "2339.1"
+    prompt "2336.1"
     
 endchoice
 

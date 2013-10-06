@@ -1,0 +1,159 @@
+diff -urN a/gcc/Makefile.in b/gcc/Makefile.in
+--- a/gcc/Makefile.in	2013-10-06 20:13:10.245833376 +0100
++++ b/gcc/Makefile.in	2013-10-06 20:13:11.315849943 +0100
+@@ -81,6 +81,9 @@
+ 
+ # Directory where sources are, absolute.
+ abs_srcdir = @abs_srcdir@
++# Directory where soruces are, absolute, natively (for MSYS/Cygwin)
++abs_srcdir_native = @abs_srcdir_native@
++
+ abs_docdir = @abs_srcdir@/doc
+ 
+ # Top build directory for this package, relative to here.
+@@ -3233,6 +3236,9 @@
+ GTFILES_LANG_DIR_NAMES = @subdirs@
+ GTFILES_SRCDIR = @srcdir@
+ 
++# Workaround for native build GCC vs MSYS/Cygwin paths.
++GTFILES_SRCDIR_NATIVE = $(subst $(abs_srcdir),$(abs_srcdir_native),$(GTFILES_SRCDIR))
++
+ GTFILES_FILES_FILES_C = $(subst $(srcdir)/,, \
+ 	$(filter %.c, $(GTFILES_FILES_FILES)))
+ GTFILES_FILES_FILES_H = $(addprefix gt-, \
+@@ -3260,7 +3266,7 @@
+ gt-stringpool.h gt-targhooks.h gt-omp-low.h : s-gtype ; @true
+ 
+ define echo_quoted_to_gtyp
+- echo "\"$(gtyp)\", " >> tmp-gtyp.h
++ echo "\"$(subst $(abs_srcdir),$(abs_srcdir_native),$(gtyp))\", " >> tmp-gtyp.h
+ 
+ endef
+ 
+@@ -3268,7 +3274,7 @@
+ s-gtyp-gen: Makefile
+ 	echo "/* This file is machine generated.  Do not edit.  */" > tmp-gtyp.h
+ 	echo "static const char *const srcdir = "  >> tmp-gtyp.h
+-	echo "\"$(GTFILES_SRCDIR)\"" >> tmp-gtyp.h
++	echo "\"$(GTFILES_SRCDIR_NATIVE)\"" >> tmp-gtyp.h
+ 	echo ";" >> tmp-gtyp.h
+ 	echo "static const char *const lang_files[] = {" >> tmp-gtyp.h
+ 	$(foreach gtyp,$(GTFILES_FILES_FILES),$(echo_quoted_to_gtyp))
+diff -urN a/gcc/configure b/gcc/configure
+--- a/gcc/configure	2013-10-06 20:13:10.532504474 +0100
++++ b/gcc/configure	2013-10-06 20:13:11.319183309 +0100
+@@ -647,6 +647,7 @@
+ target_cpu
+ target_vendor
+ target_os
++abs_srcdir_native
+ target_noncanonical
+ build_libsubdir
+ build_subdir
+@@ -2093,6 +2094,13 @@
+     NONENONEs,x,x, &&
+   program_prefix=${target_alias}-
+ 
++if test "$build_os" != "mingw32" ; then
++    abs_srcdir_native=$srcdir
++else
++    abs_srcdir_native=$(cd $srcdir; pwd -W)
++fi
++
++
+ # Determine the noncanonical target name, for directory use.
+  case ${build_alias} in
+   "") build_noncanonical=${build} ;;
+@@ -8801,7 +8809,7 @@
+ else
+     ac_prog_version=`$DSYMUTIL --version 2>&1 |
+                    sed -n 's/^.*.*dwarfutils.\([0-9]*\).*$/\1/p'`
+-  echo "configure:8804: version of dsymutil is $ac_prog_version" >&5
++  echo "configure:8812: version of dsymutil is $ac_prog_version" >&5
+   case $ac_prog_version in
+     '')     gcc_cv_prog_dsymutil_modern=no;;
+     2[5-9]*)
+@@ -8874,7 +8882,7 @@
+ else
+     ac_prog_version=`$DSYMUTIL --version 2>&1 |
+                    sed -n 's/^.*.*dwarfutils.\([0-9]*\).*$/\1/p'`
+-  echo "configure:8877: version of dsymutil is $ac_prog_version" >&5
++  echo "configure:8885: version of dsymutil is $ac_prog_version" >&5
+   case $ac_prog_version in
+     '')     gcc_cv_prog_dsymutil_modern=no;;
+     [3-9][0-9]*)
+@@ -9610,7 +9618,7 @@
+ else
+     ac_prog_version=`$MAKEINFO --version 2>&1 |
+                    sed -n 's/^.*GNU texinfo.* \([0-9][0-9.]*\).*$/\1/p'`
+-  echo "configure:9613: version of makeinfo is $ac_prog_version" >&5
++  echo "configure:9621: version of makeinfo is $ac_prog_version" >&5
+   case $ac_prog_version in
+     '')     gcc_cv_prog_makeinfo_modern=no;;
+     4.[4-9]* | 4.1[0-9]*)
+@@ -19827,6 +19835,7 @@
+ target_cpu!$target_cpu$ac_delim
+ target_vendor!$target_vendor$ac_delim
+ target_os!$target_os$ac_delim
++abs_srcdir_native!$abs_srcdir_native$ac_delim
+ target_noncanonical!$target_noncanonical$ac_delim
+ build_libsubdir!$build_libsubdir$ac_delim
+ build_subdir!$build_subdir$ac_delim
+@@ -19871,7 +19880,6 @@
+ LN_S!$LN_S$ac_delim
+ LN!$LN$ac_delim
+ RANLIB!$RANLIB$ac_delim
+-ranlib_flags!$ranlib_flags$ac_delim
+ _ACEOF
+ 
+   if test `sed -n "s/.*$ac_delim\$/X/p" conf$$subs.sed | grep -c X` = 94; then
+@@ -19917,6 +19925,7 @@
+ ac_delim='%!_!# '
+ for ac_last_try in false false false false false :; do
+   cat >conf$$subs.sed <<_ACEOF
++ranlib_flags!$ranlib_flags$ac_delim
+ INSTALL!$INSTALL$ac_delim
+ INSTALL_PROGRAM!$INSTALL_PROGRAM$ac_delim
+ INSTALL_DATA!$INSTALL_DATA$ac_delim
+@@ -20013,7 +20022,6 @@
+ gcc_config_arguments!$gcc_config_arguments$ac_delim
+ gcc_gxx_include_dir!$gcc_gxx_include_dir$ac_delim
+ host_exeext!$host_exeext$ac_delim
+-host_xm_file_list!$host_xm_file_list$ac_delim
+ _ACEOF
+ 
+   if test `sed -n "s/.*$ac_delim\$/X/p" conf$$subs.sed | grep -c X` = 97; then
+@@ -20055,6 +20063,7 @@
+ ac_delim='%!_!# '
+ for ac_last_try in false false false false false :; do
+   cat >conf$$subs.sed <<_ACEOF
++host_xm_file_list!$host_xm_file_list$ac_delim
+ host_xm_include_list!$host_xm_include_list$ac_delim
+ host_xm_defines!$host_xm_defines$ac_delim
+ out_host_hook_obj!$out_host_hook_obj$ac_delim
+@@ -20089,7 +20098,7 @@
+ LTLIBOBJS!$LTLIBOBJS$ac_delim
+ _ACEOF
+ 
+-  if test `sed -n "s/.*$ac_delim\$/X/p" conf$$subs.sed | grep -c X` = 32; then
++  if test `sed -n "s/.*$ac_delim\$/X/p" conf$$subs.sed | grep -c X` = 33; then
+     break
+   elif $ac_last_try; then
+     { { echo "$as_me:$LINENO: error: could not make $CONFIG_STATUS" >&5
+diff -urN a/gcc/configure.ac b/gcc/configure.ac
+--- a/gcc/configure.ac	2013-10-06 20:13:10.569171712 +0100
++++ b/gcc/configure.ac	2013-10-06 20:13:11.319183309 +0100
+@@ -37,6 +37,13 @@
+ AC_CANONICAL_HOST
+ AC_CANONICAL_TARGET
+ 
++if test "$build_os" != "mingw32" ; then
++    abs_srcdir_native=$srcdir
++else
++    abs_srcdir_native=$(cd $srcdir; pwd -W)
++fi
++AC_SUBST(abs_srcdir_native)
++
+ # Determine the noncanonical target name, for directory use.
+ ACX_NONCANONICAL_TARGET
+ 
