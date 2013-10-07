@@ -1,6 +1,6 @@
 diff -urN a/Makefile.in b/Makefile.in
 --- a/Makefile.in	1970-01-01 01:00:00.000000000 +0100
-+++ b/Makefile.in	2013-10-07 17:09:21.535971995 +0100
++++ b/Makefile.in	2013-10-08 00:00:28.844907614 +0100
 @@ -0,0 +1,52 @@
 +CFLAGS = @CFLAGS@
 +CPPFLAGS = @CPPFLAGS@
@@ -56,7 +56,7 @@ diff -urN a/Makefile.in b/Makefile.in
 +
 diff -urN a/ar/Makefile.in b/ar/Makefile.in
 --- a/ar/Makefile.in	1970-01-01 01:00:00.000000000 +0100
-+++ b/ar/Makefile.in	2013-10-07 17:09:21.532638575 +0100
++++ b/ar/Makefile.in	2013-10-08 00:00:28.758239628 +0100
 @@ -0,0 +1,71 @@
 +builddir = @builddir@
 +top_builddir = @top_builddir@
@@ -131,7 +131,7 @@ diff -urN a/ar/Makefile.in b/ar/Makefile.in
 +	rm -f ar
 diff -urN a/as/Makefile.arch.in b/as/Makefile.arch.in
 --- a/as/Makefile.arch.in	1970-01-01 01:00:00.000000000 +0100
-+++ b/as/Makefile.arch.in	2013-10-07 17:09:21.582639361 +0100
++++ b/as/Makefile.arch.in	2013-10-08 00:00:28.761573036 +0100
 @@ -0,0 +1,63 @@
 +builddir = @builddir@
 +top_builddir = @top_builddir@
@@ -198,7 +198,7 @@ diff -urN a/as/Makefile.arch.in b/as/Makefile.arch.in
 +	rm -f as
 diff -urN a/as/Makefile.in b/as/Makefile.in
 --- a/as/Makefile.in	1970-01-01 01:00:00.000000000 +0100
-+++ b/as/Makefile.in	2013-10-07 17:09:21.582639361 +0100
++++ b/as/Makefile.in	2013-10-08 00:00:28.761573036 +0100
 @@ -0,0 +1,78 @@
 +builddir = @builddir@
 +top_builddir = @top_builddir@
@@ -280,7 +280,7 @@ diff -urN a/as/Makefile.in b/as/Makefile.in
 +	done
 diff -urN a/as/arm/Makefile.in b/as/arm/Makefile.in
 --- a/as/arm/Makefile.in	1970-01-01 01:00:00.000000000 +0100
-+++ b/as/arm/Makefile.in	2013-10-07 17:09:21.579305969 +0100
++++ b/as/arm/Makefile.in	2013-10-08 00:00:28.761573036 +0100
 @@ -0,0 +1,5 @@
 +ARCH	=	arm
 +
@@ -289,7 +289,7 @@ diff -urN a/as/arm/Makefile.in b/as/arm/Makefile.in
 +MYLIBS_arm	=	-lstuff
 diff -urN a/as/i386/Makefile.in b/as/i386/Makefile.in
 --- a/as/i386/Makefile.in	1970-01-01 01:00:00.000000000 +0100
-+++ b/as/i386/Makefile.in	2013-10-07 17:09:21.579305969 +0100
++++ b/as/i386/Makefile.in	2013-10-08 00:00:28.761573036 +0100
 @@ -0,0 +1,6 @@
 +ARCH	=	i386
 +
@@ -299,7 +299,7 @@ diff -urN a/as/i386/Makefile.in b/as/i386/Makefile.in
 +
 diff -urN a/as/ppc/Makefile.in b/as/ppc/Makefile.in
 --- a/as/ppc/Makefile.in	1970-01-01 01:00:00.000000000 +0100
-+++ b/as/ppc/Makefile.in	2013-10-07 17:09:21.582639361 +0100
++++ b/as/ppc/Makefile.in	2013-10-08 00:00:28.761573036 +0100
 @@ -0,0 +1,5 @@
 +ARCH	=	ppc
 +
@@ -308,7 +308,7 @@ diff -urN a/as/ppc/Makefile.in b/as/ppc/Makefile.in
 +MYLIBS_ppc	=	-lstuff
 diff -urN a/as/ppc64/Makefile.in b/as/ppc64/Makefile.in
 --- a/as/ppc64/Makefile.in	1970-01-01 01:00:00.000000000 +0100
-+++ b/as/ppc64/Makefile.in	2013-10-07 17:09:21.579305969 +0100
++++ b/as/ppc64/Makefile.in	2013-10-08 00:00:28.761573036 +0100
 @@ -0,0 +1,5 @@
 +ARCH	=	ppc64
 +
@@ -317,7 +317,7 @@ diff -urN a/as/ppc64/Makefile.in b/as/ppc64/Makefile.in
 +MYLIBS_ppc64	=	-lstuff
 diff -urN a/as/x86_64/Makefile.in b/as/x86_64/Makefile.in
 --- a/as/x86_64/Makefile.in	1970-01-01 01:00:00.000000000 +0100
-+++ b/as/x86_64/Makefile.in	2013-10-07 17:09:21.579305969 +0100
++++ b/as/x86_64/Makefile.in	2013-10-08 00:00:28.761573036 +0100
 @@ -0,0 +1,6 @@
 +ARCH	=	x86_64
 +
@@ -327,7 +327,7 @@ diff -urN a/as/x86_64/Makefile.in b/as/x86_64/Makefile.in
 +
 diff -urN a/config.guess b/config.guess
 --- a/config.guess	1970-01-01 01:00:00.000000000 +0100
-+++ b/config.guess	2013-10-07 17:09:21.532638575 +0100
++++ b/config.guess	2013-10-08 00:00:28.804907016 +0100
 @@ -0,0 +1,1535 @@
 +#! /bin/sh
 +# Attempt to guess a canonical system name.
@@ -1866,7 +1866,7 @@ diff -urN a/config.guess b/config.guess
 +# End:
 diff -urN a/config.sub b/config.sub
 --- a/config.sub	1970-01-01 01:00:00.000000000 +0100
-+++ b/config.sub	2013-10-07 17:09:21.529305191 +0100
++++ b/config.sub	2013-10-08 00:00:28.754906246 +0100
 @@ -0,0 +1,1787 @@
 +#! /bin/sh
 +# Configuration validation subroutine script.
@@ -3657,8 +3657,8 @@ diff -urN a/config.sub b/config.sub
 +# End:
 diff -urN a/configure.ac b/configure.ac
 --- a/configure.ac	1970-01-01 01:00:00.000000000 +0100
-+++ b/configure.ac	2013-10-07 17:09:21.582639361 +0100
-@@ -0,0 +1,772 @@
++++ b/configure.ac	2013-10-08 00:00:28.804907016 +0100
+@@ -0,0 +1,782 @@
 +AC_INIT([ccctools], [809], [Ray Donnelly <mingw.android@gmail.com>])
 +AC_PREREQ([2.62])
 +AC_REVISION([m4_esyscmd_s([git describe --always])])
@@ -4126,12 +4126,22 @@ diff -urN a/configure.ac b/configure.ac
 +
 +if test "x${llvm}" != x; then
 +    AC_MSG_NOTICE(["Using llvm in prefix ${llvm}"])
++    # LTO.dll exists in ${llvm}/bin folder and even though
++    # there is libLTO.a in ${llvm}/lib, it isn't an import
++    # library for this dll; rather a static lib. To ensure
++    # the dll is found first -L${llvm}/bin appears infront
++    # of -L${llvm}/lib in LDFLAGS.
++    case $host_os in
++        mingw*)
++            AX_APPEND_COMPILE_FLAGS([-L${llvm}/bin],LDFLAGS)
++        ;;
++    esac
 +    AX_APPEND_COMPILE_FLAGS([-I${llvm}/include],CFLAGS)
 +    AX_APPEND_COMPILE_FLAGS([-L${llvm}/lib],LDFLAGS)
 +    llvm_config=${llvm}/bin/${target}-llvm-config$EXEEXT
 +    if ! test -x "${llvm_config}"; then
-+        llvm_config=
 +        AC_MSG_WARN([llvm-config (${llvm_config}) not found, will use LLVM 2.7 defaults])
++        llvm_config=
 +    fi
 +else
 +    AC_MSG_ERROR(["Please specify --with-llvm=<path>"])
@@ -4433,7 +4443,7 @@ diff -urN a/configure.ac b/configure.ac
 +AC_OUTPUT
 diff -urN a/include/CommonCrypto/CommonDigest.h.in b/include/CommonCrypto/CommonDigest.h.in
 --- a/include/CommonCrypto/CommonDigest.h.in	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/CommonCrypto/CommonDigest.h.in	2013-10-07 17:09:21.525971819 +0100
++++ b/include/CommonCrypto/CommonDigest.h.in	2013-10-08 00:00:28.798240233 +0100
 @@ -0,0 +1,13 @@
 +#ifndef COMMONDIGEST_H_INCLUDED
 +#define COMMONDIGEST_H_INCLUDED
@@ -4450,7 +4460,7 @@ diff -urN a/include/CommonCrypto/CommonDigest.h.in b/include/CommonCrypto/Common
 +#endif /* COMMONDIGEST_H_INCLUDED */
 diff -urN a/include/Makefile.in b/include/Makefile.in
 --- a/include/Makefile.in	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/Makefile.in	2013-10-07 17:09:21.525971819 +0100
++++ b/include/Makefile.in	2013-10-08 00:00:28.801573648 +0100
 @@ -0,0 +1,33 @@
 +builddir = @builddir@
 +top_builddir = @top_builddir@
@@ -4487,7 +4497,7 @@ diff -urN a/include/Makefile.in b/include/Makefile.in
 +clean:
 diff -urN a/include/config.h.in b/include/config.h.in
 --- a/include/config.h.in	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/config.h.in	2013-10-07 17:09:21.522638458 +0100
++++ b/include/config.h.in	2013-10-08 00:00:28.794906853 +0100
 @@ -0,0 +1,451 @@
 +/* include/config.h.in.  Generated from configure.ac by autoheader.  */
 +
@@ -4942,7 +4952,7 @@ diff -urN a/include/config.h.in b/include/config.h.in
 +
 diff -urN a/include/configure.h.in b/include/configure.h.in
 --- a/include/configure.h.in	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/configure.h.in	2013-10-07 17:09:21.525971819 +0100
++++ b/include/configure.h.in	2013-10-08 00:00:28.798240233 +0100
 @@ -0,0 +1,4 @@
 +#ifndef FAKE_CONFIGURE_H_INCLUDED
 +#define FAKE_CONFIGURE_H_INCLUDED
@@ -4950,7 +4960,7 @@ diff -urN a/include/configure.h.in b/include/configure.h.in
 +#endif /* FAKE_CONFIGURE_H_INCLUDED */
 diff -urN a/include/dlfcn.h.in b/include/dlfcn.h.in
 --- a/include/dlfcn.h.in	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/dlfcn.h.in	2013-10-07 17:09:21.522638458 +0100
++++ b/include/dlfcn.h.in	2013-10-08 00:00:28.801573648 +0100
 @@ -0,0 +1,27 @@
 +#ifndef FAKE_DLFCN_H_INCLUDED
 +#define FAKE_DLFCN_H_INCLUDED
@@ -4981,7 +4991,7 @@ diff -urN a/include/dlfcn.h.in b/include/dlfcn.h.in
 +#endif /* FAKE_DLFCN_H_INCLUDED */
 diff -urN a/include/emulated.h b/include/emulated.h
 --- a/include/emulated.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/emulated.h	2013-10-07 17:09:21.525971819 +0100
++++ b/include/emulated.h	2013-10-08 00:00:28.801573648 +0100
 @@ -0,0 +1,164 @@
 +#ifndef EMULATED_H_INCLUDED
 +#define EMULATED_H_INCLUDED
@@ -5149,7 +5159,7 @@ diff -urN a/include/emulated.h b/include/emulated.h
 +#endif /* EMULATED_H_INCLUDED */
 diff -urN a/include/err.h.in b/include/err.h.in
 --- a/include/err.h.in	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/err.h.in	2013-10-07 17:09:21.519305050 +0100
++++ b/include/err.h.in	2013-10-08 00:00:28.794906853 +0100
 @@ -0,0 +1,28 @@
 +#ifndef ERR_H_INCLUDED
 +#define ERR_H_INCLUDED
@@ -5181,7 +5191,7 @@ diff -urN a/include/err.h.in b/include/err.h.in
 +#endif /* ERR_H_INCLUDED */
 diff -urN a/include/execinfo.h.in b/include/execinfo.h.in
 --- a/include/execinfo.h.in	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/execinfo.h.in	2013-10-07 17:09:21.519305050 +0100
++++ b/include/execinfo.h.in	2013-10-08 00:00:28.801573648 +0100
 @@ -0,0 +1,4 @@
 +#ifndef EXECINFO_H_INCLUDED
 +#define EXECINFO_H_INCLUDED
@@ -5189,7 +5199,7 @@ diff -urN a/include/execinfo.h.in b/include/execinfo.h.in
 +#endif /* EXECINFO_H_INCLUDED */
 diff -urN a/include/extern.h b/include/extern.h
 --- a/include/extern.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/extern.h	2013-10-07 17:09:21.529305191 +0100
++++ b/include/extern.h	2013-10-08 00:00:28.801573648 +0100
 @@ -0,0 +1,26 @@
 +/*
 +   These includes are needed by all .cpp
@@ -5219,7 +5229,7 @@ diff -urN a/include/extern.h b/include/extern.h
 +#include <sys/sysctl.h>
 diff -urN a/include/libc.h.in b/include/libc.h.in
 --- a/include/libc.h.in	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/libc.h.in	2013-10-07 17:09:21.519305050 +0100
++++ b/include/libc.h.in	2013-10-08 00:00:28.794906853 +0100
 @@ -0,0 +1,22 @@
 +#ifndef FAKE_LIBC_H_INCLUDED
 +#define FAKE_LIBC_H_INCLUDED
@@ -5245,7 +5255,7 @@ diff -urN a/include/libc.h.in b/include/libc.h.in
 +#endif /* FAKE_LIBC_H_INCLUDED */
 diff -urN a/include/libc_cxx.h.in b/include/libc_cxx.h.in
 --- a/include/libc_cxx.h.in	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/libc_cxx.h.in	2013-10-07 17:09:21.529305191 +0100
++++ b/include/libc_cxx.h.in	2013-10-08 00:00:28.801573648 +0100
 @@ -0,0 +1,26 @@
 +/*
 +   These includes are needed by all .cpp
@@ -5275,7 +5285,7 @@ diff -urN a/include/libc_cxx.h.in b/include/libc_cxx.h.in
 +#include <sys/sysctl.h>
 diff -urN a/include/mach-o/arch-install.h b/include/mach-o/arch-install.h
 --- a/include/mach-o/arch-install.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/mach-o/arch-install.h	2013-10-07 17:09:21.529305191 +0100
++++ b/include/mach-o/arch-install.h	2013-10-08 00:00:28.798240233 +0100
 @@ -0,0 +1,110 @@
 +/*
 + * Copyright (c) 1999 Apple Computer, Inc. All rights reserved.
@@ -5389,7 +5399,7 @@ diff -urN a/include/mach-o/arch-install.h b/include/mach-o/arch-install.h
 +#endif /* _MACH_O_ARCH_H_ */
 diff -urN a/include/malloc/malloc.h.in b/include/malloc/malloc.h.in
 --- a/include/malloc/malloc.h.in	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/malloc/malloc.h.in	2013-10-07 17:09:21.522638458 +0100
++++ b/include/malloc/malloc.h.in	2013-10-08 00:00:28.801573648 +0100
 @@ -0,0 +1,4 @@
 +#ifndef FAKE_MALLOC_H_INCLUDED
 +#define FAKE_MALLOC_H_INCLUDED
@@ -5397,7 +5407,7 @@ diff -urN a/include/malloc/malloc.h.in b/include/malloc/malloc.h.in
 +#endif /* FAKE_MALLOC_H_INCLUDED */
 diff -urN a/include/paths.h.in b/include/paths.h.in
 --- a/include/paths.h.in	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/paths.h.in	2013-10-07 17:09:21.529305191 +0100
++++ b/include/paths.h.in	2013-10-08 00:00:28.791573504 +0100
 @@ -0,0 +1,4 @@
 +#ifndef FAKE_PATHS_H_INCLUDED
 +#define FAKE_PATHS_H_INCLUDED
@@ -5405,7 +5415,7 @@ diff -urN a/include/paths.h.in b/include/paths.h.in
 +#endif /* FAKE_PATHS_H_INCLUDED */
 diff -urN a/include/servers/bootstrap.h.in b/include/servers/bootstrap.h.in
 --- a/include/servers/bootstrap.h.in	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/servers/bootstrap.h.in	2013-10-07 17:09:21.529305191 +0100
++++ b/include/servers/bootstrap.h.in	2013-10-08 00:00:28.794906853 +0100
 @@ -0,0 +1,4 @@
 +#ifndef FAKE_SERVER_BOOTSTRAP_H_INCLUDED
 +#define FAKE_SERVER_BOOTSTRAP_H_INCLUDED
@@ -5413,7 +5423,7 @@ diff -urN a/include/servers/bootstrap.h.in b/include/servers/bootstrap.h.in
 +#endif /* FAKE_SERVER_BOOTSTRAP_H_INCLUDED */
 diff -urN a/include/sys/_endian.h.in b/include/sys/_endian.h.in
 --- a/include/sys/_endian.h.in	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/sys/_endian.h.in	2013-10-07 17:09:21.519305050 +0100
++++ b/include/sys/_endian.h.in	2013-10-08 00:00:28.794906853 +0100
 @@ -0,0 +1,14 @@
 +#ifndef SYS__ENDIAN_H_INCLUDED
 +#define SYS__ENDIAN_H_INCLUDED
@@ -5431,7 +5441,7 @@ diff -urN a/include/sys/_endian.h.in b/include/sys/_endian.h.in
 +#endif /* SYS__ENDIAN_H_INCLUDED */
 diff -urN a/include/sys/cdefs.h.in b/include/sys/cdefs.h.in
 --- a/include/sys/cdefs.h.in	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/sys/cdefs.h.in	2013-10-07 17:09:21.519305050 +0100
++++ b/include/sys/cdefs.h.in	2013-10-08 00:00:28.794906853 +0100
 @@ -0,0 +1,14 @@
 +#ifndef SYS_CDEFS_H_INCLUDED
 +#define SYS_CDEFS_H_INCLUDED
@@ -5449,7 +5459,7 @@ diff -urN a/include/sys/cdefs.h.in b/include/sys/cdefs.h.in
 +#endif /* SYS_CDEFS_H_INCLUDED */
 diff -urN a/include/sys/mman.h.in b/include/sys/mman.h.in
 --- a/include/sys/mman.h.in	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/sys/mman.h.in	2013-10-07 17:09:21.519305050 +0100
++++ b/include/sys/mman.h.in	2013-10-08 00:00:28.794906853 +0100
 @@ -0,0 +1,4 @@
 +#ifndef SYS_MMAN_H_INCLUDED
 +#define SYS_MMAN_H_INCLUDED
@@ -5457,7 +5467,7 @@ diff -urN a/include/sys/mman.h.in b/include/sys/mman.h.in
 +#endif /* SYS_MMAN_H_INCLUDED */
 diff -urN a/include/sys/sysctl.h.in b/include/sys/sysctl.h.in
 --- a/include/sys/sysctl.h.in	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/sys/sysctl.h.in	2013-10-07 17:09:21.519305050 +0100
++++ b/include/sys/sysctl.h.in	2013-10-08 00:00:28.794906853 +0100
 @@ -0,0 +1,4 @@
 +#ifndef SYS_SYSCTL_H_INCLUDED
 +#define SYS_SYSCTL_H_INCLUDED
@@ -5465,7 +5475,7 @@ diff -urN a/include/sys/sysctl.h.in b/include/sys/sysctl.h.in
 +#endif /* SYS_SYSCTL_H_INCLUDED */
 diff -urN a/include/tzfile.h.in b/include/tzfile.h.in
 --- a/include/tzfile.h.in	1970-01-01 01:00:00.000000000 +0100
-+++ b/include/tzfile.h.in	2013-10-07 17:09:21.522638458 +0100
++++ b/include/tzfile.h.in	2013-10-08 00:00:28.791573504 +0100
 @@ -0,0 +1,4 @@
 +#ifndef FAKE_TZFILE_H_INCLUDED
 +#define FAKE_TZFILE_H_INCLUDED
@@ -5473,7 +5483,7 @@ diff -urN a/include/tzfile.h.in b/include/tzfile.h.in
 +#endif /* FAKE_TZFLIE_H_INCLUDED */
 diff -urN a/install-sh b/install-sh
 --- a/install-sh	1970-01-01 01:00:00.000000000 +0100
-+++ b/install-sh	2013-10-07 17:09:21.512638301 +0100
++++ b/install-sh	2013-10-08 00:00:28.758239628 +0100
 @@ -0,0 +1,276 @@
 +#!/bin/sh
 +#
@@ -5753,7 +5763,7 @@ diff -urN a/install-sh b/install-sh
 +}
 diff -urN a/ld/Makefile.in b/ld/Makefile.in
 --- a/ld/Makefile.in	1970-01-01 01:00:00.000000000 +0100
-+++ b/ld/Makefile.in	2013-10-07 17:09:21.535971995 +0100
++++ b/ld/Makefile.in	2013-10-08 00:00:28.848241032 +0100
 @@ -0,0 +1,72 @@
 +builddir = @builddir@
 +top_builddir = @top_builddir@
@@ -5829,7 +5839,7 @@ diff -urN a/ld/Makefile.in b/ld/Makefile.in
 +	rm -f ld
 diff -urN a/ld64/Makefile.in b/ld64/Makefile.in
 --- a/ld64/Makefile.in	1970-01-01 01:00:00.000000000 +0100
-+++ b/ld64/Makefile.in	2013-10-07 17:09:21.542638755 +0100
++++ b/ld64/Makefile.in	2013-10-08 00:00:28.838240891 +0100
 @@ -0,0 +1,103 @@
 +builddir        = @builddir@
 +top_builddir    = @top_builddir@
@@ -5936,7 +5946,7 @@ diff -urN a/ld64/Makefile.in b/ld64/Makefile.in
 +	rm -f ld
 diff -urN a/ld64/Makefile.in.85.2.1 b/ld64/Makefile.in.85.2.1
 --- a/ld64/Makefile.in.85.2.1	1970-01-01 01:00:00.000000000 +0100
-+++ b/ld64/Makefile.in.85.2.1	2013-10-07 17:09:21.542638755 +0100
++++ b/ld64/Makefile.in.85.2.1	2013-10-08 00:00:28.834907485 +0100
 @@ -0,0 +1,78 @@
 +builddir = @builddir@
 +top_builddir = @top_builddir@
@@ -6018,13 +6028,13 @@ diff -urN a/ld64/Makefile.in.85.2.1 b/ld64/Makefile.in.85.2.1
 +	rm -f ld
 diff -urN a/ld64/src/ld/configure.h b/ld64/src/ld/configure.h
 --- a/ld64/src/ld/configure.h	1970-01-01 01:00:00.000000000 +0100
-+++ b/ld64/src/ld/configure.h	2013-10-07 17:09:21.542638755 +0100
++++ b/ld64/src/ld/configure.h	2013-10-08 00:00:28.841574251 +0100
 @@ -0,0 +1,2 @@
 +
 +
 diff -urN a/libmacho/Makefile.in b/libmacho/Makefile.in
 --- a/libmacho/Makefile.in	1970-01-01 01:00:00.000000000 +0100
-+++ b/libmacho/Makefile.in	2013-10-07 17:09:21.582639361 +0100
++++ b/libmacho/Makefile.in	2013-10-08 00:00:28.844907614 +0100
 @@ -0,0 +1,68 @@
 +builddir = @builddir@
 +top_builddir = @top_builddir@
@@ -6096,7 +6106,7 @@ diff -urN a/libmacho/Makefile.in b/libmacho/Makefile.in
 +	$(RANLIB) $(DESTDIR)$(libdir)/$<
 diff -urN a/libprunetrie/Makefile.in b/libprunetrie/Makefile.in
 --- a/libprunetrie/Makefile.in	1970-01-01 01:00:00.000000000 +0100
-+++ b/libprunetrie/Makefile.in	2013-10-07 17:09:21.515971667 +0100
++++ b/libprunetrie/Makefile.in	2013-10-08 00:00:28.844907614 +0100
 @@ -0,0 +1,69 @@
 +builddir = @builddir@
 +top_builddir = @top_builddir@
@@ -6169,7 +6179,7 @@ diff -urN a/libprunetrie/Makefile.in b/libprunetrie/Makefile.in
 +install:
 diff -urN a/libstuff/Makefile.in b/libstuff/Makefile.in
 --- a/libstuff/Makefile.in	1970-01-01 01:00:00.000000000 +0100
-+++ b/libstuff/Makefile.in	2013-10-07 17:09:21.515971667 +0100
++++ b/libstuff/Makefile.in	2013-10-08 00:00:28.804907016 +0100
 @@ -0,0 +1,62 @@
 +builddir = @builddir@
 +top_builddir = @top_builddir@
@@ -6235,13 +6245,13 @@ diff -urN a/libstuff/Makefile.in b/libstuff/Makefile.in
 +install:
 diff -urN a/libstuff/apple_version.c b/libstuff/apple_version.c
 --- a/libstuff/apple_version.c	1970-01-01 01:00:00.000000000 +0100
-+++ b/libstuff/apple_version.c	2013-10-07 17:09:21.512638301 +0100
++++ b/libstuff/apple_version.c	2013-10-08 00:00:28.804907016 +0100
 @@ -0,0 +1,2 @@
 +const char apple_version[]= PACKAGE_NAME "-" PACKAGE_VERSION;
 +const char ldVersionString[]= "@(#)PROGRAM:ld  PROJECT:" PACKAGE_NAME "-" PACKAGE_VERSION "\n";
 diff -urN a/libstuff/emulated.c b/libstuff/emulated.c
 --- a/libstuff/emulated.c	1970-01-01 01:00:00.000000000 +0100
-+++ b/libstuff/emulated.c	2013-10-07 17:09:21.512638301 +0100
++++ b/libstuff/emulated.c	2013-10-08 00:00:28.804907016 +0100
 @@ -0,0 +1,719 @@
 +#if (HAVE_DECL_MMAP==0) || (HAVE_DECL_FCHMOD==0) || (HAVE_DECL_FCHDIR==0) || (HAVE_DECL_UTIMES==0)
 +
@@ -6964,7 +6974,7 @@ diff -urN a/libstuff/emulated.c b/libstuff/emulated.c
 +vm_size_t vm_page_size = 4096; /* hardcoded to match expectations of darwin */
 diff -urN a/m4/ax_append_compile_flags.m4 b/m4/ax_append_compile_flags.m4
 --- a/m4/ax_append_compile_flags.m4	1970-01-01 01:00:00.000000000 +0100
-+++ b/m4/ax_append_compile_flags.m4	2013-10-07 17:09:21.575972596 +0100
++++ b/m4/ax_append_compile_flags.m4	2013-10-08 00:00:28.791573504 +0100
 @@ -0,0 +1,65 @@
 +# ===========================================================================
 +#  http://www.gnu.org/software/autoconf-archive/ax_append_compile_flags.html
@@ -7033,7 +7043,7 @@ diff -urN a/m4/ax_append_compile_flags.m4 b/m4/ax_append_compile_flags.m4
 +])dnl AX_APPEND_COMPILE_FLAGS
 diff -urN a/m4/ax_append_flag.m4 b/m4/ax_append_flag.m4
 --- a/m4/ax_append_flag.m4	1970-01-01 01:00:00.000000000 +0100
-+++ b/m4/ax_append_flag.m4	2013-10-07 17:09:21.575972596 +0100
++++ b/m4/ax_append_flag.m4	2013-10-08 00:00:28.791573504 +0100
 @@ -0,0 +1,69 @@
 +# ===========================================================================
 +#      http://www.gnu.org/software/autoconf-archive/ax_append_flag.html
@@ -7106,7 +7116,7 @@ diff -urN a/m4/ax_append_flag.m4 b/m4/ax_append_flag.m4
 +])dnl AX_APPEND_FLAG
 diff -urN a/m4/ax_check_compile_flag.m4 b/m4/ax_check_compile_flag.m4
 --- a/m4/ax_check_compile_flag.m4	1970-01-01 01:00:00.000000000 +0100
-+++ b/m4/ax_check_compile_flag.m4	2013-10-07 17:09:21.575972596 +0100
++++ b/m4/ax_check_compile_flag.m4	2013-10-08 00:00:28.791573504 +0100
 @@ -0,0 +1,72 @@
 +# ===========================================================================
 +#   http://www.gnu.org/software/autoconf-archive/ax_check_compile_flag.html
@@ -7182,7 +7192,7 @@ diff -urN a/m4/ax_check_compile_flag.m4 b/m4/ax_check_compile_flag.m4
 +])dnl AX_CHECK_COMPILE_FLAGS
 diff -urN a/m4/check_enum.m4 b/m4/check_enum.m4
 --- a/m4/check_enum.m4	1970-01-01 01:00:00.000000000 +0100
-+++ b/m4/check_enum.m4	2013-10-07 17:09:21.575972596 +0100
++++ b/m4/check_enum.m4	2013-10-08 00:00:28.791573504 +0100
 @@ -0,0 +1,47 @@
 +dnl CHECK_ENUM and GET_DEFINE autoconf macros are
 +dnl Copyright 2004,2006 Bernhard R. Link
@@ -7233,7 +7243,7 @@ diff -urN a/m4/check_enum.m4 b/m4/check_enum.m4
 +])dnl GET_DEFINE
 diff -urN a/man/Makefile.in b/man/Makefile.in
 --- a/man/Makefile.in	1970-01-01 01:00:00.000000000 +0100
-+++ b/man/Makefile.in	2013-10-07 17:09:21.532638575 +0100
++++ b/man/Makefile.in	2013-10-08 00:00:28.754906246 +0100
 @@ -0,0 +1,50 @@
 +builddir = @builddir@
 +top_builddir = @top_builddir@
@@ -7287,7 +7297,7 @@ diff -urN a/man/Makefile.in b/man/Makefile.in
 +clean:
 diff -urN a/misc/Makefile.in b/misc/Makefile.in
 --- a/misc/Makefile.in	1970-01-01 01:00:00.000000000 +0100
-+++ b/misc/Makefile.in	2013-10-07 17:09:21.515971667 +0100
++++ b/misc/Makefile.in	2013-10-08 00:00:28.758239628 +0100
 @@ -0,0 +1,162 @@
 +builddir = @builddir@
 +top_builddir = @top_builddir@
@@ -7453,7 +7463,7 @@ diff -urN a/misc/Makefile.in b/misc/Makefile.in
 +	rm -f $(PROGRAMS)
 diff -urN a/otool/Makefile.in b/otool/Makefile.in
 --- a/otool/Makefile.in	1970-01-01 01:00:00.000000000 +0100
-+++ b/otool/Makefile.in	2013-10-07 17:09:21.512638301 +0100
++++ b/otool/Makefile.in	2013-10-08 00:00:28.841574251 +0100
 @@ -0,0 +1,81 @@
 +builddir = @builddir@
 +top_builddir = @top_builddir@
