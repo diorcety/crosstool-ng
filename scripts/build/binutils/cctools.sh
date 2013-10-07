@@ -33,7 +33,7 @@ do_binutils_extract() {
     CT_Patch "cctools" "${CT_BINUTILS_VERSION}"
 
     CT_Pushd "${CT_SRC_DIR}/cctools-${CT_BINUTILS_VERSION}/"
-    autoreconf -vi
+    autoreconf -vi > /dev/null
     CT_Popd
 }
 
