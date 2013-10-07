@@ -1,6 +1,6 @@
 diff -urN a/ar/append.c b/ar/append.c
---- a/ar/append.c	2013-06-04 22:01:59.837869827 +0100
-+++ b/ar/append.c	2013-06-04 22:02:00.437875275 +0100
+--- a/ar/append.c	2013-10-07 17:09:18.082585255 +0100
++++ b/ar/append.c	2013-10-07 17:09:18.449257571 +0100
 @@ -93,7 +93,7 @@
  	CF cf;
  	struct stat sb;
@@ -11,8 +11,8 @@ diff -urN a/ar/append.c b/ar/append.c
  		error(archive);
  
 diff -urN a/ar/archive.c b/ar/archive.c
---- a/ar/archive.c	2013-06-04 22:01:59.837869827 +0100
-+++ b/ar/archive.c	2013-06-04 22:02:00.436875266 +0100
+--- a/ar/archive.c	2013-10-07 17:09:18.082585255 +0100
++++ b/ar/archive.c	2013-10-07 17:09:18.449257571 +0100
 @@ -100,7 +100,7 @@
  	created = 0;
  	if (mode & O_CREAT) {
@@ -32,8 +32,8 @@ diff -urN a/ar/archive.c b/ar/archive.c
  
  	if((mode & O_ACCMODE) == O_RDONLY)
 diff -urN a/ar/extract.c b/ar/extract.c
---- a/ar/extract.c	2013-06-04 22:01:59.837869827 +0100
-+++ b/ar/extract.c	2013-06-04 22:02:00.437875275 +0100
+--- a/ar/extract.c	2013-10-07 17:09:18.082585255 +0100
++++ b/ar/extract.c	2013-10-07 17:09:18.449257571 +0100
 @@ -117,7 +117,7 @@
  		    sb.st_mtime > chdr.date)
  			continue;
@@ -44,8 +44,8 @@ diff -urN a/ar/extract.c b/ar/extract.c
  			skip_arobj(afd);
  			eval = 1;
 diff -urN a/ar/replace.c b/ar/replace.c
---- a/ar/replace.c	2013-06-04 22:01:59.837869827 +0100
-+++ b/ar/replace.c	2013-06-04 22:02:00.437875275 +0100
+--- a/ar/replace.c	2013-10-07 17:09:18.082585255 +0100
++++ b/ar/replace.c	2013-10-07 17:09:18.449257571 +0100
 @@ -104,7 +104,7 @@
  	 * a race here, but it's pretty short, and not worth fixing.
  	 */
@@ -74,8 +74,8 @@ diff -urN a/ar/replace.c b/ar/replace.c
  			warn("%s", file);
  			continue;
 diff -urN a/as/write_object.c b/as/write_object.c
---- a/as/write_object.c	2013-06-04 22:01:59.880870218 +0100
-+++ b/as/write_object.c	2013-06-04 22:02:00.481875675 +0100
+--- a/as/write_object.c	2013-10-07 17:09:18.125919255 +0100
++++ b/as/write_object.c	2013-10-07 17:09:18.492591598 +0100
 @@ -633,7 +633,7 @@
  	    if(stat_buf.st_mode & S_IFREG)
  		(void)unlink(out_file_name);
@@ -86,8 +86,8 @@ diff -urN a/as/write_object.c b/as/write_object.c
  	if(write(fd, output_addr, output_size) != (int)output_size)
  	    as_fatal("can't write output file");
 diff -urN a/dyld/launch-cache/dsc_extractor.cpp b/dyld/launch-cache/dsc_extractor.cpp
---- a/dyld/launch-cache/dsc_extractor.cpp	2013-06-04 22:01:59.841869864 +0100
-+++ b/dyld/launch-cache/dsc_extractor.cpp	2013-06-04 22:02:00.440875302 +0100
+--- a/dyld/launch-cache/dsc_extractor.cpp	2013-10-07 17:09:18.029251087 +0100
++++ b/dyld/launch-cache/dsc_extractor.cpp	2013-10-07 17:09:18.395923421 +0100
 @@ -395,7 +395,7 @@
              make_dirs(dylib_path);
              
@@ -98,8 +98,8 @@ diff -urN a/dyld/launch-cache/dsc_extractor.cpp b/dyld/launch-cache/dsc_extracto
                  fprintf(stderr, "can't open or create dylib file %s, errnor=%d\n", dylib_path, errno);
                  cumulativeResult    = -1;
 diff -urN a/dyld/launch-cache/update_dyld_shared_cache.cpp b/dyld/launch-cache/update_dyld_shared_cache.cpp
---- a/dyld/launch-cache/update_dyld_shared_cache.cpp	2013-06-04 22:01:59.842869872 +0100
-+++ b/dyld/launch-cache/update_dyld_shared_cache.cpp	2013-06-04 22:02:00.441875311 +0100
+--- a/dyld/launch-cache/update_dyld_shared_cache.cpp	2013-10-07 17:09:18.029251087 +0100
++++ b/dyld/launch-cache/update_dyld_shared_cache.cpp	2013-10-07 17:09:18.395923421 +0100
 @@ -2732,7 +2732,7 @@
  				}
  				
@@ -110,8 +110,8 @@ diff -urN a/dyld/launch-cache/update_dyld_shared_cache.cpp b/dyld/launch-cache/u
  					throwf("can't create temp file %s, errnor=%d", tempCachePath, errno);
  					
 diff -urN a/efitools/makerelocs.c b/efitools/makerelocs.c
---- a/efitools/makerelocs.c	2013-06-04 22:01:59.840869855 +0100
-+++ b/efitools/makerelocs.c	2013-06-04 22:02:00.440875302 +0100
+--- a/efitools/makerelocs.c	2013-10-07 17:09:18.125919255 +0100
++++ b/efitools/makerelocs.c	2013-10-07 17:09:18.492591598 +0100
 @@ -440,7 +440,7 @@
  	       (nbase_reloc + 1) * sizeof(struct base_relocation_entry);
  	fb = malloc(size);
@@ -122,8 +122,8 @@ diff -urN a/efitools/makerelocs.c b/efitools/makerelocs.c
  	    fatal("open output file");
  	}
 diff -urN a/efitools/mtoc.c b/efitools/mtoc.c
---- a/efitools/mtoc.c	2013-06-04 22:01:59.841869864 +0100
-+++ b/efitools/mtoc.c	2013-06-04 22:02:00.440875302 +0100
+--- a/efitools/mtoc.c	2013-10-07 17:09:18.125919255 +0100
++++ b/efitools/mtoc.c	2013-10-07 17:09:18.492591598 +0100
 @@ -1625,7 +1625,7 @@
  	/*
  	 * Create the pecoff file and write the buffer to the file.
@@ -134,8 +134,8 @@ diff -urN a/efitools/mtoc.c b/efitools/mtoc.c
  	    system_fatal("Can't create output file: %s", out);
  
 diff -urN a/ld/rld.c b/ld/rld.c
---- a/ld/rld.c	2013-06-04 22:01:59.885870263 +0100
-+++ b/ld/rld.c	2013-06-04 22:02:00.486875720 +0100
+--- a/ld/rld.c	2013-10-07 17:09:18.082585255 +0100
++++ b/ld/rld.c	2013-10-07 17:09:18.449257571 +0100
 @@ -629,7 +629,7 @@
  			  sizeof(struct nlist) +
  			  output_symtab_info.symtab_command.strsize;
@@ -154,21 +154,9 @@ diff -urN a/ld/rld.c b/ld/rld.c
  		      0666)) == -1){
  	    system_error("can't create output file: %s", output_filename);
  	    return_value = 0;
-diff -urN a/ld64/src/ld/lto_file.hpp b/ld64/src/ld/lto_file.hpp
---- a/ld64/src/ld/lto_file.hpp	2013-06-04 22:01:59.931870680 +0100
-+++ b/ld64/src/ld/lto_file.hpp	2013-06-04 22:02:00.530876119 +0100
-@@ -547,7 +547,7 @@
-         char tempMachoPath[MAXPATHLEN];
-         strcpy(tempMachoPath, outputFilePath);
-         strcat(tempMachoPath, ".lto.o");
--        int fd = ::open(tempMachoPath, O_CREAT | O_WRONLY | O_TRUNC, 0666);
-+        int fd = ::open(tempMachoPath, O_CREAT | O_WRONLY | O_TRUNC | O_BINARY, 0666);
- 		if ( fd != -1) {
- 			::write(fd, machOFile, machOFileLen);
- 			::close(fd);
 diff -urN a/ld64/src/ld/Options.cpp b/ld64/src/ld/Options.cpp
---- a/ld64/src/ld/Options.cpp	2013-06-04 22:01:59.930870671 +0100
-+++ b/ld64/src/ld/Options.cpp	2013-06-04 22:02:00.530876119 +0100
+--- a/ld64/src/ld/Options.cpp	2013-10-07 17:09:18.085918632 +0100
++++ b/ld64/src/ld/Options.cpp	2013-10-07 17:09:18.455924360 +0100
 @@ -348,7 +348,7 @@
  void Options::loadSymbolOrderFile(const char* fileOfExports, NameToOrder& orderMapping)
  {
@@ -215,8 +203,8 @@ diff -urN a/ld64/src/ld/Options.cpp b/ld64/src/ld/Options.cpp
  		throwf("can't open -sectcreate file: %s", path);
  	struct stat stat_buf;
 diff -urN a/ld64/src/ld/OutputFile.cpp b/ld64/src/ld/OutputFile.cpp
---- a/ld64/src/ld/OutputFile.cpp	2013-06-04 22:01:59.931870680 +0100
-+++ b/ld64/src/ld/OutputFile.cpp	2013-06-04 22:02:00.531876128 +0100
+--- a/ld64/src/ld/OutputFile.cpp	2013-10-07 17:09:18.089252010 +0100
++++ b/ld64/src/ld/OutputFile.cpp	2013-10-07 17:09:18.459257738 +0100
 @@ -1714,7 +1714,7 @@
  	}
  
@@ -226,9 +214,21 @@ diff -urN a/ld64/src/ld/OutputFile.cpp b/ld64/src/ld/OutputFile.cpp
  	if ( fd == -1 ) 
  		throwf("can't open output file for writing: %s, errno=%d", _options.outputFilePath(), errno);
  	if ( ::pwrite(fd, wholeBuffer, _fileSize, 0) == -1 )
+diff -urN a/ld64/src/ld/lto_file.hpp b/ld64/src/ld/lto_file.hpp
+--- a/ld64/src/ld/lto_file.hpp	2013-10-07 17:09:18.089252010 +0100
++++ b/ld64/src/ld/lto_file.hpp	2013-10-07 17:09:18.459257738 +0100
+@@ -547,7 +547,7 @@
+         char tempMachoPath[MAXPATHLEN];
+         strcpy(tempMachoPath, outputFilePath);
+         strcat(tempMachoPath, ".lto.o");
+-        int fd = ::open(tempMachoPath, O_CREAT | O_WRONLY | O_TRUNC, 0666);
++        int fd = ::open(tempMachoPath, O_CREAT | O_WRONLY | O_TRUNC | O_BINARY, 0666);
+ 		if ( fd != -1) {
+ 			::write(fd, machOFile, machOFileLen);
+ 			::close(fd);
 diff -urN a/ld64/src/ld/parsers/lto_file.cpp b/ld64/src/ld/parsers/lto_file.cpp
---- a/ld64/src/ld/parsers/lto_file.cpp	2013-06-04 22:01:59.931870680 +0100
-+++ b/ld64/src/ld/parsers/lto_file.cpp	2013-06-04 22:02:00.531876128 +0100
+--- a/ld64/src/ld/parsers/lto_file.cpp	2013-10-07 17:09:18.089252010 +0100
++++ b/ld64/src/ld/parsers/lto_file.cpp	2013-10-07 17:09:18.455924360 +0100
 @@ -649,7 +649,7 @@
          char tempMachoPath[MAXPATHLEN];
          strcpy(tempMachoPath, options.outputFilePath);
@@ -248,8 +248,8 @@ diff -urN a/ld64/src/ld/parsers/lto_file.cpp b/ld64/src/ld/parsers/lto_file.cpp
  			::write(fd, machOFile, machOFileLen);
  			::close(fd);
 diff -urN a/ld64/src/other/rebase.cpp b/ld64/src/other/rebase.cpp
---- a/ld64/src/other/rebase.cpp	2013-06-04 22:01:59.930870671 +0100
-+++ b/ld64/src/other/rebase.cpp	2013-06-04 22:02:00.530876119 +0100
+--- a/ld64/src/other/rebase.cpp	2013-10-07 17:09:18.085918632 +0100
++++ b/ld64/src/other/rebase.cpp	2013-10-07 17:09:18.452590935 +0100
 @@ -122,7 +122,7 @@
   : fMappingAddress(0), fFileSize(0)
  {
@@ -269,8 +269,8 @@ diff -urN a/ld64/src/other/rebase.cpp b/ld64/src/other/rebase.cpp
  		throwf("can't create temp file %s, errnor=%d", dstFile, errno);
  
 diff -urN a/libstuff/ofile.c b/libstuff/ofile.c
---- a/libstuff/ofile.c	2013-06-04 22:01:59.878870200 +0100
-+++ b/libstuff/ofile.c	2013-06-04 22:02:00.478875647 +0100
+--- a/libstuff/ofile.c	2013-10-07 17:09:18.062584913 +0100
++++ b/libstuff/ofile.c	2013-10-07 17:09:18.429257252 +0100
 @@ -839,7 +839,7 @@
  	memset(ofile, '\0', sizeof(struct ofile));
  
@@ -281,8 +281,8 @@ diff -urN a/libstuff/ofile.c b/libstuff/ofile.c
  	    return(NSObjectFileImageAccess);
  #else
 diff -urN a/libstuff/writeout.c b/libstuff/writeout.c
---- a/libstuff/writeout.c	2013-06-04 22:01:59.879870209 +0100
-+++ b/libstuff/writeout.c	2013-06-04 22:02:00.479875656 +0100
+--- a/libstuff/writeout.c	2013-10-07 17:09:18.062584913 +0100
++++ b/libstuff/writeout.c	2013-10-07 17:09:18.429257252 +0100
 @@ -144,7 +144,7 @@
  	else
  	    fsync = 0;
@@ -293,8 +293,8 @@ diff -urN a/libstuff/writeout.c b/libstuff/writeout.c
                  goto cleanup;
              }
 diff -urN a/misc/libtool.c b/misc/libtool.c
---- a/misc/libtool.c	2013-06-04 22:01:59.837869827 +0100
-+++ b/misc/libtool.c	2013-06-04 22:02:00.437875275 +0100
+--- a/misc/libtool.c	2013-10-07 17:09:18.062584913 +0100
++++ b/misc/libtool.c	2013-10-07 17:09:18.432590639 +0100
 @@ -2382,7 +2382,7 @@
  	    if(same_toc == FALSE)
  		p = put_toc_member(p, archs+0, host_byte_sex, target_byte_sex);
@@ -332,8 +332,8 @@ diff -urN a/misc/libtool.c b/misc/libtool.c
  				error("Could not open or create trace file: %s\n", cmd_flags.trace_file_path);
  		}
 diff -urN a/misc/lipo.c b/misc/lipo.c
---- a/misc/lipo.c	2013-06-04 22:01:59.838869836 +0100
-+++ b/misc/lipo.c	2013-06-04 22:02:00.438875284 +0100
+--- a/misc/lipo.c	2013-10-07 17:09:18.062584913 +0100
++++ b/misc/lipo.c	2013-10-07 17:09:18.429257252 +0100
 @@ -560,7 +560,7 @@
  		   (thin_files[i].fat_arch.cpusubtype & ~CPU_SUBTYPE_MASK) ==
  		   (thin_arch_flag.cpusubtype & ~CPU_SUBTYPE_MASK)){
@@ -353,8 +353,8 @@ diff -urN a/misc/lipo.c b/misc/lipo.c
  	    system_fatal("can't create output file: %s", output_file);
  
 diff -urN a/misc/segedit.c b/misc/segedit.c
---- a/misc/segedit.c	2013-06-04 22:01:59.838869836 +0100
-+++ b/misc/segedit.c	2013-06-04 22:02:00.438875284 +0100
+--- a/misc/segedit.c	2013-10-07 17:09:18.062584913 +0100
++++ b/misc/segedit.c	2013-10-07 17:09:18.432590639 +0100
 @@ -249,7 +249,7 @@
      struct symseg_command *ssp;
  
@@ -401,8 +401,8 @@ diff -urN a/misc/segedit.c b/misc/segedit.c
  					 "section (%s,%s) with", rp->filename,
  					 rp->segname, rp->sectname);
 diff -urN a/misc/strip.c b/misc/strip.c
---- a/misc/strip.c	2013-06-04 22:01:59.837869827 +0100
-+++ b/misc/strip.c	2013-06-04 22:02:00.437875275 +0100
+--- a/misc/strip.c	2013-10-07 17:09:18.062584913 +0100
++++ b/misc/strip.c	2013-10-07 17:09:18.432590639 +0100
 @@ -683,7 +683,7 @@
  		 * the current working directory to that path.
  		 */

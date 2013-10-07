@@ -1,6 +1,6 @@
 diff -urN a/as/input-scrub.c b/as/input-scrub.c
---- a/as/input-scrub.c	2013-06-04 22:01:55.142827196 +0100
-+++ b/as/input-scrub.c	2013-06-04 22:01:55.362829193 +0100
+--- a/as/input-scrub.c	2013-10-07 17:09:13.529181513 +0100
++++ b/as/input-scrub.c	2013-10-07 17:09:13.682517196 +0100
 @@ -384,14 +384,7 @@
    fprintf (stderr,"as:file(%s) %s! ",
  	   filename, gripe

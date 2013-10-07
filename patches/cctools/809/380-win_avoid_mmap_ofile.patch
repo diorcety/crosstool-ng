@@ -1,6 +1,6 @@
 diff -urN a/libstuff/ofile.c b/libstuff/ofile.c
---- a/libstuff/ofile.c	2013-06-04 22:02:02.798896713 +0100
-+++ b/libstuff/ofile.c	2013-06-04 22:02:03.017898702 +0100
+--- a/libstuff/ofile.c	2013-10-07 17:09:20.375954023 +0100
++++ b/libstuff/ofile.c	2013-10-07 17:09:20.525956391 +0100
 @@ -874,6 +874,20 @@
  	    printf("Modification time = %ld\n", (long int)stat_buf.st_mtime);
  #endif /* OTOOL */

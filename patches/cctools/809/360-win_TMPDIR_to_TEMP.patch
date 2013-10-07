@@ -1,6 +1,6 @@
 diff -urN a/ar/misc.c b/ar/misc.c
---- a/ar/misc.c	2013-06-04 22:02:01.745887152 +0100
-+++ b/ar/misc.c	2013-06-04 22:02:01.964889141 +0100
+--- a/ar/misc.c	2013-10-07 17:09:19.469273356 +0100
++++ b/ar/misc.c	2013-10-07 17:09:19.615942300 +0100
 @@ -83,6 +83,14 @@
  
  char *tname = "temporary file";		/* temporary file "name" */

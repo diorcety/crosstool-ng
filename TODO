@@ -53,3 +53,7 @@ Non-recurring tasks:
   - Add llvm-config-build and llvm-config-host for when going Canadian.
 
   - Consider adding PPC support?
+
+  - Copy cctools' needed SDK headers from the SDK at patch-time instead
+    of providing them in a patch - needs an OSX SDK to be identified
+    though, even for an iPhone build.

@@ -112,12 +112,6 @@ do_cctools_backend() {
         eval "${arg// /\\ }"
     done
 
-    if [ "${CT_MULTILIB}" = "y" ]; then
-        extra_config+=("--enable-multilib")
-    else
-        extra_config+=("--disable-multilib")
-    fi
-
     if [ "${build_staticlinked}" = "yes" ]; then
         extra_config+=("--enable-static")
         extra_config+=("--disable-shared")
@@ -128,15 +122,15 @@ do_cctools_backend() {
 
     CT_DoLog EXTRA "Configuring cctools"
     CT_DoExecLog CFG \
-    CFLAGS="${cflags} -isystem ${prefix}/include/ -isystem ${CT_BUILDTOOLS_PREFIX_DIR}/include/" 	\
-    CXXFLAGS="${cflags} -isystem ${prefix}/include/ -isystem ${CT_BUILDTOOLS_PREFIX_DIR}/include/" 	\
-    LDFLAGS="${ldflags} -L${CT_BUILDTOOLS_PREFIX_DIR}/lib/ -L${prefix}/lib/"                            \
+    CFLAGS="${cflags} -I${CT_BUILDTOOLS_PREFIX_DIR}/include/"           \
+    CXXFLAGS="${cflags} -I${CT_BUILDTOOLS_PREFIX_DIR}/include/"         \
+    LDFLAGS="${ldflags} -L${CT_BUILDTOOLS_PREFIX_DIR}/lib/"             \
     "${CT_SRC_DIR}/cctools-${CT_BINUTILS_VERSION}/configure"            \
         --build=${CT_BUILD}                                             \
         --host=${host}                                                  \
         --target=${CT_TARGET}                                           \
         --prefix=${prefix}                                              \
-        --disable-werror                                                \
+        --with-llvm=${prefix}                                           \
         "${extra_config[@]}"                                            \
         ${CT_ARCH_WITH_FLOAT}                                           \
         ${BINUTILS_SYSROOT_ARG}                                         \

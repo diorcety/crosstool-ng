@@ -1,6 +1,6 @@
 diff -urN a/otool/print_objc.c b/otool/print_objc.c
---- a/otool/print_objc.c	2013-06-04 22:01:53.419811550 +0100
-+++ b/otool/print_objc.c	2013-06-04 22:01:53.638813539 +0100
+--- a/otool/print_objc.c	2013-10-07 17:09:11.919156615 +0100
++++ b/otool/print_objc.c	2013-10-07 17:09:12.069158915 +0100
 @@ -144,7 +144,13 @@
      uint32_t characters;	/* char * (32-bit pointer) */
      uint32_t _length;

@@ -1,6 +1,6 @@
 diff -urN a/ar/archive.h b/ar/archive.h
---- a/ar/archive.h	2013-06-04 22:01:51.276792091 +0100
-+++ b/ar/archive.h	2013-06-04 22:01:51.524794343 +0100
+--- a/ar/archive.h	2013-10-07 17:09:09.955792881 +0100
++++ b/ar/archive.h	2013-10-07 17:09:10.119128752 +0100
 @@ -112,11 +112,11 @@
  } CHDR;
  
@@ -17,8 +17,8 @@ diff -urN a/ar/archive.h b/ar/archive.h
  
  #include <sys/cdefs.h>
 diff -urN a/ar/contents.c b/ar/contents.c
---- a/ar/contents.c	2013-06-04 22:01:51.276792091 +0100
-+++ b/ar/contents.c	2013-06-04 22:01:51.524794343 +0100
+--- a/ar/contents.c	2013-10-07 17:09:09.955792881 +0100
++++ b/ar/contents.c	2013-10-07 17:09:10.119128752 +0100
 @@ -104,8 +104,8 @@
  			goto next;
  		if (options & AR_V) {
@@ -31,8 +31,8 @@ diff -urN a/ar/contents.c b/ar/contents.c
  			(void)strftime(buf, sizeof(buf), "%b %e %H:%M %Y", tp);
  			(void)printf("%s %s\n", buf, file);
 diff -urN a/as/messages.c b/as/messages.c
---- a/as/messages.c	2013-06-04 22:01:51.318792473 +0100
-+++ b/as/messages.c	2013-06-04 22:01:51.575794807 +0100
+--- a/as/messages.c	2013-10-07 17:09:09.999126896 +0100
++++ b/as/messages.c	2013-10-07 17:09:10.169129524 +0100
 @@ -236,5 +236,5 @@
  void
  sprint_value (char *buf, signed_expr_t val)

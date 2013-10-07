@@ -1,6 +1,6 @@
 diff -urN a/libstuff/execute.c b/libstuff/execute.c
---- a/libstuff/execute.c	2013-06-04 22:02:02.298892173 +0100
-+++ b/libstuff/execute.c	2013-06-04 22:02:02.516894153 +0100
+--- a/libstuff/execute.c	2013-10-07 17:09:19.905946797 +0100
++++ b/libstuff/execute.c	2013-10-07 17:09:20.052615725 +0100
 @@ -25,7 +25,11 @@
  #include <mach/mach.h> /* first to get rid of pre-comp warning */
  #include "stdio.h"

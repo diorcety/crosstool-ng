@@ -1,6 +1,6 @@
 diff -urN a/ar/archive.c b/ar/archive.c
---- a/ar/archive.c	2013-06-04 22:01:48.595767748 +0100
-+++ b/ar/archive.c	2013-06-04 22:01:48.836769936 +0100
+--- a/ar/archive.c	2013-10-07 17:09:07.519088563 +0100
++++ b/ar/archive.c	2013-10-07 17:09:07.705758120 +0100
 @@ -321,7 +321,11 @@
  		 * things for exact binary equality.
  		 */
@@ -39,8 +39,8 @@ diff -urN a/ar/archive.c b/ar/archive.c
  		size = sb->st_size;
  	} else {
 diff -urN a/ar/contents.c b/ar/contents.c
---- a/ar/contents.c	2013-06-04 22:01:48.595767748 +0100
-+++ b/ar/contents.c	2013-06-04 22:01:48.836769936 +0100
+--- a/ar/contents.c	2013-10-07 17:09:07.519088563 +0100
++++ b/ar/contents.c	2013-10-07 17:09:07.705758120 +0100
 @@ -68,6 +68,7 @@
  
  #include <sys/param.h>

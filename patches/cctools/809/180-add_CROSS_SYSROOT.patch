@@ -1,6 +1,6 @@
 diff -urN a/ld/ld.c b/ld/ld.c
---- a/ld/ld.c	2013-06-04 23:10:48.581721392 +0100
-+++ b/ld/ld.c	2013-06-04 23:10:48.848723700 +0100
+--- a/ld/ld.c	2013-10-07 17:09:10.449133848 +0100
++++ b/ld/ld.c	2013-10-07 17:09:10.632470050 +0100
 @@ -1909,6 +1909,11 @@
  	else{
  	    next_root = p;
@@ -14,8 +14,8 @@ diff -urN a/ld/ld.c b/ld/ld.c
  	    for(i = 0; standard_dirs[i] != NULL; i++){
  		p = allocate(strlen(next_root) +
 diff -urN a/ld64/src/ld/Options.cpp b/ld64/src/ld/Options.cpp
---- a/ld64/src/ld/Options.cpp	2013-06-04 23:10:48.624721764 +0100
-+++ b/ld64/src/ld/Options.cpp	2013-06-04 23:10:48.891724072 +0100
+--- a/ld64/src/ld/Options.cpp	2013-10-07 17:09:10.452467263 +0100
++++ b/ld64/src/ld/Options.cpp	2013-10-07 17:09:10.635803410 +0100
 @@ -2790,6 +2790,10 @@
  	}
  	int standardLibraryPathsStartIndex = libraryPaths.size();
@@ -28,8 +28,8 @@ diff -urN a/ld64/src/ld/Options.cpp b/ld64/src/ld/Options.cpp
  		libraryPaths.push_back("/usr/lib");
  		libraryPaths.push_back("/usr/local/lib");
 diff -urN a/misc/libtool.c b/misc/libtool.c
---- a/misc/libtool.c	2013-06-04 23:10:48.528720934 +0100
-+++ b/misc/libtool.c	2013-06-04 23:10:48.797723259 +0100
+--- a/misc/libtool.c	2013-10-07 17:09:10.429133546 +0100
++++ b/misc/libtool.c	2013-10-07 17:09:10.612469708 +0100
 @@ -1081,6 +1081,11 @@
  	else{
  	    next_root = getenv("NEXT_ROOT");

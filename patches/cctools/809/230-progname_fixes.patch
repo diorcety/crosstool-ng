@@ -1,6 +1,6 @@
 diff -urN a/as/driver.c b/as/driver.c
---- a/as/driver.c	2013-06-17 18:36:41.368674337 +0200
-+++ b/as/driver.c	2013-06-17 19:31:25.789650383 +0200
+--- a/as/driver.c	2013-10-07 17:09:13.009173442 +0100
++++ b/as/driver.c	2013-10-07 17:09:13.195842989 +0100
 @@ -53,17 +53,30 @@
  	 */
  	bufsize = MAXPATHLEN;
@@ -26,7 +26,7 @@ diff -urN a/as/driver.c b/as/driver.c
 -	p = rindex(prefix, '/');
 -	if(p != NULL)
 -	    p[1] = '\0';
-+	
++
 +	/* Append slash at the end if not exist */
 +	p = prefix + strlen(prefix);
 +	if((p-prefix)<(MAXPATHLEN-1) && prefix[p-prefix-1] != '/'){
@@ -38,8 +38,8 @@ diff -urN a/as/driver.c b/as/driver.c
  	 * Process the assembler flags exactly like the assembler would (except
  	 * let the assembler complain about multiple flags, bad combinations of
 diff -urN a/libstuff/execute.c b/libstuff/execute.c
---- a/libstuff/execute.c	2013-06-17 18:36:08.637299289 +0200
-+++ b/libstuff/execute.c	2013-06-17 19:27:02.830001754 +0200
+--- a/libstuff/execute.c	2013-10-07 17:09:12.942505740 +0100
++++ b/libstuff/execute.c	2013-10-07 17:09:13.125841923 +0100
 @@ -161,10 +161,23 @@
  	    p = allocate(bufsize);
  	    _NSGetExecutablePath(p, &bufsize);
@@ -58,7 +58,7 @@ diff -urN a/libstuff/execute.c b/libstuff/execute.c
 +	if(prefix == NULL){
 +	    prefix = resolved_name;
 +	}
-+	
++
 +	/* Append slash at the end if not exist */
 +	p = prefix + strlen(prefix);
 +	if((p-prefix)<(MAXPATHLEN-1) && prefix[p-prefix-1] != '/'){
@@ -69,8 +69,8 @@ diff -urN a/libstuff/execute.c b/libstuff/execute.c
  	return(makestr(prefix, str, NULL));
  }
 diff -urN a/misc/libtool.c b/misc/libtool.c
---- a/misc/libtool.c	2013-06-17 18:36:08.645299133 +0200
-+++ b/misc/libtool.c	2013-06-17 19:59:07.616853484 +0200
+--- a/misc/libtool.c	2013-10-07 17:09:12.945839126 +0100
++++ b/misc/libtool.c	2013-10-07 17:09:13.129175299 +0100
 @@ -374,7 +374,7 @@
  	    p++;
  	else

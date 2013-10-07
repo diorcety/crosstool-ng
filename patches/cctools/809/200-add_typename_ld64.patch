@@ -1,6 +1,6 @@
 diff -urN a/ld64/src/ld/parsers/macho_relocatable_file.cpp b/ld64/src/ld/parsers/macho_relocatable_file.cpp
---- a/ld64/src/ld/parsers/macho_relocatable_file.cpp	2013-06-04 22:01:52.978807546 +0100
-+++ b/ld64/src/ld/parsers/macho_relocatable_file.cpp	2013-06-04 22:01:53.209809644 +0100
+--- a/ld64/src/ld/parsers/macho_relocatable_file.cpp	2013-10-07 17:09:11.455816067 +0100
++++ b/ld64/src/ld/parsers/macho_relocatable_file.cpp	2013-10-07 17:09:11.625818720 +0100
 @@ -60,6 +60,13 @@
  extern void throwf(const char* format, ...) __attribute__ ((noreturn,format(printf, 1, 2)));
  extern void warning(const char* format, ...) __attribute__((format(printf, 1, 2)));
