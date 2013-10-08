@@ -206,8 +206,8 @@ diff -urN a/gcc/config/i386/xm-mingw32.h b/gcc/config/i386/xm-mingw32.h
 +
 +/* MSVCRT does not support the "ll" format specifier for printing
 +   "long long" values.  Instead, we use "I64".  */
-+#ifndef __USE_MINGW_ANSI_STDIO
-+ #define HOST_LONG_LONG_FORMAT "I64"
-+#else
++#if defined(__USE_MINGW_ANSI_STDIO) && (__USE_MINGW_ANSI_STDIO==1)
 + #define HOST_LONG_LONG_FORMAT "ll"
++#else
++ #define HOST_LONG_LONG_FORMAT "I64"
 +#endif
