@@ -546,8 +546,19 @@ if [ -z "${CT_RESTART}" ]; then
     # Use the number of processors+1 when automatically setting the number of
     # parallel jobs.  Fall back to 1 if the host doesn't use GLIBC.
     AUTO_JOBS=$((`getconf _NPROCESSORS_ONLN 2> /dev/null || echo 0` + 1))
-    [ ${CT_PARALLEL_JOBS} -eq 0 ] && JOBSFLAGS="${JOBSFLAGS} -j${AUTO_JOBS}"
-    [ ${CT_PARALLEL_JOBS} -gt 0 ] && JOBSFLAGS="${JOBSFLAGS} -j${CT_PARALLEL_JOBS}"
+    IS_PARALLEL="no"
+    [ ${CT_PARALLEL_JOBS} -eq 0 ] && JOBSFLAGS="${JOBSFLAGS} -j${AUTO_JOBS}" && IS_PARALLEL="yes"
+    [ ${CT_PARALLEL_JOBS} -gt 0 ] && JOBSFLAGS="${JOBSFLAGS} -j${CT_PARALLEL_JOBS}" && IS_PARALLEL="yes"
+    # If building in parallel and gnumake supports it, then --output-sync=target
+    # makes the logs easier to read as output from targets are not intermingled.
+    # This doesn't work so nicely on Windows at present though; outputs lots of:
+    # "fcntl(): Invalid argument" (this is the case with msys2-20131003)
+    if [ "${IS_PARALLEL}" = "yes" ]; then
+        if [ "${CT_PARALLEL_JOBS_OUTPUT_SYNC}" != "" ]; then
+#        if [ "${CT_BUILD/mingw/}" = "${CT_BUILD}" ]; then
+            make --output-sync=target -v > /dev/null && JOBSFLAGS="${JOBSFLAGS} --output-sync=target"
+        fi
+    fi
     JOBSFLAGS="${JOBSFLAGS} -l${CT_LOAD}"
 
     # Now that we've set up $PATH and $CT_CFLAGS_FOR_HOST, sanity test that gcc
