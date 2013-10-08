@@ -51,3 +51,9 @@ Non-recurring tasks:
   - Copy cctools' needed SDK headers from the SDK at patch-time instead
     of providing them in a patch - needs an OSX SDK to be identified
     though, even for an iPhone build.
+
+- Python Support
+  - gdb has Python integration, so add option to build Python.
+
+- LLDB Support
+  - Add this, it also has Python integration.
