@@ -39,12 +39,6 @@ Non-recurring tasks:
 
   - llvm-gcc needs to work again.
 
-  - CT_STATIC_TOOLCHAIN=y fails to build cctools ATM with recent LLVMs
-    as the libraries have changed name since this was last done, switch
-    to using "${program-prefix}-llvm-config --libs" to get list of libs.
-
-  - Windows can't link cctools either statically or shared ATM.
-
   - HOST_LINK_VERSION is used instead of `${program-prefix}-ld --version`
 
   - `${program-prefix}-ld -v` yields @(#)PROGRAM:ld  PROJECT:cctools-809
