@@ -51,7 +51,7 @@ do_libc_start_files() {
     # It seems mingw is strangely set up to look into /mingw instead of
     # /usr (notably when looking for the headers). This symlink is
     # here to workaround this, and seems to be here to last... :-/
-    CT_DoExecLog ALL ln -sv "usr/${CT_TARGET}" "${CT_SYSROOT_DIR}/mingw"
+    CT_DoExecLog ALL ln -sv "usr" "${CT_SYSROOT_DIR}/mingw"
 
     CT_EndStep
 }
