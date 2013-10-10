@@ -81,6 +81,18 @@ config EXPORT_BUILD_TOOLS
       Usually these problems manifest when some things use --build properly
       and some things don't and the linker then fails to link them.
 
+config SRC_REFERENCE_DATETIME
+    string
+    prompt "Date and time to set on all source files"
+    default ""
+    help
+      If you are using a repeatable builds system such as bitcoin gitian then
+      you can use this option to force a specific date and time on the source
+      files (post patching).
+
+      An sample value is '1999-12-31 23:59:59'. A blank value will avoid doing
+      this operation.
+
 config DEBUG_CT
     bool
     prompt "Debug crosstool-NG"
