@@ -648,7 +648,7 @@ if [ -z "${CT_RESTART}" ]; then
         do_test_suite_extract
         if [ "$CT_SRC_REFERENCE_DATETIME" != "" ]; then
             CT_DoStep INFO "Forcing date and time of patched sources to $CT_SRC_REFERENCE_DATETIME"
-            find ${CT_SRC_DIR} -type f -or -type d | xargs touch --date="$CT_SRC_REFERENCE_DATETIME"
+            find ${CT_SRC_DIR} \( -type f -or -type d \) -exec touch --date="$CT_SRC_REFERENCE_DATETIME" "{}" \;
             CT_EndStep
         fi
         CT_EndStep
