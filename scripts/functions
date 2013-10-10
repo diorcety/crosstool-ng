@@ -1344,6 +1344,12 @@ CT_DoLoadState(){
     CT_DoLog STATE "  Restoring environment"
     . "${state_dir}/env.sh" >/dev/null 2>&1 || true
 
+    # Export needed build tools variables.
+    if [ "$CT_EXPORT_BUILD_TOOLS" = "y" ]; then
+        CT_DoLog STATE "   Exporting build tools (as CT_EXPORT_BUILD_TOOLS=y)"
+        export AR AS DLLTOOL CC CXX LD NM OBJCOPY OBJDUMP RANLIB STRIP WINDRES
+    fi
+
     # Restore the new RESTART and STOP steps
     CT_RESTART="${old_RESTART}"
     CT_STOP="${old_STOP}"
