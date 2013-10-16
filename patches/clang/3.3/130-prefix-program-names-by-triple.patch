@@ -1,14 +1,26 @@
-diff -urN c/lib/Driver/ToolChain.cpp d/lib/Driver/ToolChain.cpp
---- c/lib/Driver/ToolChain.cpp	2013-04-20 10:15:03.000000000 +0200
-+++ d/lib/Driver/ToolChain.cpp	2013-09-11 09:10:45.724611953 +0200
-@@ -133,6 +133,17 @@
+diff -urN a/include/clang/Driver/Driver.h b/include/clang/Driver/Driver.h
+--- a/include/clang/Driver/Driver.h	2013-04-30 23:01:21.000000000 +0100
++++ b/include/clang/Driver/Driver.h	2013-10-16 23:51:00.000000000 +0100
+@@ -60,6 +60,9 @@
+   /// command line.
+   std::string Dir;
+ 
++  /// The prefix of the clang executable.
++  std::string Prefix;
++
+   /// The original path to the clang executable.
+   std::string ClangExecutable;
+ 
+diff -urN a/lib/Driver/ToolChain.cpp b/lib/Driver/ToolChain.cpp
+--- a/lib/Driver/ToolChain.cpp	2013-04-20 09:15:03.000000000 +0100
++++ b/lib/Driver/ToolChain.cpp	2013-10-16 23:47:54.000000000 +0100
+@@ -133,6 +133,16 @@
  }
  
  std::string ToolChain::GetProgramPath(const char *Name) const {
-+  // don't try to prefix clang
-+  if(strcmp(Name, "clang")) {
-+    // try first with prefixed by triple
-+    std::string targetName = getTripleString();
++  if(getDriver().Prefix != "") {
++    // first try prefixed with Driver::Prefix
++    std::string targetName = getDriver().Prefix;
 +    targetName += "-";
 +    targetName += Name;
 +    std::string targetProgram = D.GetProgramPath(targetName.c_str(), *this);
@@ -19,3 +31,36 @@ diff -urN c/lib/Driver/ToolChain.cpp d/lib/Driver/ToolChain.cpp
    return D.GetProgramPath(Name, *this);
  }
  
+diff -urN a/tools/driver/driver.cpp b/tools/driver/driver.cpp
+--- a/tools/driver/driver.cpp	2013-03-26 23:25:41.000000000 +0000
++++ b/tools/driver/driver.cpp	2013-10-16 23:49:56.000000000 +0100
+@@ -277,6 +277,11 @@
+   // "x86_64-linux-clang" as interpreted as suffix "clang" with
+   // target prefix "x86_64-linux". If such a target prefix is found,
+   // is gets added via -target as implicit first argument.
++  // .. with one caveat:
++  // Force i<N>86*darwin* to i386*darwin* as i386 has special meaning there
++  // of "The first Intel CPU that Darwin was available for, i.e. Yonah" while
++  // e.g. i686 means "The next Intel CPU after Pentium, i.e. Pentium Pro".
++
+   static const struct {
+     const char *Suffix;
+     bool IsCXX;
+@@ -326,9 +331,17 @@
+     ProgNameRef = ProgNameRef.slice(0, LastComponent);
+   }
+ 
++  TheDriver.Prefix = Prefix;
++
+   if (Prefix.empty())
+     return;
+ 
++  // Force i<N>86*darwin* to i386*darwin* (see above for reason)
++  if (ProgName.find("darwin") != std::string::npos &&
++      ProgName[0] == 'i' && isdigit(ProgName[1]) &&
++      ProgName[2] == '8' && ProgName[3] == '6')
++    ProgName[1] = '3';
++
+   std::string IgnoredError;
+   if (llvm::TargetRegistry::lookupTarget(Prefix, IgnoredError)) {
+     SmallVectorImpl<const char *>::iterator it = ArgVector.begin();
