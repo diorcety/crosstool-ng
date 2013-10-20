@@ -114,7 +114,7 @@ do_kernel_extract_minimal() {
         CT_DoExecLog ALL \
         mkdir -p $(dirname "${DSTDIR}")
         CT_DoExecLog ALL \
-        cp -rf "${_SRC}/usr/include/c++/${CXX_INCLUDE}" "${DSTDIR}"
+        cp -Rf "${_SRC}/usr/include/c++/${CXX_INCLUDE}" "${DSTDIR}"
     done
 
     # libs needed:
