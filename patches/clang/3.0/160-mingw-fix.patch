@@ -1,19 +1,19 @@
-diff -urN b/include/clang/Driver/ToolChain.h c/include/clang/Driver/ToolChain.h
---- b/include/clang/Driver/ToolChain.h	2013-09-13 13:07:41.861314642 +0200
-+++ c/include/clang/Driver/ToolChain.h	2013-09-13 13:08:28.148291982 +0200
+diff -urN a/include/clang/Driver/ToolChain.h b/include/clang/Driver/ToolChain.h
+--- a/include/clang/Driver/ToolChain.h	2013-10-28 19:11:16.316942084 +0000
++++ b/include/clang/Driver/ToolChain.h	2013-10-28 19:11:16.520278582 +0000
 @@ -74,6 +74,7 @@
    }
  
    virtual void AddLinkSearchPathArgs(const ArgList &Args, ArgStringList &CmdArgs) const;
 +  virtual void AddCPlusPlusIncludeSearchPathArgs(const ArgList &Args, ArgStringList &CmdArgs) const;
    virtual void AddIncludeSearchPathArgs(const ArgList &Args, ArgStringList &CmdArgs) const;
-   
+ 
    path_list &getFilePaths() { return FilePaths; }
-diff -urN b/lib/Driver/ToolChain.cpp c/lib/Driver/ToolChain.cpp
---- b/lib/Driver/ToolChain.cpp	2013-09-13 13:07:41.861314642 +0200
-+++ c/lib/Driver/ToolChain.cpp	2013-09-13 13:08:28.148291982 +0200
+diff -urN a/lib/Driver/ToolChain.cpp b/lib/Driver/ToolChain.cpp
+--- a/lib/Driver/ToolChain.cpp	2013-10-28 19:11:16.323608879 +0000
++++ b/lib/Driver/ToolChain.cpp	2013-10-28 19:11:16.520278582 +0000
 @@ -57,6 +57,23 @@
-   CmdArgs.push_back(Args.MakeArgString("-I" + BaseDir + "/../../../../" + Host.getTriple().getTriple() + "/include"));
+   CmdArgs.push_back(Args.MakeArgString("-I" + BaseDir + "/../../../../" + getDriver().Prefix + "/include"));
  }
  
 +void ToolChain::AddCPlusPlusIncludeSearchPathArgs(const ArgList &Args, ArgStringList &CmdArgs) const {
@@ -28,17 +28,17 @@ diff -urN b/lib/Driver/ToolChain.cpp c/lib/Driver/ToolChain.cpp
 +  P.eraseComponent(); // Remove /bin from foo/bin
 +  std::string BaseDir = P.str() + std::string("/lib/gcc/") + Host.getTriple().getTriple() + std::string("/") + GccVersion;
 +
-+  CmdArgs.push_back(Args.MakeArgString("-I" + BaseDir + "/../../../../" + Host.getTriple().getTriple() + "/include/c++/" + GccVersion));
-+  CmdArgs.push_back(Args.MakeArgString("-I" + BaseDir + "/../../../../" + Host.getTriple().getTriple() + "/include/c++/" + GccVersion + "/" + Host.getTriple().getTriple()));
-+  CmdArgs.push_back(Args.MakeArgString("-I" + BaseDir + "/../../../../" + Host.getTriple().getTriple() + "/include/c++/" + GccVersion + "/backward"));
++  CmdArgs.push_back(Args.MakeArgString("-I" + BaseDir + "/../../../../" + getDriver().Prefix + "/include/c++/" + GccVersion));
++  CmdArgs.push_back(Args.MakeArgString("-I" + BaseDir + "/../../../../" + getDriver().Prefix + "/include/c++/" + GccVersion + "/" + Host.getTriple().getTriple()));
++  CmdArgs.push_back(Args.MakeArgString("-I" + BaseDir + "/../../../../" + getDriver().Prefix + "/include/c++/" + GccVersion + "/backward"));
 +}
 +
  void ToolChain::AddLinkSearchPathArgs(const ArgList &Args, ArgStringList &CmdArgs) const {
    llvm::sys::Path P(getDriver().Dir);
    std::string GccVersion(CLANG_GCC_VERSION_STR);
-diff -urN b/lib/Driver/Tools.cpp c/lib/Driver/Tools.cpp
---- b/lib/Driver/Tools.cpp	2013-09-13 13:07:41.865314554 +0200
-+++ c/lib/Driver/Tools.cpp	2013-09-13 13:08:28.148291982 +0200
+diff -urN a/lib/Driver/Tools.cpp b/lib/Driver/Tools.cpp
+--- a/lib/Driver/Tools.cpp	2013-10-28 19:11:16.323608879 +0000
++++ b/lib/Driver/Tools.cpp	2013-10-28 19:11:16.520278582 +0000
 @@ -1543,6 +1543,9 @@
    if (isa<LinkJobAction>(JA)) {
       getToolChain().AddLinkSearchPathArgs(Args, CmdArgs);
@@ -49,9 +49,9 @@ diff -urN b/lib/Driver/Tools.cpp c/lib/Driver/Tools.cpp
       getToolChain().AddIncludeSearchPathArgs(Args, CmdArgs);
    }
  
-diff -urN b/lib/Frontend/InitHeaderSearch.cpp c/lib/Frontend/InitHeaderSearch.cpp
---- b/lib/Frontend/InitHeaderSearch.cpp	2011-11-07 11:27:39.000000000 +0100
-+++ c/lib/Frontend/InitHeaderSearch.cpp	2013-09-13 13:09:51.090471819 +0200
+diff -urN a/lib/Frontend/InitHeaderSearch.cpp b/lib/Frontend/InitHeaderSearch.cpp
+--- a/lib/Frontend/InitHeaderSearch.cpp	2013-10-28 19:11:16.323608879 +0000
++++ b/lib/Frontend/InitHeaderSearch.cpp	2013-10-28 19:11:16.520278582 +0000
 @@ -303,17 +303,13 @@
    case llvm::Triple::MinGW32: { 
        // mingw-w64 crt include paths

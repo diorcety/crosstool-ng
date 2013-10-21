@@ -1,6 +1,6 @@
 diff -urN a/lib/Driver/Driver.cpp b/lib/Driver/Driver.cpp
 --- a/lib/Driver/Driver.cpp	2013-04-30 23:01:21.000000000 +0100
-+++ b/lib/Driver/Driver.cpp	2013-10-16 22:37:34.551284884 +0100
++++ b/lib/Driver/Driver.cpp	2013-10-28 19:11:06.503457014 +0000
 @@ -41,6 +41,10 @@
  using namespace clang::driver;
  using namespace clang;
@@ -39,7 +39,7 @@ diff -urN a/lib/Driver/Driver.cpp b/lib/Driver/Driver.cpp
  
 diff -urN a/lib/Driver/Tools.cpp b/lib/Driver/Tools.cpp
 --- a/lib/Driver/Tools.cpp	2013-05-30 19:01:30.000000000 +0100
-+++ b/lib/Driver/Tools.cpp	2013-10-16 22:37:34.555284884 +0100
++++ b/lib/Driver/Tools.cpp	2013-10-28 19:11:06.503457014 +0000
 @@ -1876,6 +1876,12 @@
    std::string TripleStr = getToolChain().ComputeEffectiveClangTriple(Args);
    CmdArgs.push_back(Args.MakeArgString(TripleStr));

@@ -1,6 +1,6 @@
 diff -urN a/include/clang/Driver/Driver.h b/include/clang/Driver/Driver.h
---- a/include/clang/Driver/Driver.h	2013-04-30 23:01:21.000000000 +0100
-+++ b/include/clang/Driver/Driver.h	2013-10-16 23:51:00.000000000 +0100
+--- a/include/clang/Driver/Driver.h	2013-10-28 19:11:06.820128563 +0000
++++ b/include/clang/Driver/Driver.h	2013-10-28 19:11:07.120133198 +0000
 @@ -60,6 +60,9 @@
    /// command line.
    std::string Dir;
@@ -12,8 +12,8 @@ diff -urN a/include/clang/Driver/Driver.h b/include/clang/Driver/Driver.h
    std::string ClangExecutable;
  
 diff -urN a/lib/Driver/ToolChain.cpp b/lib/Driver/ToolChain.cpp
---- a/lib/Driver/ToolChain.cpp	2013-04-20 09:15:03.000000000 +0100
-+++ b/lib/Driver/ToolChain.cpp	2013-10-16 23:47:54.000000000 +0100
+--- a/lib/Driver/ToolChain.cpp	2013-10-28 19:11:06.830128710 +0000
++++ b/lib/Driver/ToolChain.cpp	2013-10-28 19:11:07.120133198 +0000
 @@ -133,6 +133,16 @@
  }
  
@@ -32,8 +32,8 @@ diff -urN a/lib/Driver/ToolChain.cpp b/lib/Driver/ToolChain.cpp
  }
  
 diff -urN a/tools/driver/driver.cpp b/tools/driver/driver.cpp
---- a/tools/driver/driver.cpp	2013-03-26 23:25:41.000000000 +0000
-+++ b/tools/driver/driver.cpp	2013-10-16 23:49:56.000000000 +0100
+--- a/tools/driver/driver.cpp	2013-10-28 19:11:06.936797049 +0000
++++ b/tools/driver/driver.cpp	2013-10-28 19:11:07.120133198 +0000
 @@ -277,6 +277,11 @@
    // "x86_64-linux-clang" as interpreted as suffix "clang" with
    // target prefix "x86_64-linux". If such a target prefix is found,

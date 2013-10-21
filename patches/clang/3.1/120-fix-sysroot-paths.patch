@@ -1,6 +1,6 @@
 diff -urN a/lib/Driver/Driver.cpp b/lib/Driver/Driver.cpp
---- a/lib/Driver/Driver.cpp	2012-04-16 06:16:43.000000000 +0200
-+++ b/lib/Driver/Driver.cpp	2013-09-07 22:21:24.340267426 +0200
+--- a/lib/Driver/Driver.cpp	2012-04-16 05:16:43.000000000 +0100
++++ b/lib/Driver/Driver.cpp	2013-10-28 19:11:12.783554111 +0000
 @@ -324,17 +324,29 @@
      A->claim();
      PrefixDirs.push_back(A->getValue(*Args, 0));
@@ -36,8 +36,8 @@ diff -urN a/lib/Driver/Driver.cpp b/lib/Driver/Driver.cpp
    Compilation *C = new Compilation(*this, TC, Args, TranslatedArgs);
  
 diff -urN a/lib/Driver/ToolChains.cpp b/lib/Driver/ToolChains.cpp
---- a/lib/Driver/ToolChains.cpp	2012-05-12 02:16:02.000000000 +0200
-+++ b/lib/Driver/ToolChains.cpp	2013-09-08 11:19:19.093321180 +0200
+--- a/lib/Driver/ToolChains.cpp	2012-05-12 01:16:02.000000000 +0100
++++ b/lib/Driver/ToolChains.cpp	2013-10-28 19:11:12.783554111 +0000
 @@ -274,15 +274,32 @@
  
  void DarwinClang::AddGCCLibexecPath(unsigned darwinVersion) {
@@ -208,8 +208,8 @@ diff -urN a/lib/Driver/ToolChains.cpp b/lib/Driver/ToolChains.cpp
                                   ArgStringList &CmdArgs) const {
  
 diff -urN a/lib/Driver/Tools.cpp b/lib/Driver/Tools.cpp
---- a/lib/Driver/Tools.cpp	2012-04-18 23:32:25.000000000 +0200
-+++ b/lib/Driver/Tools.cpp	2013-09-07 11:36:14.795330597 +0200
+--- a/lib/Driver/Tools.cpp	2012-04-18 22:32:25.000000000 +0100
++++ b/lib/Driver/Tools.cpp	2013-10-28 19:11:12.786887517 +0000
 @@ -1327,6 +1327,12 @@
    std::string TripleStr = getToolChain().ComputeEffectiveClangTriple(Args);
    CmdArgs.push_back(Args.MakeArgString(TripleStr));

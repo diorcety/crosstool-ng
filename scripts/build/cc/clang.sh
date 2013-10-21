@@ -171,22 +171,28 @@ do_clang_backend() {
         ${OPTIM_MAKE_FLAG}            \
         
     CT_Popd
-        
-    if [ "${CT_CC_CLANG_V_3_2}" != "y" ]; then
-    if [ "${CT_CC_CLANG_V_3_3}" != "y" ]; then
-        # Create default clang clang++
+
+    # clang > 3.1 creates ${CT_TARGET}- prefixed executables already.
+    # So do the same for clang > 2.9. Earlier versions don't have the
+    # code to detect the prefixes so they need wrapper shell scripts.
+    if [ "${CT_CC_CLANG_V_3_1}" = "y" -o "${CT_CC_CLANG_V_3_0}" = "y" ]; then
         for cc in clang clang++; do
-           gcc=${cc/clang/gcc}
-           gcc=${gcc/gcc++/g++}
-           cat > ${prefix}/bin/${CT_TARGET}-${cc} << EOF
+            CT_Pushd "${prefix}/bin"
+            ln -s ${cc} ${CT_TARGET}-${cc}
+            CT_Popd
+        done
+    elif [ "${CT_CC_CLANG_V_2_9}" = "y" -o "${CT_CC_CLANG_V_2_8}" = "y" -o "${CT_CC_CLANG_V_2_7}" = "y" ]; then
+        for cc in clang clang++; do
+            gcc=${cc/clang/gcc}
+            gcc=${gcc/gcc++/g++}
+            cat > ${prefix}/bin/${CT_TARGET}-${cc} << EOF
 #!/bin/sh
 \`dirname \$0\`/${cc} \
 -ccc-gcc-name ${CT_TARGET}-${gcc} \
 -ccc-host-triple ${CT_TARGET} \
 \$*
 EOF
-           chmod +x ${prefix}/bin/${CT_TARGET}-${cc}
+            chmod +x ${prefix}/bin/${CT_TARGET}-${cc}
         done
-    fi
     fi
 }

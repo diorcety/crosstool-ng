@@ -1,6 +1,6 @@
 diff -urN a/lib/Driver/Driver.cpp b/lib/Driver/Driver.cpp
---- a/lib/Driver/Driver.cpp	2012-11-19 22:31:56.000000000 +0100
-+++ b/lib/Driver/Driver.cpp	2013-09-19 10:30:54.305951496 +0200
+--- a/lib/Driver/Driver.cpp	2012-11-19 21:31:56.000000000 +0000
++++ b/lib/Driver/Driver.cpp	2013-10-28 19:11:09.883509264 +0000
 @@ -43,6 +43,10 @@
  using namespace clang::driver;
  using namespace clang;
@@ -38,8 +38,8 @@ diff -urN a/lib/Driver/Driver.cpp b/lib/Driver/Driver.cpp
      UseStdLib = false;
  
 diff -urN a/lib/Driver/Tools.cpp b/lib/Driver/Tools.cpp
---- a/lib/Driver/Tools.cpp	2013-09-19 10:29:56.702921094 +0200
-+++ b/lib/Driver/Tools.cpp	2013-09-19 10:30:08.794716408 +0200
+--- a/lib/Driver/Tools.cpp	2012-11-21 07:56:23.000000000 +0000
++++ b/lib/Driver/Tools.cpp	2013-10-28 19:11:09.886842665 +0000
 @@ -1617,6 +1617,12 @@
    std::string TripleStr = getToolChain().ComputeEffectiveClangTriple(Args);
    CmdArgs.push_back(Args.MakeArgString(TripleStr));
@@ -53,7 +53,7 @@ diff -urN a/lib/Driver/Tools.cpp b/lib/Driver/Tools.cpp
    // Select the appropriate action.
    RewriteKind rewriteKind = RK_None;
    
-@@ -4535,6 +4541,15 @@
+@@ -4546,6 +4552,15 @@
      CmdArgs.push_back("-syslibroot");
      CmdArgs.push_back(A->getValue());
    }
