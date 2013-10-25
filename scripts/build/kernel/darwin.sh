@@ -59,6 +59,7 @@ do_kernel_extract_minimal() {
     local _SRC="${CT_DARWIN_SDK_PATH}"
     local _TARGET="${CT_TARGET}"
 
+    [ -d "${_SRC}" ] || CT_Abort "Can't found the SDK at ${_SRC}"
     [ -d "${CT_SYSROOT_DIR}" ] || mkdir -p "${CT_SYSROOT_DIR}"
 
     CT_Pushd "${CT_SYSROOT_DIR}"
@@ -152,6 +153,7 @@ do_kernel_extract_copy_sdk() {
     local _SRC="${CT_DARWIN_SDK_PATH}"
     local _TARGET="${CT_TARGET}"
 
+    [ -d "${_SRC}" ] || CT_Abort "Can't found the SDK at ${_SRC}"
     [ -d "${CT_SYSROOT_DIR}" ] || mkdir -p "${CT_SYSROOT_DIR}"
 
     CT_Pushd "${CT_SYSROOT_DIR}"
