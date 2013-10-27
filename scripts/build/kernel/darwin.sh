@@ -166,6 +166,11 @@ do_kernel_extract_copy_sdk() {
         fi
     done
 
+    # Copy System files
+    [ -d System ] && rm -rf System
+    mkdir System
+    cp -fR $_SRC/System System/
+
     CT_Popd
 
     CT_EndStep
