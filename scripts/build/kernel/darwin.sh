@@ -168,7 +168,6 @@ do_kernel_extract_copy_sdk() {
 
     # Copy System files
     [ -d System ] && rm -rf System
-    mkdir System
     cp -a $_SRC/System System
 
     CT_Popd
