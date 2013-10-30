@@ -90,7 +90,7 @@ do_openssl_backend() {
         extra_config+=("mingw")
     elif echo "${host}" | "${grep}" -E 'linux' >/dev/null 2>&1; then
         if echo "${host}" | "${grep}" -E '^x86_64' >/dev/null 2>&1; then
-            if echo "${clfags}" | "${grep}" -E '\-m32' >/dev/null 2>&1; then
+            if echo "${cflags}" | "${grep}" -E '\-m32' >/dev/null 2>&1; then
                 extra_config+=("linux-generic32")
             else
                 extra_config+=("linux-x86_64")
