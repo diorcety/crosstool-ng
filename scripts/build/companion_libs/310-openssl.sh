@@ -92,18 +92,18 @@ do_openssl_backend() {
         if echo "${host}" | "${grep}" -E '^x86_64' >/dev/null 2>&1; then
             if echo "${clfags}" | "${grep}" -E '\-m32' >/dev/null 2>&1; then
                 extra_config+=("linux-generic32")
-			else
-                extra_config+=("linux-generic64")
+            else
+                extra_config+=("linux-x86_64")
             fi
         else
             extra_config+=("linux-generic32")
         fi
     fi
- 
+
     CT_DoLog EXTRA "Configuring openssl"
 
     CT_DoExecLog ALL cp -aT "${CT_SRC_DIR}/openssl-${CT_OPENSSL_VERSION}" "."
-    
+
     CT_DoExecLog CFG                           \
     CFLAGS="${clfags}"                         \
     LDFLAGS="${ldflags}"                       \
