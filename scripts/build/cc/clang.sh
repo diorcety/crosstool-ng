@@ -123,7 +123,7 @@ do_clang_backend() {
     fi
 
     final_CFLAGS+=("${cflags}")
-    if [ "${CC_GCC_APPLE}" = "y" ]; then
+    if [ "${CT_CC_GCC_APPLE}" = "y" ]; then
         final_CFLAGS+=("-DCLANG_GCC_VERSION=4.2.1")
     else
         final_CFLAGS+=("-DCLANG_GCC_VERSION=${CT_CC_GCC_VERSION}")

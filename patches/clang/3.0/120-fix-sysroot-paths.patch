@@ -24,7 +24,7 @@ diff -urN a/lib/Driver/Driver.cpp b/lib/Driver/Driver.cpp
 +      llvm::sys::Path P(Dir);
 +      if (!P.isEmpty()) {
 +        P.eraseComponent(); // Remove /bin from foo/bin
-+        P.appendComponent(Host->getTriple().getTriple());
++        P.appendComponent(this->Prefix);
 +        P.appendComponent("sysroot");
 +        SysrootDir = P.str();
 +      }
