@@ -60,8 +60,8 @@ diff -urN a/lib/Driver/ToolChain.cpp b/lib/Driver/ToolChain.cpp
 +  P.eraseComponent(); // Remove /bin from foo/bin
 +  std::string BaseDir = P.str() + std::string("/lib/gcc/") + getDriver().Prefix + std::string("/") + GccVersion;
 +
-+  CmdArgs.push_back(Args.MakeArgString("-I" + BaseDir + "/include"));
-+  CmdArgs.push_back(Args.MakeArgString("-I" + BaseDir + "/include-fixed"));
++  //CmdArgs.push_back(Args.MakeArgString("-I" + BaseDir + "/include"));
++  //CmdArgs.push_back(Args.MakeArgString("-I" + BaseDir + "/include-fixed"));
 +  CmdArgs.push_back(Args.MakeArgString("-I" + BaseDir + "/../../../../" + getDriver().Prefix + "/include"));
 +}
 +
@@ -78,7 +78,7 @@ diff -urN a/lib/Driver/ToolChain.cpp b/lib/Driver/ToolChain.cpp
 +  std::string BaseDir = P.str() + std::string("/lib/gcc/") + getDriver().Prefix + std::string("/") + GccVersion;
 +
 +  CmdArgs.push_back(Args.MakeArgString("-L" + BaseDir + "/lib"));
-+  CmdArgs.push_back(Args.MakeArgString("-L" + BaseDir + "/../../../../" + getDriver().Prefix + "/lib"));
++  //CmdArgs.push_back(Args.MakeArgString("-L" + BaseDir + "/../../../../" + getDriver().Prefix + "/lib"));
 +}
 +
  std::string ToolChain::GetFilePath(const char *Name) const {

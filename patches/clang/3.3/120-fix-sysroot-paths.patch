@@ -60,9 +60,9 @@ diff -urN a/lib/Driver/Tools.cpp b/lib/Driver/Tools.cpp
 +  
 +  std::string libPath;
 +  bool Exists;
-+  libPath = D.Dir + "/../lib/gcc/" + DarwinTC.getTripleString() + "/4.2.1";
-+  if (!llvm::sys::fs::exists(libPath, Exists) && Exists)
-+    CmdArgs.push_back(Args.MakeArgString("-L" + libPath));
++  //libPath = D.Dir + "/../lib/gcc/" + DarwinTC.getTripleString() + "/4.2.1";
++  //if (!llvm::sys::fs::exists(libPath, Exists) && Exists)
++  //  CmdArgs.push_back(Args.MakeArgString("-L" + libPath));
 +  libPath = D.SysRoot + "/usr/lib/gcc/" + DarwinTC.getTripleString() + "/4.2.1";
 +  if (!llvm::sys::fs::exists(libPath, Exists) && Exists)
 +    CmdArgs.push_back(Args.MakeArgString("-L" + libPath));
