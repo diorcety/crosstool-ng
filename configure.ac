@@ -314,6 +314,63 @@ AS_IF(
          #include <$ac_ct_gettext_hdr>])])
 
 #----------------------------------------
+# Check for gettext via libintl as opposed
+# to via e.g. glibc
+OLD_LIBS=$LIBS
+LIBS=
+AC_SEARCH_LIBS(
+    [libintl_gettext],
+    [intl])
+GETTEXT_LIB=$LIBS
+LIBS=$OLD_LIBS
+AC_SUBST([GETTEXT_LIB])
+
+#----------------------------------------
+# Check for regcomp via regex (tml's
+# mingw-regex-2.5.1)
+OLD_LIBS=$LIBS
+LIBS=
+AC_SEARCH_LIBS(
+    [regcomp],
+    [regex])
+REGEX_LIB=$LIBS
+LIBS=$OLD_LIBS
+AC_SUBST([REGEX_LIB])
+
+#----------------------------------------
+# Check for iconv_canonicalize via iconv
+OLD_LIBS=$LIBS
+LIBS=
+AC_SEARCH_LIBS(
+    [iconv_canonicalize],
+    [iconv])
+ICONV_LIB=$LIBS
+LIBS=$OLD_LIBS
+AC_SUBST([ICONV_LIB])
+
+#----------------------------------------
+# Check for new_panel via panel/panelw
+OLD_LIBS=$LIBS
+LIBS=
+AC_SEARCH_LIBS(
+    [new_panel],
+    [panel panelw])
+PANEL_LIB=$LIBS
+LIBS=$OLD_LIBS
+AC_SUBST([PANEL_LIB])
+
+#----------------------------------------
+# Check for new_menu via menu/menuw
+OLD_LIBS=$LIBS
+LIBS=
+AC_SEARCH_LIBS(
+    [new_menu],
+    [menu menuw])
+MENU_LIB=$LIBS
+LIBS=$OLD_LIBS
+AC_SUBST([MENU_LIB])
+
+#----------------------------------------
 # Check for ncurses, for the kconfig frontends
 AC_SUBST([ac_ct_curses_hdr])
 AC_CHECK_HEADERS(
