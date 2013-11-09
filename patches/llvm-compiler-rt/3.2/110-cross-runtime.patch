@@ -1,0 +1,125 @@
+diff -urN a/make/config.mk b/make/config.mk
+--- a/make/config.mk	2012-08-29 04:27:54.000000000 +0200
++++ b/make/config.mk	2013-11-08 23:45:55.676155371 +0100
+@@ -19,7 +19,7 @@
+ # FIXME: LLVM uses autoconf/mkinstalldirs ?
+ MKDIR := mkdir -p
+ DATE := date
+-LIPO := lipo
++LIPO := $(prefix)/bin/$(TARGET_TRIPLE)-lipo
+ CP := cp
+ 
+ VERBOSE := 0
+@@ -42,5 +42,5 @@
+ 
+ ###
+ # Common compiler options
+-COMMON_CXXFLAGS=-fno-exceptions -fPIC -funwind-tables -I${ProjSrcRoot}/lib -I${ProjSrcRoot}/include
+-COMMON_CFLAGS=-fPIC
++COMMON_CXXFLAGS=-fno-exceptions -fPIC -funwind-tables --sysroot=$(prefix)/$(TARGET_TRIPLE)/sysroot -I${ProjSrcRoot}/lib -I${ProjSrcRoot}/include
++COMMON_CFLAGS=-fPIC --sysroot=$(prefix)/$(TARGET_TRIPLE)/sysroot
+diff -urN a/make/options.mk b/make/options.mk
+--- a/make/options.mk	2012-10-24 16:03:41.000000000 +0200
++++ b/make/options.mk	2013-11-09 00:06:20.362264505 +0100
+@@ -31,17 +31,17 @@
+ 
+ # Miscellaneous tools.
+ 
+-AR := ar
++AR := $(prefix)/bin/$(TARGET_TRIPLE)-ar
+ # FIXME: Remove these pipes once ranlib errors are fixed.
+ ARFLAGS := cru 2> /dev/null
+ 
+-LDFLAGS :=
++LDFLAGS := -B${prefix}/bin/$(TARGET_TRIPLE)- --sysroot=$(prefix)/$(TARGET_TRIPLE)/sysroot
+ 
+-RANLIB := ranlib
++RANLIB := $(prefix)/bin/$(TARGET_TRIPLE)-ranlib
+ # FIXME: Remove these pipes once ranlib errors are fixed.
+ RANLIBFLAGS := 2> /dev/null
+ 
+-STRIP := strip
+-LIPO := lipo
++STRIP := $(prefix)/bin/$(TARGET_TRIPLE)-strip
++LIPO := $(prefix)/bin/$(TARGET_TRIPLE)-lipo
+ 
+ SHARED_LIBRARY_SUFFIX := so
+diff -urN a/make/platform/clang_darwin.mk b/make/platform/clang_darwin.mk
+--- a/make/platform/clang_darwin.mk	2013-11-08 23:22:15.108879200 +0100
++++ b/make/platform/clang_darwin.mk	2013-11-09 00:11:46.803034968 +0100
+@@ -80,14 +80,14 @@
+ # object files. If we are on that platform, strip out all ARM archs. We still
+ # build the libraries themselves so that Clang can find them where it expects
+ # them, even though they might not have an expected slice.
+-ifneq ($(shell which sw_vers),)
+-ifneq ($(shell sw_vers -productVersion | grep 10.6),)
++#ifneq ($(shell which sw_vers),)
++#ifneq ($(shell sw_vers -productVersion | grep 10.6),)
+ UniversalArchs.ios := $(filter-out armv7, $(UniversalArchs.ios))
+ UniversalArchs.cc_kext := $(filter-out armv7, $(UniversalArchs.cc_kext))
+ UniversalArchs.cc_kext_ios5 := $(filter-out armv7, $(UniversalArchs.cc_kext_ios5))
+ UniversalArchs.profile_ios := $(filter-out armv7, $(UniversalArchs.profile_ios))
+-endif
+-endif
++#endif
++#endif
+ 
+ # If RC_SUPPORTED_ARCHS is defined, treat it as a list of the architectures we
+ # are intended to support and limit what we try to build to that.
+@@ -162,7 +162,7 @@
+ 
+ # Configure the asan_osx_dynamic library to be built shared.
+ SHARED_LIBRARY.asan_osx_dynamic := 1
+-LDFLAGS.asan_osx_dynamic := -framework Foundation -lstdc++
++LDFLAGS.asan_osx_dynamic := -B${prefix}/bin/$(TARGET_TRIPLE)- --sysroot=$(prefix)/$(TARGET_TRIPLE)/sysroot -framework Foundation -L$(prefix)/$(TARGET_TRIPLE)/sysroot/usr/lib/$(TARGET_TRIPLE)/4.2.1/ -lstdc++
+ 
+ FUNCTIONS.eprintf := eprintf
+ FUNCTIONS.10.4 := eprintf floatundidf floatundisf floatundixf
+diff -urN a/make/platform/darwin_bni.mk b/make/platform/darwin_bni.mk
+--- a/make/platform/darwin_bni.mk	2012-09-30 01:37:01.000000000 +0200
++++ b/make/platform/darwin_bni.mk	2013-11-08 23:45:55.676155371 +0100
+@@ -9,11 +9,11 @@
+ UniversalArchs := $(RC_ARCHS)
+ 
+ ifneq (,$(SDKROOT))
+-	override CC := $(shell xcrun -sdk $(SDKROOT) -find clang) 
+-	AR := $(shell xcrun -sdk $(SDKROOT) -find ar) 
+-	RANLIB := $(shell xcrun -sdk $(SDKROOT) -find ranlib) 
+-	STRIP := $(shell xcrun -sdk $(SDKROOT) -find strip) 
+-	LIPO := $(shell xcrun -sdk $(SDKROOT) -find lipo)
++#	override CC := $(shell xcrun -sdk $(SDKROOT) -find clang) 
++#	AR := $(shell xcrun -sdk $(SDKROOT) -find ar) 
++#	RANLIB := $(shell xcrun -sdk $(SDKROOT) -find ranlib) 
++#	STRIP := $(shell xcrun -sdk $(SDKROOT) -find strip) 
++#	LIPO := $(shell xcrun -sdk $(SDKROOT) -find lipo)
+ endif
+ 
+ ifneq ($(IPHONEOS_DEPLOYMENT_TARGET),)
+diff -urN a/Makefile b/Makefile
+--- a/Makefile	2012-10-24 16:03:41.000000000 +0200
++++ b/Makefile	2013-11-09 00:09:58.862798384 +0100
+@@ -11,6 +11,10 @@
+   include make/AppleBI.mk
+ endif
+ 
++LEVEL=../..
++
++include $(LEVEL)/Makefile.config
++
+ # Make sure we don't build with a missing ProjObjRoot.
+ ifeq ($(ProjObjRoot),)
+ $(error Refusing to build with empty ProjObjRoot variable)
+@@ -211,11 +215,11 @@
+ $(Tmp.ObjPath)/libcompiler_rt.dylib: $(Tmp.Inputs) $(Tmp.ObjPath)/.dir
+ 	$(Summary) "  DYLIB:   $(Tmp.Name)/$(Tmp.Config)/$(Tmp.Arch): $$@"
+ 	$(Verb) $(Tmp.CC) -arch $(Tmp.Arch) -dynamiclib -o $$@ \
+-	  $(Tmp.Inputs) $(Tmp.LDFLAGS)
++	  $(Tmp.Inputs) $(LDFLAGS) $(Tmp.LDFLAGS)
+ $(Tmp.ObjPath)/libcompiler_rt.so: $(Tmp.Inputs) $(Tmp.ObjPath)/.dir
+ 	$(Summary) "  SO:   $(Tmp.Name)/$(Tmp.Config)/$(Tmp.Arch): $$@"
+ 	$(Verb) $(Tmp.CC) -shared -o $$@ \
+-	  $(Tmp.Inputs) $(Tmp.LDFLAGS)
++	  $(Tmp.Inputs) $(LDFLAGS) $(Tmp.LDFLAGS)
+ .PRECIOUS: $(Tmp.ObjPath)/.dir
+ 
+ # Per-Config-Arch Targets
