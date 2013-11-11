@@ -6,7 +6,6 @@
 ## select CC_SUPPORT_ADA
 ## select CC_SUPPORT_OBJC
 ## select CC_SUPPORT_OBJCXX
-## select CC_gcc
 ## select LLVM_NEEDED
 ## select LLVM_CLANG_NEEDED
 ##
