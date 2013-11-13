@@ -1,0 +1,39 @@
+From ee1215ef9b0a9b4b6d75daa45b7d1cbff83fafd4 Mon Sep 17 00:00:00 2001
+From: Ray Donnelly <mingw.android@gmail.com>
+Date: Wed, 13 Nov 2013 18:27:28 +0000
+Subject: [PATCH 1/4] program prefix ld
+
+---
+ autoconf/m4/link_options.m4 | 2 +-
+ configure                   | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/autoconf/m4/link_options.m4 b/autoconf/m4/link_options.m4
+index b58d617..5fc465e 100644
+--- a/autoconf/m4/link_options.m4
++++ b/autoconf/m4/link_options.m4
+@@ -6,7 +6,7 @@
+ AC_DEFUN([AC_LINK_GET_VERSION],
+   [AC_CACHE_CHECK([for linker version],[llvm_cv_link_version],
+   [
+-   version_string="$(ld -v 2>&1 | head -1)"
++   version_string="$(${program_prefix}ld -v 2>&1 | head -1)"
+ 
+    # Check for ld64.
+    if (echo "$version_string" | grep -q "ld64"); then
+diff --git a/configure b/configure
+index 2fa5682..787202f 100755
+--- a/configure
++++ b/configure
+@@ -7919,7 +7919,7 @@ if test "${llvm_cv_link_version+set}" = set; then
+   echo $ECHO_N "(cached) $ECHO_C" >&6
+ else
+ 
+-   version_string="$(ld -v 2>&1 | head -1)"
++   version_string="$(${program_prefix}ld -v 2>&1 | head -1)"
+ 
+    # Check for ld64.
+    if (echo "$version_string" | grep -q "ld64"); then
+-- 
+1.8.4.2
+

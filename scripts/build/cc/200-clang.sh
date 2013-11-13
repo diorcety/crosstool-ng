@@ -3,30 +3,31 @@
 # Licensed under the GPL v2. See COPYING in the root of this package
 
 # Override variable depending on configuration
+CLANG_GET_FN="CT_GetFile"
+CLANG_SUFFIX=""
+CLANG_NAME="clang"
+CLANG_URL=http://llvm.org/releases/${CT_CC_CLANG_VERSION}
 if [ "${CT_CC_CLANG_V_3_1}" = "y" ]; then
 	CLANG_SUFFIX=".src"
 	CLANG_NAME="clang"
-else
-if [ "${CT_CC_CLANG_V_3_2}" = "y" ]; then
+elif [ "${CT_CC_CLANG_V_3_2}" = "y" ]; then
 	CLANG_SUFFIX=".src"
 	CLANG_NAME="clang"
-else
-if [ "${CT_CC_CLANG_V_3_3}" = "y" ]; then
+elif [ "${CT_CC_CLANG_V_3_3}" = "y" ]; then
 	CLANG_SUFFIX=".src"
 	CLANG_NAME="cfe"
-else
-	CLANG_SUFFIX=""
-	CLANG_NAME="clang"
-fi
-fi
+elif [ "${CT_CC_CLANG_V_HEAD}" = "y" ]; then
+	CLANG_SUFFIX=".git"
+	CLANG_NAME="cfe"
+	CLANG_GET_FN="CT_GetGit"
+	CLANG_URL=http://llvm.org/git/clang.git
 fi
 
 CT_CLANG_FULLNAME="${CLANG_NAME}-${CT_CC_CLANG_VERSION}${CLANG_SUFFIX}"
 
 # Download clang
 do_clang_get() {
-    CT_GetFile "${CT_CLANG_FULLNAME}" \
-               http://llvm.org/releases/${CT_CC_CLANG_VERSION}
+    $CLANG_GET_FN "${CT_CLANG_FULLNAME}" "${CLANG_URL}"
 }
 
 # Extract clang
@@ -119,7 +120,7 @@ do_clang_backend() {
     cp -r "${CT_SRC_DIR}/${CT_CLANG_FULLNAME}/"* "tools/clang/"
     if [ "${CT_LLVM_COMPILER_RT}" = "y" ]; then
 	mkdir "projects/compiler-rt"
-	cp -r "${CT_SRC_DIR}/compiler-rt-${CT_LLVM_VERSION}.src/"* "projects/compiler-rt/"
+	cp -r "${CT_SRC_DIR}/compiler-rt-${CT_LLVM_VERSION}${CLANG_SUFFIX}/"* "projects/compiler-rt/"
     fi
 
     final_CFLAGS+=("${cflags}")

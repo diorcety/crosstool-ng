@@ -11,30 +11,33 @@ do_llvm_for_host() { :; }
 if [ "${CT_LLVM}" = "y" ]; then
 
 # Override variable depending on configuration
+# Override variable depending on configuration
+CT_LLVM_SUFFIX=""
+LLVM_GET_FN="CT_GetFile"
+LLVM_URL=http://llvm.org/releases/${CT_LLVM_VERSION}
+LLVM_CRT_URL=http://llvm.org/releases/${CT_LLVM_VERSION}
 if [ "${CT_LLVM_V_3_1}" = "y" ]; then
 	CT_LLVM_SUFFIX=".src"
-else
-if [ "${CT_LLVM_V_3_2}" = "y" ]; then
+elif [ "${CT_LLVM_V_3_2}" = "y" ]; then
 	CT_LLVM_SUFFIX=".src"
-else
-if [ "${CT_LLVM_V_3_3}" = "y" ]; then
+elif [ "${CT_LLVM_V_3_3}" = "y" ]; then
 	CT_LLVM_SUFFIX=".src"
-else
-	CT_LLVM_SUFFIX=""
-fi
-fi
+elif [ "${CT_LLVM_V_HEAD}" = "y" ]; then
+	CT_LLVM_SUFFIX=".git"
+	LLVM_GET_FN="CT_GetGit"
+	LLVM_URL=http://llvm.org/git/llvm.git
+	LLVM_CRT_URL=http://llvm.org/git/compiler-rt.git
 fi
 
 CT_LLVM_FULLNAME="llvm-${CT_LLVM_VERSION}${CT_LLVM_SUFFIX}"
 
 # Download LLVM
 do_llvm_get() {
-    CT_GetFile "${CT_LLVM_FULLNAME}" \
-               http://llvm.org/releases/${CT_LLVM_VERSION}
-               
+    $LLVM_GET_FN "${CT_LLVM_FULLNAME}" "${LLVM_URL}"
+
     if [ "${CT_LLVM_COMPILER_RT}" = "y" ]; then
-        CT_GetFile "compiler-rt-${CT_LLVM_VERSION}.src" \
-               http://llvm.org/releases/${CT_LLVM_VERSION}
+        $LLVM_GET_FN "compiler-rt-${CT_LLVM_VERSION}${CT_LLVM_SUFFIX}" \
+               "${LLVM_CRT_URL}"
     fi
 }
 
@@ -47,9 +50,9 @@ do_llvm_extract() {
     CT_Popd
     
     if [ "${CT_LLVM_COMPILER_RT}" = "y" ]; then
-        CT_Extract "compiler-rt-${CT_LLVM_VERSION}.src"
+        CT_Extract "compiler-rt-${CT_LLVM_VERSION}${CT_LLVM_SUFFIX}"
         
-        CT_Pushd "${CT_SRC_DIR}/compiler-rt-${CT_LLVM_VERSION}.src"
+        CT_Pushd "${CT_SRC_DIR}/compiler-rt-${CT_LLVM_VERSION}${CT_LLVM_SUFFIX}"
         CT_Patch nochdir "llvm-compiler-rt" "${CT_LLVM_VERSION}"
         CT_Popd
     fi
@@ -116,7 +119,7 @@ do_llvm_backend() {
     cp -r "${CT_SRC_DIR}/${CT_LLVM_FULLNAME}/"* "."
     if [ "${CT_LLVM_COMPILER_RT}" = "y" ]; then
 	mkdir "projects/compiler-rt"
-	cp -r "${CT_SRC_DIR}/compiler-rt-${CT_LLVM_VERSION}.src/"* "projects/compiler-rt/"
+	cp -r "${CT_SRC_DIR}/compiler-rt-${CT_LLVM_VERSION}${CT_LLVM_SUFFIX}/"* "projects/compiler-rt/"
     fi
 
     if [ "${CT_DEBUGGABLE_TOOLCHAIN}" = "y" ]; then
