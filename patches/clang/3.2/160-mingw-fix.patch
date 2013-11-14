@@ -26,10 +26,10 @@ diff -urN a/lib/Driver/ToolChain.cpp b/lib/Driver/ToolChain.cpp
 +  }
 +
 +  P.eraseComponent(); // Remove /bin from foo/bin
-+  std::string BaseDir = P.str() + std::string("/lib/gcc/") + getTripleString() + std::string("/") + GccVersion;
++  std::string BaseDir = P.str() + std::string("/lib/gcc/") + getDriver().Prefix + std::string("/") + GccVersion;
 +
 +  CmdArgs.push_back(Args.MakeArgString("-I" + BaseDir + "/../../../../" + getDriver().Prefix + "/include/c++/" + GccVersion));
-+  CmdArgs.push_back(Args.MakeArgString("-I" + BaseDir + "/../../../../" + getDriver().Prefix + "/include/c++/" + GccVersion + "/" + getTripleString()));
++  CmdArgs.push_back(Args.MakeArgString("-I" + BaseDir + "/../../../../" + getDriver().Prefix + "/include/c++/" + GccVersion + "/" + getDriver().Prefix));
 +  CmdArgs.push_back(Args.MakeArgString("-I" + BaseDir + "/../../../../" + getDriver().Prefix + "/include/c++/" + GccVersion + "/backward"));
 +}
 +
