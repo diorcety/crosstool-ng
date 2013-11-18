@@ -76,6 +76,7 @@ do_openssl_backend() {
     local ldflags
     local arg
     local -a extra_config
+    local host_is_64bit
 
     for arg in "$@"; do
         eval "${arg// /\\ }"
@@ -85,18 +86,28 @@ do_openssl_backend() {
         extra_config+=("-no-shared")
         extra_config+=("-no-zlib-dynamic")
     fi
-    
-    if echo "${host}" | "${grep}" -E 'mingw' >/dev/null 2>&1; then
-        extra_config+=("mingw")
-    elif echo "${host}" | "${grep}" -E 'linux' >/dev/null 2>&1; then
-        if echo "${host}" | "${grep}" -E '^x86_64' >/dev/null 2>&1; then
-            if echo "${cflags}" | "${grep}" -E '\-m32' >/dev/null 2>&1; then
-                extra_config+=("linux-generic32")
-            else
-                extra_config+=("linux-x86_64")
-            fi
+
+    if echo "${host}" | "${grep}" -E '^x86_64' >/dev/null 2>&1; then
+        if echo "${cflags}" | "${grep}" -E '\-m32' >/dev/null 2>&1; then
+            host_is_64bit="n"
         else
+            host_is_64bit="y"
+        fi
+    else
+        host_is_64bit="n"
+    fi
+
+    if echo "${host}" | "${grep}" -E 'mingw' >/dev/null 2>&1; then
+        if [ "${host_is_64bit}" = "n" ]; then
+            extra_config+=("mingw")
+        else
+            extra_config+=("mingw64")
+        fi
+    elif echo "${host}" | "${grep}" -E 'linux' >/dev/null 2>&1; then
+        if [ "${host_is_64bit}" = "n" ]; then
             extra_config+=("linux-generic32")
+        else
+            extra_config+=("linux-x86_64")
         fi
     fi
 
