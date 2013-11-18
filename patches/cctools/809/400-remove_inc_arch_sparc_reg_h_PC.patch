@@ -1,6 +1,6 @@
 diff -urN a/include/architecture/sparc/reg.h b/include/architecture/sparc/reg.h
---- a/include/architecture/sparc/reg.h	2013-11-13 15:12:34.595597004 +0000
-+++ b/include/architecture/sparc/reg.h	2013-11-13 15:12:34.682265008 +0000
+--- a/include/architecture/sparc/reg.h	2013-11-18 23:05:37.725490376 +0000
++++ b/include/architecture/sparc/reg.h	2013-11-18 23:05:38.013486756 +0000
 @@ -40,7 +40,7 @@
   * Usage is u.u_ar0[XX].
   */
