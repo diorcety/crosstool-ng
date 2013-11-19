@@ -13,12 +13,14 @@ diff -urN b/include/clang/Driver/Driver.h c/include/clang/Driver/Driver.h
 diff -urN b/lib/Driver/Driver.cpp c/lib/Driver/Driver.cpp
 --- b/lib/Driver/Driver.cpp	2010-08-23 22:58:50.000000000 +0200
 +++ c/lib/Driver/Driver.cpp	2013-09-04 22:34:34.831488199 +0200
-@@ -245,6 +245,18 @@
+@@ -245,6 +245,20 @@
      PrefixDir = A->getValue(*Args);
  
    Host = GetHostInfo(DefaultHostTriple.c_str());
 +  
-+  if (const Arg *A = Args->getLastArg(options::OPT_isysroot)) {
++  if (const Arg *A = Args->getLastArg(options::OPT__sysroot_EQ)) {
++    SysrootDir = A->getValue(*Args);
++  } else if (const Arg *A = Args->getLastArg(options::OPT_isysroot)) {
 +    SysrootDir = A->getValue(*Args);
 +  } else {
 +      llvm::sys::Path P(Dir);
