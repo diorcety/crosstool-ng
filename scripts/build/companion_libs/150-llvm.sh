@@ -11,33 +11,44 @@ do_llvm_for_host() { :; }
 if [ "${CT_LLVM}" = "y" ]; then
 
 # Override variable depending on configuration
-# Override variable depending on configuration
 CT_LLVM_SUFFIX=""
 LLVM_GET_FN="CT_GetFile"
 LLVM_URL=http://llvm.org/releases/${CT_LLVM_VERSION}
 LLVM_CRT_URL=http://llvm.org/releases/${CT_LLVM_VERSION}
+
+LLVM_BRANCH=""
+LLVM_CRT_BRANCH=""
 if [ "${CT_LLVM_V_3_1}" = "y" ]; then
-	CT_LLVM_SUFFIX=".src"
+    CT_LLVM_SUFFIX=".src"
 elif [ "${CT_LLVM_V_3_2}" = "y" ]; then
-	CT_LLVM_SUFFIX=".src"
+    CT_LLVM_SUFFIX=".src"
 elif [ "${CT_LLVM_V_3_3}" = "y" ]; then
-	CT_LLVM_SUFFIX=".src"
+    CT_LLVM_SUFFIX=".src"
+elif [ "${CT_LLVM_V_3_4}" = "y" ]; then
+    CT_LLVM_SUFFIX=".git"
+    LLVM_GET_FN="CT_GetGit"
+    LLVM_URL=http://llvm.org/git/llvm.git
+    LLVM_BRANCH="release_34"
+    LLVM_CRT_URL=http://llvm.org/git/compiler-rt.git
+    LLVM_CRT_BRANCH=${LLVM_BRANCH}
 elif [ "${CT_LLVM_V_HEAD}" = "y" ]; then
-	CT_LLVM_SUFFIX=".git"
-	LLVM_GET_FN="CT_GetGit"
-	LLVM_URL=http://llvm.org/git/llvm.git
-	LLVM_CRT_URL=http://llvm.org/git/compiler-rt.git
+    CT_LLVM_SUFFIX=".git"
+    LLVM_GET_FN="CT_GetGit"
+    LLVM_URL=http://llvm.org/git/llvm.git
+    LLVM_BRANCH="master"
+    LLVM_CRT_URL=http://llvm.org/git/compiler-rt.git
+    LLVM_CRT_BRANCH=${LLVM_BRANCH}
 fi
 
 CT_LLVM_FULLNAME="llvm-${CT_LLVM_VERSION}${CT_LLVM_SUFFIX}"
 
 # Download LLVM
 do_llvm_get() {
-    $LLVM_GET_FN "${CT_LLVM_FULLNAME}" "${LLVM_URL}"
+    $LLVM_GET_FN "${CT_LLVM_FULLNAME}" "${LLVM_BRANCH}" "${LLVM_URL}"
 
     if [ "${CT_LLVM_COMPILER_RT}" = "y" ]; then
         $LLVM_GET_FN "compiler-rt-${CT_LLVM_VERSION}${CT_LLVM_SUFFIX}" \
-               "${LLVM_CRT_URL}"
+               "${LLVM_CRT_BRANCH}" "${LLVM_CRT_URL}"
     fi
 }
 

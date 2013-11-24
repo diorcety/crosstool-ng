@@ -6,6 +6,7 @@
 CLANG_GET_FN="CT_GetFile"
 CLANG_SUFFIX=""
 CLANG_NAME="clang"
+CLANG_BRANCH=""
 CLANG_URL=http://llvm.org/releases/${CT_CC_CLANG_VERSION}
 if [ "${CT_CC_CLANG_V_3_1}" = "y" ]; then
 	CLANG_SUFFIX=".src"
@@ -16,18 +17,25 @@ elif [ "${CT_CC_CLANG_V_3_2}" = "y" ]; then
 elif [ "${CT_CC_CLANG_V_3_3}" = "y" ]; then
 	CLANG_SUFFIX=".src"
 	CLANG_NAME="cfe"
+elif [ "${CT_CC_CLANG_V_3_4}" = "y" ]; then
+    CLANG_SUFFIX=".git"
+    CLANG_NAME="cfe"
+    CLANG_GET_FN="CT_GetGit"
+    CLANG_URL=http://llvm.org/git/clang.git
+    CLANG_BRANCH="release_34"
 elif [ "${CT_CC_CLANG_V_HEAD}" = "y" ]; then
 	CLANG_SUFFIX=".git"
 	CLANG_NAME="cfe"
 	CLANG_GET_FN="CT_GetGit"
 	CLANG_URL=http://llvm.org/git/clang.git
+    CLANG_BRANCH="master"
 fi
 
 CT_CLANG_FULLNAME="${CLANG_NAME}-${CT_CC_CLANG_VERSION}${CLANG_SUFFIX}"
 
 # Download clang
 do_clang_get() {
-    $CLANG_GET_FN "${CT_CLANG_FULLNAME}" "${CLANG_URL}"
+    $CLANG_GET_FN "${CT_CLANG_FULLNAME}" "${CLANG_BRANCH}" "${CLANG_URL}"
 }
 
 # Extract clang
