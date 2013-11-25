@@ -177,7 +177,7 @@ do_kernel_extract_copy_sdk() {
     CT_EndStep
 }
 
-do_kernel_extract_copy_common() {
+do_kernel_extract_common() {
     CT_DoStep INFO "Extract kernel headers and libraries (common)"
 
     local _SRC="${CT_DARWIN_SDK_PATH}"
