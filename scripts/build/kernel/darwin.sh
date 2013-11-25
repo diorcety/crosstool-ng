@@ -95,7 +95,7 @@ do_kernel_extract_minimal() {
         for DST_INCLUDE in ${DST_INCLUDE_FOLDERS[@]}; do
             [ ! -d $DST_INCLUDE/$(dirname $SYSHDR) ] && mkdir -p $DST_INCLUDE/$(dirname $SYSHDR)
             CT_DoExecLog ALL \
-            cp -R -p $_SRC/usr/include/$SYSHDR $DST_INCLUDE/$(dirname $SYSHDR)
+            cp -R -p -u $_SRC/usr/include/$SYSHDR $DST_INCLUDE/$(dirname $SYSHDR)
         done
     done
 
@@ -115,7 +115,7 @@ do_kernel_extract_minimal() {
         CT_DoExecLog ALL \
         mkdir -p $(dirname "${DSTDIR}")
         CT_DoExecLog ALL \
-        cp -Rf "${_SRC}/usr/include/c++/${CXX_INCLUDE}" "${DSTDIR}"
+        cp -Rf -u "${_SRC}/usr/include/c++/${CXX_INCLUDE}" "${DSTDIR}"
     done
 
     # libs needed:
@@ -128,19 +128,19 @@ do_kernel_extract_minimal() {
     # Some redundancy here. Probably only the 2nd block is needed but it won't really hurt to do
     # both.
     mkdir usr/lib
-    cp -fR $_SRC/usr/lib/system    usr/lib/
-    cp -f $_SRC/usr/lib/libc.dylib usr/lib/
-    cp -f $_SRC/usr/lib/dylib1.o   usr/lib/
+    cp -fR -u $_SRC/usr/lib/system    usr/lib/
+    cp -f -u $_SRC/usr/lib/libc.dylib usr/lib/
+    cp -f -u $_SRC/usr/lib/dylib1.o   usr/lib/
     # Not sure what the difference is between
     # crt1.o (not made by the build process?!?)
     # and crt3.o (made by the build process) is.
     # TODO :: Figure out the score on OS X.
-    cp -f $_SRC/usr/lib/crt1.o     usr/lib/
+    cp -f -u $_SRC/usr/lib/crt1.o     usr/lib/
 
     mkdir -p $_TARGET/lib
-    cp -fR $_SRC/usr/lib/system    $_TARGET/lib/
-    cp -f $_SRC/usr/lib/libc.dylib $_TARGET/lib/system/
-    cp -f $_SRC/usr/lib/dylib1.o   $_TARGET/lib/system/
+    cp -fR -u $_SRC/usr/lib/system    $_TARGET/lib/
+    cp -f -u $_SRC/usr/lib/libc.dylib $_TARGET/lib/system/
+    cp -f -u $_SRC/usr/lib/dylib1.o   $_TARGET/lib/system/
 
     CT_Popd
 
