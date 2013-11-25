@@ -129,6 +129,7 @@ do_kernel_extract_minimal() {
     # both.
     mkdir usr/lib
     cp -fR -u $_SRC/usr/lib/system    usr/lib/
+    find usr/lib/ -type d -exec chmod u+w {} \;
     cp -f -u $_SRC/usr/lib/libc.dylib usr/lib/
     cp -f -u $_SRC/usr/lib/dylib1.o   usr/lib/
     # Not sure what the difference is between
@@ -139,6 +140,7 @@ do_kernel_extract_minimal() {
 
     mkdir -p $_TARGET/lib
     cp -fR -u $_SRC/usr/lib/system    $_TARGET/lib/
+    find $_TARGET/lib/ -type d -exec chmod u+w {} \;
     cp -f -u $_SRC/usr/lib/libc.dylib $_TARGET/lib/system/
     cp -f -u $_SRC/usr/lib/dylib1.o   $_TARGET/lib/system/
 
