@@ -177,12 +177,37 @@ do_kernel_extract_copy_sdk() {
     CT_EndStep
 }
 
+do_kernel_extract_copy_common() {
+    CT_DoStep INFO "Extract kernel headers and libraries (common)"
+
+    local _SRC="${CT_DARWIN_SDK_PATH}"
+    local _TARGET="${CT_TARGET}"
+
+    [ -d "${_SRC}" ] || CT_Abort "Can't found the SDK at ${_SRC}"
+    [ -d "${CT_SYSROOT_DIR}" ] || mkdir -p "${CT_SYSROOT_DIR}"
+
+    CT_Pushd "${CT_SYSROOT_DIR}"
+
+    # Fix x86_64-*-darwin* target
+    ln -s i686-apple-darwin10 usr/lib/x86_64-apple-darwin10 || true
+    ln -s i686-apple-darwin10 usr/lib/gcc/x86_64-apple-darwin10 || true
+    ln -s ../i686-apple-darwin10 usr/include/c++/4.2.1/x86_64-apple-darwin10/i386 || true
+    ln -s ../i686-apple-darwin9 usr/include/c++/4.2.1/x86_64-apple-darwin9/i386 || true
+    ln -s ../i686-apple-darwin10 usr/include/c++/4.0.0/x86_64-apple-darwin10/i386 || true
+    ln -s ../i686-apple-darwin9 usr/include/c++/4.0.0/x86_64-apple-darwin9/i386 || true
+
+    CT_Popd
+
+    CT_EndStep
+}
+
 do_kernel_extract() {
     if [ "${CT_DARWIN_COPY_SDK_TO_SYSROOT}" = "y" ]; then
         do_kernel_extract_copy_sdk
     else
         do_kernel_extract_minimal
     fi
+    do_kernel_extract_common
 }
 
 do_kernel_headers() {
