@@ -190,16 +190,12 @@ do_kernel_extract_common() {
 
     # Fix x86_64-*-darwin* target
     find . -type d -exec chmod u+w {} \;
-    ln -s i686-apple-darwin10 usr/lib/x86_64-apple-darwin10 || true
-    ln -s i686-apple-darwin10 usr/lib/gcc/x86_64-apple-darwin10 || true
-    ln -s ../i686-apple-darwin10 usr/include/c++/4.2.1/x86_64-apple-darwin10/i386 || true
-    ln -s ../i686-apple-darwin9 usr/include/c++/4.2.1/x86_64-apple-darwin9/i386 || true
-    ln -s ../i686-apple-darwin10 usr/include/c++/4.0.0/x86_64-apple-darwin10/i386 || true
-    ln -s ../i686-apple-darwin9 usr/include/c++/4.0.0/x86_64-apple-darwin9/i386 || true
-
-
-    # Set SDK to RO
-    find . -type d -exec chmod a-w {} \;
+    ln -s i686-apple-darwin10 usr/lib/x86_64-apple-darwin10 2> /dev/null || true
+    ln -s i686-apple-darwin10 usr/lib/gcc/x86_64-apple-darwin10 2> /dev/null || true
+    ln -s ../i686-apple-darwin10 usr/include/c++/4.2.1/x86_64-apple-darwin10/i386 2> /dev/null || true
+    ln -s ../i686-apple-darwin9 usr/include/c++/4.2.1/x86_64-apple-darwin9/i386 2> /dev/null || true
+    ln -s ../i686-apple-darwin10 usr/include/c++/4.0.0/x86_64-apple-darwin10/i386 2> /dev/null || true
+    ln -s ../i686-apple-darwin9 usr/include/c++/4.0.0/x86_64-apple-darwin9/i386 2> /dev/null || true
 
     CT_Popd
 
