@@ -116,7 +116,7 @@ do_openssl_backend() {
     CT_DoExecLog ALL cp -aT "${CT_SRC_DIR}/openssl-${CT_OPENSSL_VERSION}" "."
 
     CT_DoExecLog CFG                           \
-    CFLAGS="${clfags}"                         \
+    CFLAGS="${cflags}"                         \
     LDFLAGS="${ldflags}"                       \
     "./Configure"                              \
         --prefix="${prefix}"                   \
