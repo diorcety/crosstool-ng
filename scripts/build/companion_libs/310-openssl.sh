@@ -30,9 +30,9 @@ do_openssl_for_build() {
 
     openssl_opts+=( "host=${CT_BUILD}" )
     openssl_opts+=( "prefix=${CT_BUILDTOOLS_PREFIX_DIR}" )
-    libuuid_opts+=( "cflags=${CT_CFLAGS_FOR_BUILD}" )
-    libuuid_opts+=( "ldflags=${CT_LDFLAGS_FOR_BUILD}" )
-    do_openssl_backend "${gmp_opts[@]}"
+    openssl_opts+=( "cflags=${CT_CFLAGS_FOR_BUILD}" )
+    openssl_opts+=( "ldflags=${CT_LDFLAGS_FOR_BUILD}" )
+    do_openssl_backend "${openssl_opts[@]}"
 
     CT_Popd
     CT_EndStep
@@ -124,10 +124,10 @@ do_openssl_backend() {
         "${extra_config[@]}"                   \
  
     CT_DoLog EXTRA "Building openssl"
-    CT_DoExecLog ALL make CC="${CT_HOST}-gcc ${cflags}"
+    CT_DoExecLog ALL make CC="${host}-gcc ${cflags}"
 
     CT_DoLog EXTRA "Installing openssl"
-    CT_DoExecLog ALL make install CC="${CT_HOST}-gcc ${cflags}"
+    CT_DoExecLog ALL make install CC="${host}-gcc ${cflags}"
 }
 
 fi
