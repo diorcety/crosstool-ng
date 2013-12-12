@@ -1,6 +1,6 @@
 # darwin config options
 
-## depends on EXPERIMENTAL && (ARCH_x86 || ARCH_arm)
+## depends on EXPERIMENTAL && (ARCH_x86 || ARCH_arm || ARCH_powerpc)
 ##
 ## select DARWIN
 ## select KERNEL_SUPPORTS_SHARED_LIBS

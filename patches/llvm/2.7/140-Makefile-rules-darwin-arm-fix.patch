@@ -1,6 +1,6 @@
 diff -urN a/Makefile.rules b/Makefile.rules
 --- a/Makefile.rules	2010-04-25 21:18:33.000000000 +0200
-+++ b/Makefile.rules	2013-08-01 11:58:26.273542175 +0200
++++ b/Makefile.rules	2013-12-12 19:22:05.975856242 +0100
 @@ -388,6 +388,7 @@
  # If REQUIRES_RTTI=1 is specified then don't disable run-time type id.
  ifneq ($(REQUIRES_RTTI), 1)
@@ -9,12 +9,18 @@ diff -urN a/Makefile.rules b/Makefile.rules
  endif
  
  ifdef ENABLE_COVERAGE
-@@ -577,8 +578,6 @@
- ifeq ($(TARGET_OS),Darwin)
-   ifneq ($(ARCH),ARM)
-     TargetCommonOpts += -mmacosx-version-min=$(DARWIN_VERSION)
--  else
--    TargetCommonOpts += -marm
+@@ -574,14 +575,6 @@
    endif
  endif
  
+-ifeq ($(TARGET_OS),Darwin)
+-  ifneq ($(ARCH),ARM)
+-    TargetCommonOpts += -mmacosx-version-min=$(DARWIN_VERSION)
+-  else
+-    TargetCommonOpts += -marm
+-  endif
+-endif
+-
+ # Adjust LD.Flags depending on the kind of library that is to be built. Note
+ # that if LOADABLE_MODULE is specified then the resulting shared library can
+ # be opened with dlopen.
