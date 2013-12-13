@@ -1,4 +1,4 @@
-From a8a95e6ae23e715554474948311fcc8b7e246e56 Mon Sep 17 00:00:00 2001
+From 39cb26e221394bbc0f0e067f31aa89b63f231ff7 Mon Sep 17 00:00:00 2001
 From: Ray Donnelly <mingw.android@gmail.com>
 Date: Wed, 13 Nov 2013 18:07:01 +0000
 Subject: [PATCH 3/5] prefix program names by triple
@@ -24,7 +24,7 @@ index 867444e..5923163 100644
    std::string ClangExecutable;
  
 diff --git a/lib/Driver/ToolChain.cpp b/lib/Driver/ToolChain.cpp
-index 9fe0379..cb8d25b 100644
+index 0b62f7a..fb496bd 100644
 --- a/lib/Driver/ToolChain.cpp
 +++ b/lib/Driver/ToolChain.cpp
 @@ -143,6 +143,16 @@ std::string ToolChain::GetFilePath(const char *Name) const {
@@ -79,5 +79,5 @@ index 3a6a09b..81118f9 100644
    if (llvm::TargetRegistry::lookupTarget(Prefix, IgnoredError)) {
      SmallVectorImpl<const char *>::iterator it = ArgVector.begin();
 -- 
-1.8.5.rc2
+1.8.5.1
 
