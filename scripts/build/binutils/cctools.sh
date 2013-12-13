@@ -107,6 +107,7 @@ do_cctools_backend() {
     local ldflags
     local build_staticlinked=no
     local -a extra_config
+    local llvm_dir
 
     for arg in "$@"; do
         eval "${arg// /\\ }"
@@ -120,6 +121,9 @@ do_cctools_backend() {
         extra_config+=("--enable-shared")
     fi
 
+    # Use CT_LLVM_DIR if specified, otherwise default to prefix
+    llvm_dir=${CT_LLVM_DIR-${prefix}}
+
     CT_DoLog EXTRA "Configuring cctools"
     CT_DoExecLog CFG \
     CFLAGS="${cflags} -I${CT_BUILDTOOLS_PREFIX_DIR}/include/"           \
@@ -130,7 +134,7 @@ do_cctools_backend() {
         --host=${host}                                                  \
         --target=${CT_TARGET}                                           \
         --prefix=${prefix}                                              \
-        --with-llvm=${prefix}                                           \
+        --with-llvm=${llvm_dir}                                         \
         "${extra_config[@]}"                                            \
         ${CT_ARCH_WITH_FLOAT}                                           \
         ${BINUTILS_SYSROOT_ARG}                                         \
