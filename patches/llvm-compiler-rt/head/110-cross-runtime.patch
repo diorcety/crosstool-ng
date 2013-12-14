@@ -1,6 +1,6 @@
-From 3f185913ad2906effaf8700dddd570b0f0e1115c Mon Sep 17 00:00:00 2001
+From 229bcd4438efbaf26f0b300d21a4435bef84d000 Mon Sep 17 00:00:00 2001
 From: Ray Donnelly <mingw.android@gmail.com>
-Date: Wed, 13 Nov 2013 19:10:06 +0000
+Date: Fri, 13 Dec 2013 21:01:52 +0000
 Subject: [PATCH] cross runtime
 
 ---
@@ -12,7 +12,7 @@ Subject: [PATCH] cross runtime
  5 files changed, 20 insertions(+), 12 deletions(-)
 
 diff --git a/Makefile b/Makefile
-index 6747ea4..fc983a1 100644
+index ac3daac..ae5b7d0 100644
 --- a/Makefile
 +++ b/Makefile
 @@ -11,6 +11,10 @@ ifdef SRCROOT
@@ -41,7 +41,7 @@ index 6747ea4..fc983a1 100644
  
  # Per-Config-Arch Targets
 diff --git a/make/config.mk b/make/config.mk
-index 6398d05..4cdf165 100644
+index 2838b60..f5fdb59 100644
 --- a/make/config.mk
 +++ b/make/config.mk
 @@ -19,7 +19,7 @@ AlwaysRequiredModules := int_util
@@ -53,14 +53,15 @@ index 6398d05..4cdf165 100644
  CP := cp
  DSYMUTIL := dsymutil
  
-@@ -43,5 +43,5 @@ endif
- 
+@@ -44,6 +44,6 @@ endif
  ###
  # Common compiler options
--COMMON_CXXFLAGS=-fno-exceptions -fPIC -funwind-tables -I${ProjSrcRoot}/lib -I${ProjSrcRoot}/include
--COMMON_CFLAGS=-fPIC
-+COMMON_CXXFLAGS=-fno-exceptions -fPIC -funwind-tables --sysroot=$(prefix)/$(TARGET_TRIPLE)/sysroot -I${ProjSrcRoot}/lib -I${ProjSrcRoot}/include
-+COMMON_CFLAGS=-fPIC --sysroot=$(prefix)/$(TARGET_TRIPLE)/sysroot
+ COMMON_INCLUDES=-I${ProjSrcRoot}/lib -I${ProjSrcRoot}/include
+-COMMON_CXXFLAGS=-fno-exceptions -fPIC -funwind-tables $(COMMON_INCLUDES)
+-COMMON_CFLAGS=-fPIC $(COMMON_INCLUDES)
++COMMON_CXXFLAGS=-fno-exceptions -fPIC -funwind-tables $(COMMON_INCLUDES) --sysroot=$(prefix)/$(TARGET_TRIPLE)/sysroot
++COMMON_CFLAGS=-fPIC $(COMMON_INCLUDES) --sysroot=$(prefix)/$(TARGET_TRIPLE)/sysroot
+ COMMON_ASMFLAGS=$(COMMON_INCLUDES)
 diff --git a/make/options.mk b/make/options.mk
 index 67197de..bbd58ef 100644
 --- a/make/options.mk
@@ -91,10 +92,10 @@ index 67197de..bbd58ef 100644
  
  SHARED_LIBRARY_SUFFIX := so
 diff --git a/make/platform/clang_darwin.mk b/make/platform/clang_darwin.mk
-index 5f8801c..5d5f3ad 100644
+index ddb7029..7b64a18 100644
 --- a/make/platform/clang_darwin.mk
 +++ b/make/platform/clang_darwin.mk
-@@ -91,12 +91,14 @@ UniversalArchs.ubsan_osx := $(call CheckArches,i386 x86_64,ubsan_osx)
+@@ -101,12 +101,14 @@ UniversalArchs.ubsan_osx := $(call CheckArches,i386 x86_64,ubsan_osx)
  # object files. If we are on that platform, strip out all ARM archs. We still
  # build the libraries themselves so that Clang can find them where it expects
  # them, even though they might not have an expected slice.
@@ -109,15 +110,15 @@ index 5f8801c..5d5f3ad 100644
  
  # If RC_SUPPORTED_ARCHS is defined, treat it as a list of the architectures we
  # are intended to support and limit what we try to build to that.
-@@ -174,7 +176,7 @@ CFLAGS.profile_ios.armv7s := $(CFLAGS) $(IOS_DEPLOYMENT_ARGS)
+@@ -192,7 +194,7 @@ CFLAGS.profile_ios.armv7s := $(CFLAGS) $(IOS_DEPLOYMENT_ARGS)
  
  # Configure the asan_osx_dynamic library to be built shared.
  SHARED_LIBRARY.asan_osx_dynamic := 1
 -LDFLAGS.asan_osx_dynamic := -lstdc++ -undefined dynamic_lookup
-+LDFLAGS.asan_osx_dynamic :=  -B${prefix}/bin/$(TARGET_TRIPLE)- --sysroot=$(prefix)/$(TARGET_TRIPLE)/sysroot -framework Foundation -L$(prefix)/$(TARGET_TRIPLE)/sysroot/usr/lib/$(TARGET_TRIPLE)/4.2.1/ -lstdc++ -undefined dynamic_lookup
++LDFLAGS.asan_osx_dynamic := -B${prefix}/bin/$(TARGET_TRIPLE)- --sysroot=$(prefix)/$(TARGET_TRIPLE)/sysroot -framework Foundation -L$(prefix)/$(TARGET_TRIPLE)/sysroot/usr/lib/$(TARGET_TRIPLE)/4.2.1/ -lstdc++ -undefined dynamic_lookup
  
- FUNCTIONS.eprintf := eprintf
- FUNCTIONS.10.4 := eprintf floatundidf floatundisf floatundixf
+ # Configure the asan_iossim_dynamic library to be built shared.
+ SHARED_LIBRARY.asan_iossim_dynamic := 1
 diff --git a/make/platform/darwin_bni.mk b/make/platform/darwin_bni.mk
 index 03e8d29..f86b474 100644
 --- a/make/platform/darwin_bni.mk
@@ -139,5 +140,5 @@ index 03e8d29..f86b474 100644
  ifneq ($(IPHONEOS_DEPLOYMENT_TARGET),)
  	DEPLOYMENT_FLAGS := -miphoneos-version-min=$(IPHONEOS_DEPLOYMENT_TARGET) 
 -- 
-1.8.4.2
+1.8.5.1
 
