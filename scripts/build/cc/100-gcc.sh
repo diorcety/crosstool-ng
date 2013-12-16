@@ -386,6 +386,18 @@ do_gcc_core_backend() {
         extra_config+=("--with-lipo=${CT_PREFIX_DIR}/bin/${CT_TARGET}-lipo${exeext}")
     fi
 
+    if [ ! "${CT_TARGET/mingw/}" = "${CT_TARGET}" -o ! "${CT_TARGET/cygwin/}" = "${CT_TARGET}" ]; then
+        # This folder must exist otherwise you get an error:
+        # The directory that should contain system headers does not exist:
+        # ${CT_SYSROOT_DIR}/${CT_TARGET_MINGW_SYSROOT_TOP}/include
+        # Linux will create this somewhere else, and also, may want to use
+        # mingw32 and mingw64 as MinGW-w64 itself does now-a-days so until
+        # I decide on these issues this workaround will suffice.
+        if [ ! -d ${CT_SYSROOT_DIR}/${CT_TARGET_MINGW_SYSROOT_TOP}/include ]; then
+            CT_DoExecLog ALL mkdir -p ${CT_SYSROOT_DIR}/${CT_TARGET_MINGW_SYSROOT_TOP}/include
+        fi
+    fi
+
     CT_DoLog DEBUG "Extra config passed: '${extra_config[*]}'"
 
     # Use --with-local-prefix so older gccs don't look in /usr/local (http://gcc.gnu.org/PR10532)
