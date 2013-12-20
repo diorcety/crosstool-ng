@@ -834,16 +834,11 @@ CT_GetSVN() {
     CT_DoExecLog ALL rm -rf "${tmp_dir}"
 }
 
-# Clone a git tree
-# Tries the given URLs in turn until one can get cloned. No tarball will be created.
-# Prerequisites: either the server does not require password,
-# or the user has already taken any action to authenticate to the server.
-# The cloned tree will *not* be stored in the local tarballs dir!
-# Usage: CT_GetGit <basename> [branch branchname] <url [url ...]> 
-CT_GetGit() {
+# Usage: CT_GetGitInternal <basename> <tarballs-dir> [branch branchname] <url [url ...]>
+CT_GetGitInternal() {
     local basename="$1"; shift
+    local tarballs_dir="$1"; shift
     local branch="";
-
     if [ "$1" = "branch" ]; then
         shift
         branch="$1"; shift 
@@ -858,9 +853,9 @@ CT_GetGit() {
     fi
 
     # Do we have it in our tarballs dir?
-    if [ -d "${CT_TARBALLS_DIR}/${basename}/.git" ]; then
+    if [ -d "${tarballs_dir}/${basename}/.git" ]; then
         CT_DoLog EXTRA "Updating git tree '${basename}'"
-        CT_Pushd "${CT_TARBALLS_DIR}/${basename}"
+        CT_Pushd "${tarballs_dir}/${basename}"
         CT_DoExecLog ALL git pull
         CT_Popd
     else
@@ -883,6 +878,26 @@ CT_GetGit() {
         done
         CT_TestOrAbort "Could not clone '${basename}'/'${branch}'" ${cloned} -ne 0
     fi
+}
+
+# Clone a git tree
+# Tries the given URLs in turn until one can get cloned. No tarball will be created.
+# Prerequisites: either the server does not require password,
+# or the user has already taken any action to authenticate to the server.
+# The cloned tree will *not* be stored in the local tarballs dir, however that dir is
+# searched in for an existing clone first.
+# Usage: CT_GetGit <basename> [branch branchname] <url [url ...]>
+CT_GetGit() {
+    local basename="$1"; shift
+
+    # First try locally, then the mirror
+    if CT_GetGitInternal "${basename}" "${CT_LOCAL_TARBALLS_DIR}" "${@}"; then
+        # Got it! Return early! :-)
+        cp -Rf ${CT_LOCAL_TARBALLS_DIR}/"${basename}" ${CT_TARBALLS_DIR}/"${basename}"
+        return 0
+    fi
+
+    CT_GetGitInternal "${basename}" "${CT_TARBALLS_DIR}" "${@}"
 }
 
 # Extract a tarball
