@@ -1,0 +1,67 @@
+From b1bcd92d101211407db1fbc8c5e8ffeedddab483 Mon Sep 17 00:00:00 2001
+From: Ray Donnelly <mingw.android@gmail.com>
+Date: Tue, 1 Apr 2014 23:26:36 +0100
+Subject: [PATCH 3/4] 2014-04-03  Ray Donnelly <mingw.android@gmail.com>
+
+Don't force lowercase, do use forwardslashes in lrealpath
+
+There is no need to convert to lowercase or backslashes in
+lrealpath. Via a registry key, the Windows kernel can be put
+into case sensitive mode for NFS paths and from my own
+experiments also works to a good degree for NTFS paths.
+
+A problem caused by transforming to lowercase is that it
+it causes embedded file paths to not match what was input, so
+for example, code that uses sed to replace these paths fails.
+A concrete example of this happens when building glibc as it
+processes .map files.
+
+Forwardslashes are also preferred over backslashes as Posix-y
+shells always use forwardslashes and ensuring they appear in
+place of backslashes causes less issues in build systems.
+
+libiberty/
+	* lrealpath.c (lrealpath): Don't force lowercase, do
+	use forwardslashes.
+---
+ libiberty/lrealpath.c | 19 +++++++++++++++----
+ 1 file changed, 15 insertions(+), 4 deletions(-)
+
+diff --git a/libiberty/lrealpath.c b/libiberty/lrealpath.c
+index b27c8de..2b3d4a9 100644
+--- a/libiberty/lrealpath.c
++++ b/libiberty/lrealpath.c
+@@ -138,15 +138,26 @@ lrealpath (const char *filename)
+   {
+     char buf[MAX_PATH];
+     char* basename;
++    char* slash;
+     DWORD len = GetFullPathName (filename, MAX_PATH, buf, &basename);
+     if (len == 0 || len > MAX_PATH - 1)
+       return strdup (filename);
+     else
+       {
+-	/* The file system is case-preserving but case-insensitive,
+-	   Canonicalize to lowercase, using the codepage associated
+-	   with the process locale.  */
+-        CharLowerBuff (buf, len);
++	/* Turn all back slashes back into forward slashes and
++	   don't transform to lowercase.
++	   Rationale:
++	   Windows is as happy with / as it is with \. This will
++	   have been built using Cygwin, MSYS* or cross-compiled
++	   from a system where dirsep is / so it is cleaner just
++	   to keep the dirseps as / (and the case un-modified).
++	   This way, the value will be consistent with the build
++	   system and string operations (be they internal to this
++	   software or external to it, e.g. processing map files
++	   with sed) work as expected.  */
++	slash = buf;
++	while ((slash = strchr(slash,'\\')) != NULL)
++	  *slash = '/';
+         return strdup (buf);
+       }
+   }
+-- 
+1.9.0
+
