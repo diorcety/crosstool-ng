@@ -405,10 +405,16 @@ if [ -z "${CT_RESTART}" ]; then
     # cross-tools for those mangled tuples.
     CT_DoLog DEBUG "Making build system tools available"
     for m in ${install_build_tools_for}; do
-        r="CT_REAL_${m}"
-        v="CT_${m}"
-        p="CT_${m}_PREFIX"
-        s="CT_${m}_SUFFIX"
+        # Without CT_CANADIAN, CT_HOST_PREFIX and CT_HOST_SUFFIX will
+        # always contain nothing, in this case, substitute with BUILD
+        BMACH=${m}
+        if [ ! "$CT_CANADIAN" = "y" -a "${m}" = "HOST" ]; then
+            BMACH=BUILD
+        fi
+        r="CT_REAL_${BMACH}"
+        v="CT_${BMACH}"
+        p="CT_${BMACH}_PREFIX"
+        s="CT_${BMACH}_SUFFIX"
         if [ -n "${!p}" ]; then
             t="${!p}"
         else
