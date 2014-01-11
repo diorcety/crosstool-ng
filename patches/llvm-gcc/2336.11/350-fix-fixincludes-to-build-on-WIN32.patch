@@ -1,6 +1,6 @@
 diff -urN a/fixincludes/configure b/fixincludes/configure
---- a/fixincludes/configure	2010-10-14 21:28:01.000000000 +0100
-+++ b/fixincludes/configure	2014-01-11 18:27:19.414411000 +0000
+--- a/fixincludes/configure	2014-01-11 18:43:31.712377200 +0000
++++ b/fixincludes/configure	2014-01-11 18:44:20.323050000 +0000
 @@ -2562,7 +2562,7 @@
  else
    case $host in
@@ -11,8 +11,8 @@ diff -urN a/fixincludes/configure b/fixincludes/configure
  		TARGET=twoprocess
  		;;
 diff -urN a/fixincludes/configure.ac b/fixincludes/configure.ac
---- a/fixincludes/configure.ac	2010-10-14 21:28:01.000000000 +0100
-+++ b/fixincludes/configure.ac	2014-01-11 18:20:44.796801000 +0000
+--- a/fixincludes/configure.ac	2014-01-11 18:43:31.712877300 +0000
++++ b/fixincludes/configure.ac	2014-01-11 18:44:20.324550200 +0000
 @@ -48,7 +48,7 @@
  fi],
  [case $host in
@@ -23,9 +23,9 @@ diff -urN a/fixincludes/configure.ac b/fixincludes/configure.ac
  		TARGET=twoprocess
  		;;
 diff -urN a/fixincludes/fixincl.c b/fixincludes/fixincl.c
---- a/fixincludes/fixincl.c	2010-10-14 21:28:01.000000000 +0100
-+++ b/fixincludes/fixincl.c	2014-01-11 18:19:52.015598600 +0000
-@@ -288,6 +288,16 @@
+--- a/fixincludes/fixincl.c	2014-01-11 18:43:31.713877400 +0000
++++ b/fixincludes/fixincl.c	2014-01-11 18:44:20.327550500 +0000
+@@ -289,6 +289,16 @@
    /* NULL as the first argument to `tempnam' causes it to DTRT
       wrt the temporary directory where the file will be created.  */
    pz_temp_file = tempnam( NULL, "fxinc" );
@@ -42,7 +42,7 @@ diff -urN a/fixincludes/fixincl.c b/fixincludes/fixincl.c
  # endif
  
    signal (SIGQUIT, SIG_IGN);
-@@ -843,7 +853,6 @@
+@@ -784,7 +794,6 @@
  }
  #endif /* !SEPARATE_FIX_PROC */
  
@@ -50,7 +50,7 @@ diff -urN a/fixincludes/fixincl.c b/fixincludes/fixincl.c
  #ifdef SEPARATE_FIX_PROC
  static void
  fix_with_system (tFixDesc* p_fixd,
-@@ -854,6 +863,7 @@
+@@ -795,6 +804,7 @@
    char*  pz_cmd;
    char*  pz_scan;
    size_t argsize;
@@ -58,7 +58,7 @@ diff -urN a/fixincludes/fixincl.c b/fixincludes/fixincl.c
  
    if (p_fixd->fd_flags & FD_SUBROUTINE)
      {
-@@ -888,13 +898,13 @@
+@@ -829,13 +839,13 @@
        /*
         *  Now add the fix number and file names that may be needed
         */
@@ -74,7 +74,7 @@ diff -urN a/fixincludes/fixincl.c b/fixincludes/fixincl.c
        /* Don't use the "src > dstX; rm -f dst; mv -f dstX dst" trick:
           dst is a temporary file anyway, so we know there's no other
           file by that name; and DOS's system(3) doesn't mind to
-@@ -907,7 +917,7 @@
+@@ -848,7 +858,7 @@
           the following bizarre use of 'cat' only works on DOS boxes.
           It causes the file to be dropped into a temporary file for
           'cat' to read (pipes do not work on DOS).  */
@@ -83,7 +83,7 @@ diff -urN a/fixincludes/fixincl.c b/fixincludes/fixincl.c
  #else
        /* Don't use positional formatting arguments because some lame-o
           implementations cannot cope  :-(.  */
-@@ -936,7 +946,9 @@
+@@ -877,7 +887,9 @@
          }
  
        /* Estimated buffer size we will need.  */
@@ -94,7 +94,7 @@ diff -urN a/fixincludes/fixincl.c b/fixincludes/fixincl.c
        /* How much of it do we allot to the program name and its
           arguments.  */
        parg_size = argsize - parg_size;
-@@ -953,6 +965,7 @@
+@@ -894,6 +906,7 @@
              char ch = *(pArg++);
              if (ch == NUL)
                break;
@@ -102,7 +102,7 @@ diff -urN a/fixincludes/fixincl.c b/fixincludes/fixincl.c
              *(pz_scan++) = ch;
            }
        }
-@@ -976,7 +989,7 @@
+@@ -917,7 +930,7 @@
  	  while (pz_scan == (char*)NULL)
  	    {
  	      size_t already_filled = pz_scan_save - pz_cmd;
@@ -111,7 +111,7 @@ diff -urN a/fixincludes/fixincl.c b/fixincludes/fixincl.c
  	      pz_scan_save = pz_scan = pz_cmd + already_filled;
  	      parg_size += 100;
  	      pz_scan = make_raw_shell_str( pz_scan, pArg,
-@@ -987,7 +1000,7 @@
+@@ -928,7 +941,7 @@
        /*
         *  add the file machinations.
         */
@@ -121,9 +121,9 @@ diff -urN a/fixincludes/fixincl.c b/fixincludes/fixincl.c
  #else
        sprintf (pz_scan, z_cmd_fmt, pz_file_source, pz_temp_file,
 diff -urN a/fixincludes/fixincl.x b/fixincludes/fixincl.x
---- a/fixincludes/fixincl.x	2010-10-14 21:28:01.000000000 +0100
-+++ b/fixincludes/fixincl.x	2014-01-11 18:19:52.024599700 +0000
-@@ -1312,12 +1312,12 @@
+--- a/fixincludes/fixincl.x	2014-01-11 18:43:31.714377500 +0000
++++ b/fixincludes/fixincl.x	2014-01-11 18:44:20.333551300 +0000
+@@ -1315,12 +1315,12 @@
   *  Fix Command Arguments for Alpha_Pthread_Init
   */
  static const char* apzAlpha_Pthread_InitPatch[] = { "sed",
@@ -142,7 +142,7 @@ diff -urN a/fixincludes/fixincl.x b/fixincludes/fixincl.x
      (char*)NULL };
  
  /* * * * * * * * * * * * * * * * * * * * * * * * * *
-@@ -6303,20 +6303,20 @@
+@@ -6597,20 +6597,20 @@
   *  Fix Command Arguments for Stdio_Va_List
   */
  static const char* apzStdio_Va_ListPatch[] = { "sed",
@@ -177,7 +177,7 @@ diff -urN a/fixincludes/fixincl.x b/fixincludes/fixincl.x
      (char*)NULL };
  
  /* * * * * * * * * * * * * * * * * * * * * * * * * *
-@@ -6353,20 +6353,20 @@
+@@ -6647,20 +6647,20 @@
   *  Fix Command Arguments for Stdio_Va_List_Clients
   */
  static const char* apzStdio_Va_List_ClientsPatch[] = { "sed",
@@ -212,7 +212,7 @@ diff -urN a/fixincludes/fixincl.x b/fixincludes/fixincl.x
      (char*)NULL };
  
  /* * * * * * * * * * * * * * * * * * * * * * * * * *
-@@ -7117,9 +7117,7 @@
+@@ -7411,9 +7411,7 @@
      "-e", "/^extern int$/N",
      "-e", "s/^extern int\\(\\n\tstrlen(),\\)/extern size_t\\1/",
      "-e", "/^\tstrncmp(),$/N",
@@ -224,8 +224,8 @@ diff -urN a/fixincludes/fixincl.x b/fixincludes/fixincl.x
  
  /* * * * * * * * * * * * * * * * * * * * * * * * * *
 diff -urN a/fixincludes/fixlib.c b/fixincludes/fixlib.c
---- a/fixincludes/fixlib.c	2010-10-14 21:28:01.000000000 +0100
-+++ b/fixincludes/fixlib.c	2014-01-11 18:19:52.028100200 +0000
+--- a/fixincludes/fixlib.c	2014-01-11 18:43:31.714877500 +0000
++++ b/fixincludes/fixlib.c	2014-01-11 18:44:20.336051600 +0000
 @@ -235,6 +235,11 @@
  char*
  make_raw_shell_str( char* pz_d, tCC* pz_s, size_t smax )

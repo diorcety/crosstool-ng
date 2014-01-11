@@ -1,6 +1,6 @@
 diff -urN a/driverdriver.c b/driverdriver.c
---- a/driverdriver.c	2013-10-06 20:12:34.841952533 +0100
-+++ b/driverdriver.c	2013-10-06 20:12:35.455295360 +0100
+--- a/driverdriver.c	2011-04-26 05:09:34.000000000 +0100
++++ b/driverdriver.c	2014-01-11 18:36:55.676087000 +0000
 @@ -31,7 +31,36 @@
  #include <limits.h>
  #include <sys/types.h>
@@ -273,8 +273,8 @@ diff -urN a/driverdriver.c b/driverdriver.c
      }
  
 diff -urN a/fixincludes/Makefile.in b/fixincludes/Makefile.in
---- a/fixincludes/Makefile.in	2013-10-06 20:12:34.845285940 +0100
-+++ b/fixincludes/Makefile.in	2013-10-06 20:12:35.455295360 +0100
+--- a/fixincludes/Makefile.in	2008-12-31 10:07:04.000000000 +0000
++++ b/fixincludes/Makefile.in	2014-01-11 18:36:55.678087200 +0000
 @@ -53,9 +53,9 @@
  gcc_version := $(shell cat $(srcdir)/../gcc/BASE-VER)
  
@@ -288,8 +288,8 @@ diff -urN a/fixincludes/Makefile.in b/fixincludes/Makefile.in
  itoolsdir = $(libexecsubdir)/install-tools
  # Where our data files go
 diff -urN a/fixincludes/mkheaders.in b/fixincludes/mkheaders.in
---- a/fixincludes/mkheaders.in	2013-10-06 20:12:34.845285940 +0100
-+++ b/fixincludes/mkheaders.in	2013-10-06 20:12:35.455295360 +0100
+--- a/fixincludes/mkheaders.in	2008-12-31 10:07:04.000000000 +0000
++++ b/fixincludes/mkheaders.in	2014-01-11 18:36:55.680587600 +0000
 @@ -71,9 +71,9 @@
  libdir=@libdir@
  libexecdir=@libexecdir@
@@ -302,43 +302,9 @@ diff -urN a/fixincludes/mkheaders.in b/fixincludes/mkheaders.in
  
  itoolsdir=${libexecsubdir}/install-tools
  itoolsdatadir=${libsubdir}/install-tools
-diff -urN a/gcc/Makefile.in b/gcc/Makefile.in
---- a/gcc/Makefile.in	2013-10-06 20:12:34.668616531 +0100
-+++ b/gcc/Makefile.in	2013-10-06 20:12:35.458628748 +0100
-@@ -537,9 +537,9 @@
- # --------
- 
- # Directory in which the compiler finds libraries etc.
--libsubdir = $(libdir)/gcc/$(target_noncanonical)/$(version)
-+libsubdir = $(libdir)/llvmgcc/$(target_noncanonical)/$(version)
- # Directory in which the compiler finds executables
--libexecsubdir = $(libexecdir)/gcc/$(target_noncanonical)/$(version)
-+libexecsubdir = $(libexecdir)/llvmgcc/$(target_noncanonical)/$(version)
- # Used to produce a relative $(gcc_tooldir) in gcc.o
- unlibsubdir = ../../..
- # Directory in which to find other cross-compilation tools and headers.
-@@ -1989,8 +1989,8 @@
- 
- DRIVER_DEFINES = \
-   -DSTANDARD_STARTFILE_PREFIX=\"$(unlibsubdir)/\" \
--  -DSTANDARD_EXEC_PREFIX=\"$(libdir)/gcc/\" \
--  -DSTANDARD_LIBEXEC_PREFIX=\"$(libexecdir)/gcc/\" \
-+  -DSTANDARD_EXEC_PREFIX=\"$(libdir)/llvmgcc/\" \
-+  -DSTANDARD_LIBEXEC_PREFIX=\"$(libexecdir)/llvmgcc/\" \
-   -DDEFAULT_TARGET_VERSION=\"$(version)\" \
-   -DDEFAULT_TARGET_MACHINE=\"$(target_noncanonical)\" \
-   -DSTANDARD_BINDIR_PREFIX=\"$(bindir)/\" \
-@@ -4385,6 +4385,7 @@
- 	@echo "set HOSTCFLAGS \"$(CFLAGS)\"" >> ./tmp0
- 	@echo "set TESTING_IN_BUILD_TREE 1" >> ./tmp0
- 	@echo "set HAVE_LIBSTDCXX_V3 1" >> ./tmp0
-+	@echo "set GCC_EXEC_PREFIX \"$(libdir)/gcc/\"" >> ./tmp0
- # If newlib has been configured, we need to pass -B to gcc so it can find
- # newlib's crt0.o if it exists.  This will cause a "path prefix not used"
- # message if it doesn't, but the testsuite is supposed to ignore the message -
 diff -urN a/gcc/collect2.c b/gcc/collect2.c
---- a/gcc/collect2.c	2013-10-06 20:12:34.705283750 +0100
-+++ b/gcc/collect2.c	2013-10-06 20:12:35.455295360 +0100
+--- a/gcc/collect2.c	2008-09-02 22:45:01.000000000 +0100
++++ b/gcc/collect2.c	2014-01-11 18:36:55.690588800 +0000
 @@ -802,6 +802,7 @@
    const char **object;
    int first_file;
@@ -380,8 +346,8 @@ diff -urN a/gcc/collect2.c b/gcc/collect2.c
  
    /* Maybe we know the right file to use (if not cross).  */
 diff -urN a/gcc/config/darwin.h b/gcc/config/darwin.h
---- a/gcc/config/darwin.h	2013-10-06 20:12:34.641949441 +0100
-+++ b/gcc/config/darwin.h	2013-10-06 20:12:35.458628748 +0100
+--- a/gcc/config/darwin.h	2010-04-21 00:22:03.000000000 +0100
++++ b/gcc/config/darwin.h	2014-01-11 18:36:55.693089100 +0000
 @@ -371,7 +371,7 @@
  
  #ifdef TARGET_SYSTEM_ROOT
@@ -392,8 +358,8 @@ diff -urN a/gcc/config/darwin.h b/gcc/config/darwin.h
  #define LINK_SYSROOT_SPEC "%{isysroot*:-syslibroot %*}"
  #endif
 diff -urN a/gcc/gcc.c b/gcc/gcc.c
---- a/gcc/gcc.c	2013-10-06 20:12:34.661949746 +0100
-+++ b/gcc/gcc.c	2013-10-06 20:12:35.458628748 +0100
+--- a/gcc/gcc.c	2009-12-18 23:12:36.000000000 +0000
++++ b/gcc/gcc.c	2014-01-11 18:36:55.700090000 +0000
 @@ -87,6 +87,13 @@
  #include "gcc.h"
  #include "flags.h"
@@ -416,7 +382,7 @@ diff -urN a/gcc/gcc.c b/gcc/gcc.c
  
   %(Spec) processes a specification defined in a specs file as *Spec:
   %[Spec] as above, but put __ around -D arguments
-@@ -1571,25 +1579,33 @@
+@@ -1569,25 +1577,33 @@
  #define MD_STARTFILE_PREFIX_1 ""
  #endif
  
@@ -459,7 +425,7 @@ diff -urN a/gcc/gcc.c b/gcc/gcc.c
  
  /* Subdirectory to use for locating libraries.  Set by
     set_multilib_dir based on the compilation options.  */
-@@ -2859,6 +2875,7 @@
+@@ -2857,6 +2873,7 @@
  }
  
  /* Same as add_prefix, but prepending target_system_root to prefix.  */
@@ -467,7 +433,7 @@ diff -urN a/gcc/gcc.c b/gcc/gcc.c
  static void
  add_sysrooted_prefix (struct path_prefix *pprefix, const char *prefix,
  		      const char *component,
-@@ -3067,9 +3084,9 @@
+@@ -3065,9 +3082,9 @@
        /* APPLE LOCAL begin verbose help 2920964 */
        if (verbose_flag
  	  && print_help_list
@@ -480,7 +446,7 @@ diff -urN a/gcc/gcc.c b/gcc/gcc.c
  	{
  	   /* Do nothing.
  	      as and ld do not entertain --help.  */
-@@ -3426,6 +3443,31 @@
+@@ -3424,6 +3441,31 @@
    linker_options [n_linker_options - 1] = save_string (option, len);
  }
  
@@ -512,7 +478,7 @@ diff -urN a/gcc/gcc.c b/gcc/gcc.c
  /* Create the vector `switches' and its contents.
     Store its length in `n_switches'.  */
  
-@@ -3446,6 +3488,8 @@
+@@ -3444,6 +3486,8 @@
    char *(*get_relative_prefix) (const char *, const char *,
  				const char *) = NULL;
    /* LLVM LOCAL end no-canonical-prefixes */
@@ -521,7 +487,7 @@ diff -urN a/gcc/gcc.c b/gcc/gcc.c
  
    GET_ENVIRONMENT (gcc_exec_prefix, "GCC_EXEC_PREFIX");
  
-@@ -3560,18 +3604,52 @@
+@@ -3558,18 +3602,52 @@
       see if we can create it from the pathname specified in argv[0].  */
  
    gcc_libexec_prefix = standard_libexec_prefix;
@@ -579,7 +545,7 @@ diff -urN a/gcc/gcc.c b/gcc/gcc.c
        if (gcc_exec_prefix)
  	putenv (concat ("GCC_EXEC_PREFIX=", gcc_exec_prefix, NULL));
      }
-@@ -3582,29 +3660,35 @@
+@@ -3580,29 +3658,35 @@
  	 / (which is ignored by make_relative_prefix), so append a
  	 program name.  */
        char *tmp_prefix = concat (gcc_exec_prefix, "gcc", NULL);
@@ -622,7 +588,7 @@ diff -urN a/gcc/gcc.c b/gcc/gcc.c
  	}
  
        set_std_prefix (gcc_exec_prefix, len);
-@@ -4197,12 +4281,15 @@
+@@ -4195,12 +4279,15 @@
        use_pipes = 0;
      }
  
@@ -643,7 +609,7 @@ diff -urN a/gcc/gcc.c b/gcc/gcc.c
  #ifndef OS2
    add_prefix (&exec_prefixes, standard_libexec_prefix, "GCC",
  	      PREFIX_PRIORITY_LAST, 1, 0);
-@@ -4210,51 +4297,35 @@
+@@ -4208,51 +4295,35 @@
  	      PREFIX_PRIORITY_LAST, 2, 0);
    add_prefix (&exec_prefixes, standard_exec_prefix, "BINUTILS",
  	      PREFIX_PRIORITY_LAST, 2, 0);
@@ -710,7 +676,7 @@ diff -urN a/gcc/gcc.c b/gcc/gcc.c
  	      concat (tooldir_prefix, "bin", dir_separator_str, NULL),
  	      "BINUTILS", PREFIX_PRIORITY_LAST, 0, 0);
    add_prefix (&startfile_prefixes,
-@@ -4268,16 +4339,24 @@
+@@ -4266,16 +4337,24 @@
       ``make_relative_prefix'' is not compiled for VMS, so don't call it.  */
    if (target_system_root && gcc_exec_prefix)
      {
@@ -739,7 +705,7 @@ diff -urN a/gcc/gcc.c b/gcc/gcc.c
      }
  #endif
  
-@@ -5443,6 +5522,13 @@
+@@ -5441,6 +5520,13 @@
  	    }
  	    break;
  
@@ -753,7 +719,7 @@ diff -urN a/gcc/gcc.c b/gcc/gcc.c
  	  case 'o':
  	    {
  	      int max = n_infiles;
-@@ -6547,6 +6633,7 @@
+@@ -6545,6 +6631,7 @@
    char *specs_file;
    const char *p;
    struct user_specs *uptr;
@@ -761,7 +727,7 @@ diff -urN a/gcc/gcc.c b/gcc/gcc.c
  
    /* APPLE LOCAL begin CC_PRINT_OPTIONS (radar 3313335, 3360444) */
    cc_print_options = getenv ("CC_PRINT_OPTIONS");
-@@ -6642,9 +6729,21 @@
+@@ -6640,9 +6727,21 @@
    /* Set up to remember the pathname of gcc and any options
       needed for collect.  We use argv[0] instead of programname because
       we need the complete pathname.  */
@@ -784,7 +750,7 @@ diff -urN a/gcc/gcc.c b/gcc/gcc.c
    putenv (XOBFINISH (&collect_obstack, char *));
  
  #ifdef INIT_ENVIRONMENT
-@@ -6790,30 +6889,30 @@
+@@ -6788,30 +6887,30 @@
  			      SYSROOT_PRIORITY, 0, 1);
        else if (*cross_compile == '0')
  	{
@@ -823,7 +789,7 @@ diff -urN a/gcc/gcc.c b/gcc/gcc.c
        if (*standard_startfile_prefix_1)
   	add_sysrooted_prefix (&startfile_prefixes,
  			      standard_startfile_prefix_1, "BINUTILS",
-@@ -6859,7 +6958,9 @@
+@@ -6857,7 +6956,9 @@
  
    if (print_search_dirs)
      {
@@ -834,3 +800,37 @@ diff -urN a/gcc/gcc.c b/gcc/gcc.c
        printf (_("programs: %s\n"),
  	      build_search_list (&exec_prefixes, "", false, false));
        printf (_("libraries: %s\n"),
+diff -urN a/gcc/Makefile.in b/gcc/Makefile.in
+--- a/gcc/Makefile.in	2011-03-11 22:51:01.000000000 +0000
++++ b/gcc/Makefile.in	2014-01-11 18:36:55.686088200 +0000
+@@ -537,9 +537,9 @@
+ # --------
+ 
+ # Directory in which the compiler finds libraries etc.
+-libsubdir = $(libdir)/gcc/$(target_noncanonical)/$(version)
++libsubdir = $(libdir)/llvmgcc/$(target_noncanonical)/$(version)
+ # Directory in which the compiler finds executables
+-libexecsubdir = $(libexecdir)/gcc/$(target_noncanonical)/$(version)
++libexecsubdir = $(libexecdir)/llvmgcc/$(target_noncanonical)/$(version)
+ # Used to produce a relative $(gcc_tooldir) in gcc.o
+ unlibsubdir = ../../..
+ # Directory in which to find other cross-compilation tools and headers.
+@@ -1986,8 +1986,8 @@
+ 
+ DRIVER_DEFINES = \
+   -DSTANDARD_STARTFILE_PREFIX=\"$(unlibsubdir)/\" \
+-  -DSTANDARD_EXEC_PREFIX=\"$(libdir)/gcc/\" \
+-  -DSTANDARD_LIBEXEC_PREFIX=\"$(libexecdir)/gcc/\" \
++  -DSTANDARD_EXEC_PREFIX=\"$(libdir)/llvmgcc/\" \
++  -DSTANDARD_LIBEXEC_PREFIX=\"$(libexecdir)/llvmgcc/\" \
+   -DDEFAULT_TARGET_VERSION=\"$(version)\" \
+   -DDEFAULT_TARGET_MACHINE=\"$(target_noncanonical)\" \
+   -DSTANDARD_BINDIR_PREFIX=\"$(bindir)/\" \
+@@ -4382,6 +4382,7 @@
+ 	@echo "set HOSTCFLAGS \"$(CFLAGS)\"" >> ./tmp0
+ 	@echo "set TESTING_IN_BUILD_TREE 1" >> ./tmp0
+ 	@echo "set HAVE_LIBSTDCXX_V3 1" >> ./tmp0
++	@echo "set GCC_EXEC_PREFIX \"$(libdir)/gcc/\"" >> ./tmp0
+ # If newlib has been configured, we need to pass -B to gcc so it can find
+ # newlib's crt0.o if it exists.  This will cause a "path prefix not used"
+ # message if it doesn't, but the testsuite is supposed to ignore the message -
