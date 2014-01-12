@@ -839,9 +839,16 @@ CT_GetSVN() {
 # Prerequisites: either the server does not require password,
 # or the user has already taken any action to authenticate to the server.
 # The cloned tree will *not* be stored in the local tarballs dir!
-# Usage: CT_GetGit <basename> <url [url ...]>
+# Usage: CT_GetGit <basename> [branch branchname] <url [url ...]> 
 CT_GetGit() {
     local basename="$1"; shift
+    local branch="";
+
+    if [ "$1" = "branch" ]; then
+        shift
+        branch="$1"; shift 
+    fi
+
     local url
     local cloned=0
 
@@ -861,12 +868,20 @@ CT_GetGit() {
         for url in "${@}"; do
             CT_DoLog ALL "Trying to clone from '${url}'"
             CT_DoForceRmdir "${CT_TARBALLS_DIR}/${basename}"
-            if git clone "${url}" "${CT_TARBALLS_DIR}/${basename}" 2>&1 |CT_DoLog ALL; then
-                cloned=1
-                break
+
+            if [ -z "${branch}" ]; then
+                    if git clone "${url}" "${CT_TARBALLS_DIR}/${basename}" 2>&1 |CT_DoLog ALL; then
+                    cloned=1
+                    break
+                fi
+            else
+                if git clone -b "${branch}" --single-branch "${url}" "${CT_TARBALLS_DIR}/${basename}" 2>&1 |CT_DoLog ALL; then
+                  cloned=1
+                  break
+                fi
             fi
         done
-        CT_TestOrAbort "Could not clone '${basename}'" ${cloned} -ne 0
+        CT_TestOrAbort "Could not clone '${basename}'/'${branch}'" ${cloned} -ne 0
     fi
 }
 
