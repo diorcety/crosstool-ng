@@ -1,7 +1,7 @@
-From b9e9319381d414d070ea477b7307f706343ee337 Mon Sep 17 00:00:00 2001
+From 590b6e3f2a13bcaf166bd435203d08a119a9157f Mon Sep 17 00:00:00 2001
 From: Ray Donnelly <mingw.android@gmail.com>
 Date: Wed, 13 Nov 2013 18:27:28 +0000
-Subject: [PATCH 2/5] program prefix ld
+Subject: [PATCH 2/7] program prefix ld
 
 ---
  autoconf/m4/link_options.m4 | 2 +-
@@ -22,10 +22,10 @@ index b58d617..5fc465e 100644
     # Check for ld64.
     if (echo "$version_string" | grep -q "ld64"); then
 diff --git a/configure b/configure
-index ad63002..24901d9 100755
+index 37a2c10..d06b1e3 100755
 --- a/configure
 +++ b/configure
-@@ -7919,7 +7919,7 @@ if test "${llvm_cv_link_version+set}" = set; then
+@@ -7555,7 +7555,7 @@ if test "${llvm_cv_link_version+set}" = set; then
    echo $ECHO_N "(cached) $ECHO_C" >&6
  else
  
@@ -35,5 +35,5 @@ index ad63002..24901d9 100755
     # Check for ld64.
     if (echo "$version_string" | grep -q "ld64"); then
 -- 
-1.8.5.rc2
+1.8.5.2
 

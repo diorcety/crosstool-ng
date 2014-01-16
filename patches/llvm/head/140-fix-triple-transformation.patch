@@ -1,7 +1,7 @@
-From e6ade8429856fe3abbef4d5affabde124b5f571b Mon Sep 17 00:00:00 2001
+From 0de9ba3cd53af8f3e4465086b0c608a6422670eb Mon Sep 17 00:00:00 2001
 From: Ray Donnelly <mingw.android@gmail.com>
 Date: Wed, 13 Nov 2013 18:29:44 +0000
-Subject: [PATCH 5/5] fix triple transformation
+Subject: [PATCH 5/7] fix triple transformation
 
 ---
  lib/Support/Unix/Host.inc | 8 --------
@@ -26,5 +26,5 @@ index 726e2fb..745e548 100644
    return Triple;
  }
 -- 
-1.8.5.rc2
+1.8.5.2
 
