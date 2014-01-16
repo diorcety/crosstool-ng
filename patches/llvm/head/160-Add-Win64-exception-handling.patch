@@ -1,4 +1,4 @@
-From 114c2c3e98664807c725aed2c7434dafdfb2406a Mon Sep 17 00:00:00 2001
+From 4b63752a0789e5aefd7781c51ad9fd5669aca2c6 Mon Sep 17 00:00:00 2001
 From: Ray Donnelly <mingw.android@gmail.com>
 Date: Thu, 16 Jan 2014 12:28:18 +0000
 Subject: [PATCH 6/7] Add Win64 exception handling.
@@ -23,13 +23,13 @@ Most of this patch is based on work by Charles Davis.
 ---
  lib/CodeGen/AsmPrinter/Win64Exception.cpp    |  12 +--
  lib/MC/MCObjectFileInfo.cpp                  |  15 ++--
- lib/Target/X86/MCTargetDesc/X86MCAsmInfo.cpp |   4 +
+ lib/Target/X86/MCTargetDesc/X86MCAsmInfo.cpp |   7 +-
  lib/Target/X86/X86AsmPrinter.h               |   2 +
  lib/Target/X86/X86ISelLowering.cpp           |   3 +-
  lib/Target/X86/X86MCInstLower.cpp            | 100 +++++++++++++++++++++
  test/CodeGen/X86/avx-win64-args.ll           |   2 +
  test/CodeGen/X86/win64_eh.ll                 | 125 +++++++++++++++++++++++++++
- 8 files changed, 248 insertions(+), 15 deletions(-)
+ 8 files changed, 250 insertions(+), 16 deletions(-)
  create mode 100644 test/CodeGen/X86/win64_eh.ll
 
 diff --git a/lib/CodeGen/AsmPrinter/Win64Exception.cpp b/lib/CodeGen/AsmPrinter/Win64Exception.cpp
@@ -91,10 +91,20 @@ index 4cc872e..3d0dc72 100644
    // Debug info.
    DwarfAbbrevSection =
 diff --git a/lib/Target/X86/MCTargetDesc/X86MCAsmInfo.cpp b/lib/Target/X86/MCTargetDesc/X86MCAsmInfo.cpp
-index 7d93555..0d52bfb 100644
+index 7d93555..c7617e7 100644
 --- a/lib/Target/X86/MCTargetDesc/X86MCAsmInfo.cpp
 +++ b/lib/Target/X86/MCTargetDesc/X86MCAsmInfo.cpp
-@@ -144,6 +144,10 @@ X86MCAsmInfoMicrosoft::X86MCAsmInfoMicrosoft(const Triple &Triple) {
+@@ -136,7 +136,8 @@ getNonexecutableStackSection(MCContext &Ctx) const {
+ void X86MCAsmInfoMicrosoft::anchor() { }
+ 
+ X86MCAsmInfoMicrosoft::X86MCAsmInfoMicrosoft(const Triple &Triple) {
+-  if (Triple.getArch() == Triple::x86_64)
++  bool is64Bit = Triple.getArch() == Triple::x86_64;
++  if (is64Bit)
+     PrivateGlobalPrefix = ".L";
+ 
+   AssemblerDialect = AsmWriterFlavor;
+@@ -144,6 +145,10 @@ X86MCAsmInfoMicrosoft::X86MCAsmInfoMicrosoft(const Triple &Triple) {
    TextAlignFillValue = 0x90;
  
    AllowAtInName = true;
