@@ -386,6 +386,12 @@ do_gcc_core_backend() {
         extra_config+=("--with-lipo=${CT_PREFIX_DIR}/bin/${CT_TARGET}-lipo${exeext}")
     fi
 
+    # MinGW-w64 now do this. It puts the c++ headers in the same place
+    # as on a Linux build and is also where clang++ looks for them.
+    if [ ! "${CT_TARGET/mingw/}" = "${CT_TARGET}" ]; then
+        extra_config+=("--with-gxx-include-dir=${prefix}/include/c++/${CT_CC_GCC_VERSION}")
+    fi
+
     if [ ! "${CT_TARGET/mingw/}" = "${CT_TARGET}" -o ! "${CT_TARGET/cygwin/}" = "${CT_TARGET}" ]; then
         # This folder must exist otherwise you get an error:
         # The directory that should contain system headers does not exist:
