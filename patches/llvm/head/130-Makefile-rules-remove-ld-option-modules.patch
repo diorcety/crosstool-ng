@@ -1,4 +1,4 @@
-From 2de52799bc4b87f4c2756012b90c2757a2caeedc Mon Sep 17 00:00:00 2001
+From 396ca879498eb0cef32927c6733cedc2c0fc6243 Mon Sep 17 00:00:00 2001
 From: Ray Donnelly <mingw.android@gmail.com>
 Date: Wed, 13 Nov 2013 18:28:57 +0000
 Subject: [PATCH 4/7] Makefile rules remove ld option -modules

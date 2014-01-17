@@ -1,4 +1,4 @@
-From 0de9ba3cd53af8f3e4465086b0c608a6422670eb Mon Sep 17 00:00:00 2001
+From d68a18b409380eec887260292e602785d02f760c Mon Sep 17 00:00:00 2001
 From: Ray Donnelly <mingw.android@gmail.com>
 Date: Wed, 13 Nov 2013 18:29:44 +0000
 Subject: [PATCH 5/7] fix triple transformation

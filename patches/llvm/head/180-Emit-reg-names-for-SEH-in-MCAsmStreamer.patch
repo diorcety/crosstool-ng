@@ -1,4 +1,4 @@
-From bab78ec6ad50f3ad717fdc2f329b2fb5693f6d4a Mon Sep 17 00:00:00 2001
+From 59f1a96f5d4aaf0ad1bf02a0b23a9f408ccd8666 Mon Sep 17 00:00:00 2001
 From: Ray Donnelly <mingw.android@gmail.com>
 Date: Wed, 18 Dec 2013 02:24:40 +0000
 Subject: [PATCH 7/7] Emit reg names for SEH in MCAsmStreamer
@@ -8,10 +8,10 @@ Subject: [PATCH 7/7] Emit reg names for SEH in MCAsmStreamer
  1 file changed, 11 insertions(+), 4 deletions(-)
 
 diff --git a/lib/MC/MCAsmStreamer.cpp b/lib/MC/MCAsmStreamer.cpp
-index 099ce30..ffbd9b3 100644
+index 64bcb83..7286a9c 100644
 --- a/lib/MC/MCAsmStreamer.cpp
 +++ b/lib/MC/MCAsmStreamer.cpp
-@@ -1178,14 +1178,17 @@ void MCAsmStreamer::EmitWin64EHHandlerData() {
+@@ -1187,14 +1187,17 @@ void MCAsmStreamer::EmitWin64EHHandlerData() {
  void MCAsmStreamer::EmitWin64EHPushReg(unsigned Register) {
    MCStreamer::EmitWin64EHPushReg(Register);
  
@@ -31,7 +31,7 @@ index 099ce30..ffbd9b3 100644
    EmitEOL();
  }
  
-@@ -1199,14 +1202,18 @@ void MCAsmStreamer::EmitWin64EHAllocStack(unsigned Size) {
+@@ -1208,14 +1211,18 @@ void MCAsmStreamer::EmitWin64EHAllocStack(unsigned Size) {
  void MCAsmStreamer::EmitWin64EHSaveReg(unsigned Register, unsigned Offset) {
    MCStreamer::EmitWin64EHSaveReg(Register, Offset);
  
