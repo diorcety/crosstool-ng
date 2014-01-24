@@ -1,0 +1,21 @@
+diff -urN gcc-4.8.2.orig/libgcc/config/t-slibgcc gcc-4.8.2/libgcc/config/t-slibgcc
+--- gcc-4.8.2.orig/libgcc/config/t-slibgcc	2013-02-04 19:06:20.000000000 +0000
++++ gcc-4.8.2/libgcc/config/t-slibgcc	2014-01-24 18:12:07.842866500 +0000
+@@ -27,9 +27,14 @@
+ SHLIB_DIR = @multilib_dir@
+ SHLIB_SLIBDIR_QUAL = @shlib_slibdir_qual@
+ SHLIB_LC = -lc
+-SHLIB_MAKE_SOLINK = $(LN_S) $(SHLIB_SONAME) $(SHLIB_DIR)/$(SHLIB_SOLINK)
+-SHLIB_INSTALL_SOLINK = $(LN_S) $(SHLIB_SONAME) \
+-	$(DESTDIR)$(slibdir)$(SHLIB_SLIBDIR_QUAL)/$(SHLIB_SOLINK)
++SHLIB_MAKE_SOLINK = SHLIB_MAKE_SOLINK_PWD=$$PWD && \
++	cd $(SHLIB_DIR) && \
++	$(LN_S) $(SHLIB_SONAME) $(SHLIB_SOLINK) && \
++	cd $$SHLIB_MAKE_SOLINK_PWD
++SHLIB_INSTALL_SOLINK = SHLIB_MAKE_SOLINK_PWD=$$PWD && \
++	cd $(DESTDIR)$(slibdir)$(SHLIB_SLIBDIR_QUAL) && \
++	$(LN_S) $(SHLIB_SONAME) $(SHLIB_SOLINK) && \
++	cd $$SHLIB_MAKE_SOLINK_PWD
+ 
+ SHLIB_LINK = $(CC) $(LIBGCC2_CFLAGS) -shared -nodefaultlibs \
+ 	$(SHLIB_LDFLAGS) \
