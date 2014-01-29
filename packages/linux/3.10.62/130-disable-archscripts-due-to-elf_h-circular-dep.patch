@@ -1,0 +1,12 @@
+diff -urN linux-3.10.62.orig/Makefile linux-3.10.62/Makefile
+--- linux-3.10.62.orig/Makefile	2015-03-04 21:58:38.370006100 +0000
++++ linux-3.10.62/Makefile	2015-03-04 22:07:00.111621000 +0000
+@@ -905,7 +905,7 @@
+ archscripts:
+ 
+ PHONY += __headers
+-__headers: $(version_h) scripts_basic asm-generic archheaders archscripts FORCE
++__headers: $(version_h) scripts_basic asm-generic archheaders FORCE
+ 	$(Q)$(MAKE) $(build)=scripts build_unifdef
+ 
+ PHONY += headers_install_all

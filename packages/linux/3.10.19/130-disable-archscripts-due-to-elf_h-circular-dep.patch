@@ -1,0 +1,11 @@
+--- linux-3.12.8/Makefile.orig	2014-01-16 00:31:56.000000000 +0100
++++ linux-3.12.8/Makefile	2014-01-20 00:03:25.961403100 +0100
+@@ -906,7 +906,7 @@
+ archscripts:
+ 
+ PHONY += __headers
+-__headers: $(version_h) scripts_basic asm-generic archheaders archscripts FORCE
++__headers: $(version_h) scripts_basic asm-generic archheaders FORCE
+ 	$(Q)$(MAKE) $(build)=scripts build_unifdef
+ 
+ PHONY += headers_install_all
