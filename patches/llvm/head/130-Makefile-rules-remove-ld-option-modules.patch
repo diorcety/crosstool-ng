@@ -1,4 +1,4 @@
-From 396ca879498eb0cef32927c6733cedc2c0fc6243 Mon Sep 17 00:00:00 2001
+From 2007101045ccc1875b57e41c81623bd34748885b Mon Sep 17 00:00:00 2001
 From: Ray Donnelly <mingw.android@gmail.com>
 Date: Wed, 13 Nov 2013 18:28:57 +0000
 Subject: [PATCH 4/7] Makefile rules remove ld option -modules
@@ -8,10 +8,10 @@ Subject: [PATCH 4/7] Makefile rules remove ld option -modules
  1 file changed, 3 insertions(+)
 
 diff --git a/Makefile.rules b/Makefile.rules
-index 6c7ec02..6826ac0 100644
+index d668b23..bcbd642 100644
 --- a/Makefile.rules
 +++ b/Makefile.rules
-@@ -385,6 +385,9 @@ endif
+@@ -393,6 +393,9 @@ endif
  ifdef LOADABLE_MODULE
    SHARED_LIBRARY := 1
    LINK_LIBS_IN_SHARED := 1
@@ -22,5 +22,5 @@ index 6c7ec02..6826ac0 100644
  
  ifdef SHARED_LIBRARY
 -- 
-1.8.5.2
+1.8.5.4
 

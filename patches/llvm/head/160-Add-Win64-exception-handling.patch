@@ -1,7 +1,9 @@
-From 37e656001be1c78db1cb4cb8924ca6380abc3e29 Mon Sep 17 00:00:00 2001
+From bb73ced884ec672417653587f862f25ce7b9f4fe Mon Sep 17 00:00:00 2001
 From: Ray Donnelly <mingw.android@gmail.com>
-Date: Thu, 16 Jan 2014 12:28:18 +0000
+Date: Sun, 9 Feb 2014 21:13:33 +0000
 Subject: [PATCH 6/7] Add Win64 exception handling.
+
+Source Url: http://wiki.dlang.org/Building_and_hacking_LDC_on_Windows_using_MSVC
 
 Source Url: http://lists.cs.uiuc.edu/pipermail/llvm-commits/Week-of-Mon-20131216/198988.html
 
@@ -21,19 +23,21 @@ is emitted as handler data.
 
 Most of this patch is based on work by Charles Davis.
 ---
- lib/CodeGen/AsmPrinter/Win64Exception.cpp    |  12 +--
- lib/MC/MCObjectFileInfo.cpp                  |  15 ++--
- lib/Target/X86/MCTargetDesc/X86MCAsmInfo.cpp |  15 +++-
- lib/Target/X86/X86AsmPrinter.h               |   2 +
- lib/Target/X86/X86ISelLowering.cpp           |   3 +-
- lib/Target/X86/X86MCInstLower.cpp            | 100 +++++++++++++++++++++
- test/CodeGen/X86/avx-win64-args.ll           |   2 +
- test/CodeGen/X86/win64_eh.ll                 | 125 +++++++++++++++++++++++++++
- 8 files changed, 256 insertions(+), 18 deletions(-)
+ lib/CodeGen/AsmPrinter/Win64Exception.cpp     |  12 +--
+ lib/CodeGen/AsmPrinter/Win64Exception.cpp.rej |  17 ++++
+ lib/MC/MCObjectFileInfo.cpp                   |  15 ++-
+ lib/Target/X86/MCTargetDesc/X86MCAsmInfo.cpp  |  17 +++-
+ lib/Target/X86/X86AsmPrinter.h                |   2 +
+ lib/Target/X86/X86ISelLowering.cpp            |   3 +-
+ lib/Target/X86/X86MCInstLower.cpp             | 129 +++++++++++++++++++++++++
+ test/CodeGen/X86/avx-win64-args.ll            |   2 +
+ test/CodeGen/X86/win64_eh.ll                  | 130 ++++++++++++++++++++++++++
+ 9 files changed, 308 insertions(+), 19 deletions(-)
+ create mode 100644 lib/CodeGen/AsmPrinter/Win64Exception.cpp.rej
  create mode 100644 test/CodeGen/X86/win64_eh.ll
 
 diff --git a/lib/CodeGen/AsmPrinter/Win64Exception.cpp b/lib/CodeGen/AsmPrinter/Win64Exception.cpp
-index 4844cf6..851196f 100644
+index eda444bd..851196f 100644
 --- a/lib/CodeGen/AsmPrinter/Win64Exception.cpp
 +++ b/lib/CodeGen/AsmPrinter/Win64Exception.cpp
 @@ -78,9 +78,9 @@ void Win64Exception::beginFunction(const MachineFunction *MF) {
@@ -43,7 +47,7 @@ index 4844cf6..851196f 100644
 -  MCSymbol *GCCHandlerSym =
 -    Asm->GetExternalSymbolSymbol("_GCC_specific_handler");
 -  Asm->OutStreamer.EmitWin64EHHandler(GCCHandlerSym, true, true);
-+  const MCSymbol *PersHandlerSym = TLOF.getCFIPersonalitySymbol(Per, Asm->Mang,
++  const MCSymbol *PersHandlerSym = TLOF.getCFIPersonalitySymbol(Per, *Asm->Mang,
 +                                                                MMI);
 +  Asm->OutStreamer.EmitWin64EHHandler(PersHandlerSym, true, true);
  
@@ -55,7 +59,7 @@ index 4844cf6..851196f 100644
    if (shouldEmitPersonality) {
 -    const TargetLoweringObjectFile &TLOF = Asm->getObjFileLowering();
 -    const Function *Per = MMI->getPersonalities()[MMI->getPersonalityIndex()];
--    const MCSymbol *Sym = TLOF.getCFIPersonalitySymbol(Per, Asm->Mang, MMI);
+-    const MCSymbol *Sym = TLOF.getCFIPersonalitySymbol(Per, *Asm->Mang, MMI);
 -
      Asm->OutStreamer.PushSection();
      Asm->OutStreamer.EmitWin64EHHandlerData();
@@ -64,11 +68,34 @@ index 4844cf6..851196f 100644
      EmitExceptionTable();
      Asm->OutStreamer.PopSection();
    }
+diff --git a/lib/CodeGen/AsmPrinter/Win64Exception.cpp.rej b/lib/CodeGen/AsmPrinter/Win64Exception.cpp.rej
+new file mode 100644
+index 0000000..2bbf45e
+--- /dev/null
++++ b/lib/CodeGen/AsmPrinter/Win64Exception.cpp.rej
+@@ -0,0 +1,17 @@
++--- lib/CodeGen/AsmPrinter/Win64Exception.cpp
+++++ lib/CodeGen/AsmPrinter/Win64Exception.cpp
++@@ -99,14 +99,8 @@
++   MMI->TidyLandingPads();
++ 
++   if (shouldEmitPersonality) {
++-    const TargetLoweringObjectFile &TLOF = Asm->getObjFileLowering();
++-    const Function *Per = MMI->getPersonalities()[MMI->getPersonalityIndex()];
++-    const MCSymbol *Sym = TLOF.getCFIPersonalitySymbol(Per, Asm->Mang, MMI);
++-
++     Asm->OutStreamer.PushSection();
++     Asm->OutStreamer.EmitWin64EHHandlerData();
++-    Asm->OutStreamer.EmitValue(MCSymbolRefExpr::Create(Sym, Asm->OutContext),
++-                               4);
++     EmitExceptionTable();
++     Asm->OutStreamer.PopSection();
++   }
 diff --git a/lib/MC/MCObjectFileInfo.cpp b/lib/MC/MCObjectFileInfo.cpp
-index 4cc872e..3d0dc72 100644
+index a160f29..e5e55f0 100644
 --- a/lib/MC/MCObjectFileInfo.cpp
 +++ b/lib/MC/MCObjectFileInfo.cpp
-@@ -575,11 +575,16 @@ void MCObjectFileInfo::InitCOFFMCObjectFileInfo(Triple T) {
+@@ -606,11 +606,16 @@ void MCObjectFileInfo::InitCOFFMCObjectFileInfo(Triple T) {
    // though it contains relocatable pointers.  In PIC mode, this is probably a
    // big runtime hit for C++ apps.  Either the contents of the LSDA need to be
    // adjusted or this should be a data section.
@@ -89,9 +116,9 @@ index 4cc872e..3d0dc72 100644
 +  }
  
    // Debug info.
-   DwarfAbbrevSection =
+   COFFDebugSymbolsSection =
 diff --git a/lib/Target/X86/MCTargetDesc/X86MCAsmInfo.cpp b/lib/Target/X86/MCTargetDesc/X86MCAsmInfo.cpp
-index 7d93555..bfe7cc0 100644
+index 7d93555..4a7976e 100644
 --- a/lib/Target/X86/MCTargetDesc/X86MCAsmInfo.cpp
 +++ b/lib/Target/X86/MCTargetDesc/X86MCAsmInfo.cpp
 @@ -136,7 +136,8 @@ getNonexecutableStackSection(MCContext &Ctx) const {
@@ -104,7 +131,7 @@ index 7d93555..bfe7cc0 100644
      PrivateGlobalPrefix = ".L";
  
    AssemblerDialect = AsmWriterFlavor;
-@@ -144,12 +145,17 @@ X86MCAsmInfoMicrosoft::X86MCAsmInfoMicrosoft(const Triple &Triple) {
+@@ -144,18 +145,26 @@ X86MCAsmInfoMicrosoft::X86MCAsmInfoMicrosoft(const Triple &Triple) {
    TextAlignFillValue = 0x90;
  
    AllowAtInName = true;
@@ -123,12 +150,13 @@ index 7d93555..bfe7cc0 100644
      PrivateGlobalPrefix = ".L";
  
    AssemblerDialect = AsmWriterFlavor;
-@@ -157,5 +163,8 @@ X86MCAsmInfoGNUCOFF::X86MCAsmInfoGNUCOFF(const Triple &Triple) {
+ 
    TextAlignFillValue = 0x90;
  
-   // Exceptions handling
+-  // Exceptions handling
 -  ExceptionsType = ExceptionHandling::DwarfCFI;
-+  if (is64Bit)
++  // Exception handling
++  if (is64Bit && Triple.getOS() == Triple::MinGW32)
 +    ExceptionsType = ExceptionHandling::Win64;
 +  else
 +    ExceptionsType = ExceptionHandling::DwarfCFI;
@@ -147,7 +175,7 @@ index d6adf68..2477a84 100644
    explicit X86AsmPrinter(TargetMachine &TM, MCStreamer &Streamer)
      : AsmPrinter(TM, Streamer), SM(*this) {
 diff --git a/lib/Target/X86/X86ISelLowering.cpp b/lib/Target/X86/X86ISelLowering.cpp
-index 27b2d0b..9654828 100644
+index a945284..3f31f04 100644
 --- a/lib/Target/X86/X86ISelLowering.cpp
 +++ b/lib/Target/X86/X86ISelLowering.cpp
 @@ -597,7 +597,8 @@ void X86TargetLowering::resetOperationActions() {
@@ -161,11 +189,11 @@ index 27b2d0b..9654828 100644
    }
  
 diff --git a/lib/Target/X86/X86MCInstLower.cpp b/lib/Target/X86/X86MCInstLower.cpp
-index a9454cf..b70c538 100644
+index 6f88cf1..2eab008 100644
 --- a/lib/Target/X86/X86MCInstLower.cpp
 +++ b/lib/Target/X86/X86MCInstLower.cpp
-@@ -775,7 +775,100 @@ static void LowerPATCHPOINT(MCStreamer &OS, StackMaps &SM,
-   EmitNops(OS, NumBytes - EncodedBytes, Is64Bit);
+@@ -776,7 +776,129 @@ static void LowerPATCHPOINT(MCStreamer &OS, StackMaps &SM,
+   EmitNops(OS, NumBytes - EncodedBytes, Is64Bit, STI);
  }
  
 +static bool isCalleeSavedReg(const MachineFunction *MF,
@@ -183,7 +211,7 @@ index a9454cf..b70c538 100644
 +  assert(MI->getFlag(MachineInstr::FrameSetup) &&
 +         "Only call frame setup instructions allowed here!");
 +  unsigned SReg, DReg;
-+  unsigned Offset;
++  int64_t Offset;
 +  const X86RegisterInfo *RI =
 +    static_cast<const X86RegisterInfo *>(TM.getRegisterInfo());
 +  switch (MI->getOpcode()) {
@@ -196,48 +224,77 @@ index a9454cf..b70c538 100644
 +      OutStreamer.EmitWin64EHAllocStack(8);
 +    break;
 +  case X86::SUB64ri8:
-+  case X86::SUB64ri32: {
++  case X86::SUB64ri32:
 +    DReg = MI->getOperand(0).getReg();
 +    Offset = MI->getOperand(2).getImm();
 +    if (DReg == RI->getStackRegister()) {
 +      OutStreamer.EmitWin64EHAllocStack(Offset);
-+    }
-+  } break;
++    } else
++      llvm_unreachable("X86::SUB64ri8/32 not allowed with these operands");
++    break;
 +  case X86::MOV64rr:
 +    DReg = MI->getOperand(0).getReg();
 +    SReg = MI->getOperand(1).getReg();
 +    if (DReg == RI->getFrameRegister(*MF) && SReg == RI->getStackRegister())
 +      OutStreamer.EmitWin64EHSetFrame(RI->getSEHRegNum(DReg), 0);
++    else
++      llvm_unreachable("X86::MOV64rr not allowed with these operands");
 +    break;
 +  case X86::MOV64mr:
 +  case X86::MOVAPSmr:
 +    DReg = MI->getOperand(0).getReg();
-+    Offset = MI->getOperand(0).getOffset();
-+    SReg = MI->getOperand(1).getReg();
++    SReg = MI->getOperand(5).getReg();
 +    if (DReg == RI->getFrameRegister(*MF) || DReg == RI->getStackRegister()) {
++      Offset = MI->getOperand(3).getImm();
++      if (MI->getOperand(1).getImm() != 1 || MI->getOperand(2).getImm() != 0 ||
++          MI->getOperand(4).getImm()  != 0)
++        llvm_unreachable("X86::MOV64mr not allowed with these operands");
 +      if (MI->getOpcode() == X86::MOVAPSmr)
 +        OutStreamer.EmitWin64EHSaveXMM(RI->getSEHRegNum(SReg), Offset);
 +      else
 +        OutStreamer.EmitWin64EHSaveReg(RI->getSEHRegNum(SReg), Offset);
++    } else
++      llvm_unreachable("X86::MOV64mr not allowed with these operands");
++    break;
++  case X86::LEA64r:
++    DReg = MI->getOperand(0).getReg();
++    SReg = MI->getOperand(1).getReg();
++    Offset = MI->getOperand(4).getImm();
++    if (SReg == RI->getStackRegister() && Offset > 0) {
++      // Check stack register first in case there is no frame register.
++      if (DReg == RI->getStackRegister()) {
++        OutStreamer.EmitWin64EHAllocStack(Offset);
++      } else if (DReg == RI->getFrameRegister(*MF)) {
++        OutStreamer.EmitWin64EHSetFrame(RI->getSEHRegNum(DReg), Offset);
++      } else
++        llvm_unreachable("X86::LEA64r not allowed with these operands");
 +    }
++    else
++      llvm_unreachable("X86::LEA64r not allowed with these operands");
 +    break;
 +  case X86::MOV64ri:
-+    // Occurs before alloca()/call to __chkstk
-+    assert((MI->getNextNode()
++    // Occurs before alloca()/call to __chkstk/___chkstk_ms
++    if (!(MI->getNextNode()
 +            && MI->getNextNode()->getOpcode() == X86::W64ALLOCA
-+            && MI->getOperand(0).getReg() == X86::RAX)
-+           && "X86::MOV64ri only allowed before X86::W64ALLOCA");
++            && MI->getOperand(0).getReg() == X86::RAX))
++      llvm_unreachable("X86::MOV64ri only allowed before X86::W64ALLOCA");
 +    break;
 +  case X86::W64ALLOCA:
-+    // Occurs if alloca()/call to __chkstk is used. Do nothing.
++    // Occurs if call to __chkstk/___chkstk_ms is used.
 +    break;
 +  case X86::SUB64rr:
-+    // Occurs after alloca()/call to __chkstk
-+    assert((MI->getPrevNode()
++    // Occurs after call to __chkstk/___chkstk_ms on Win64
++    if (!(MI->getPrevNode()
 +            && MI->getPrevNode()->getOpcode() == X86::W64ALLOCA
 +            && MI->getOperand(0).getReg() == RI->getStackRegister()
-+            && MI->getOperand(2).getReg() == X86::RAX)
-+           && "X86::SUB64rr only allowed after X86::W64ALLOCA");
++            && MI->getOperand(2).getReg() == X86::RAX
++            && getSubtarget().isTargetWin64()))
++      llvm_unreachable("X86::SUB64rr only allowed after X86::W64ALLOCA");
++    const MachineInstr *MoveMI = MI->getPrevNode()->getPrevNode();
++    if (!(MoveMI && MoveMI->getOpcode() == X86::MOV64ri))
++      llvm_unreachable("X86::MOV64ri required before X86::W64ALLOCA");
++    Offset = MoveMI->getOperand(1).getImm();
++    OutStreamer.EmitWin64EHAllocStack(Offset);
 +    break;
 +  }
 +  // Prolog ends if next instruction does not have the FrameSetup flag
@@ -265,10 +322,10 @@ index a9454cf..b70c538 100644
    X86MCInstLower MCInstLowering(*MF, *this);
    switch (MI->getOpcode()) {
    case TargetOpcode::DBG_VALUE:
-@@ -886,4 +979,11 @@ void X86AsmPrinter::EmitInstruction(const MachineInstr *MI) {
+@@ -887,4 +1009,11 @@ void X86AsmPrinter::EmitInstruction(const MachineInstr *MI) {
    MCInst TmpInst;
    MCInstLowering.Lower(MI, TmpInst);
-   OutStreamer.EmitInstruction(TmpInst);
+   EmitToStreamer(OutStreamer, TmpInst);
 +
 +  // Emit SEH unwind info for Win64-style EH.
 +  if (MAI->getExceptionHandlingType() == ExceptionHandling::Win64 &&
@@ -290,21 +347,22 @@ index 85b2634..3b2f3d4 100644
  declare <8 x float> @foo(<8 x float>, i32)
 diff --git a/test/CodeGen/X86/win64_eh.ll b/test/CodeGen/X86/win64_eh.ll
 new file mode 100644
-index 0000000..4bc1dc2
+index 0000000..101ae39
 --- /dev/null
 +++ b/test/CodeGen/X86/win64_eh.ll
-@@ -0,0 +1,125 @@
-+; RUN: llc < %s -O0 -mtriple=x86_64-pc-win32 | FileCheck %s
+@@ -0,0 +1,130 @@
++; RUN: llc < %s -O0 -mcpu=corei7 -mtriple=x86_64-pc-win32 | FileCheck %s -check-prefix=WIN64
++; RUN: llc < %s -O0 -mcpu=corei7 -mtriple=x86_64-pc-mingw32 | FileCheck %s -check-prefix=WIN64
 +
-+; Check function with nor prolog
++; Check function without prolog
 +define void @foo0() uwtable {
 +entry:
 +  ret void
 +}
-+; CHECK: .seh_proc foo0
-+; CHECK: .seh_endprologue
-+; CHECK: ret
-+; CHECK: .seh_endproc
++; WIN64: .seh_proc foo0
++; WIN64: .seh_endprologue
++; WIN64: ret
++; WIN64: .seh_endproc
 +
 +; Checks a small stack allocation
 +define void @foo1() uwtable {
@@ -312,27 +370,29 @@ index 0000000..4bc1dc2
 +  %baz = alloca [2000 x i16], align 2
 +  ret void
 +}
-+; CHECK: .seh_proc foo1
-+; CHECK: subq $4000, %rsp
-+; CHECK: .seh_stackalloc 4000
-+; CHECK: .seh_endprologue
-+; CHECK: ret
-+; CHECK: .seh_endproc
++; WIN64: .seh_proc foo1
++; WIN64: subq $4000, %rsp
++; WIN64: .seh_stackalloc 4000
++; WIN64: .seh_endprologue
++; WIN64: addq $4000, %rsp
++; WIN64: ret
++; WIN64: .seh_endproc
 +
-+
-+; Checks a stack allocation requiring call to __chkstk
++; Checks a stack allocation requiring call to __chkstk/___chkstk_ms
 +define void @foo2() uwtable {
 +entry:
 +  %baz = alloca [4000 x i16], align 2
 +  ret void
 +}
-+; CHECK: .seh_proc foo2
-+; CHECK: movabsq $8000, %rax
-+; CHECK: callq __chkstk
-+; CHECK: subq %rax, %rsp
-+; CHECK: .seh_endprologue
-+; CHECK: ret
-+; CHECK: .seh_endproc
++; WIN64: .seh_proc foo2
++; WIN64: movabsq $8000, %rax
++; WIN64: callq {{__chkstk|___chkstk_ms}}
++; WIN64: subq %rax, %rsp
++; WIN64: .seh_stackalloc 8000
++; WIN64: .seh_endprologue
++; WIN64: addq $8000, %rsp
++; WIN64: ret
++; WIN64: .seh_endproc
 +
 +
 +; Checks stack push
@@ -369,14 +429,16 @@ index 0000000..4bc1dc2
 +  %tmp16 = add i32 %tmp13, %tmp15
 +  ret i32 %tmp16
 +}
-+; CHECK: .seh_proc foo3
-+; CHECK: pushq %rsi
-+; CHECK: .seh_pushreg 6
-+; CHECK: subq $24, %rsp
-+; CHECK: .seh_stackalloc 24
-+; CHECK: .seh_endprologue
-+; CHECK: ret
-+; CHECK: .seh_endproc
++; WIN64: .seh_proc foo3
++; WIN64: pushq %rsi
++; WIN64: .seh_pushreg 6
++; WIN64: subq $24, %rsp
++; WIN64: .seh_stackalloc 24
++; WIN64: .seh_endprologue
++; WIN64: addq $24, %rsp
++; WIN64: popq %rsi
++; WIN64: ret
++; WIN64: .seh_endproc
 +
 +
 +; Check emission of eh handler and handler data
@@ -410,15 +472,15 @@ index 0000000..4bc1dc2
 +  %tmp10 = load i32* %step
 +  ret i32 %tmp10
 +}
-+
-+; CHECK: .seh_proc foo4
-+; CHECK: .seh_handler _d_eh_personality, @unwind, @except
-+; CHECK: subq $56, %rsp
-+; CHECK: .seh_stackalloc 56
-+; CHECK: .seh_endprologue
-+; CHECK: ret
-+; CHECK: .seh_handlerdata
-+; CHECK: .seh_endproc
++; WIN64: .seh_proc foo4
++; WIN64: .seh_handler _d_eh_personality, @unwind, @except
++; WIN64: subq $56, %rsp
++; WIN64: .seh_stackalloc 56
++; WIN64: .seh_endprologue
++; WIN64: addq $56, %rsp
++; WIN64: ret
++; WIN64: .seh_handlerdata
++; WIN64: .seh_endproc
 -- 
-1.8.5.2
+1.8.5.4
 

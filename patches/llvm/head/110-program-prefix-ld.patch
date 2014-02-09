@@ -1,4 +1,4 @@
-From 191f6290f8dca50e2112a2d771be984fe0233c50 Mon Sep 17 00:00:00 2001
+From a8f296fe91c777610250d468185dab7b3a29cd73 Mon Sep 17 00:00:00 2001
 From: Ray Donnelly <mingw.android@gmail.com>
 Date: Wed, 13 Nov 2013 18:27:28 +0000
 Subject: [PATCH 2/7] program prefix ld
@@ -22,10 +22,10 @@ index b58d617..5fc465e 100644
     # Check for ld64.
     if (echo "$version_string" | grep -q "ld64"); then
 diff --git a/configure b/configure
-index 37a2c10..d06b1e3 100755
+index aada393..6a7c777 100755
 --- a/configure
 +++ b/configure
-@@ -7555,7 +7555,7 @@ if test "${llvm_cv_link_version+set}" = set; then
+@@ -7602,7 +7602,7 @@ if test "${llvm_cv_link_version+set}" = set; then
    echo $ECHO_N "(cached) $ECHO_C" >&6
  else
  
@@ -35,5 +35,5 @@ index 37a2c10..d06b1e3 100755
     # Check for ld64.
     if (echo "$version_string" | grep -q "ld64"); then
 -- 
-1.8.5.2
+1.8.5.4
 

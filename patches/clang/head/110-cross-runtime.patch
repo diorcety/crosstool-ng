@@ -1,14 +1,15 @@
-From 5dd9ace7bcd111ace776b45ee4cf320e7bd126a9 Mon Sep 17 00:00:00 2001
+From 873c20bd6a6cc8398511febd6e5bc9f6d25435ad Mon Sep 17 00:00:00 2001
 From: Ray Donnelly <mingw.android@gmail.com>
-Date: Fri, 13 Dec 2013 19:26:19 +0000
+Date: Sun, 9 Feb 2014 21:44:03 +0000
 Subject: [PATCH 1/5] cross runtime
 
+.. we care about TARGET_OS not OS and TARGET_ARCH not ARCH
 ---
  runtime/compiler-rt/Makefile | 10 +++++-----
  1 file changed, 5 insertions(+), 5 deletions(-)
 
 diff --git a/runtime/compiler-rt/Makefile b/runtime/compiler-rt/Makefile
-index f081e8a..fc7242c 100644
+index b683fcd..f23a73f 100644
 --- a/runtime/compiler-rt/Makefile
 +++ b/runtime/compiler-rt/Makefile
 @@ -77,7 +77,7 @@ ifeq ($(shell test -d $(COMPILERRT_SRC_ROOT) && echo OK),OK)
@@ -17,7 +18,7 @@ index f081e8a..fc7242c 100644
  RuntimeDirs :=
 -ifeq ($(OS),Darwin)
 +ifeq ($(TARGET_OS),Darwin)
- RuntimeDirs += darwin darwin_embedded
+ RuntimeDirs += darwin macho_embedded
  RuntimeLibrary.darwin.Configs := \
  	eprintf.a 10.4.a osx.a ios.a cc_kext.a cc_kext_ios5.a \
 @@ -109,7 +109,7 @@ endif
@@ -53,5 +54,5 @@ index f081e8a..fc7242c 100644
  		$(RuntimeLibrary.$1.Configs:%=$(ResourceLibDir)/$1/libclang_rt.%)
  .PHONY: RuntimeLibrary.$1
 -- 
-1.8.5.1
+1.8.5.4
 

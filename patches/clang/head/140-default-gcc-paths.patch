@@ -1,4 +1,4 @@
-From 1a2f736a51a71243a490044d1ef1e90539b2f43a Mon Sep 17 00:00:00 2001
+From 9ba13118c8a08a7b7f5619c0e277b422ebe69521 Mon Sep 17 00:00:00 2001
 From: Ray Donnelly <mingw.android@gmail.com>
 Date: Wed, 13 Nov 2013 18:10:54 +0000
 Subject: [PATCH 4/5] default gcc paths
@@ -10,10 +10,10 @@ Subject: [PATCH 4/5] default gcc paths
  3 files changed, 50 insertions(+)
 
 diff --git a/include/clang/Driver/ToolChain.h b/include/clang/Driver/ToolChain.h
-index 84e0b55..d98a4fa 100644
+index ceb1c76..2f1c1bd 100644
 --- a/include/clang/Driver/ToolChain.h
 +++ b/include/clang/Driver/ToolChain.h
-@@ -121,6 +121,11 @@ public:
+@@ -124,6 +124,11 @@ public:
      return Triple.getTriple();
    }
  
@@ -26,7 +26,7 @@ index 84e0b55..d98a4fa 100644
    const path_list &getFilePaths() const { return FilePaths; }
  
 diff --git a/lib/Driver/ToolChain.cpp b/lib/Driver/ToolChain.cpp
-index fb496bd..6a20b01 100644
+index f48a811..031b83d 100644
 --- a/lib/Driver/ToolChain.cpp
 +++ b/lib/Driver/ToolChain.cpp
 @@ -25,6 +25,13 @@ using namespace clang::driver;
@@ -43,7 +43,7 @@ index fb496bd..6a20b01 100644
  ToolChain::ToolChain(const Driver &D, const llvm::Triple &T,
                       const ArgList &A)
    : D(D), Triple(T), Args(A) {
-@@ -137,6 +144,38 @@ Tool *ToolChain::SelectTool(const JobAction &JA) const {
+@@ -138,6 +145,38 @@ Tool *ToolChain::SelectTool(const JobAction &JA) const {
    return getTool(AC);
  }
  
@@ -83,10 +83,10 @@ index fb496bd..6a20b01 100644
    return D.GetFilePath(Name, *this);
  
 diff --git a/lib/Driver/Tools.cpp b/lib/Driver/Tools.cpp
-index 929f29e..44d36cc 100644
+index bcbb57a..f599d01 100644
 --- a/lib/Driver/Tools.cpp
 +++ b/lib/Driver/Tools.cpp
-@@ -2723,6 +2723,12 @@ void Clang::ConstructJob(Compilation &C, const JobAction &JA,
+@@ -2822,6 +2822,12 @@ void Clang::ConstructJob(Compilation &C, const JobAction &JA,
    // preprocessed inputs and configure concludes that -fPIC is not supported.
    Args.ClaimAllArgs(options::OPT_D);
  
@@ -100,5 +100,5 @@ index 929f29e..44d36cc 100644
    if (Arg *A = Args.getLastArg(options::OPT_O_Group)) {
      if (A->getOption().matches(options::OPT_O4)) {
 -- 
-1.8.5.1
+1.8.5.4
 

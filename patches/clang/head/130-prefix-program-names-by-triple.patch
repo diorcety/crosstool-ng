@@ -1,4 +1,4 @@
-From 39cb26e221394bbc0f0e067f31aa89b63f231ff7 Mon Sep 17 00:00:00 2001
+From 25a478367da272b471b3d29f6a64feb6dace451a Mon Sep 17 00:00:00 2001
 From: Ray Donnelly <mingw.android@gmail.com>
 Date: Wed, 13 Nov 2013 18:07:01 +0000
 Subject: [PATCH 3/5] prefix program names by triple
@@ -24,10 +24,10 @@ index 867444e..5923163 100644
    std::string ClangExecutable;
  
 diff --git a/lib/Driver/ToolChain.cpp b/lib/Driver/ToolChain.cpp
-index 0b62f7a..fb496bd 100644
+index 9c43706..f48a811 100644
 --- a/lib/Driver/ToolChain.cpp
 +++ b/lib/Driver/ToolChain.cpp
-@@ -143,6 +143,16 @@ std::string ToolChain::GetFilePath(const char *Name) const {
+@@ -144,6 +144,16 @@ std::string ToolChain::GetFilePath(const char *Name) const {
  }
  
  std::string ToolChain::GetProgramPath(const char *Name) const {
@@ -45,7 +45,7 @@ index 0b62f7a..fb496bd 100644
  }
  
 diff --git a/tools/driver/driver.cpp b/tools/driver/driver.cpp
-index 3a6a09b..81118f9 100644
+index 8acd9b3..6ec645a 100644
 --- a/tools/driver/driver.cpp
 +++ b/tools/driver/driver.cpp
 @@ -209,6 +209,11 @@ static void ParseProgName(SmallVectorImpl<const char *> &ArgVector,
@@ -79,5 +79,5 @@ index 3a6a09b..81118f9 100644
    if (llvm::TargetRegistry::lookupTarget(Prefix, IgnoredError)) {
      SmallVectorImpl<const char *>::iterator it = ArgVector.begin();
 -- 
-1.8.5.1
+1.8.5.4
 

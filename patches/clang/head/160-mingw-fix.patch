@@ -1,4 +1,4 @@
-From bd652544247a95a7a25ebbc483c02f4d76053eff Mon Sep 17 00:00:00 2001
+From 939d70331101085be28eb4665c02783ad31242cc Mon Sep 17 00:00:00 2001
 From: Ray Donnelly <mingw.android@gmail.com>
 Date: Thu, 14 Nov 2013 13:30:18 +0000
 Subject: [PATCH 5/5] mingw fix
@@ -11,10 +11,10 @@ Subject: [PATCH 5/5] mingw fix
  4 files changed, 29 insertions(+), 7 deletions(-)
 
 diff --git a/include/clang/Driver/ToolChain.h b/include/clang/Driver/ToolChain.h
-index d98a4fa..dbb228f 100644
+index 2f1c1bd..2db220e 100644
 --- a/include/clang/Driver/ToolChain.h
 +++ b/include/clang/Driver/ToolChain.h
-@@ -125,6 +125,8 @@ public:
+@@ -128,6 +128,8 @@ public:
                                       llvm::opt::ArgStringList &CmdArgs) const;
    virtual void AddIncludeSearchPathArgs(const llvm::opt::ArgList &Args,
                                          llvm::opt::ArgStringList &CmdArgs) const;
@@ -24,10 +24,10 @@ index d98a4fa..dbb228f 100644
    path_list &getFilePaths() { return FilePaths; }
    const path_list &getFilePaths() const { return FilePaths; }
 diff --git a/lib/Driver/ToolChain.cpp b/lib/Driver/ToolChain.cpp
-index 6a20b01..3df731a 100644
+index 031b83d..e1a4754 100644
 --- a/lib/Driver/ToolChain.cpp
 +++ b/lib/Driver/ToolChain.cpp
-@@ -160,6 +160,29 @@ void ToolChain::AddIncludeSearchPathArgs(const ArgList &Args, ArgStringList &Cmd
+@@ -161,6 +161,29 @@ void ToolChain::AddIncludeSearchPathArgs(const ArgList &Args, ArgStringList &Cmd
    CmdArgs.push_back(Args.MakeArgString("-I" + P.str()));
  }
  
@@ -58,10 +58,10 @@ index 6a20b01..3df731a 100644
    std::string GccVersion(CLANG_GCC_VERSION_STR);
  
 diff --git a/lib/Driver/Tools.cpp b/lib/Driver/Tools.cpp
-index 44d36cc..ddd3175 100644
+index f599d01..fc7f502 100644
 --- a/lib/Driver/Tools.cpp
 +++ b/lib/Driver/Tools.cpp
-@@ -2726,6 +2726,9 @@ void Clang::ConstructJob(Compilation &C, const JobAction &JA,
+@@ -2825,6 +2825,9 @@ void Clang::ConstructJob(Compilation &C, const JobAction &JA,
    if (isa<LinkJobAction>(JA)) {
       getToolChain().AddLinkSearchPathArgs(Args, CmdArgs);
    } else {
@@ -92,5 +92,5 @@ index bb1fe2d..e35041d 100644
  
        // mingw.org crt include paths
 -- 
-1.8.5.1
+1.8.5.4
 
