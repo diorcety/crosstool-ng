@@ -55,7 +55,7 @@ if ! DARWIN
 
 config CC_GCC_V_linaro_4_8
     bool
-    prompt "linaro-4.8-2013.06-1"
+    prompt "linaro-4.8-2013.12"
     depends on CC_GCC_SHOW_LINARO
     select CC_GCC_4_8
 
@@ -76,7 +76,7 @@ config CC_GCC_V_4_8_0
 
 config CC_GCC_V_linaro_4_7
     bool
-    prompt "linaro-4.7-2013.06-1"
+    prompt "linaro-4.7-2013.12"
     depends on CC_GCC_SHOW_LINARO
     select CC_GCC_4_7
 
@@ -478,11 +478,11 @@ config CC_GCC_VERSION
 # Don't remove next line
 # CT_INSERT_VERSION_STRING_BELOW
     default "5666.3" if CC_GCC_V_apple_5666_3 
-    default "linaro-4.8-2013.06-1" if CC_GCC_V_linaro_4_8
+    default "linaro-4.8-2013.12" if CC_GCC_V_linaro_4_8
     default "4.8.2" if CC_GCC_V_4_8_2
     default "4.8.1" if CC_GCC_V_4_8_1
     default "4.8.0" if CC_GCC_V_4_8_0
-    default "linaro-4.7-2013.06-1" if CC_GCC_V_linaro_4_7
+    default "linaro-4.7-2013.12" if CC_GCC_V_linaro_4_7
     default "4.7.3" if CC_GCC_V_4_7_3
     default "4.7.2" if CC_GCC_V_4_7_2
     default "4.7.1" if CC_GCC_V_4_7_1

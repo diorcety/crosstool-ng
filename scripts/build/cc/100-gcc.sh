@@ -335,6 +335,11 @@ do_gcc_core_backend() {
         *)  extra_config+=( "--with-linker-hash-style=${CT_CC_GCC_LNK_HASH_STYLE}" );;
     esac
 
+    case "${CT_CC_GCC_DEC_FLOATS}" in
+        "") ;;
+        *)  extra_config+=( "--enable-decimal-float=${CT_CC_GCC_DEC_FLOATS}" );;
+    esac
+
     case "${CT_ARCH}" in
         mips)
             case "${CT_CC_GCC_mips_llsc}" in
@@ -682,6 +687,14 @@ do_gcc_backend() {
     if [ -n "${CT_CC_GCC_ENABLE_CXX_FLAGS}" ]; then
         extra_config+=("--enable-cxx-flags=${CT_CC_GCC_ENABLE_CXX_FLAGS}")
     fi
+    if [ "${CT_CC_GCC_4_8_or_later}" = "y" ]; then
+        if [ "${CT_THREADS}" = "none" ]; then
+            extra_config+=(--disable-libatomic)
+        fi
+        if [ "${CT_THREADS}" != "nptl" ]; then
+            extra_config+=(--disable-libsanitizer)
+        fi
+    fi
     if [ "${CT_CC_GCC_LIBMUDFLAP}" = "y" ]; then
         extra_config+=(--enable-libmudflap)
     else
@@ -812,6 +825,11 @@ do_gcc_backend() {
     case "${CT_CC_GCC_LNK_HASH_STYLE}" in
         "") ;;
         *)  extra_config+=( "--with-linker-hash-style=${CT_CC_GCC_LNK_HASH_STYLE}" );;
+    esac
+
+    case "${CT_CC_GCC_DEC_FLOATS}" in
+        "") ;;
+        *)  extra_config+=( "--enable-decimal-float=${CT_CC_GCC_DEC_FLOATS}" );;
     esac
 
     if [ "${CT_CC_GCC_ENABLE_PLUGINS}" = "y" ]; then

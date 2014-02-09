@@ -367,6 +367,11 @@ mungeuClibcConfig() {
 				ENDSED
             ;;
     esac
+    if [ "${CT_LIBC_UCLIBC_FENV}" = "y" ]; then
+        cat <<-ENDSED
+			s/.*(UCLIBC_HAS_FENV).*/\\1=y/
+			ENDSED
+    fi
 
     # We always want ctor/dtor
     cat <<-ENDSED
