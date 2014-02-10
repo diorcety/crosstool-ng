@@ -24,7 +24,6 @@ is emitted as handler data.
 Most of this patch is based on work by Charles Davis.
 ---
  lib/CodeGen/AsmPrinter/Win64Exception.cpp     |  12 +--
- lib/CodeGen/AsmPrinter/Win64Exception.cpp.rej |  17 ++++
  lib/MC/MCObjectFileInfo.cpp                   |  15 ++-
  lib/Target/X86/MCTargetDesc/X86MCAsmInfo.cpp  |  17 +++-
  lib/Target/X86/X86AsmPrinter.h                |   2 +
@@ -33,7 +32,6 @@ Most of this patch is based on work by Charles Davis.
  test/CodeGen/X86/avx-win64-args.ll            |   2 +
  test/CodeGen/X86/win64_eh.ll                  | 130 ++++++++++++++++++++++++++
  9 files changed, 308 insertions(+), 19 deletions(-)
- create mode 100644 lib/CodeGen/AsmPrinter/Win64Exception.cpp.rej
  create mode 100644 test/CodeGen/X86/win64_eh.ll
 
 diff --git a/lib/CodeGen/AsmPrinter/Win64Exception.cpp b/lib/CodeGen/AsmPrinter/Win64Exception.cpp
@@ -68,29 +66,6 @@ index eda444bd..851196f 100644
      EmitExceptionTable();
      Asm->OutStreamer.PopSection();
    }
-diff --git a/lib/CodeGen/AsmPrinter/Win64Exception.cpp.rej b/lib/CodeGen/AsmPrinter/Win64Exception.cpp.rej
-new file mode 100644
-index 0000000..2bbf45e
---- /dev/null
-+++ b/lib/CodeGen/AsmPrinter/Win64Exception.cpp.rej
-@@ -0,0 +1,17 @@
-+--- lib/CodeGen/AsmPrinter/Win64Exception.cpp
-++++ lib/CodeGen/AsmPrinter/Win64Exception.cpp
-+@@ -99,14 +99,8 @@
-+   MMI->TidyLandingPads();
-+ 
-+   if (shouldEmitPersonality) {
-+-    const TargetLoweringObjectFile &TLOF = Asm->getObjFileLowering();
-+-    const Function *Per = MMI->getPersonalities()[MMI->getPersonalityIndex()];
-+-    const MCSymbol *Sym = TLOF.getCFIPersonalitySymbol(Per, Asm->Mang, MMI);
-+-
-+     Asm->OutStreamer.PushSection();
-+     Asm->OutStreamer.EmitWin64EHHandlerData();
-+-    Asm->OutStreamer.EmitValue(MCSymbolRefExpr::Create(Sym, Asm->OutContext),
-+-                               4);
-+     EmitExceptionTable();
-+     Asm->OutStreamer.PopSection();
-+   }
 diff --git a/lib/MC/MCObjectFileInfo.cpp b/lib/MC/MCObjectFileInfo.cpp
 index a160f29..e5e55f0 100644
 --- a/lib/MC/MCObjectFileInfo.cpp
