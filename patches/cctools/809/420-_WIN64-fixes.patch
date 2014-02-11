@@ -1,6 +1,6 @@
-diff -urN cctools-809.orig/as/driver.c cctools-809/as/driver.c
---- cctools-809.orig/as/driver.c	2014-01-14 00:07:22.871702800 +0000
-+++ cctools-809/as/driver.c	2014-01-13 23:55:17.534596700 +0000
+diff -urN a/as/driver.c b/as/driver.c
+--- a/as/driver.c	2014-02-11 02:12:49.621129283 +0000
++++ b/as/driver.c	2014-02-11 02:12:42.541019776 +0000
 @@ -214,14 +214,14 @@
  	 */
  	if(arch_name == NULL){
@@ -18,9 +18,57 @@ diff -urN cctools-809.orig/as/driver.c cctools-809/as/driver.c
  		arch_name = arch_flag.name;
  	    }
  	    else
-diff -urN cctools-809.orig/dyld/src/dyld.cpp cctools-809/dyld/src/dyld.cpp
---- cctools-809.orig/dyld/src/dyld.cpp	2014-01-14 00:07:22.926709800 +0000
-+++ cctools-809/dyld/src/dyld.cpp	2014-01-13 23:06:14.842922300 +0000
+diff -urN a/dyld/src/ImageLoader.h b/dyld/src/ImageLoader.h
+--- a/dyld/src/ImageLoader.h	2014-02-11 02:12:49.664463266 +0000
++++ b/dyld/src/ImageLoader.h	2014-02-11 02:12:42.517686082 +0000
+@@ -111,7 +111,7 @@
+ };
+ 
+ 
+-#if __LP64__
++#if defined(__LP64__) || defined(_WIN64)
+ 	struct macho_header				: public mach_header_64  {};
+ 	struct macho_nlist				: public nlist_64  {};	
+ #else
+diff -urN a/dyld/src/ImageLoaderMachO.cpp b/dyld/src/ImageLoaderMachO.cpp
+--- a/dyld/src/ImageLoaderMachO.cpp	2014-02-11 02:12:49.664463266 +0000
++++ b/dyld/src/ImageLoaderMachO.cpp	2014-02-11 02:12:42.517686082 +0000
+@@ -57,7 +57,7 @@
+ #endif
+ 
+ // relocation_info.r_length field has value 3 for 64-bit executables and value 2 for 32-bit executables
+-#if __LP64__
++#if defined(__LP64__) || defined(_WIN64)
+ 	#define LC_SEGMENT_COMMAND		LC_SEGMENT_64
+ 	#define LC_ROUTINES_COMMAND		LC_ROUTINES_64
+ 	struct macho_segment_command	: public segment_command_64  {};
+diff -urN a/dyld/src/ImageLoaderMachOClassic.cpp b/dyld/src/ImageLoaderMachOClassic.cpp
+--- a/dyld/src/ImageLoaderMachOClassic.cpp	2014-02-11 02:12:49.664463266 +0000
++++ b/dyld/src/ImageLoaderMachOClassic.cpp	2014-02-11 02:12:42.517686082 +0000
+@@ -66,7 +66,7 @@
+ 
+ 
+ // relocation_info.r_length field has value 3 for 64-bit executables and value 2 for 32-bit executables
+-#if __LP64__
++#if defined(__LP64__) || defined(_WIN64)
+ 	#define RELOC_SIZE 3
+ 	#define LC_SEGMENT_COMMAND		LC_SEGMENT_64
+ 	#define LC_ROUTINES_COMMAND		LC_ROUTINES_64
+diff -urN a/dyld/src/ImageLoaderMachOCompressed.cpp b/dyld/src/ImageLoaderMachOCompressed.cpp
+--- a/dyld/src/ImageLoaderMachOCompressed.cpp	2014-02-11 02:12:49.664463266 +0000
++++ b/dyld/src/ImageLoaderMachOCompressed.cpp	2014-02-11 02:12:42.517686082 +0000
+@@ -40,7 +40,7 @@
+ 
+ 
+ // relocation_info.r_length field has value 3 for 64-bit executables and value 2 for 32-bit executables
+-#if __LP64__
++#if defined(__LP64__) || defined(_WIN64)
+ 	#define RELOC_SIZE 3
+ 	#define LC_SEGMENT_COMMAND		LC_SEGMENT_64
+ 	#define LC_ROUTINES_COMMAND		LC_ROUTINES_64
+diff -urN a/dyld/src/dyld.cpp b/dyld/src/dyld.cpp
+--- a/dyld/src/dyld.cpp	2014-02-11 02:12:49.664463266 +0000
++++ b/dyld/src/dyld.cpp	2014-02-11 02:12:42.517686082 +0000
 @@ -3601,7 +3601,7 @@
  }
  
@@ -30,9 +78,9 @@ diff -urN cctools-809.orig/dyld/src/dyld.cpp cctools-809/dyld/src/dyld.cpp
  	#define LC_SEGMENT_COMMAND		LC_SEGMENT_64
  	#define macho_segment_command	segment_command_64
  	#define macho_section			section_64
-diff -urN cctools-809.orig/dyld/src/dyldAPIsInLibSystem.cpp cctools-809/dyld/src/dyldAPIsInLibSystem.cpp
---- cctools-809.orig/dyld/src/dyldAPIsInLibSystem.cpp	2014-01-14 00:07:22.929210100 +0000
-+++ cctools-809/dyld/src/dyldAPIsInLibSystem.cpp	2014-01-13 23:06:14.850923300 +0000
+diff -urN a/dyld/src/dyldAPIsInLibSystem.cpp b/dyld/src/dyldAPIsInLibSystem.cpp
+--- a/dyld/src/dyldAPIsInLibSystem.cpp	2014-02-11 02:12:49.664463266 +0000
++++ b/dyld/src/dyldAPIsInLibSystem.cpp	2014-02-11 02:12:42.517686082 +0000
 @@ -351,7 +351,7 @@
      struct load_command *load_commands, *lc;
      struct dylib_command *dl;
@@ -78,9 +126,9 @@ diff -urN cctools-809.orig/dyld/src/dyldAPIsInLibSystem.cpp cctools-809/dyld/src
  	const load_command* cmds = (load_command*)((char *)mh + sizeof(mach_header_64));
  #else
  	const load_command* cmds = (load_command*)((char *)mh + sizeof(mach_header));
-diff -urN cctools-809.orig/dyld/src/dyldExceptions.c cctools-809/dyld/src/dyldExceptions.c
---- cctools-809.orig/dyld/src/dyldExceptions.c	2014-01-14 00:07:22.929210100 +0000
-+++ cctools-809/dyld/src/dyldExceptions.c	2014-01-13 23:06:14.854423800 +0000
+diff -urN a/dyld/src/dyldExceptions.c b/dyld/src/dyldExceptions.c
+--- a/dyld/src/dyldExceptions.c	2014-02-11 02:12:49.664463266 +0000
++++ b/dyld/src/dyldExceptions.c	2014-02-11 02:12:42.517686082 +0000
 @@ -39,7 +39,7 @@
  extern struct LibSystemHelpers* _ZN4dyld17gLibSystemHelpersE;
  
@@ -90,9 +138,9 @@ diff -urN cctools-809.orig/dyld/src/dyldExceptions.c cctools-809/dyld/src/dyldEx
  	#define LC_SEGMENT_COMMAND		LC_SEGMENT_64
  	#define macho_header			mach_header_64
  	#define macho_segment_command	segment_command_64
-diff -urN cctools-809.orig/dyld/src/dyldInitialization.cpp cctools-809/dyld/src/dyldInitialization.cpp
---- cctools-809.orig/dyld/src/dyldInitialization.cpp	2014-01-14 00:07:22.929710200 +0000
-+++ cctools-809/dyld/src/dyldInitialization.cpp	2014-01-13 23:06:14.860424500 +0000
+diff -urN a/dyld/src/dyldInitialization.cpp b/dyld/src/dyldInitialization.cpp
+--- a/dyld/src/dyldInitialization.cpp	2014-02-11 02:12:49.664463266 +0000
++++ b/dyld/src/dyldInitialization.cpp	2014-02-11 02:12:42.517686082 +0000
 @@ -41,7 +41,7 @@
  #endif
  
@@ -102,9 +150,9 @@ diff -urN cctools-809.orig/dyld/src/dyldInitialization.cpp cctools-809/dyld/src/
  	#define LC_SEGMENT_COMMAND		LC_SEGMENT_64
  	#define macho_segment_command	segment_command_64
  	#define macho_section			section_64
-diff -urN cctools-809.orig/dyld/src/dyldNew.cpp cctools-809/dyld/src/dyldNew.cpp
---- cctools-809.orig/dyld/src/dyldNew.cpp	2014-01-14 00:07:22.931710400 +0000
-+++ cctools-809/dyld/src/dyldNew.cpp	2014-01-13 23:06:14.721406900 +0000
+diff -urN a/dyld/src/dyldNew.cpp b/dyld/src/dyldNew.cpp
+--- a/dyld/src/dyldNew.cpp	2014-02-11 02:12:49.664463266 +0000
++++ b/dyld/src/dyldNew.cpp	2014-02-11 02:12:42.517686082 +0000
 @@ -38,7 +38,7 @@
  //   Once libSystem.dylib is initialized, dyld uses libSystem's malloc/free.
  //
@@ -114,9 +162,9 @@ diff -urN cctools-809.orig/dyld/src/dyldNew.cpp cctools-809/dyld/src/dyldNew.cpp
  	// room for about ~1000 initial dylibs
  	#define DYLD_POOL_CHUNK_SIZE 200*1024
  #else
-diff -urN cctools-809.orig/dyld/src/glue.c cctools-809/dyld/src/glue.c
---- cctools-809.orig/dyld/src/glue.c	2014-01-14 00:07:22.933210600 +0000
-+++ cctools-809/dyld/src/glue.c	2014-01-13 23:06:14.779914300 +0000
+diff -urN a/dyld/src/glue.c b/dyld/src/glue.c
+--- a/dyld/src/glue.c	2014-02-11 02:12:49.664463266 +0000
++++ b/dyld/src/glue.c	2014-02-11 02:12:42.517686082 +0000
 @@ -190,7 +190,7 @@
  		}
  	}
@@ -126,33 +174,9 @@ diff -urN cctools-809.orig/dyld/src/glue.c cctools-809/dyld/src/glue.c
  	__stack_chk_guard = ((long)arc4random() << 32) | arc4random();
  #else
  	__stack_chk_guard = arc4random();
-diff -urN cctools-809.orig/dyld/src/ImageLoaderMachOClassic.cpp cctools-809/dyld/src/ImageLoaderMachOClassic.cpp
---- cctools-809.orig/dyld/src/ImageLoaderMachOClassic.cpp	2014-01-14 00:07:22.935210900 +0000
-+++ cctools-809/dyld/src/ImageLoaderMachOClassic.cpp	2014-01-13 23:06:14.749410400 +0000
-@@ -66,7 +66,7 @@
- 
- 
- // relocation_info.r_length field has value 3 for 64-bit executables and value 2 for 32-bit executables
--#if __LP64__
-+#if defined(__LP64__) || defined(_WIN64)
- 	#define RELOC_SIZE 3
- 	#define LC_SEGMENT_COMMAND		LC_SEGMENT_64
- 	#define LC_ROUTINES_COMMAND		LC_ROUTINES_64
-diff -urN cctools-809.orig/dyld/src/ImageLoaderMachOCompressed.cpp cctools-809/dyld/src/ImageLoaderMachOCompressed.cpp
---- cctools-809.orig/dyld/src/ImageLoaderMachOCompressed.cpp	2014-01-14 00:07:22.936211000 +0000
-+++ cctools-809/dyld/src/ImageLoaderMachOCompressed.cpp	2014-01-13 23:06:14.822419700 +0000
-@@ -40,7 +40,7 @@
- 
- 
- // relocation_info.r_length field has value 3 for 64-bit executables and value 2 for 32-bit executables
--#if __LP64__
-+#if defined(__LP64__) || defined(_WIN64)
- 	#define RELOC_SIZE 3
- 	#define LC_SEGMENT_COMMAND		LC_SEGMENT_64
- 	#define LC_ROUTINES_COMMAND		LC_ROUTINES_64
-diff -urN cctools-809.orig/dyld/src/threadLocalVariables.c cctools-809/dyld/src/threadLocalVariables.c
---- cctools-809.orig/dyld/src/threadLocalVariables.c	2014-01-14 00:07:22.937711200 +0000
-+++ cctools-809/dyld/src/threadLocalVariables.c	2014-01-13 23:06:14.816418900 +0000
+diff -urN a/dyld/src/threadLocalVariables.c b/dyld/src/threadLocalVariables.c
+--- a/dyld/src/threadLocalVariables.c	2014-02-11 02:12:49.664463266 +0000
++++ b/dyld/src/threadLocalVariables.c	2014-02-11 02:12:42.517686082 +0000
 @@ -37,7 +37,7 @@
  #include "dyld_priv.h"
  
@@ -162,9 +186,9 @@ diff -urN cctools-809.orig/dyld/src/threadLocalVariables.c cctools-809/dyld/src/
  	typedef struct mach_header_64		macho_header;
  	#define LC_SEGMENT_COMMAND			LC_SEGMENT_64
  	typedef struct segment_command_64	macho_segment_command;
-diff -urN cctools-809.orig/include/i386/types.h cctools-809/include/i386/types.h
---- cctools-809.orig/include/i386/types.h	2014-01-14 00:07:23.336761900 +0000
-+++ cctools-809/include/i386/types.h	2014-01-13 23:06:14.752410800 +0000
+diff -urN a/include/i386/types.h b/include/i386/types.h
+--- a/include/i386/types.h	2014-02-11 02:12:49.637796196 +0000
++++ b/include/i386/types.h	2014-02-11 02:12:42.537686387 +0000
 @@ -94,7 +94,7 @@
  #endif
  typedef	unsigned long long	u_int64_t;
@@ -174,9 +198,107 @@ diff -urN cctools-809.orig/include/i386/types.h cctools-809/include/i386/types.h
  typedef int64_t			register_t;
  #else
  typedef int32_t			register_t;
-diff -urN cctools-809.orig/ld64/src/ld/parsers/libunwind/AddressSpace.hpp cctools-809/ld64/src/ld/parsers/libunwind/AddressSpace.hpp
---- cctools-809.orig/ld64/src/ld/parsers/libunwind/AddressSpace.hpp	2014-01-14 00:07:23.494781900 +0000
-+++ cctools-809/ld64/src/ld/parsers/libunwind/AddressSpace.hpp	2014-01-13 23:06:14.731408100 +0000
+diff -urN a/include/mach-o/loader.h b/include/mach-o/loader.h
+--- a/include/mach-o/loader.h	2014-02-11 02:12:49.634462831 +0000
++++ b/include/mach-o/loader.h	2014-02-11 02:12:42.537686387 +0000
+@@ -301,7 +301,7 @@
+  */
+ union lc_str {
+ 	uint32_t	offset;	/* offset to the string */
+-#ifndef __LP64__
++#if !defined(__LP64__) && !defined(_WIN64)
+ 	char		*ptr;	/* pointer to the string */
+ #endif 
+ };
+diff -urN a/include/mach-o/nlist.h b/include/mach-o/nlist.h
+--- a/include/mach-o/nlist.h	2014-02-11 02:12:49.634462831 +0000
++++ b/include/mach-o/nlist.h	2014-02-11 02:12:42.537686387 +0000
+@@ -75,7 +75,7 @@
+  */
+ struct nlist {
+ 	union {
+-#ifndef __LP64__
++#if !defined(__LP64__) && !defined(_WIN64)
+ 		char *n_name;	/* for use when in-core */
+ #endif
+ 		int32_t n_strx;	/* index into the string table */
+diff -urN a/include/mach-o/ranlib.h b/include/mach-o/ranlib.h
+--- a/include/mach-o/ranlib.h	2014-02-11 02:12:49.634462831 +0000
++++ b/include/mach-o/ranlib.h	2014-02-11 02:12:42.537686387 +0000
+@@ -58,7 +58,7 @@
+ struct	ranlib {
+     union {
+ 	uint32_t	ran_strx;	/* string table index of */
+-#ifndef __LP64__
++#if !defined(__LP64__) && !defined(_WIN64)
+ 	char		*ran_name;	/* symbol defined by */
+ #endif
+     } ran_un;
+diff -urN a/include/objc/objc.h b/include/objc/objc.h
+--- a/include/objc/objc.h	2014-02-11 02:12:49.637796196 +0000
++++ b/include/objc/objc.h	2014-02-11 02:12:42.537686387 +0000
+@@ -28,6 +28,7 @@
+ #ifndef _OBJC_OBJC_H_
+ #define _OBJC_OBJC_H_
+ 
++#include <stdint.h>
+ #include <sys/types.h>      // for __DARWIN_NULL
+ #include <Availability.h>
+ #include <objc/objc-api.h>
+@@ -127,9 +128,9 @@
+ 
+ // The following declarations are provided here for source compatibility.
+ 
+-#if defined(__LP64__)
+-    typedef long arith_t;
+-    typedef unsigned long uarith_t;
++#if defined(__LP64__) || defined(_WIN64)
++    typedef int64_t arith_t;
++    typedef uint64_t uarith_t;
+ #   define ARITH_SHIFT 32
+ #else
+     typedef int arith_t;
+diff -urN a/include/objc/runtime.h b/include/objc/runtime.h
+--- a/include/objc/runtime.h	2014-02-11 02:12:49.637796196 +0000
++++ b/include/objc/runtime.h	2014-02-11 02:12:42.537686387 +0000
+@@ -461,14 +461,14 @@
+     char *ivar_name                                          OBJC2_UNAVAILABLE;
+     char *ivar_type                                          OBJC2_UNAVAILABLE;
+     int ivar_offset                                          OBJC2_UNAVAILABLE;
+-#ifdef __LP64__
++#if defined(__LP64__) || defined(_WIN64)
+     int space                                                OBJC2_UNAVAILABLE;
+ #endif
+ }                                                            OBJC2_UNAVAILABLE;
+ 
+ struct objc_ivar_list {
+     int ivar_count                                           OBJC2_UNAVAILABLE;
+-#ifdef __LP64__
++#if defined(__LP64__) || defined(_WIN64)
+     int space                                                OBJC2_UNAVAILABLE;
+ #endif
+     /* variable length structure */
+@@ -486,7 +486,7 @@
+     struct objc_method_list *obsolete                        OBJC2_UNAVAILABLE;
+ 
+     int method_count                                         OBJC2_UNAVAILABLE;
+-#ifdef __LP64__
++#if defined(__LP64__) || defined(_WIN64)
+     int space                                                OBJC2_UNAVAILABLE;
+ #endif
+     /* variable length structure */
+@@ -510,7 +510,7 @@
+ #define CACHE_BUCKET_NAME(B)  ((B)->method_name)
+ #define CACHE_BUCKET_IMP(B)   ((B)->method_imp)
+ #define CACHE_BUCKET_VALID(B) (B)
+-#ifndef __LP64__
++#if !defined(__LP64__) && !defined(_WIN64)
+ #define CACHE_HASH(sel, mask) (((uintptr_t)(sel)>>2) & (mask))
+ #else
+ #define CACHE_HASH(sel, mask) (((unsigned int)((uintptr_t)(sel)>>3)) & (mask))
+diff -urN a/ld64/src/ld/parsers/libunwind/AddressSpace.hpp b/ld64/src/ld/parsers/libunwind/AddressSpace.hpp
+--- a/ld64/src/ld/parsers/libunwind/AddressSpace.hpp	2014-02-11 02:12:49.667796653 +0000
++++ b/ld64/src/ld/parsers/libunwind/AddressSpace.hpp	2014-02-11 02:12:42.517686082 +0000
 @@ -86,7 +86,7 @@
  {
  public:
@@ -195,9 +317,9 @@ diff -urN cctools-809.orig/ld64/src/ld/parsers/libunwind/AddressSpace.hpp cctool
  	return get64(addr);
  #else
  	return get32(addr);
-diff -urN cctools-809.orig/ld64/src/ld/parsers/macho_relocatable_file.cpp cctools-809/ld64/src/ld/parsers/macho_relocatable_file.cpp
---- cctools-809.orig/ld64/src/ld/parsers/macho_relocatable_file.cpp	2014-01-14 00:07:23.498782400 +0000
-+++ cctools-809/ld64/src/ld/parsers/macho_relocatable_file.cpp	2014-01-13 23:06:14.806417700 +0000
+diff -urN a/ld64/src/ld/parsers/macho_relocatable_file.cpp b/ld64/src/ld/parsers/macho_relocatable_file.cpp
+--- a/ld64/src/ld/parsers/macho_relocatable_file.cpp	2014-02-11 02:12:49.667796653 +0000
++++ b/ld64/src/ld/parsers/macho_relocatable_file.cpp	2014-02-11 02:12:42.514352690 +0000
 @@ -4604,7 +4604,7 @@
  template <typename A>
  unsigned long Literal8Section<A>::contentHash(const class Atom<A>* atom, const ld::IndirectBindingTable& ind) const
@@ -207,9 +329,9 @@ diff -urN cctools-809.orig/ld64/src/ld/parsers/macho_relocatable_file.cpp cctool
  	const uint64_t* literalContent = (uint64_t*)atom->contentPointer();
  	return *literalContent;
  #else
-diff -urN cctools-809.orig/libstuff/ofile.c cctools-809/libstuff/ofile.c
---- cctools-809.orig/libstuff/ofile.c	2014-01-14 00:07:23.957840700 +0000
-+++ cctools-809/libstuff/ofile.c	2014-01-13 23:06:14.777414000 +0000
+diff -urN a/libstuff/ofile.c b/libstuff/ofile.c
+--- a/libstuff/ofile.c	2014-02-11 02:12:49.644462964 +0000
++++ b/libstuff/ofile.c	2014-02-11 02:12:42.534353030 +0000
 @@ -397,7 +397,7 @@
  	     */
  	    if(all_archs == FALSE){
