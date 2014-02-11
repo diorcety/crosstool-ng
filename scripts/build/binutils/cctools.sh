@@ -140,7 +140,7 @@ do_cctools_backend() {
         ${BINUTILS_SYSROOT_ARG}                                         \
 
     CT_DoLog EXTRA "Building cctools"
-    CT_DoExecLog ALL make
+    CT_DoExecLog ALL make ${JOBSFLAGS}
 
     CT_DoLog EXTRA "Installing cctools"
     CT_DoExecLog ALL make install
