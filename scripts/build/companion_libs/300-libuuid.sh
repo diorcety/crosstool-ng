@@ -102,8 +102,11 @@ do_libuuid_utillinux_backend() {
 
     CT_DoLog EXTRA "Configuring libuuid(utillinux)"
 
+    # When built with -DDEBUG, libuuid ends up with multiply defined
+    # symbols (main in both tst_uuid.c and uuid_time.c) so add -UDEBUG
+    # last to make sure it gets undefined.
     CT_DoExecLog CFG                                                      \
-    CFLAGS="${cflags}"                                                    \
+    CFLAGS="${cflags} -UDEBUG"                                            \
     LDFLAGS="${ldflags}"                                                  \
     "${CT_SRC_DIR}/util-linux-${CT_LIBUUID_UTILLINUX_VERSION}/configure"  \
         --prefix="${prefix}"                                              \
