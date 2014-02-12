@@ -1,0 +1,13 @@
+--- a/lib/uuid/Makefile.in.orig	2010-06-14 04:07:36.000000000 +0100
++++ b/lib/uuid/Makefile.in	2014-02-12 08:38:32.633497300 +0000
+@@ -86,8 +86,8 @@
+ 
+ uuid_time: $(srcdir)/uuid_time.c $(DEPLIBUUID)
+ 	$(E) "	LD $@"
+-	$(Q) $(CC) $(ALL_CFLAGS) -DDEBUG -o uuid_time $(srcdir)/uuid_time.c \
+-		$(LIBUUID)
++	$(Q) $(CC) $(ALL_CFLAGS) -DDEBUG -c -o uuid_time_debug.o $(srcdir)/uuid_time.c
++	$(Q) $(CC) -o uuid_time uuid_time_debug.o $(LIBUUID)
+ 
+ uuid.3: $(DEP_SUBSTITUTE) $(srcdir)/uuid.3.in
+ 	$(E) "	SUBST $@"

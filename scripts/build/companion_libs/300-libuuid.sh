@@ -146,11 +146,8 @@ do_libuuid_e2fsprogslibs_backend() {
 
     CT_DoLog EXTRA "Configuring libuuid(e2fsprogslibs)"
 
-    # When built with -DDEBUG, libuuid ends up with multiply defined
-    # symbols (main in both tst_uuid.c and uuid_time.c) so add -UDEBUG
-    # last to make sure it gets undefined.
     CT_DoExecLog CFG                                                             \
-    CFLAGS="${cflags} -UDEBUG"                                                   \
+    CFLAGS="${cflags}"                                                           \
     LDFLAGS="${ldflags}"                                                         \
     "${CT_SRC_DIR}/e2fsprogs-libs-${CT_LIBUUID_E2FSPROGSLIBS_VERSION}/configure" \
         --prefix="${prefix}"                                                     \
