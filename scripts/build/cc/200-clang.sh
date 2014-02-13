@@ -9,28 +9,28 @@ CLANG_NAME="clang"
 CLANG_BRANCH=""
 CLANG_URL=http://llvm.org/releases/${CT_CC_CLANG_VERSION}
 if [ "${CT_CC_CLANG_V_3_1}" = "y" ]; then
-	CLANG_SUFFIX=".src"
-	CLANG_NAME="clang"
+    CLANG_SUFFIX=".src"
+    CLANG_NAME="clang"
 elif [ "${CT_CC_CLANG_V_3_2}" = "y" ]; then
-	CLANG_SUFFIX=".src"
-	CLANG_NAME="clang"
+    CLANG_SUFFIX=".src"
+    CLANG_NAME="clang"
 elif [ "${CT_CC_CLANG_V_3_3}" = "y" ]; then
-	CLANG_SUFFIX=".src"
-	CLANG_NAME="cfe"
-elif [ "${CT_CC_CLANG_V_3_4}" = "y" ]; then
     CLANG_SUFFIX=".src"
     CLANG_NAME="cfe"
+elif [ "${CT_CC_CLANG_V_3_4}" = "y" ]; then
+    CLANG_SUFFIX=".src"
+    CLANG_NAME="clang"
 elif [ "${CT_CC_CLANG_V_3_5}" = "y" ]; then
     CLANG_SUFFIX=".git"
-    CLANG_NAME="cfe"
+    CLANG_NAME="clang"
     CLANG_GET_FN="CT_GetGit"
     CLANG_URL=http://llvm.org/git/clang.git
     CLANG_BRANCH="master" #will be release_35 when it is branched
 elif [ "${CT_CC_CLANG_V_HEAD}" = "y" ]; then
-	CLANG_SUFFIX=".git"
-	CLANG_NAME="cfe"
-	CLANG_GET_FN="CT_GetGit"
-	CLANG_URL=http://llvm.org/git/clang.git
+    CLANG_SUFFIX=".git"
+    CLANG_NAME="clang"
+    CLANG_GET_FN="CT_GetGit"
+    CLANG_URL=http://llvm.org/git/clang.git
     CLANG_BRANCH="master" # just to make git clone quicker
 fi
 
@@ -48,7 +48,7 @@ do_clang_get() {
 # Extract clang
 do_clang_extract() {
     CT_Extract "${CT_CLANG_FULLNAME}"
-    
+
     CT_Pushd "${CT_SRC_DIR}/${CT_CLANG_FULLNAME}"
     CT_Patch nochdir "clang" "${CT_CC_CLANG_VERSION}"
     CT_Popd
@@ -85,7 +85,7 @@ do_clang_for_build() {
 
     CT_DoStep INFO "Installing final clang compiler for build"
     CT_mkdir_pushd "${CT_BUILD_DIR}/build-cc-clang-final-build"
-    
+
     final_opts+=( "host=${CT_BUILD}" )
     final_opts+=( "prefix=${CT_BUILDTOOLS_PREFIX_DIR}" )
     final_opts+=( "cflags=${CT_CFLAGS_FOR_BUILD}" )
@@ -104,7 +104,7 @@ do_clang_for_host() {
 
     CT_DoStep INFO "Installing final clang compiler"
     CT_mkdir_pushd "${CT_BUILD_DIR}/build-cc-clang-final"
-    
+
     final_opts+=( "host=${CT_HOST}" )
     final_opts+=( "prefix=${CT_PREFIX_DIR}" )
     final_opts+=( "cflags=${CT_CFLAGS_FOR_HOST}" )
@@ -134,8 +134,8 @@ do_clang_backend() {
     mkdir "tools/clang"
     cp -r "${CT_SRC_DIR}/${CT_CLANG_FULLNAME}/"* "tools/clang/"
     if [ "${CT_LLVM_COMPILER_RT}" = "y" ]; then
-	mkdir "projects/compiler-rt"
-	cp -r "${CT_SRC_DIR}/compiler-rt-${CT_LLVM_VERSION}${CLANG_SUFFIX}/"* "projects/compiler-rt/"
+    mkdir "projects/compiler-rt"
+    cp -r "${CT_SRC_DIR}/compiler-rt-${CT_LLVM_VERSION}${CLANG_SUFFIX}/"* "projects/compiler-rt/"
     fi
 
     final_CFLAGS+=("${cflags}")
@@ -165,7 +165,7 @@ do_clang_backend() {
         --prefix="${prefix}"          \
         --target=${CT_TARGET}         \
         ${OPTIM_CONFIG_FLAG}          \
-        
+
 
     CT_DoLog EXTRA "Building clang"
     CT_DoExecLog ALL                  \
@@ -185,7 +185,7 @@ do_clang_backend() {
         LDFLAGS="${ldflags}"          \
         ONLY_TOOLS="clang"            \
         ${OPTIM_MAKE_FLAG}            \
-        
+
     CT_Popd
 
     # clang > 3.1 creates ${CT_TARGET}- prefixed executables already.
