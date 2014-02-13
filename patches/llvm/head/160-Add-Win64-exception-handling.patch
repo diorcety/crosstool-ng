@@ -1,7 +1,7 @@
-From 0b5a1f2978da418dd757db3d2750738a4f2a21ac Mon Sep 17 00:00:00 2001
+From 7c2f86eaaab0ee9b226ef338eacbde6335cd7864 Mon Sep 17 00:00:00 2001
 From: Ray Donnelly <mingw.android@gmail.com>
 Date: Thu, 13 Feb 2014 18:35:53 +0000
-Subject: [PATCH 6/7] Add Win64 exception handling.
+Subject: [PATCH 7/8] Add Win64 exception handling.
 
 Source Url: http://wiki.dlang.org/Building_and_hacking_LDC_on_Windows_using_MSVC
 
@@ -25,13 +25,13 @@ Most of this patch is based on work by Charles Davis.
 ---
  lib/CodeGen/AsmPrinter/Win64Exception.cpp    |  12 +--
  lib/MC/MCObjectFileInfo.cpp                  |  15 ++--
- lib/Target/X86/MCTargetDesc/X86MCAsmInfo.cpp |  12 ++-
+ lib/Target/X86/MCTargetDesc/X86MCAsmInfo.cpp |  15 +++-
  lib/Target/X86/X86AsmPrinter.h               |   2 +
  lib/Target/X86/X86ISelLowering.cpp           |   3 +-
  lib/Target/X86/X86MCInstLower.cpp            | 129 ++++++++++++++++++++++++++
  test/CodeGen/X86/avx-win64-args.ll           |   2 +
  test/CodeGen/X86/win64_eh.ll                 | 130 +++++++++++++++++++++++++++
- 8 files changed, 288 insertions(+), 17 deletions(-)
+ 8 files changed, 290 insertions(+), 18 deletions(-)
  create mode 100644 test/CodeGen/X86/win64_eh.ll
 
 diff --git a/lib/CodeGen/AsmPrinter/Win64Exception.cpp b/lib/CodeGen/AsmPrinter/Win64Exception.cpp
@@ -93,7 +93,7 @@ index a160f29..e5e55f0 100644
    // Debug info.
    COFFDebugSymbolsSection =
 diff --git a/lib/Target/X86/MCTargetDesc/X86MCAsmInfo.cpp b/lib/Target/X86/MCTargetDesc/X86MCAsmInfo.cpp
-index 6561804..1c850cd 100644
+index 6561804..2a537db 100644
 --- a/lib/Target/X86/MCTargetDesc/X86MCAsmInfo.cpp
 +++ b/lib/Target/X86/MCTargetDesc/X86MCAsmInfo.cpp
 @@ -142,7 +142,8 @@ getNonexecutableStackSection(MCContext &Ctx) const {
@@ -106,7 +106,7 @@ index 6561804..1c850cd 100644
      PrivateGlobalPrefix = ".L";
  
    AssemblerDialect = AsmWriterFlavor;
-@@ -151,6 +152,10 @@ X86MCAsmInfoMicrosoft::X86MCAsmInfoMicrosoft(const Triple &Triple) {
+@@ -151,13 +152,18 @@ X86MCAsmInfoMicrosoft::X86MCAsmInfoMicrosoft(const Triple &Triple) {
  
    AllowAtInName = true;
  
@@ -117,7 +117,16 @@ index 6561804..1c850cd 100644
    UseIntegratedAssembler = true;
  }
  
-@@ -165,7 +170,10 @@ X86MCAsmInfoGNUCOFF::X86MCAsmInfoGNUCOFF(const Triple &Triple) {
+ void X86MCAsmInfoGNUCOFF::anchor() { }
+ 
+ X86MCAsmInfoGNUCOFF::X86MCAsmInfoGNUCOFF(const Triple &Triple) {
+-  if (Triple.getArch() == Triple::x86_64)
++  bool is64Bit = Triple.getArch() == Triple::x86_64;
++  if (is64Bit)
+     PrivateGlobalPrefix = ".L";
+ 
+   AssemblerDialect = AsmWriterFlavor;
+@@ -165,7 +171,10 @@ X86MCAsmInfoGNUCOFF::X86MCAsmInfoGNUCOFF(const Triple &Triple) {
    TextAlignFillValue = 0x90;
  
    // Exceptions handling
@@ -450,5 +459,5 @@ index 0000000..101ae39
 +; WIN64: .seh_handlerdata
 +; WIN64: .seh_endproc
 -- 
-1.8.5.3
+1.8.5.4
 

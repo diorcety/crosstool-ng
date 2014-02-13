@@ -1,7 +1,7 @@
-From 7037e59d0f3f6b5043d1a76a52752cc0e729d855 Mon Sep 17 00:00:00 2001
+From 154fa3db34e41c378075e317639a67ec474016d9 Mon Sep 17 00:00:00 2001
 From: Ray Donnelly <mingw.android@gmail.com>
 Date: Wed, 13 Nov 2013 18:28:57 +0000
-Subject: [PATCH 4/7] Makefile rules remove ld option -modules
+Subject: [PATCH 4/8] Makefile rules remove ld option -modules
 
 ---
  Makefile.rules | 3 +++
@@ -22,5 +22,5 @@ index d668b23..bcbd642 100644
  
  ifdef SHARED_LIBRARY
 -- 
-1.8.5.3
+1.8.5.4
 

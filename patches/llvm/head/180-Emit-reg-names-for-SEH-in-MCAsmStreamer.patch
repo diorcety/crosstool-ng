@@ -1,14 +1,14 @@
-From 45e02858698c3c7c0555544ea4b49cab06752293 Mon Sep 17 00:00:00 2001
+From 6a1cd498ff46dd9a61d2539e8fff0bae329ea63a Mon Sep 17 00:00:00 2001
 From: Ray Donnelly <mingw.android@gmail.com>
 Date: Wed, 18 Dec 2013 02:24:40 +0000
-Subject: [PATCH 7/7] Emit reg names for SEH in MCAsmStreamer
+Subject: [PATCH 8/8] Emit reg names for SEH in MCAsmStreamer
 
 ---
  lib/MC/MCAsmStreamer.cpp | 15 +++++++++++----
  1 file changed, 11 insertions(+), 4 deletions(-)
 
 diff --git a/lib/MC/MCAsmStreamer.cpp b/lib/MC/MCAsmStreamer.cpp
-index d71b1f7..5fff634 100644
+index c86224b..9ba7b1c 100644
 --- a/lib/MC/MCAsmStreamer.cpp
 +++ b/lib/MC/MCAsmStreamer.cpp
 @@ -1207,14 +1207,17 @@ void MCAsmStreamer::EmitWin64EHHandlerData() {
@@ -53,5 +53,5 @@ index d71b1f7..5fff634 100644
  }
  
 -- 
-1.8.5.3
+1.8.5.4
 

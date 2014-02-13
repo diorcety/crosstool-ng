@@ -1,7 +1,7 @@
-From 831cf2c700deac4c1010acfd7a90c840a3bbb2e9 Mon Sep 17 00:00:00 2001
+From 0371c7fd4e9019ae23307a1c3f5f32e7dfb751e4 Mon Sep 17 00:00:00 2001
 From: Ray Donnelly <mingw.android@gmail.com>
 Date: Thu, 16 Jan 2014 12:10:25 +0000
-Subject: [PATCH 1/7] Use AC_PROG_PATHS for Python
+Subject: [PATCH 1/8] Use AC_PROG_PATHS for Python
 
 Was using AC_PROG_PATH incorrectly and
 failing to find python2 if python wasn't
@@ -74,5 +74,5 @@ index 46d557d..aada393 100755
  
  { echo "$as_me:$LINENO: checking for python >= 2.5" >&5
 -- 
-1.8.5.3
+1.8.5.4
 
