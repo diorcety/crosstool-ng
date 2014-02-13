@@ -1,4 +1,4 @@
-From 8a13cebe025ea58ffff44ec6941c5bb28d1423c3 Mon Sep 17 00:00:00 2001
+From 9e0351f61fcf4c78806d0ba84c3ed00549e0c7e3 Mon Sep 17 00:00:00 2001
 From: Ray Donnelly <mingw.android@gmail.com>
 Date: Wed, 13 Nov 2013 18:29:44 +0000
 Subject: [PATCH 5/7] fix triple transformation
@@ -26,5 +26,5 @@ index 726e2fb..745e548 100644
    return Triple;
  }
 -- 
-1.8.5.4
+1.8.5.3
 

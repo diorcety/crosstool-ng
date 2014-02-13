@@ -1,6 +1,6 @@
-From bb73ced884ec672417653587f862f25ce7b9f4fe Mon Sep 17 00:00:00 2001
+From 0b5a1f2978da418dd757db3d2750738a4f2a21ac Mon Sep 17 00:00:00 2001
 From: Ray Donnelly <mingw.android@gmail.com>
-Date: Sun, 9 Feb 2014 21:13:33 +0000
+Date: Thu, 13 Feb 2014 18:35:53 +0000
 Subject: [PATCH 6/7] Add Win64 exception handling.
 
 Source Url: http://wiki.dlang.org/Building_and_hacking_LDC_on_Windows_using_MSVC
@@ -23,19 +23,19 @@ is emitted as handler data.
 
 Most of this patch is based on work by Charles Davis.
 ---
- lib/CodeGen/AsmPrinter/Win64Exception.cpp     |  12 +--
- lib/MC/MCObjectFileInfo.cpp                   |  15 ++-
- lib/Target/X86/MCTargetDesc/X86MCAsmInfo.cpp  |  17 +++-
- lib/Target/X86/X86AsmPrinter.h                |   2 +
- lib/Target/X86/X86ISelLowering.cpp            |   3 +-
- lib/Target/X86/X86MCInstLower.cpp             | 129 +++++++++++++++++++++++++
- test/CodeGen/X86/avx-win64-args.ll            |   2 +
- test/CodeGen/X86/win64_eh.ll                  | 130 ++++++++++++++++++++++++++
- 9 files changed, 308 insertions(+), 19 deletions(-)
+ lib/CodeGen/AsmPrinter/Win64Exception.cpp    |  12 +--
+ lib/MC/MCObjectFileInfo.cpp                  |  15 ++--
+ lib/Target/X86/MCTargetDesc/X86MCAsmInfo.cpp |  12 ++-
+ lib/Target/X86/X86AsmPrinter.h               |   2 +
+ lib/Target/X86/X86ISelLowering.cpp           |   3 +-
+ lib/Target/X86/X86MCInstLower.cpp            | 129 ++++++++++++++++++++++++++
+ test/CodeGen/X86/avx-win64-args.ll           |   2 +
+ test/CodeGen/X86/win64_eh.ll                 | 130 +++++++++++++++++++++++++++
+ 8 files changed, 288 insertions(+), 17 deletions(-)
  create mode 100644 test/CodeGen/X86/win64_eh.ll
 
 diff --git a/lib/CodeGen/AsmPrinter/Win64Exception.cpp b/lib/CodeGen/AsmPrinter/Win64Exception.cpp
-index eda444bd..851196f 100644
+index eda444bd..268b5c6 100644
 --- a/lib/CodeGen/AsmPrinter/Win64Exception.cpp
 +++ b/lib/CodeGen/AsmPrinter/Win64Exception.cpp
 @@ -78,9 +78,9 @@ void Win64Exception::beginFunction(const MachineFunction *MF) {
@@ -93,10 +93,10 @@ index a160f29..e5e55f0 100644
    // Debug info.
    COFFDebugSymbolsSection =
 diff --git a/lib/Target/X86/MCTargetDesc/X86MCAsmInfo.cpp b/lib/Target/X86/MCTargetDesc/X86MCAsmInfo.cpp
-index 7d93555..4a7976e 100644
+index 6561804..1c850cd 100644
 --- a/lib/Target/X86/MCTargetDesc/X86MCAsmInfo.cpp
 +++ b/lib/Target/X86/MCTargetDesc/X86MCAsmInfo.cpp
-@@ -136,7 +136,8 @@ getNonexecutableStackSection(MCContext &Ctx) const {
+@@ -142,7 +142,8 @@ getNonexecutableStackSection(MCContext &Ctx) const {
  void X86MCAsmInfoMicrosoft::anchor() { }
  
  X86MCAsmInfoMicrosoft::X86MCAsmInfoMicrosoft(const Triple &Triple) {
@@ -106,35 +106,28 @@ index 7d93555..4a7976e 100644
      PrivateGlobalPrefix = ".L";
  
    AssemblerDialect = AsmWriterFlavor;
-@@ -144,18 +145,26 @@ X86MCAsmInfoMicrosoft::X86MCAsmInfoMicrosoft(const Triple &Triple) {
-   TextAlignFillValue = 0x90;
+@@ -151,6 +152,10 @@ X86MCAsmInfoMicrosoft::X86MCAsmInfoMicrosoft(const Triple &Triple) {
  
    AllowAtInName = true;
-+
+ 
 +  // Exceptions handling
 +  if (is64Bit)
 +    ExceptionsType = ExceptionHandling::Win64;
++
+   UseIntegratedAssembler = true;
  }
  
- void X86MCAsmInfoGNUCOFF::anchor() { }
- 
- X86MCAsmInfoGNUCOFF::X86MCAsmInfoGNUCOFF(const Triple &Triple) {
--  if (Triple.getArch() == Triple::x86_64)
-+  bool is64Bit = Triple.getArch() == Triple::x86_64;
-+  if (is64Bit)
-     PrivateGlobalPrefix = ".L";
- 
-   AssemblerDialect = AsmWriterFlavor;
- 
+@@ -165,7 +170,10 @@ X86MCAsmInfoGNUCOFF::X86MCAsmInfoGNUCOFF(const Triple &Triple) {
    TextAlignFillValue = 0x90;
  
--  // Exceptions handling
+   // Exceptions handling
 -  ExceptionsType = ExceptionHandling::DwarfCFI;
-+  // Exception handling
 +  if (is64Bit && Triple.getOS() == Triple::MinGW32)
 +    ExceptionsType = ExceptionHandling::Win64;
 +  else
 +    ExceptionsType = ExceptionHandling::DwarfCFI;
+ 
+   UseIntegratedAssembler = true;
  }
 diff --git a/lib/Target/X86/X86AsmPrinter.h b/lib/Target/X86/X86AsmPrinter.h
 index d6adf68..2477a84 100644
@@ -150,7 +143,7 @@ index d6adf68..2477a84 100644
    explicit X86AsmPrinter(TargetMachine &TM, MCStreamer &Streamer)
      : AsmPrinter(TM, Streamer), SM(*this) {
 diff --git a/lib/Target/X86/X86ISelLowering.cpp b/lib/Target/X86/X86ISelLowering.cpp
-index a945284..3f31f04 100644
+index 4ce2ea3..e292701 100644
 --- a/lib/Target/X86/X86ISelLowering.cpp
 +++ b/lib/Target/X86/X86ISelLowering.cpp
 @@ -597,7 +597,8 @@ void X86TargetLowering::resetOperationActions() {
@@ -457,5 +450,5 @@ index 0000000..101ae39
 +; WIN64: .seh_handlerdata
 +; WIN64: .seh_endproc
 -- 
-1.8.5.4
+1.8.5.3
 

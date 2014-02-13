@@ -1,4 +1,4 @@
-From a8f296fe91c777610250d468185dab7b3a29cd73 Mon Sep 17 00:00:00 2001
+From 5f5fadecb0bc8d96e58b371a6e83a6d3e0d8f3d1 Mon Sep 17 00:00:00 2001
 From: Ray Donnelly <mingw.android@gmail.com>
 Date: Wed, 13 Nov 2013 18:27:28 +0000
 Subject: [PATCH 2/7] program prefix ld
@@ -35,5 +35,5 @@ index aada393..6a7c777 100755
     # Check for ld64.
     if (echo "$version_string" | grep -q "ld64"); then
 -- 
-1.8.5.4
+1.8.5.3
 

@@ -1,4 +1,4 @@
-From 616360d0520ad58188adcce64439534ed7736393 Mon Sep 17 00:00:00 2001
+From 45e02858698c3c7c0555544ea4b49cab06752293 Mon Sep 17 00:00:00 2001
 From: Ray Donnelly <mingw.android@gmail.com>
 Date: Wed, 18 Dec 2013 02:24:40 +0000
 Subject: [PATCH 7/7] Emit reg names for SEH in MCAsmStreamer
@@ -53,5 +53,5 @@ index d71b1f7..5fff634 100644
  }
  
 -- 
-1.8.5.4
+1.8.5.3
 
