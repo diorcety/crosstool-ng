@@ -23,7 +23,7 @@ index 5307910..489beb3 100644
  Driver::Driver(StringRef ClangExecutable,
                 StringRef DefaultTargetTriple,
                 StringRef DefaultImageName,
-@@ -353,6 +357,17 @@ Compilation *Driver::BuildCompilation(ArrayRef<const char *> ArgList) {
+@@ -353,6 +357,16 @@ Compilation *Driver::BuildCompilation(ArrayRef<const char *> ArgList) {
    }
    if (const Arg *A = Args->getLastArg(options::OPT__sysroot_EQ))
      SysRoot = A->getValue();
