@@ -854,23 +854,23 @@ CT_GetGitInternal() {
 
     # Do we have it in our tarballs dir?
     if [ -d "${tarballs_dir}/${basename}/.git" ]; then
-        CT_DoLog EXTRA "Updating git tree '${basename}'"
+        CT_DoLog EXTRA "Updating git tree '${basename}' in '${tarballs_dir}/${basename}'"
         CT_Pushd "${tarballs_dir}/${basename}"
         CT_DoExecLog ALL git pull
         CT_Popd
-    else
-        CT_DoLog EXTRA "Retrieving git tree '${basename}'"
+    elif [ -d "${tarballs_dir}" ]; then
+        CT_DoLog EXTRA "Retrieving git tree '${basename}' to '${tarballs_dir}/${basename}'"
         for url in "${@}"; do
             CT_DoLog ALL "Trying to clone from '${url}'"
-            CT_DoForceRmdir "${CT_TARBALLS_DIR}/${basename}"
+            CT_DoForceRmdir "${tarballs_dir}/${basename}"
 
             if [ -z "${branch}" ]; then
-                    if git clone "${url}" "${CT_TARBALLS_DIR}/${basename}" 2>&1 |CT_DoLog ALL; then
+                    if git clone "${url}" "${tarballs_dir}/${basename}" 2>&1 |CT_DoLog ALL; then
                     cloned=1
                     break
                 fi
             else
-                if git clone -b "${branch}" --single-branch "${url}" "${CT_TARBALLS_DIR}/${basename}" 2>&1 |CT_DoLog ALL; then
+                if git clone -b "${branch}" --single-branch "${url}" "${tarballs_dir}/${basename}" 2>&1 |CT_DoLog ALL; then
                   cloned=1
                   break
                 fi
@@ -878,6 +878,7 @@ CT_GetGitInternal() {
         done
         CT_TestOrAbort "Could not clone '${basename}'/'${branch}'" ${cloned} -ne 0
     fi
+    return 0
 }
 
 # Clone a git tree
