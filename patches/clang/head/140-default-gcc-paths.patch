@@ -1,4 +1,4 @@
-From 9ba13118c8a08a7b7f5619c0e277b422ebe69521 Mon Sep 17 00:00:00 2001
+From 13e55825c7d3b6cbc39bfd654c82fdaaa878dd37 Mon Sep 17 00:00:00 2001
 From: Ray Donnelly <mingw.android@gmail.com>
 Date: Wed, 13 Nov 2013 18:10:54 +0000
 Subject: [PATCH 4/5] default gcc paths
@@ -10,10 +10,10 @@ Subject: [PATCH 4/5] default gcc paths
  3 files changed, 50 insertions(+)
 
 diff --git a/include/clang/Driver/ToolChain.h b/include/clang/Driver/ToolChain.h
-index ceb1c76..2f1c1bd 100644
+index e8f2c78..13a9826 100644
 --- a/include/clang/Driver/ToolChain.h
 +++ b/include/clang/Driver/ToolChain.h
-@@ -124,6 +124,11 @@ public:
+@@ -127,6 +127,11 @@ public:
      return Triple.getTriple();
    }
  
@@ -83,10 +83,10 @@ index f48a811..031b83d 100644
    return D.GetFilePath(Name, *this);
  
 diff --git a/lib/Driver/Tools.cpp b/lib/Driver/Tools.cpp
-index bcbb57a..f599d01 100644
+index c61a1b4..6b32058 100644
 --- a/lib/Driver/Tools.cpp
 +++ b/lib/Driver/Tools.cpp
-@@ -2822,6 +2822,12 @@ void Clang::ConstructJob(Compilation &C, const JobAction &JA,
+@@ -2815,6 +2815,12 @@ void Clang::ConstructJob(Compilation &C, const JobAction &JA,
    // preprocessed inputs and configure concludes that -fPIC is not supported.
    Args.ClaimAllArgs(options::OPT_D);
  

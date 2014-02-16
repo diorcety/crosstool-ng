@@ -1,4 +1,4 @@
-From 25a478367da272b471b3d29f6a64feb6dace451a Mon Sep 17 00:00:00 2001
+From 244323440af572dd4a2044fdc03bd3f47b4b6acd Mon Sep 17 00:00:00 2001
 From: Ray Donnelly <mingw.android@gmail.com>
 Date: Wed, 13 Nov 2013 18:07:01 +0000
 Subject: [PATCH 3/5] prefix program names by triple

@@ -1,4 +1,4 @@
-From 939d70331101085be28eb4665c02783ad31242cc Mon Sep 17 00:00:00 2001
+From a42ac4eeb568e7c708986f7287ef4dde32986c95 Mon Sep 17 00:00:00 2001
 From: Ray Donnelly <mingw.android@gmail.com>
 Date: Thu, 14 Nov 2013 13:30:18 +0000
 Subject: [PATCH 5/5] mingw fix
@@ -11,10 +11,10 @@ Subject: [PATCH 5/5] mingw fix
  4 files changed, 29 insertions(+), 7 deletions(-)
 
 diff --git a/include/clang/Driver/ToolChain.h b/include/clang/Driver/ToolChain.h
-index 2f1c1bd..2db220e 100644
+index 13a9826..e50fbfe 100644
 --- a/include/clang/Driver/ToolChain.h
 +++ b/include/clang/Driver/ToolChain.h
-@@ -128,6 +128,8 @@ public:
+@@ -131,6 +131,8 @@ public:
                                       llvm::opt::ArgStringList &CmdArgs) const;
    virtual void AddIncludeSearchPathArgs(const llvm::opt::ArgList &Args,
                                          llvm::opt::ArgStringList &CmdArgs) const;
@@ -58,10 +58,10 @@ index 031b83d..e1a4754 100644
    std::string GccVersion(CLANG_GCC_VERSION_STR);
  
 diff --git a/lib/Driver/Tools.cpp b/lib/Driver/Tools.cpp
-index f599d01..fc7f502 100644
+index 6b32058..d153147 100644
 --- a/lib/Driver/Tools.cpp
 +++ b/lib/Driver/Tools.cpp
-@@ -2825,6 +2825,9 @@ void Clang::ConstructJob(Compilation &C, const JobAction &JA,
+@@ -2818,6 +2818,9 @@ void Clang::ConstructJob(Compilation &C, const JobAction &JA,
    if (isa<LinkJobAction>(JA)) {
       getToolChain().AddLinkSearchPathArgs(Args, CmdArgs);
    } else {
