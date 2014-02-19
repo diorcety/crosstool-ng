@@ -227,7 +227,7 @@ do_gcc_core_backend() {
         [ -n "${CT_TOOLCHAIN_BUGURL}" ] && extra_config+=("--with-bugurl=${CT_TOOLCHAIN_BUGURL}")
     fi
 
-    if [ "${copy_headers}" = "y" ]; then
+    if [ "${copy_headers}" = "y" -a "${build_libgcc}" = "yes" ]; then
         CT_DoLog DEBUG "Copying headers to install area of bootstrap gcc, so it can build libgcc2"
         CT_DoExecLog ALL cp -a "${CT_HEADERS_DIR}" "${prefix}/${CT_TARGET}/include"
     fi
