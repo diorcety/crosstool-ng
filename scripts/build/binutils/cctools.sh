@@ -107,6 +107,7 @@ do_cctools_backend() {
     local ldflags
     local build_staticlinked=no
     local -a extra_config
+    local -a dsymutil_config
     local llvm_dir
 
     for arg in "$@"; do
@@ -146,4 +147,28 @@ do_cctools_backend() {
     CT_DoExecLog ALL make install
 
     mkdir -p "${prefix}/${CT_TARGET}/bin"
+
+    dsymutil_opts+=( "prefix=${prefix}" )
+    dsymutil_opts+=( "cflags=${cflags}" )
+    dsymutil_opts+=( "ldflags=${ldflags}" )
+    build_fake_dsymutil "${dsymutil_opts[@]}"
+}
+
+build_fake_dsymutil() {
+    local prefix
+    local cflags
+    local ldflags
+
+    for arg in "$@"; do
+        eval "${arg// /\\ }"
+    done
+
+    cat > fake_dsymutil.c << EOF
+    int main(int argc, char * argv[]) {
+        return 0;
+    }
+EOF
+   ${CT_BUILD}-gcc ${cflags} ${ldflags} -o ${CT_TARGET}-dsymutil fake_dsymutil.c
+   cp ${CT_TARGET}-dsymutil "${prefix}/bin/${CT_TARGET}-dsymutil"
+   cp ${CT_TARGET}-dsymutil "${prefix}/${CT_TARGET}/bin/dsymutil"
 }
