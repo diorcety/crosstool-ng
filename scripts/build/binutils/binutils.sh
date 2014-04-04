@@ -166,10 +166,10 @@ do_binutils_backend() {
 
     CT_DoLog EXTRA "Configuring binutils"
 
-    # Cannot be built with --save-temps=obj, to be on the safe side
+    # Cannot be built with [-]-save-temps=obj, to be on the safe side
     # remove any --save-temps and warn.
     local cflags_in="${cflags}"
-    cflags="$( echo "${cflags}" | sed -r -e 's/--save-temps[^ \t]*//g' )"
+    cflags="$( echo "${cflags}" | sed -r -e 's/-?-save-temps[^ \t]*//g' )"
     if [ ! "${cflags_in}" = "${cflags}" ]; then
         CT_DoLog WARN "Removed --save-temps* from cflags for binutils to workaround build failure"
     fi
