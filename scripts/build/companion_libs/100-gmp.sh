@@ -89,10 +89,11 @@ do_gmp_backend() {
         extra_config+=("--enable-mpbsd")
     fi
 
+    local relpath="$(CT_FindRelativePath "${PWD}" "${CT_SRC_DIR}/gmp-${CT_GMP_VERSION}")"
     CT_DoExecLog CFG                                \
     CFLAGS="${cflags} -fexceptions"                 \
     LDFLAGS="${ldflags}"                            \
-    "${CT_SRC_DIR}/gmp-${CT_GMP_VERSION}/configure" \
+    "${relpath}/configure"                          \
         --build=${CT_BUILD}                         \
         --host=${host}                              \
         --prefix="${prefix}"                        \

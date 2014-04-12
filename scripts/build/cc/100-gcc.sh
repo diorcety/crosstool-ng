@@ -609,6 +609,7 @@ do_gcc_core_backend() {
         cflags="$cflags "-fbracket-depth=512
     fi
 
+    local relpath="$(CT_FindRelativePath "${PWD}" "${CT_SRC_DIR}/gcc-${CT_CC_GCC_VERSION}")"
     # Use --with-local-prefix so older gccs don't look in /usr/local (http://gcc.gnu.org/PR10532)
     CT_DoExecLog CFG                                   \
     CC_FOR_BUILD="${CT_BUILD}-gcc"                     \
@@ -623,7 +624,7 @@ do_gcc_core_backend() {
     CFLAGS_FOR_TARGET="${CT_TARGET_CFLAGS}"            \
     CXXFLAGS_FOR_TARGET="${CT_TARGET_CFLAGS}"          \
     LDFLAGS_FOR_TARGET="${CT_TARGET_LDFLAGS}"          \
-    "${CT_SRC_DIR}/gcc-${CT_CC_GCC_VERSION}/configure" \
+    "${relpath}/configure"                             \
         --build=${CT_BUILD}                            \
         --host=${host}                                 \
         --target=${CT_TARGET}                          \
@@ -1100,6 +1101,7 @@ do_gcc_backend() {
         cflags="$cflags "-fbracket-depth=512
     fi
 
+    local relpath="$(CT_FindRelativePath "${PWD}" "${CT_SRC_DIR}/gcc-${CT_CC_GCC_VERSION}")"
     CT_DoExecLog CFG                                \
     CC_FOR_BUILD="${CT_BUILD}-gcc"                  \
     CPPFLAGS="${cppflags}"                          \
@@ -1113,7 +1115,7 @@ do_gcc_backend() {
     CFLAGS_FOR_TARGET="${CT_TARGET_CFLAGS}"         \
     CXXFLAGS_FOR_TARGET="${CT_TARGET_CFLAGS}"       \
     LDFLAGS_FOR_TARGET="${CT_TARGET_LDFLAGS}"       \
-    "${CT_SRC_DIR}/gcc-${CT_CC_GCC_VERSION}/configure" \
+    "${relpath}/configure"                          \
         --build=${CT_BUILD}                         \
         --host=${host}                              \
         --target=${CT_TARGET}                       \
