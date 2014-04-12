@@ -1,8 +1,8 @@
 #! /bin/sh
 # Configuration validation subroutine script.
-#   Copyright 1992-2013 Free Software Foundation, Inc.
+#   Copyright 1992-2014 Free Software Foundation, Inc.
 
-timestamp='2013-10-01'
+timestamp='2014-03-23'
 
 # This file is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by
@@ -68,7 +68,7 @@ Report bugs and patches to <config-patches@gnu.org>."
 version="\
 GNU config.sub ($timestamp)
 
-Copyright 1992-2013 Free Software Foundation, Inc.
+Copyright 1992-2014 Free Software Foundation, Inc.
 
 This is free software; see the source for copying conditions.  There is NO
 warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE."
@@ -296,8 +296,7 @@ case $basic_machine in
 	| nds32 | nds32le | nds32be \
 	| nios | nios2 | nios2eb | nios2el \
 	| ns16k | ns32k \
-	| open8 \
-	| or1k | or32 \
+	| open8 | or1k | or1knd | or32 \
 	| pdp10 | pdp11 | pj | pjl \
 	| powerpc | powerpc64 | powerpc64le | powerpcle \
 	| pyramid \
@@ -415,6 +414,7 @@ case $basic_machine in
 	| nios-* | nios2-* | nios2eb-* | nios2el-* \
 	| none-* | np1-* | ns16k-* | ns32k-* \
 	| open8-* \
+	| or1k*-* \
 	| orion-* \
 	| pdp10-* | pdp11-* | pj-* | pjl-* | pn-* | power-* \
 	| powerpc-* | powerpc64-* | powerpc64le-* | powerpcle-* \
@@ -792,11 +792,11 @@ case $basic_machine in
 		basic_machine=microblaze-xilinx
 		;;
 	mingw64)
-		basic_machine=x86_64-pc
-		os=-mingw32
+		basic_machine=x86_64-w64
+		os=-mingw64
 		;;
 	mingw32)
-		basic_machine=i686-pc
+		basic_machine=i686-w64
 		os=-mingw32
 		;;
 	mingw32ce)
@@ -1592,9 +1592,6 @@ case $basic_machine in
 		os=-elf
 		;;
 	mips*-*)
-		os=-elf
-		;;
-	or1k-*)
 		os=-elf
 		;;
 	or32-*)
