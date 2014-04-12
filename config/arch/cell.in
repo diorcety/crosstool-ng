@@ -1,0 +1,12 @@
+# cell specific configuration file
+
+## select ARCH_SUPPORTS_64
+## select ARCH_DEFAULT_64
+## select ARCH_USE_MMU
+## select ARCH_SUPPORTS_WITH_ABI
+## select ARCH_SUPPORTS_WITH_CPU
+## select ARCH_SUPPORTS_WITH_TUNE
+## select ARCH_SUPPORTS_WITH_FLOAT
+##
+## help The CELL architecture, as defined by:
+## help     https://www-01.ibm.com/chips/techlib/techlib.nsf/products/Cell_Broadband_Engine
