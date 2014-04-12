@@ -793,7 +793,7 @@ case $basic_machine in
 		;;
 	mingw64)
 		basic_machine=x86_64-w64
-		os=-mingw64
+		os=-mingw32
 		;;
 	mingw32)
 		basic_machine=i686-w64
