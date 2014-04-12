@@ -93,7 +93,7 @@ do_gmp_backend() {
     CT_DoExecLog CFG                                \
     CFLAGS="${cflags} -fexceptions"                 \
     LDFLAGS="${ldflags}"                            \
-    "relpath/configure"                             \
+    "${relpath}/configure"                          \
         --build=${CT_BUILD}                         \
         --host=${host}                              \
         --prefix="${prefix}"                        \
