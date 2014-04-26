@@ -1,0 +1,118 @@
+diff -urN glibc-2.20.orig/configure glibc-2.20/configure
+--- glibc-2.20.orig/configure	2015-03-07 21:28:16.964150300 +0000
++++ glibc-2.20/configure	2015-03-07 23:36:26.468372700 +0000
+@@ -621,6 +621,7 @@
+ libc_cv_gcc_static_libgcc
+ CXX_SYSINCLUDES
+ SYSINCLUDES
++sysheaders
+ AUTOCONF
+ NM
+ AWK
+diff -urN glibc-2.20.orig/configure.ac glibc-2.20/configure.ac
+--- glibc-2.20.orig/configure.ac	2015-03-07 21:28:16.964150300 +0000
++++ glibc-2.20/configure.ac	2015-03-07 23:36:26.482374500 +0000
+@@ -1011,6 +1011,7 @@
+     done
+   fi
+ fi
++AC_SUBST(sysheaders)
+ AC_SUBST(SYSINCLUDES)
+ AC_SUBST(CXX_SYSINCLUDES)
+ 
+diff -urN glibc-2.20.orig/elf/Makefile glibc-2.20/elf/Makefile
+--- glibc-2.20.orig/elf/Makefile	2015-03-07 21:28:17.088950500 +0000
++++ glibc-2.20/elf/Makefile	2015-03-07 23:36:26.484874800 +0000
+@@ -63,6 +63,15 @@
+ ld-map		= $(common-objpfx)ld.map
+ endif
+ 
++# Hack for building on MSYS2 but using native host (e.g. MinGW-w64) compilers.
++# suffix of w means Windows.
++uname_o := $(shell uname -o)
++ifneq (, $(findstring Msys, $(uname_o)))
++common-objpfxw = $(shell cd $(common-objpfx); pwd -W)/
++else
++common-objpfxw = $(common-objpfx)
++endif
++
+ ifeq (yes,$(build-shared))
+ extra-objs	= $(all-rtld-routines:%=%.os) soinit.os sofini.os interp.os
+ generated	+= librtld.os dl-allobjs.os ld.so ldd
+@@ -311,15 +320,15 @@
+ 
+ $(objpfx)librtld.mk: $(objpfx)librtld.map Makefile
+ 	LC_ALL=C \
+-	sed -n 's@^$(common-objpfx)\([^(]*\)(\([^)]*\.os\)) *.*$$@\1 \2@p' \
++	sed -n 's@^$(common-objpfxw)\([^(]*\)(\([^)]*\.os\)) *.*$$@\1 \2@p' \
+ 	    $< | \
+ 	while read lib file; do \
+ 	  case $$lib in \
+ 	  libc_pic.a) \
+ 	    LC_ALL=C fgrep -l /$$file \
+-		  $(common-objpfx)stamp.os $(common-objpfx)*/stamp.os | \
++		  $(common-objpfxw)stamp.os $(common-objpfxw)*/stamp.os | \
+ 	    LC_ALL=C \
+-	    sed 's@^$(common-objpfx)\([^/]*\)/stamp\.os$$@rtld-\1'" +=$$file@"\
++	    sed 's@^$(common-objpfxw)\([^/]*\)/stamp\.os$$@rtld-\1'" +=$$file@"\
+ 	    ;; \
+ 	  */*.a) \
+ 	    echo rtld-$${lib%%/*} += $$file ;; \
+diff -urN glibc-2.20.orig/Makefile.in glibc-2.20/Makefile.in
+--- glibc-2.20.orig/Makefile.in	2015-03-07 21:28:17.932352100 +0000
++++ glibc-2.20/Makefile.in	2015-03-07 23:38:00.718841000 +0000
+@@ -1,4 +1,5 @@
+ srcdir = @srcdir@
++sysheaders = @sysheaders@
+ 
+ # Uncomment the line below if you want to do parallel build.
+ # PARALLELMFLAGS = -j 4
+@@ -6,11 +7,11 @@
+ .PHONY: all install bench
+ 
+ all .DEFAULT:
+-	$(MAKE) -r PARALLELMFLAGS="$(PARALLELMFLAGS)" -C $(srcdir) objdir=`pwd` $@
++	$(MAKE) -r PARALLELMFLAGS="$(PARALLELMFLAGS)" -C $(srcdir) objdir=`pwd` sysheaders=$(sysheaders) $@
+ 
+ install:
+ 	LC_ALL=C; export LC_ALL; \
+-	$(MAKE) -r PARALLELMFLAGS="$(PARALLELMFLAGS)" -C $(srcdir) objdir=`pwd` $@
++	$(MAKE) -r PARALLELMFLAGS="$(PARALLELMFLAGS)" -C $(srcdir) objdir=`pwd` sysheaders=$(sysheaders) $@
+ 
+ bench bench-clean:
+ 	$(MAKE) -C $(srcdir)/benchtests $(PARALLELMFLAGS) objdir=`pwd` $@
+diff -urN glibc-2.20.orig/Makerules glibc-2.20/Makerules
+--- glibc-2.20.orig/Makerules	2015-03-07 21:28:17.932352100 +0000
++++ glibc-2.20/Makerules	2015-03-07 23:36:26.488875400 +0000
+@@ -371,11 +371,29 @@
+ mv -f $(@:.d=.T) $@ $(generate-md5)
+ endef
+ 
++# Hack for building on MSYS2 but using native host (e.g. MinGW-w64) compilers.
++# suffix of w means Windows, and m means MSYS2.
++uname_o := $(shell uname -o)
++sysroot = $(shell echo `$(CC) -print-file-name="include"`)
++ifneq (, $(findstring Msys, $(uname_o)))
++common-objpfxw = $(shell cd $(common-objpfx); pwd -W)/
++sysheadersw = $(shell cd $(sysheaders); pwd -W)
++sysrootm = $(shell cd $(sysroot); pwd)
++else
++common-objpfxw = $(common-objpfx)
++sysheadersw = $(sysheaders)
++sysrootm = $(sysroot)
++endif
++
+ ifneq (,$(objpfx))
+ # Continuation lines here are dangerous because they introduce spaces!
+ define sed-remove-objpfx
+--e 's@ $(subst .,\.,$(subst @,\@,$(common-objpfx)))@ $$(common-objpfx)@g' \
+--e 's@^$(subst .,\.,$(subst @,\@,$(common-objpfx)))@$$(common-objpfx)@g'
++-e 's@ $(subst .,\.,$(subst @,\@,$(common-objpfxw)))@ $$(common-objpfx)@g' \
++-e 's@^$(subst .,\.,$(subst @,\@,$(common-objpfxw)))@$$(common-objpfx)@g' \
++-e 's@ $(subst .,\.,$(subst @,\@,$(sysheadersw)))@ $(sysheaders)@g' \
++-e 's@^$(subst .,\.,$(subst @,\@,$(sysheadersw)))@$(sysheaders)@g' \
++-e 's@ $(subst .,\.,$(subst @,\@,$(sysroot)))@ $(sysrootm)@g' \
++-e 's@^$(subst .,\.,$(subst @,\@,$(sysroot)))@$(sysrootm)@g'
+ endef
+ endif
+ 

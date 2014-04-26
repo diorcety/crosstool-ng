@@ -1,27 +1,7 @@
-commit 4f2bcda964d4fff56855e0c66198c9bcb682ea1e
-Author: Will Newton <will.newton@linaro.org>
-Date:   Thu Aug 29 20:10:26 2013 +0100
-
-    ARM: Fix clone code when built for Thumb.
-    
-    The mov lr, pc instruction will lose the Thumb bit from the return address
-    so use blx lr instead.
-    
-    ports/ChangeLog.arm:
-    
-    2013-08-30  Will Newton  <will.newton@linaro.org>
-    
-    	[BZ #15909]
-    	* sysdeps/unix/sysv/linux/arm/clone.S (__clone): Use blx
-    	instead of mov lr, pc.
-    
-    (cherry picked from commit 6b06ac56cdfc9293908724e51e827534e97819aa)
-
-diff --git a/NEWS b/NEWS
-index b023c30..f64fb82 100644
---- a/NEWS
-+++ b/NEWS
-@@ -5,6 +5,12 @@ See the end for copying conditions.
+diff -urN a/NEWS b/NEWS
+--- a/NEWS	2013-08-10 23:52:55.000000000 +0100
++++ b/NEWS	2014-02-23 14:21:47.567839800 +0000
+@@ -5,6 +5,12 @@
  Please send GNU C library bug reports via <http://sourceware.org/bugzilla/>
  using `glibc' in the "product" field.
  
@@ -34,10 +14,9 @@ index b023c30..f64fb82 100644
  Version 2.18
  
  * The following bugs are resolved with this release:
-diff --git a/ports/ChangeLog.arm b/ports/ChangeLog.arm
-index 1e7a35c..54debd7 100644
---- a/ports/ChangeLog.arm
-+++ b/ports/ChangeLog.arm
+diff -urN a/ports/ChangeLog.arm b/ports/ChangeLog.arm
+--- a/ports/ChangeLog.arm	2013-08-10 23:52:55.000000000 +0100
++++ b/ports/ChangeLog.arm	2014-02-23 14:21:47.569339900 +0000
 @@ -1,3 +1,9 @@
 +2013-08-30  Will Newton  <will.newton@linaro.org>
 +
@@ -48,11 +27,10 @@ index 1e7a35c..54debd7 100644
  2013-07-03  Joseph Myers  <joseph@codesourcery.com>
  
  	* sysdeps/arm/include/bits/setjmp.h [_ISOMAC] (JMP_BUF_REGLIST):
-diff --git a/ports/sysdeps/unix/sysv/linux/arm/clone.S b/ports/sysdeps/unix/sysv/linux/arm/clone.S
-index ce9c2a5..6e74fa7 100644
---- a/ports/sysdeps/unix/sysv/linux/arm/clone.S
-+++ b/ports/sysdeps/unix/sysv/linux/arm/clone.S
-@@ -93,8 +93,8 @@ PSEUDO_END (__clone)
+diff -urN a/ports/sysdeps/unix/sysv/linux/arm/clone.S b/ports/sysdeps/unix/sysv/linux/arm/clone.S
+--- a/ports/sysdeps/unix/sysv/linux/arm/clone.S	2013-08-10 23:52:55.000000000 +0100
++++ b/ports/sysdeps/unix/sysv/linux/arm/clone.S	2014-02-23 14:21:47.570340100 +0000
+@@ -93,8 +93,8 @@
  	mov	lr, pc
  	bx      ip
  #else

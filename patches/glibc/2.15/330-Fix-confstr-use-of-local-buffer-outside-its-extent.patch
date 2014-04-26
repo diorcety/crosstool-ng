@@ -1,0 +1,35 @@
+diff -urN a/posix/confstr.c b/posix/confstr.c
+--- a/posix/confstr.c	2014-02-23 13:59:17.172361300 +0000
++++ b/posix/confstr.c	2014-02-23 13:59:25.672440700 +0000
+@@ -35,6 +35,7 @@
+ {
+   const char *string = "";
+   size_t string_len = 1;
++  char restenvs[4 * sizeof "POSIX_V7_LPBIG_OFFBIG"];
+ 
+   switch (name)
+     {
+@@ -55,7 +56,6 @@
+ 
+ 	 Currently this means all environment which the system allows.  */
+       {
+-	char restenvs[4 * sizeof "POSIX_V7_LPBIG_OFFBIG"];
+ 
+ 	string_len = 0;
+ #ifndef _POSIX_V7_ILP32_OFF32
+@@ -118,7 +118,6 @@
+ 
+ 	 Currently this means all environment which the system allows.  */
+       {
+-	char restenvs[4 * sizeof "POSIX_V6_LPBIG_OFFBIG"];
+ 
+ 	string_len = 0;
+ #ifndef _POSIX_V6_ILP32_OFF32
+@@ -181,7 +180,6 @@
+ 
+ 	 Currently this means all environment which the system allows.  */
+       {
+-	char restenvs[4 * sizeof "XBS5_LPBIG_OFFBIG"];
+ 
+ 	string_len = 0;
+ #ifndef _XBS5_ILP32_OFF32

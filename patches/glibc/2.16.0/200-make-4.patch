@@ -1,0 +1,24 @@
+diff -urN a/configure b/configure
+--- a/configure	2014-02-23 14:12:58.111607400 +0000
++++ b/configure	2014-02-23 14:13:08.330905000 +0000
+@@ -4845,7 +4845,7 @@
+   ac_prog_version=`$MAKE --version 2>&1 | sed -n 's/^.*GNU Make[^0-9]*\([0-9][0-9.]*\).*$/\1/p'`
+   case $ac_prog_version in
+     '') ac_prog_version="v. ?.??, bad"; ac_verc_fail=yes;;
+-    3.79* | 3.[89]*)
++    3.79* | 3.[89]* | 4.*)
+        ac_prog_version="$ac_prog_version, ok"; ac_verc_fail=no;;
+     *) ac_prog_version="$ac_prog_version, bad"; ac_verc_fail=yes;;
+ 
+diff -urN a/configure.in b/configure.in
+--- a/configure.in	2014-02-23 14:12:58.112107400 +0000
++++ b/configure.in	2014-02-23 14:13:08.333405400 +0000
+@@ -940,7 +940,7 @@
+   critic_missing="$critic_missing gcc")
+ AC_CHECK_PROG_VER(MAKE, gnumake gmake make, --version,
+   [GNU Make[^0-9]*\([0-9][0-9.]*\)],
+-  [3.79* | 3.[89]*], critic_missing="$critic_missing make")
++  [3.79* | 3.[89]* | 4.*], critic_missing="$critic_missing make")
+ 
+ AC_CHECK_PROG_VER(MSGFMT, gnumsgfmt gmsgfmt msgfmt, --version,
+   [GNU gettext.* \([0-9]*\.[0-9.]*\)],

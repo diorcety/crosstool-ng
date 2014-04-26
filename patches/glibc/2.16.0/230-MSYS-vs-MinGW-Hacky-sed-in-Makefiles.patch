@@ -1,0 +1,113 @@
+diff -urN a/configure b/configure
+--- a/configure	2014-02-23 14:13:40.847534100 +0000
++++ b/configure	2014-02-23 14:13:51.181346400 +0000
+@@ -630,6 +630,7 @@
+ libc_cv_gcc_static_libgcc
+ CXX_SYSINCLUDES
+ SYSINCLUDES
++sysheaders
+ AUTOCONF
+ NM
+ READELF
+diff -urN a/configure.in b/configure.in
+--- a/configure.in	2014-02-23 14:13:40.848034200 +0000
++++ b/configure.in	2014-02-23 14:13:51.185346900 +0000
+@@ -1026,6 +1026,7 @@
+     done
+   fi
+ fi
++AC_SUBST(sysheaders)
+ AC_SUBST(SYSINCLUDES)
+ AC_SUBST(CXX_SYSINCLUDES)
+ 
+diff -urN a/elf/Makefile b/elf/Makefile
+--- a/elf/Makefile	2014-02-23 14:13:41.011054900 +0000
++++ b/elf/Makefile	2014-02-23 14:13:51.187847200 +0000
+@@ -60,6 +60,15 @@
+ ld-map		= $(common-objpfx)ld.map
+ endif
+ 
++# Hack for building on MSYS2 but using native host (e.g. MinGW-w64) compilers.
++# suffix of w means Windows.
++uname_o := $(shell uname -o)
++ifneq (, $(findstring Msys, $(uname_o)))
++common-objpfxw = $(shell cd $(common-objpfx); pwd -W)/
++else
++common-objpfxw = $(common-objpfx)
++endif
++
+ ifeq (yes,$(build-shared))
+ extra-objs	= $(all-rtld-routines:%=%.os) soinit.os sofini.os interp.os
+ generated	+= librtld.os dl-allobjs.os ld.so ldd
+@@ -299,15 +308,15 @@
+ 
+ $(objpfx)librtld.mk: $(objpfx)librtld.map Makefile
+ 	LC_ALL=C \
+-	sed -n 's@^$(common-objpfx)\([^(]*\)(\([^)]*\.os\)) *.*$$@\1 \2@p' \
++	sed -n 's@^$(common-objpfxw)\([^(]*\)(\([^)]*\.os\)) *.*$$@\1 \2@p' \
+ 	    $< | \
+ 	while read lib file; do \
+ 	  case $$lib in \
+ 	  libc_pic.a) \
+ 	    LC_ALL=C fgrep -l /$$file \
+-		  $(common-objpfx)stamp.os $(common-objpfx)*/stamp.os | \
++		  $(common-objpfxw)stamp.os $(common-objpfxw)*/stamp.os | \
+ 	    LC_ALL=C \
+-	    sed 's@^$(common-objpfx)\([^/]*\)/stamp\.os$$@rtld-\1'" +=$$file@"\
++	    sed 's@^$(common-objpfxw)\([^/]*\)/stamp\.os$$@rtld-\1'" +=$$file@"\
+ 	    ;; \
+ 	  */*.a) \
+ 	    echo rtld-$${lib%%/*} += $$file ;; \
+diff -urN a/Makefile.in b/Makefile.in
+--- a/Makefile.in	2014-04-26 17:52:37.109770000 +0100
++++ b/Makefile.in	2014-04-26 17:53:54.577200900 +0100
+@@ -1,11 +1,12 @@
+ srcdir = @srcdir@
++sysheaders = @sysheaders@
+ 
+ # Uncomment the line below if you want to do parallel build.
+ # PARALLELMFLAGS = -j 4
+ 
+ all .DEFAULT:
+-	$(MAKE) -r PARALLELMFLAGS="$(PARALLELMFLAGS)" -C $(srcdir) objdir=`pwd` $@
++	$(MAKE) -r PARALLELMFLAGS="$(PARALLELMFLAGS)" -C $(srcdir) objdir=`pwd` sysheaders=$(sysheaders) $@
+ 
+ install:
+ 	LANGUAGE=C LC_ALL=C; export LANGUAGE LC_ALL; \
+-	$(MAKE) -r PARALLELMFLAGS="$(PARALLELMFLAGS)" -C $(srcdir) objdir=`pwd` $@
++	$(MAKE) -r PARALLELMFLAGS="$(PARALLELMFLAGS)" -C $(srcdir) objdir=`pwd` sysheaders=$(sysheaders) $@
+diff -urN a/Makerules b/Makerules
+--- a/Makerules	2014-02-23 14:13:42.293217700 +0000
++++ b/Makerules	2014-02-23 14:13:51.191847700 +0000
+@@ -392,11 +392,29 @@
+ mv -f $(@:.d=.T) $@ $(generate-md5)
+ endef
+ 
++# Hack for building on MSYS2 but using native host (e.g. MinGW-w64) compilers.
++# suffix of w means Windows, and m means MSYS2.
++uname_o := $(shell uname -o)
++sysroot = $(shell echo `$(CC) -print-file-name="include"`)
++ifneq (, $(findstring Msys, $(uname_o)))
++common-objpfxw = $(shell cd $(common-objpfx); pwd -W)/
++sysheadersw = $(shell cd $(sysheaders); pwd -W)
++sysrootm = $(shell cd $(sysroot); pwd)
++else
++common-objpfxw = $(common-objpfx)
++sysheadersw = $(sysheaders)
++sysrootm = $(sysroot)
++endif
++
+ ifneq (,$(objpfx))
+ # Continuation lines here are dangerous because they introduce spaces!
+ define sed-remove-objpfx
+--e 's@ $(subst .,\.,$(subst @,\@,$(common-objpfx)))@ $$(common-objpfx)@g' \
+--e 's@^$(subst .,\.,$(subst @,\@,$(common-objpfx)))@$$(common-objpfx)@g'
++-e 's@ $(subst .,\.,$(subst @,\@,$(common-objpfxw)))@ $$(common-objpfx)@g' \
++-e 's@^$(subst .,\.,$(subst @,\@,$(common-objpfxw)))@$$(common-objpfx)@g' \
++-e 's@ $(subst .,\.,$(subst @,\@,$(sysheadersw)))@ $(sysheaders)@g' \
++-e 's@^$(subst .,\.,$(subst @,\@,$(sysheadersw)))@$(sysheaders)@g' \
++-e 's@ $(subst .,\.,$(subst @,\@,$(sysroot)))@ $(sysrootm)@g' \
++-e 's@^$(subst .,\.,$(subst @,\@,$(sysroot)))@$(sysrootm)@g'
+ endef
+ endif
+ 

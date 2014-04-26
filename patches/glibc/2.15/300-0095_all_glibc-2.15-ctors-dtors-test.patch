@@ -1,0 +1,51 @@
+this is a stripped down version of the upstream commit to work with glibc-2.15
+
+https://bugs.gentoo.org/413561
+
+From 07037eeb43ca1e0ac2802e3a1492cecf869c63c6 Mon Sep 17 00:00:00 2001
+From: Joseph Myers <joseph@codesourcery.com>
+Date: Thu, 8 Mar 2012 00:17:27 +0000
+Subject: [PATCH] Fix .ctors/.dtors header configure test for bootstrapping.
+
+2012-03-08  Joseph Myers  <joseph@codesourcery.com>
+
+	* aclocal.m4 (LIBC_TRY_LINK_STATIC): New macro.
+	* configure.in (libc_cv_preinit_array): Use LIBC_TRY_LINK_STATIC.
+	(libc_cv_ctors_header): Likewise.  Use asm ("") instead of calling
+	puts.
+	* configure: Regenerated.
+
+diff -urN a/configure b/configure
+--- a/configure	2014-02-23 13:58:31.496061200 +0000
++++ b/configure	2014-02-23 13:58:41.892881400 +0000
+@@ -6036,18 +6036,21 @@
+     cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+ /* end confdefs.h.  */
+ 
+-int
+-main ()
+-{
++int _start (void) { return 0; }
++int __start (void) { return 0; }
+ 
+-__attribute__ ((constructor)) void ctor (void) { puts("ctor"); }
+-__attribute__ ((destructor))  void dtor (void) { puts("dtor"); }
++__attribute__ ((constructor)) void ctor (void) { asm(""); }
++__attribute__ ((destructor))  void dtor (void) { asm(""); }
+ 
+-  ;
+-  return 0;
+-}
+ _ACEOF
+-if ac_fn_c_try_link "$LINENO"; then :
++if { ac_try='${CC-cc} $CFLAGS $CPPFLAGS $LDFLAGS -o conftest
++		       conftest.c -static -nostartfiles -nostdlib
++		       1>&5'
++  { { eval echo "\"\$as_me\":${as_lineno-$LINENO}: \"$ac_try\""; } >&5
++  (eval $ac_try) 2>&5
++  ac_status=$?
++  $as_echo "$as_me:${as_lineno-$LINENO}: \$? = $ac_status" >&5
++  test $ac_status = 0; }; }; then :
+         if $READELF -WS conftest$ac_exeext | $AWK '
+ 	{ gsub(/\[ */, "[") }
+ 	$2 == ".ctors" || $2 == ".dtors" {

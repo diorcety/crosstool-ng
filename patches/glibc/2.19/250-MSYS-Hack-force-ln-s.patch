@@ -1,0 +1,39 @@
+diff -urN a/configure b/configure
+--- a/configure	2014-04-26 21:48:09.994124700 +0100
++++ b/configure	2014-04-26 21:48:40.261855900 +0100
+@@ -4475,6 +4475,16 @@
+ $as_echo "no, using $LN_S" >&6; }
+ fi
+ 
++# Even though 'ln -s' doesn't work right in MSYS2, it works enough for
++# eglibc, whereas cp -r doesn't.
++case "$build_os" in
++*mingw*)
++  as_ln_s='ln -s'
++  LN_S=$as_ln_s
++  { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: Hacked as_ln_s and LN_S to 'ln -s' for MSYS2" >&5
++$as_echo "$as_me: WARNING: Hacked as_ln_s and LN_S to 'ln -s' for MSYS2" >&2;}
++  ;;
++esac
+ 
+ # Was a --with-binutils option given?
+ if test -n "$path_binutils"; then
+diff -urN a/configure.ac b/configure.ac
+--- a/configure.ac	2014-04-26 21:48:09.995124800 +0100
++++ b/configure.ac	2014-04-26 21:48:40.267856300 +0100
+@@ -972,6 +972,15 @@
+   INSTALL='\$(..)./scripts/install-sh -c'
+ fi
+ AC_PROG_LN_S
++# Even though 'ln -s' doesn't work right in MSYS2, it works enough for
++# eglibc, whereas cp -r doesn't.
++case "$build_os" in
++*mingw*)
++  as_ln_s='ln -s'
++  LN_S=$as_ln_s
++  AC_MSG_WARN(Hacked as_ln_s and LN_S to 'ln -s' for MSYS2)
++  ;;
++esac
+ 
+ LIBC_PROG_BINUTILS
+ 

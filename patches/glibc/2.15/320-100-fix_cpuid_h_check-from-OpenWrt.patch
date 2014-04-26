@@ -1,0 +1,24 @@
+diff -urN a/sysdeps/i386/configure b/sysdeps/i386/configure
+--- a/sysdeps/i386/configure	2014-02-23 13:59:02.895048300 +0000
++++ b/sysdeps/i386/configure	2014-02-23 13:59:11.063085500 +0000
+@@ -632,7 +632,7 @@
+ done
+ 
+ 
+-ac_fn_c_check_header_mongrel "$LINENO" "cpuid.h" "ac_cv_header_cpuid_h" "$ac_includes_default"
++ac_fn_c_check_header_mongrel "$LINENO" "cpuid.h" "ac_cv_header_cpuid_h" ""
+ if test "x$ac_cv_header_cpuid_h" = xyes; then :
+ 
+ else
+diff -urN a/sysdeps/i386/configure.in b/sysdeps/i386/configure.in
+--- a/sysdeps/i386/configure.in	2014-02-23 13:59:02.895548400 +0000
++++ b/sysdeps/i386/configure.in	2014-02-23 13:59:11.061085300 +0000
+@@ -2,7 +2,7 @@
+ # Local configure fragment for sysdeps/i386.
+ 
+ AC_HEADER_CHECK([cpuid.h], ,
+-  [AC_MSG_ERROR([gcc must provide the <cpuid.h> header])])
++  [AC_MSG_ERROR([gcc must provide the <cpuid.h> header])], [])
+ 
+ AC_CACHE_CHECK(if -g produces usable source locations for assembler-with-cpp,
+ 	       libc_cv_cpp_asm_debuginfo, [dnl

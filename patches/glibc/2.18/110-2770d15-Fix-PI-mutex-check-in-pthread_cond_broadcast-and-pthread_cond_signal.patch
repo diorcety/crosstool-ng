@@ -1,20 +1,7 @@
-commit 2770d15e7e880821fc586619c59eb45180628e16
-Author: Siddhesh Poyarekar <siddhesh@redhat.com>
-Date:   Thu Oct 3 08:26:21 2013 +0530
-
-    Fix PI mutex check in pthread_cond_broadcast and pthread_cond_signal
-    
-    Fixes BZ #15996.
-    
-    The check had a typo - it checked for PTHREAD_MUTEX_ROBUST_NP instead
-    of PTHREAD_MUTEX_ROBUST_NORMAL_NP.  It has now been replaced by the
-    already existing convenience macro USE_REQUEUE_PI.
-
-diff --git a/NEWS b/NEWS
-index f64fb82..fb6069d 100644
---- a/NEWS
-+++ b/NEWS
-@@ -9,7 +9,7 @@ Version 2.18.1
+diff -urN a/NEWS b/NEWS
+--- a/NEWS	2014-02-23 14:21:54.507721000 +0000
++++ b/NEWS	2014-02-23 14:22:06.075189900 +0000
+@@ -9,7 +9,7 @@
  
  * The following bugs are resolved with this release:
  
@@ -23,10 +10,9 @@ index f64fb82..fb6069d 100644
  
  Version 2.18
  
-diff --git a/nptl/ChangeLog b/nptl/ChangeLog
-index eae5079..2d78490 100644
---- a/nptl/ChangeLog
-+++ b/nptl/ChangeLog
+diff -urN a/nptl/ChangeLog b/nptl/ChangeLog
+--- a/nptl/ChangeLog	2014-02-23 14:21:54.545225800 +0000
++++ b/nptl/ChangeLog	2014-02-23 14:22:06.080190500 +0000
 @@ -1,3 +1,12 @@
 +2013-10-03  Siddhesh Poyarekar  <siddhesh@redhat.com>
 +
@@ -40,11 +26,10 @@ index eae5079..2d78490 100644
  2013-07-23  David S. Miller  <davem@davemloft.net>
  
  	* tst-cancel4.c (WRITE_BUFFER_SIZE): Adjust comment.
-diff --git a/nptl/pthread_cond_broadcast.c b/nptl/pthread_cond_broadcast.c
-index 0702ec0..7ba9efa 100644
---- a/nptl/pthread_cond_broadcast.c
-+++ b/nptl/pthread_cond_broadcast.c
-@@ -63,10 +63,7 @@ __pthread_cond_broadcast (cond)
+diff -urN a/nptl/pthread_cond_broadcast.c b/nptl/pthread_cond_broadcast.c
+--- a/nptl/pthread_cond_broadcast.c	2014-02-23 14:21:54.572229200 +0000
++++ b/nptl/pthread_cond_broadcast.c	2014-02-23 14:22:06.081190700 +0000
+@@ -63,10 +63,7 @@
  
  #if (defined lll_futex_cmp_requeue_pi \
       && defined __ASSUME_REQUEUE_PI)
@@ -56,11 +41,10 @@ index 0702ec0..7ba9efa 100644
  	{
  	  if (lll_futex_cmp_requeue_pi (&cond->__data.__futex, 1, INT_MAX,
  					&mut->__data.__lock, futex_val,
-diff --git a/nptl/pthread_cond_signal.c b/nptl/pthread_cond_signal.c
-index 102d0b3..ffc35dc 100644
---- a/nptl/pthread_cond_signal.c
-+++ b/nptl/pthread_cond_signal.c
-@@ -49,14 +49,9 @@ __pthread_cond_signal (cond)
+diff -urN a/nptl/pthread_cond_signal.c b/nptl/pthread_cond_signal.c
+--- a/nptl/pthread_cond_signal.c	2014-02-23 14:21:54.573229300 +0000
++++ b/nptl/pthread_cond_signal.c	2014-02-23 14:22:06.082190800 +0000
+@@ -49,14 +49,9 @@
  
  #if (defined lll_futex_cmp_requeue_pi \
       && defined __ASSUME_REQUEUE_PI)
