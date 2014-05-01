@@ -26,6 +26,10 @@ config WINAPI_V_3_0_0
     bool
     prompt "3.0.0"
 
+config WINAPI_V_3_1_0
+    bool
+    prompt "3.1.0"
+
 config WINAPI_V_select
     bool
     prompt "Other version"
@@ -37,6 +41,7 @@ config WINAPI_VERSION
     prompt "Windows API version" if WINAPI_V_select
 # Don't remove next line
 # CT_INSERT_VERSION_STRING_BELOW
+    default "3.1.0" if WINAPI_V_3_1_0
     default "3.0.0" if WINAPI_V_3_0_0
     default "2.0.8" if WINAPI_V_2_0_8
     default "2.0.7" if WINAPI_V_2_0_7
