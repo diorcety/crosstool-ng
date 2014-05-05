@@ -1,0 +1,22 @@
+diff -urN a/lib/Target/X86/X86AsmPrinter.cpp b/lib/Target/X86/X86AsmPrinter.cpp
+--- a/lib/Target/X86/X86AsmPrinter.cpp	2014-05-05 14:25:30.913709871 +0200
++++ b/lib/Target/X86/X86AsmPrinter.cpp	2014-05-05 14:28:59.439352205 +0200
+@@ -544,13 +544,17 @@
+ 
+ void X86AsmPrinter::GenerateExportDirective(const MCSymbol *Sym, bool IsData) {
+   SmallString<128> name;
++  StringRef Name = Sym->getName();
+ 
+   if (Subtarget->isTargetWindows())
+     name += " /EXPORT:";
+   else
+     name += " -export:";
+ 
+-  name += Sym->getName();
++  if ((Subtarget->isTargetMingw() || Subtarget->isTargetCygwin()) && (Name[0] == '_'))
++    Name = Name.drop_front();
++
++  name += Name;
+ 
+   if (IsData) {
+     if (Subtarget->isTargetWindows())
