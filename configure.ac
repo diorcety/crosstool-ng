@@ -62,7 +62,7 @@ AC_ARG_ENABLE(
     [local],
     [AS_HELP_STRING(
         [--enable-local],
-        [don't install, and use current directory])])
+        [do not install, and use current directory])])
 AC_SUBST([enable_local], [${enable_local:-no}])
 AC_ARG_ENABLE(
     [shared],
@@ -149,9 +149,9 @@ AC_ARG_WITH([gperf],
     [GPERF=$withval])
 
 AC_PROG_RANLIB
-ACX_PATH_TOOL_REQ([OBJCOPY], [objcopy])
-ACX_PATH_TOOL_REQ([OBJDUMP], [objdump])
-ACX_PATH_TOOL_REQ([READELF], [readelf])
+ACX_PATH_TOOL_REQ([OBJCOPY], [gobjcopy objcopy])
+ACX_PATH_TOOL_REQ([OBJDUMP], [gobjdump objdump])
+ACX_PATH_TOOL_REQ([READELF], [greadelf readelf])
 ACX_PATH_TOOL_REQ([GPERF], [gperf])
 
 ACX_CHECK_PROGS_REQ([bison], [bison])
@@ -195,7 +195,7 @@ AC_CACHE_VAL([ac_cv_path__AWK],
                        [Specify the full PATH to GNU awk]),
         [ac_cv_path__AWK=$withval])])
 AC_CACHE_CHECK([for GNU awk], [ac_cv_path__AWK],
-    [AC_PATH_PROGS_FEATURE_CHECK([_AWK], [awk gawk],
+    [AC_PATH_PROGS_FEATURE_CHECK([_AWK], [gawk awk],
         [[_AWK_ver=$($ac_path__AWK --version 2>&1 \
                      |$EGREP '^GNU Awk ')
           test -n "$_AWK_ver" && ac_cv_path__AWK=$ac_path__AWK ac_path__AWK_found=:]],
@@ -211,7 +211,7 @@ AC_CACHE_VAL([ac_cv_path_MAKE],
                        [Specify the full PATH to GNU make >= 3.80]),
         [ac_cv_path_MAKE=$withval])])
 AC_CACHE_CHECK([for GNU make >= 3.80], [ac_cv_path_MAKE],
-    [AC_PATH_PROGS_FEATURE_CHECK([MAKE], [make gmake],
+    [AC_PATH_PROGS_FEATURE_CHECK([MAKE], [gmake make],
         [[MAKE_ver=$($ac_path_MAKE --version 2>&1 \
                      |$EGREP '^GNU Make (3.[89][[:digit:]]|[4-9])')
           test -n "$MAKE_ver" && ac_cv_path_MAKE=$ac_path_MAKE ac_path_MAKE_found=:]],
@@ -219,6 +219,20 @@ AC_CACHE_CHECK([for GNU make >= 3.80], [ac_cv_path_MAKE],
          AC_MSG_ERROR([could not find GNU make >= 3.80])])])
 AC_SUBST([MAKE], [$ac_cv_path_MAKE])
 AC_PROG_MAKE_SET
+
+# Check for GNU make 3.81 exactly, otherwise
+# it will be built as a companion tool.
+AC_MSG_CHECKING([for make 3.81])
+AS_IF(
+      [test "$MAKE_ver" = "GNU Make 3.81"],
+      [make381="y"
+       AC_MSG_RESULT([yes])
+      ],
+      [make381=
+       AC_MSG_RESULT([no])
+      ]
+     )
+ACX_SET_KCONFIG_OPTION([make381])
 
 #----------------------------------------
 # Check for libtool >= 1.5.26
@@ -228,7 +242,7 @@ AC_CACHE_VAL([ac_cv_path_LIBTOOL],
                        [Specify the full PATH to GNU libtool >= 1.5.26]),
         [ac_cv_path_LIBTOOL=$withval])])
 AC_CACHE_CHECK([for GNU libtool >= 1.5.26], [ac_cv_path_LIBTOOL],
-    [AC_PATH_PROGS_FEATURE_CHECK([LIBTOOL], [libtool],
+    [AC_PATH_PROGS_FEATURE_CHECK([LIBTOOL], [glibtool libtool],
         [[LIBTOOL_ver=$($ac_path_LIBTOOL --version 2>&1 \
                         |$EGREP '\(GNU libtool.*\) (2[[:digit:]]*\.|1\.6[[:digit:]]*\.|1\.5\.[2-9][[:digit:]]+)')
           test -n "$LIBTOOL_ver" && ac_cv_path_LIBTOOL=$ac_path_LIBTOOL ac_path_LIBTOOL_found=:]],
@@ -244,7 +258,7 @@ AC_CACHE_VAL([ac_cv_path_LIBTOOLIZE],
                        [Specify the full PATH to GNU libtoolize >= 1.5.26]),
         [ac_cv_path_LIBTOOLIZE=$withval])])
 AC_CACHE_CHECK([for GNU libtoolize >= 1.5.26], [ac_cv_path_LIBTOOLIZE],
-    [AC_PATH_PROGS_FEATURE_CHECK([LIBTOOLIZE], [libtoolize],
+    [AC_PATH_PROGS_FEATURE_CHECK([LIBTOOLIZE], [glibtoolize libtoolize],
         [[LIBTOOLIZE_ver=$($ac_path_LIBTOOLIZE --version 2>&1 \
                         |$EGREP '\(GNU libtool.*\) (2[[:digit:]]*\.|1\.6[[:digit:]]*\.|1\.5\.[2-9][[:digit:]]+)')
           test -n "$LIBTOOLIZE_ver" && ac_cv_path_LIBTOOLIZE=$ac_path_LIBTOOLIZE ac_path_LIBTOOLIZE_found=:]],
