@@ -1,0 +1,10 @@
+.build
+.config*
+autom4te.cache/*
+build.log
+config.log
+config.gen
+config.status
+ct-ng
+kconfig/*
+Makefile
