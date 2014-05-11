@@ -1,0 +1,32 @@
+# cctools options
+
+## depends on (ARCH_USE_MMU || BARE_METAL) && DARWIN
+## select LIBUUID_NEEDED
+## select OPENSSL_NEEDED
+## select LLVM_NEEDED
+##
+
+comment "Apple cctools"
+
+choice
+    bool
+    prompt "cctools version"
+# Don't remove next line
+# CT_INSERT_VERSION_BELOW
+
+config CCTOOLS_V_809
+    bool
+    prompt "809"
+
+config CCTOOLS_V_806
+    bool
+    prompt "806"
+
+endchoice
+
+config BINUTILS_VERSION
+    string
+# Don't remove next line
+# CT_INSERT_VERSION_STRING_BELOW
+    default "809" if CCTOOLS_V_809
+    default "806" if CCTOOLS_V_806

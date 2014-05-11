@@ -1,0 +1,12 @@
+diff -urN a/gcc/config/darwin.c b/gcc/config/darwin.c
+--- a/gcc/config/darwin.c	2013-05-31 00:32:07.936739337 +0100
++++ b/gcc/config/darwin.c	2013-05-31 00:32:08.874746775 +0100
+@@ -1576,7 +1576,7 @@
+ }
+ 
+ /* LLVM LOCAL begin */
+-extern char * mempcpy (char *dst, const char *src, size_t len);
++//extern char * mempcpy (char *dst, const char *src, size_t len);
+ char *darwin_build_sysroot_path(const char *sysroot, const char *path) {
+   char *str = NULL;
+   char *str1 = NULL;

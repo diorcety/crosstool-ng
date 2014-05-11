@@ -1,0 +1,12 @@
+diff -urN a/llvmCore/utils/TableGen/FastISelEmitter.cpp b/llvmCore/utils/TableGen/FastISelEmitter.cpp
+--- a/llvmCore/utils/TableGen/FastISelEmitter.cpp	2013-07-11 16:14:20 +0100
++++ b/llvmCore/utils/TableGen/FastISelEmitter.cpp	2013-07-11 16:16:35 +0100
+@@ -356,7 +356,7 @@
+     InstructionMemo Memo = {
+       Pattern.getDstPattern()->getOperator()->getName(),
+       DstRC,
+-      SubRegNo,
++      (unsigned char)SubRegNo,
+       PhysRegInputs
+     };
+     assert(!SimplePatterns[Operands][OpcodeName][VT][RetVT].count(PredicateCheck) &&

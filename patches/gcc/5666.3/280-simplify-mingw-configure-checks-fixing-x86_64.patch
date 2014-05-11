@@ -1,0 +1,165 @@
+diff -urN a/configure b/configure
+--- a/configure	2014-01-12 01:04:56.295567600 +0000
++++ b/configure	2014-01-12 01:06:43.828718100 +0000
+@@ -1109,7 +1109,7 @@
+   i[3456789]86-*-go32* | i[3456789]86-*-msdosdjgpp*)
+     noconfigdirs="$noconfigdirs tcl tk expect dejagnu send-pr uudecode guile itcl gnuserv libffi"
+     ;;
+-  i[3456789]86-*-mingw32*)
++  *-*-mingw*)
+     # noconfigdirs="tcl tk expect dejagnu make texinfo bison patch flex byacc send-pr uudecode dejagnu diff guile perl itcl gnuserv"
+     noconfigdirs="$noconfigdirs expect dejagnu autoconf automake send-pr rcs guile perl texinfo libtool newlib"
+     ;;
+@@ -1460,7 +1460,7 @@
+     # if the --with-newlib option has been given, because otherwise
+     # 'target-newlib' will appear in skipdirs.
+     ;;
+-  i[3456789]86-*-mingw32*)
++  *-*-mingw*)
+     target_configdirs="$target_configdirs target-winsup"
+     noconfigdirs="$noconfigdirs expect target-libgloss target-newlib ${libgcj}"
+     ;;    
+@@ -1774,7 +1774,7 @@
+   *-cygwin*)
+     host_makefile_frag="config/mh-cygwin"
+     ;;
+-  *-mingw32*)
++  *-mingw*)
+     ;;
+   *-interix*)
+     host_makefile_frag="config/mh-interix"
+diff -urN a/configure.in b/configure.in
+--- a/configure.in	2014-01-12 01:04:56.296567600 +0000
++++ b/configure.in	2014-01-12 01:07:11.902323800 +0000
+@@ -277,7 +277,7 @@
+   i[[3456789]]86-*-go32* | i[[3456789]]86-*-msdosdjgpp*)
+     noconfigdirs="$noconfigdirs tcl tk expect dejagnu send-pr uudecode guile itcl gnuserv libffi"
+     ;;
+-  i[[3456789]]86-*-mingw32*)
++  *-*-mingw*)
+     # noconfigdirs="tcl tk expect dejagnu make texinfo bison patch flex byacc send-pr uudecode dejagnu diff guile perl itcl gnuserv"
+     noconfigdirs="$noconfigdirs expect dejagnu autoconf automake send-pr rcs guile perl texinfo libtool newlib"
+     ;;
+@@ -620,7 +620,7 @@
+     # if the --with-newlib option has been given, because otherwise
+     # 'target-newlib' will appear in skipdirs.
+     ;;
+-  i[[3456789]]86-*-mingw32*)
++  *-*-mingw*)
+     target_configdirs="$target_configdirs target-winsup"
+     noconfigdirs="$noconfigdirs expect target-libgloss target-newlib ${libgcj}"
+     ;;    
+@@ -934,7 +934,7 @@
+   *-cygwin*)
+     host_makefile_frag="config/mh-cygwin"
+     ;;
+-  *-mingw32*)
++  *-mingw*)
+     ;;
+   *-interix*)
+     host_makefile_frag="config/mh-interix"
+diff -urN a/gcc/config.build b/gcc/config.build
+--- a/gcc/config.build	2014-01-12 01:04:56.545581900 +0000
++++ b/gcc/config.build	2014-01-12 01:07:23.290975200 +0000
+@@ -77,7 +77,7 @@
+     build_xm_file=i386/xm-cygwin.h
+     build_exeext=.exe
+     ;;
+-  i[34567]86-*-mingw32*)
++  *-*-mingw*)
+     build_xm_file=i386/xm-mingw32.h
+     build_exeext=.exe
+     ;;
+diff -urN a/gcc/config.gcc b/gcc/config.gcc
+--- a/gcc/config.gcc	2014-01-12 01:04:56.546581900 +0000
++++ b/gcc/config.gcc	2014-01-12 01:07:40.686970200 +0000
+@@ -1326,7 +1326,7 @@
+ 		thread_file='posix'
+ 	fi
+ 	;;
+-i[34567]86-*-mingw32*)
++*-*-mingw*)
+ 	tm_file="${tm_file} i386/unix.h i386/bsd.h i386/gas.h dbxcoff.h i386/cygming.h i386/mingw32.h"
+ 	xm_file=i386/xm-mingw32.h
+ 	tmake_file="i386/t-cygming i386/t-mingw32"
+@@ -1344,7 +1344,7 @@
+ 		*mingw32crt*)
+ 			tm_file="${tm_file} i386/crtdll.h"
+ 			;;
+-		*mingw32msv* | *mingw32*)
++		*mingw*)
+ 			;;
+ 	esac
+ 	;;
+diff -urN a/gcc/config.host b/gcc/config.host
+--- a/gcc/config.host	2014-01-12 01:04:56.546581900 +0000
++++ b/gcc/config.host	2014-01-12 01:07:47.775375700 +0000
+@@ -179,7 +179,7 @@
+     host_xmake_file="${host_xmake_file} i386/x-cygwin"
+     host_exeext=.exe
+     ;;
+-  i[34567]86-*-mingw32*)
++  *-*-mingw*)
+     host_xm_file=i386/xm-mingw32.h
+     host_xmake_file="${host_xmake_file} i386/x-mingw32"
+     host_exeext=.exe
+diff -urN a/gcc/configure b/gcc/configure
+--- a/gcc/configure	2014-01-12 01:04:56.547582000 +0000
++++ b/gcc/configure	2014-01-12 01:07:57.853952100 +0000
+@@ -15322,7 +15322,7 @@
+ 
+   i[34567]86-*-* | x86_64-*-*)
+     case $target_os in
+-      cygwin* | pe | mingw32*)
++      cygwin* | pe | mingw*)
+ 	# Used for DWARF 2 in PE
+ 	echo "$as_me:$LINENO: checking assembler for .secrel32 relocs" >&5
+ echo $ECHO_N "checking assembler for .secrel32 relocs... $ECHO_C" >&6
+diff -urN a/gcc/configure.ac b/gcc/configure.ac
+--- a/gcc/configure.ac	2014-01-12 01:04:56.548582000 +0000
++++ b/gcc/configure.ac	2014-01-12 01:08:06.893469100 +0000
+@@ -2822,7 +2822,7 @@
+   i[34567]86-*-* | x86_64-*-*)
+ changequote([,])dnl
+     case $target_os in
+-      cygwin* | pe | mingw32*)
++      cygwin* | pe | mingw*)
+ 	# Used for DWARF 2 in PE
+ 	gcc_GAS_CHECK_FEATURE([.secrel32 relocs],
+ 	  gcc_cv_as_ix86_pe_secrel32,
+diff -urN a/libgomp/configure.tgt b/libgomp/configure.tgt
+--- a/libgomp/configure.tgt	2014-01-12 01:04:56.872600600 +0000
++++ b/libgomp/configure.tgt	2014-01-12 01:08:11.618739400 +0000
+@@ -96,7 +96,7 @@
+ 	XLDFLAGS="${XLDFLAGS} -lrt"
+ 	;;
+ 
+-  *-*-mingw32*)
++  *-*-mingw*)
+ 	config_path="mingw32 posix"
+ 	;;
+ 
+diff -urN a/libiberty/configure b/libiberty/configure
+--- a/libiberty/configure	2014-01-12 01:04:56.965605900 +0000
++++ b/libiberty/configure	2014-01-12 01:08:17.659084900 +0000
+@@ -6079,7 +6079,7 @@
+     fi
+     ;;
+ 
+-  *-*-mingw32*)
++  *-*-mingw*)
+     # Under mingw32, sys_nerr and sys_errlist exist, but they are
+     # macros, so the test below won't find them.
+     libiberty_cv_var_sys_nerr=yes
+diff -urN a/libiberty/configure.ac b/libiberty/configure.ac
+--- a/libiberty/configure.ac	2014-01-12 01:04:56.966606000 +0000
++++ b/libiberty/configure.ac	2014-01-12 01:08:25.596538900 +0000
+@@ -582,7 +582,7 @@
+     fi
+     ;;
+ 
+-  *-*-mingw32*)
++  *-*-mingw*)
+     # Under mingw32, sys_nerr and sys_errlist exist, but they are
+     # macros, so the test below won't find them.
+     libiberty_cv_var_sys_nerr=yes

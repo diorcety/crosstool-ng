@@ -27,6 +27,7 @@ do_gmp_extract() {
 # - install in build-tools prefix
 do_gmp_for_build() {
     local -a gmp_opts
+    local -a extra_config
 
     case "${CT_TOOLCHAIN_TYPE}" in
         native|cross)   return 0;;
@@ -79,12 +80,20 @@ do_gmp_backend() {
         eval "${arg// /\\ }"
     done
 
+    # Force ABI if bitness is forced
+    case "${cflags}" in
+        *-m32*)  extra_config+=("ABI=32");;
+        *-m64*)  extra_config+=("ABI=64");;
+    esac
+
     CT_DoLog EXTRA "Configuring GMP"
+
+    local relpath="$(CT_FindRelativePath "${PWD}" "${CT_SRC_DIR}/gmp-${CT_GMP_VERSION}")"
 
     CT_DoExecLog CFG                                \
     CFLAGS="${cflags} -fexceptions"                 \
     LDFLAGS="${ldflags}"                            \
-    "${CT_SRC_DIR}/gmp-${CT_GMP_VERSION}/configure" \
+    "${relpath}/configure"                          \
         --build=${CT_BUILD}                         \
         --host=${host}                              \
         --prefix="${prefix}"                        \
@@ -92,7 +101,8 @@ do_gmp_backend() {
         --enable-mpbsd                              \
         --enable-cxx                                \
         --disable-shared                            \
-        --enable-static
+        --enable-static                             \
+        "${extra_config[@]}"                        \
 
     CT_DoLog EXTRA "Building GMP"
     CT_DoExecLog ALL make ${JOBSFLAGS}

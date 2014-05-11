@@ -1,0 +1,64 @@
+diff -urN a/gcc/configure b/gcc/configure
+--- a/gcc/configure	2013-10-06 21:46:33.262482503 +0100
++++ b/gcc/configure	2013-10-06 21:47:13.823109754 +0100
+@@ -8951,6 +8951,12 @@
+  elif test -x "$LLVMBASEPATH/Debug-Asserts+Checks/bin/llc$EXEEXT"; then
+      echo Found Debug-Asserts+Checks LLVM Tree in $LLVMBASEPATH
+      LLVMBUILDMODE="Debug-Asserts+Checks"
++ elif test -x "$LLVMBASEPATH/Release+Asserts/bin/llc$EXEEXT"; then
++     echo Found Release+Asserts LLVM Tree in $LLVMBASEPATH
++     LLVMBUILDMODE="Release+Asserts"
++ elif test -x "$LLVMBASEPATH/Debug+Asserts/bin/llc$EXEEXT"; then
++     echo Found Debug+Asserts LLVM Tree in $LLVMBASEPATH
++     LLVMBUILDMODE="Debug+Asserts"
+  elif test -x "$LLVMBASEPATH/bin/llc$EXEEXT"; then
+      echo Found Installed LLVM Tree in $LLVMBASEPATH
+  elif test x$LLVMBUILDMODE = x; then
+diff -urN a/gcc/configure.ac b/gcc/configure.ac
+--- a/gcc/configure.ac	2013-10-06 21:46:33.262482503 +0100
++++ b/gcc/configure.ac	2013-10-06 21:47:13.829776521 +0100
+@@ -883,6 +883,12 @@
+  elif test -x "$LLVMBASEPATH/Debug-Asserts+Checks/bin/llc$EXEEXT"; then
+      echo Found Debug-Asserts+Checks LLVM Tree in $LLVMBASEPATH
+      LLVMBUILDMODE="Debug-Asserts+Checks"
++ elif test -x "$LLVMBASEPATH/Release+Asserts/bin/llc$EXEEXT"; then
++     echo Found Release+Asserts LLVM Tree in $LLVMBASEPATH
++     LLVMBUILDMODE="Release+Asserts"
++ elif test -x "$LLVMBASEPATH/Debug+Asserts/bin/llc$EXEEXT"; then
++     echo Found Debug+Asserts LLVM Tree in $LLVMBASEPATH
++     LLVMBUILDMODE="Debug+Asserts"
+  elif test -x "$LLVMBASEPATH/bin/llc$EXEEXT"; then
+      echo Found Installed LLVM Tree in $LLVMBASEPATH
+  elif test x$LLVMBUILDMODE = x; then
+diff -urN a/libcpp/configure b/libcpp/configure
+--- a/libcpp/configure	2007-10-15 22:59:22.000000000 +0100
++++ b/libcpp/configure	2013-10-06 21:47:28.099997158 +0100
+@@ -8310,6 +8310,12 @@
+  elif test -x "$LLVMBASEPATH/Debug-Asserts+Checks/bin/llc$EXEEXT"; then
+      echo Found Debug-Asserts+Checks LLVM Tree in $LLVMBASEPATH
+      LLVMBUILDMODE="Debug-Asserts+Checks"
++ elif test -x "$LLVMBASEPATH/Release+Asserts/bin/llc$EXEEXT"; then
++     echo Found Release+Asserts LLVM Tree in $LLVMBASEPATH
++     LLVMBUILDMODE="Release+Asserts"
++ elif test -x "$LLVMBASEPATH/Debug+Asserts/bin/llc$EXEEXT"; then
++     echo Found Debug+Asserts LLVM Tree in $LLVMBASEPATH
++     LLVMBUILDMODE="Debug+Asserts"
+  elif test -x "$LLVMBASEPATH/bin/llc$EXEEXT"; then
+      echo Found Installed LLVM Tree in $LLVMBASEPATH
+  else
+diff -urN a/libcpp/configure.ac b/libcpp/configure.ac
+--- a/libcpp/configure.ac	2007-10-15 22:59:22.000000000 +0100
++++ b/libcpp/configure.ac	2013-10-06 21:47:28.103330510 +0100
+@@ -186,6 +186,12 @@
+  elif test -x "$LLVMBASEPATH/Debug-Asserts+Checks/bin/llc$EXEEXT"; then
+      echo Found Debug-Asserts+Checks LLVM Tree in $LLVMBASEPATH
+      LLVMBUILDMODE="Debug-Asserts+Checks"
++ elif test -x "$LLVMBASEPATH/Release+Asserts/bin/llc$EXEEXT"; then
++     echo Found Release+Asserts LLVM Tree in $LLVMBASEPATH
++     LLVMBUILDMODE="Release+Asserts"
++ elif test -x "$LLVMBASEPATH/Debug+Asserts/bin/llc$EXEEXT"; then
++     echo Found Debug+Asserts LLVM Tree in $LLVMBASEPATH
++     LLVMBUILDMODE="Debug+Asserts"
+  elif test -x "$LLVMBASEPATH/bin/llc$EXEEXT"; then
+      echo Found Installed LLVM Tree in $LLVMBASEPATH
+  else

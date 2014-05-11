@@ -1,0 +1,100 @@
+# Compiler options 
+#
+## select CC_SUPPORT_CXX
+## select CC_SUPPORT_FORTRAN
+## select CC_SUPPORT_JAVA
+## select CC_SUPPORT_ADA
+## select CC_SUPPORT_OBJC
+## select CC_SUPPORT_OBJCXX
+## select LLVM_NEEDED
+## select LLVM_CLANG_NEEDED
+##
+## help gcc is the full-blown GNU compiler. This is what most people will choose.
+## help
+## help gcc supports many languages, a powerful code parser, optimised binary
+## help output, and lots of other features.
+
+
+choice
+    bool
+    prompt "clang version"
+# Don't remove next line
+# CT_INSERT_VERSION_BELOW
+
+config CC_CLANG_V_HEAD
+    bool
+    depends on LLVM_V_HEAD
+    select CC_CLANG_NEED_COMPILER_RT
+    prompt "head (git)"
+
+config CC_CLANG_V_3_5
+    bool
+    depends on LLVM_V_3_5
+    select CC_CLANG_NEED_COMPILER_RT
+    prompt "3.5"
+
+config CC_CLANG_V_3_4
+    bool
+    depends on LLVM_V_3_4
+    select CC_CLANG_NEED_COMPILER_RT
+    prompt "3.4"
+
+config CC_CLANG_V_3_3
+    bool
+    depends on LLVM_V_3_3
+    select CC_CLANG_NEED_COMPILER_RT
+    prompt "3.3"
+
+config CC_CLANG_V_3_2
+    bool
+    depends on LLVM_V_3_2
+    select CC_CLANG_NEED_COMPILER_RT
+    prompt "3.2"
+
+config CC_CLANG_V_3_1
+    bool
+    depends on LLVM_V_3_1
+    select CC_CLANG_NEED_COMPILER_RT
+    prompt "3.1"
+
+config CC_CLANG_V_3_0
+    bool
+    depends on LLVM_V_3_0
+    prompt "3.0"
+
+config CC_CLANG_V_2_9
+    bool
+    depends on LLVM_V_2_9
+    prompt "2.9"
+
+config CC_CLANG_V_2_8
+    bool
+    depends on LLVM_V_2_8
+    prompt "2.8"
+    
+config CC_CLANG_V_2_7
+    bool
+    depends on LLVM_V_2_7
+    prompt "2.7"
+    
+endchoice
+
+config CC_CLANG_NEED_COMPILER_RT
+    bool
+
+config CC_CLANG_VERSION
+    string
+# Don't remove next line
+# CT_INSERT_VERSION_STRING_BELOW
+    default "head" if CC_CLANG_V_HEAD
+    default "3.5" if CC_CLANG_V_3_5
+    default "3.4" if CC_CLANG_V_3_4
+    default "3.3" if CC_CLANG_V_3_3
+    default "3.2" if CC_CLANG_V_3_2
+    default "3.1" if CC_CLANG_V_3_1
+    default "3.0" if CC_CLANG_V_3_0
+    default "2.9" if CC_CLANG_V_2_9
+    default "2.8" if CC_CLANG_V_2_8
+    default "2.7" if CC_CLANG_V_2_7
+
+source "config/cc/clang.in.2"

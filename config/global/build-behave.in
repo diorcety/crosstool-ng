@@ -18,6 +18,16 @@ config PARALLEL_JOBS
 
       Enter 0 to set automatically based on how many processors the host has.
 
+config PARALLEL_JOBS_OUTPUT_SYNC
+    string
+    prompt "Use gnumake's --output-sync=<value>" if ! BACKEND
+    default ""
+    help
+      GNUMake 4.0 added --output-sync option which collates the output from
+      each command invocation rather than intermingling them on the screen.
+      valid options for this are an empty string (i.e. the feature is disabled)
+      line, target or recurse.
+
 config LOAD
     string
     prompt "Maximum allowed load" if ! BACKEND

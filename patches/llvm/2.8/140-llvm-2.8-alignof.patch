@@ -1,0 +1,55 @@
+diff -urN a/include/llvm/ADT/StringMap.h b/include/llvm/ADT/StringMap.h
+--- a/include/llvm/ADT/StringMap.h	2010-07-23 05:29:59.000000000 +0200
++++ b/include/llvm/ADT/StringMap.h	2013-09-06 00:08:46.834487903 +0200
+@@ -167,7 +167,7 @@
+ 
+     unsigned AllocSize = static_cast<unsigned>(sizeof(StringMapEntry))+
+       KeyLength+1;
+-    unsigned Alignment = alignof<StringMapEntry>();
++    unsigned Alignment = alignOf<StringMapEntry>();
+ 
+     StringMapEntry *NewItem =
+       static_cast<StringMapEntry*>(Allocator.Allocate(AllocSize,Alignment));
+diff -urN a/include/llvm/CodeGen/SlotIndexes.h b/include/llvm/CodeGen/SlotIndexes.h
+--- a/include/llvm/CodeGen/SlotIndexes.h	2010-08-11 18:50:17.000000000 +0200
++++ b/include/llvm/CodeGen/SlotIndexes.h	2013-09-06 00:08:46.838487818 +0200
+@@ -415,7 +415,7 @@
+       IndexListEntry *entry =
+         static_cast<IndexListEntry*>(
+           ileAllocator.Allocate(sizeof(IndexListEntry),
+-          alignof<IndexListEntry>()));
++          alignOf<IndexListEntry>()));
+ 
+       new (entry) IndexListEntry(mi, index);
+ 
+diff -urN a/include/llvm/Support/AlignOf.h b/include/llvm/Support/AlignOf.h
+--- a/include/llvm/Support/AlignOf.h	2009-02-20 23:51:36.000000000 +0100
++++ b/include/llvm/Support/AlignOf.h	2013-09-06 00:08:46.838487818 +0200
+@@ -49,12 +49,12 @@
+ 
+ };
+ 
+-/// alignof - A templated function that returns the mininum alignment of
++/// alignOf - A templated function that returns the mininum alignment of
+ ///  of a type.  This provides no extra functionality beyond the AlignOf
+ ///  class besides some cosmetic cleanliness.  Example usage:
+-///  alignof<int>() returns the alignment of an int.
++///  alignOf<int>() returns the alignment of an int.
+ template <typename T>
+-static inline unsigned alignof() { return AlignOf<T>::Alignment; }
++static inline unsigned alignOf() { return AlignOf<T>::Alignment; }
+ 
+ } // end namespace llvm
+ #endif
+diff -urN a/include/llvm/Support/Allocator.h b/include/llvm/Support/Allocator.h
+--- a/include/llvm/Support/Allocator.h	2010-04-08 17:22:35.000000000 +0200
++++ b/include/llvm/Support/Allocator.h	2013-09-06 00:08:46.838487818 +0200
+@@ -201,7 +201,7 @@
+       char *End = Slab == Allocator.CurSlab ? Allocator.CurPtr :
+                                               (char *)Slab + Slab->Size;
+       for (char *Ptr = (char*)(Slab+1); Ptr < End; Ptr += sizeof(T)) {
+-        Ptr = Allocator.AlignPtr(Ptr, alignof<T>());
++        Ptr = Allocator.AlignPtr(Ptr, alignOf<T>());
+         if (Ptr + sizeof(T) <= End)
+           reinterpret_cast<T*>(Ptr)->~T();
+       }

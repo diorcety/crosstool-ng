@@ -60,6 +60,39 @@ config ALLOW_BUILD_AS_ROOT_SURE
     prompt "Are you sure?"
     depends on ALLOW_BUILD_AS_ROOT
 
+config EXPORT_BUILD_TOOLS
+    bool
+    prompt "Export std env. vars for build toolchain"
+    default n
+    help
+      If you say 'y' here, then the following variables are set to the
+      appropriate buildtools' wrapper script and exported:
+      AR, AS, CC, CXX, DLLTOOL, LD, NM, OBJCOPY,
+      OBJDUMP, RANLIB, STRIP and WINDRES.
+
+      This allows some (usually old) software that does not support cross
+      compilation properly to be built for the build machine using the tools
+      specified via --build=, as opposed to using the system toolchain.
+
+      An unfortunate side effect is that some software (again that does not
+      support cross compilation properly) may then fail to build for the host
+      machine. MinGW-w64 v2.0.7's crt falls into this category.
+
+      Usually these problems manifest when some things use --build properly
+      and some things don't and the linker then fails to link them.
+
+config SRC_REFERENCE_DATETIME
+    string
+    prompt "Date and time to set on all source files"
+    default ""
+    help
+      If you are using a repeatable builds system such as bitcoin gitian then
+      you can use this option to force a specific date and time on the source
+      files (post patching).
+
+      A sample value is '199912312359.59'. A blank value will avoid doing
+      this operation.
+
 config DEBUG_CT
     bool
     prompt "Debug crosstool-NG"

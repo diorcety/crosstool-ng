@@ -1,0 +1,11 @@
+diff -urN a/gcc/config/rs6000/t-darwin b/gcc/config/rs6000/t-darwin
+--- a/gcc/config/rs6000/t-darwin	2010-10-14 22:27:49.000000000 +0200
++++ b/gcc/config/rs6000/t-darwin	2013-12-12 19:58:36.759048443 +0100
+@@ -26,7 +26,6 @@
+ # APPLE LOCAL end gcov 5573505
+ 
+ # APPLE LOCAL 5901604 6499452
+-MULTILIB_EXTRA_OPTS = isysroot/Developer/SDKs/MacOSX10.5.sdk mmacosx-version-min=10.5
+ 
+ # Export the _xlq* symbols from darwin-ldouble.c.
+ SHLIB_MAPFILES += $(srcdir)/config/rs6000/libgcc-ppc64.ver

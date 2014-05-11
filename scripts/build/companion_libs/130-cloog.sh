@@ -134,6 +134,8 @@ do_cloog_backend() {
         --build=${CT_BUILD}                     \
         --host=${host}                          \
         --prefix="${prefix}"                    \
+        --with-gmp="${prefix}"                  \
+        --with-ppl="${prefix}"                  \
         --with-bits=gmp                         \
         --with-host-libstdcxx='-lstdc++'        \
         --disable-shared                        \

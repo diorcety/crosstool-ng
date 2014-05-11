@@ -90,7 +90,7 @@ CT_DoExecLog DEBUG rm -f "${CT_WORK_DIR}/backtrace"
 
 # Check build file system case-sensitiveness
 CT_DoExecLog DEBUG touch "${CT_WORK_DIR}/foo"
-CT_TestAndAbort "Your file system in '${CT_WORK_DIR}' is *not* case-sensitive!" -f "${CT_WORK_DIR}/FOO"
+CT_TestAndWarn "Your file system in '${CT_WORK_DIR}' is *not* case-sensitive!" -f "${CT_WORK_DIR}/FOO"
 CT_DoExecLog DEBUG rm -f "${CT_WORK_DIR}/foo"
 
 # Check the user is using an existing SHELL to be used by ./configure and Makefiles
@@ -143,7 +143,7 @@ CT_DoLog INFO "Building environment variables"
 . "${CT_LIB_DIR}/scripts/build/companion_libs.sh"
 . "${CT_LIB_DIR}/scripts/build/binutils/${CT_BINUTILS}.sh"
 . "${CT_LIB_DIR}/scripts/build/libc/${CT_LIBC}.sh"
-. "${CT_LIB_DIR}/scripts/build/cc/${CT_CC}.sh"
+. "${CT_LIB_DIR}/scripts/build/cc.sh"
 . "${CT_LIB_DIR}/scripts/build/debug.sh"
 . "${CT_LIB_DIR}/scripts/build/test_suite.sh"
 
@@ -165,8 +165,10 @@ CT_PREFIX_DIR="$( "${sed}" -r -e 's:/+:/:g; s:/*$::;' <<<"${CT_PREFIX_DIR}" )"
 # Put user-supplied flags at the end, so that they take precedence.
 CT_TARGET_CFLAGS="${CT_ARCH_TARGET_CFLAGS} ${CT_TARGET_CFLAGS}"
 CT_TARGET_LDFLAGS="${CT_ARCH_TARGET_LDFLAGS} ${CT_TARGET_LDFLAGS}"
-CT_CC_CORE_EXTRA_CONFIG_ARRAY=( ${CT_ARCH_CC_CORE_EXTRA_CONFIG} "${CT_CC_CORE_EXTRA_CONFIG_ARRAY[@]}" )
-CT_CC_EXTRA_CONFIG_ARRAY=( ${CT_ARCH_CC_EXTRA_CONFIG} "${CT_CC_EXTRA_CONFIG_ARRAY[@]}" )
+CT_CC_GCC_CORE_EXTRA_CONFIG_ARRAY=( ${CT_ARCH_CC_CORE_EXTRA_CONFIG} "${CT_CC_GCC_CORE_EXTRA_CONFIG_ARRAY[@]}" )
+CT_CC_GCC_EXTRA_CONFIG_ARRAY=( ${CT_ARCH_CC_EXTRA_CONFIG} "${CT_CC_GCC_EXTRA_CONFIG_ARRAY[@]}" )
+CT_CC_LLVMGCC_CORE_EXTRA_CONFIG_ARRAY=( ${CT_ARCH_CC_CORE_EXTRA_CONFIG} "${CT_CC_LLVMGCC_CORE_EXTRA_CONFIG_ARRAY[@]}" )
+CT_CC_LLVMGCC_EXTRA_CONFIG_ARRAY=( ${CT_ARCH_CC_EXTRA_CONFIG} "${CT_CC_LLVMGCC_EXTRA_CONFIG_ARRAY[@]}" )
 
 # Compute the package version string
 CT_PKGVERSION="crosstool-NG ${CT_VERSION}${CT_TOOLCHAIN_PKGVERSION:+ - ${CT_TOOLCHAIN_PKGVERSION}}"
@@ -272,7 +274,7 @@ CT_DoExecLog ALL mkdir -p "${CT_HOST_COMPLIBS_DIR}"
 
 # Check install file system case-sensitiveness
 CT_DoExecLog DEBUG touch "${CT_PREFIX_DIR}/foo"
-CT_TestAndAbort "Your file system in '${CT_PREFIX_DIR}' is *not* case-sensitive!" -f "${CT_PREFIX_DIR}/FOO"
+CT_TestAndWarn "Your file system in '${CT_PREFIX_DIR}' is *not* case-sensitive!" -f "${CT_PREFIX_DIR}/FOO"
 CT_DoExecLog DEBUG rm -f "${CT_PREFIX_DIR}/foo"
 
 # Kludge: CT_INSTALL_DIR and CT_PREFIX_DIR might have grown read-only if
@@ -406,17 +408,34 @@ if [ -z "${CT_RESTART}" ]; then
     # cross-tools for those mangled tuples.
     CT_DoLog DEBUG "Making build system tools available"
     for m in ${install_build_tools_for}; do
-        r="CT_REAL_${m}"
-        v="CT_${m}"
-        p="CT_${m}_PREFIX"
-        s="CT_${m}_SUFFIX"
+        # Without CT_CANADIAN, CT_HOST_PREFIX and CT_HOST_SUFFIX will
+        # always contain nothing, in this case, substitute with BUILD
+        BMACH=${m}
+        if [ ! "$CT_CANADIAN" = "y" -a "${m}" = "HOST" ]; then
+            BMACH=BUILD
+        fi
+        r="CT_REAL_${BMACH}"
+        v="CT_${BMACH}"
+        p="CT_${BMACH}_PREFIX"
+        s="CT_${BMACH}_SUFFIX"
         if [ -n "${!p}" ]; then
             t="${!p}"
         else
             t="${!r}-"
         fi
 
-        for tool in ar as dlltool gcc g++ gcj gnatbind gnatmake ld nm objcopy objdump ranlib strip windres; do
+        # Format is toolname,varname. If varname specified and CT_EXPORT_BUILD_TOOLS then export it.
+        for tool in ar,AR as,AS dlltool,DLLTOOL gcc,CC g++,CXX c++ gcj gnatbind gnatmake ld,LD nm,NM objcopy,OBJCOPY objdump,OBJDUMP ranlib,RANLIB strip,STRIP windres,WINDRES; do
+            case "${tool}" in
+                *,*)
+                    expvar=$(echo "${tool}" | sed "s,^.*\,\(.*\),\1,")
+                    tool=$(echo "${tool}" | sed "s,^\(.*\)\,.*,\1,")
+                    ;;
+                *)
+                    expvar=
+                    ;;
+            esac
+
             # First try with prefix + suffix
             # Then try with prefix only
             # Then try with suffix only, but only for BUILD, and HOST iff REAL_BUILD == REAL_HOST
@@ -437,11 +456,16 @@ if [ -z "${CT_RESTART}" ]; then
                 where=$(CT_Which "${tool}")
             fi
 
-            # Not all tools are available for all platforms, but some are required.
+            # Not all tools are available for all platforms, but some are really,
+            # bally needed
             if [ -n "${where}" ]; then
                 CT_DoLog DEBUG "  '${!v}-${tool}' -> '${where}'"
                 printf "#${BANG}${CT_CONFIG_SHELL}\nexec '${where}' \"\${@}\"\n" >"${CT_BUILDTOOLS_PREFIX_DIR}/bin/${!v}-${tool}"
                 CT_DoExecLog ALL chmod 700 "${CT_BUILDTOOLS_PREFIX_DIR}/bin/${!v}-${tool}"
+                if [ -n "$expvar" -a "$CT_EXPORT_BUILD_TOOLS" = "y" ]; then
+                    CT_DoLog ALL "export '$expvar=${!v}-${tool}'"
+                    eval export "'$expvar=${!v}-${tool}'"
+                fi
             else
                 case "${tool}" in
                     # We'll at least need some of them...
@@ -450,7 +474,7 @@ if [ -z "${CT_RESTART}" ]; then
                         ;;
                     # Some are conditionnally required
                     # Add them in alphabetical (C locale) ordering
-                    g++)
+                    g++|c++)
                         # g++ (needed for companion lib), only needed for HOST
                         CT_TestAndAbort "Missing: '${t}${tool}${!s}' or '${t}${tool}' or '${tool}' : either needed!" "${m}" = "HOST"
                         ;;
@@ -492,17 +516,31 @@ if [ -z "${CT_RESTART}" ]; then
     # Help build gcc
     # Explicitly optimise, else the lines below will overide the
     # package's default optimisation flags
-    CT_CFLAGS_FOR_BUILD="-O2 -g"
+    OPTIM_FLAGS="-O2 -g"
+    if [ "${CT_DEBUGGABLE_TOOLCHAIN}" = "y" ]; then
+        # GCC 4.8 provides -Og, but we want as much
+        # debugging as possible.
+        OPTIM_FLAGS="-O0 -ggdb"
+    fi
+    CT_CFLAGS_FOR_BUILD="$OPTIM_FLAGS"
     CT_CFLAGS_FOR_BUILD+=" ${CT_EXTRA_CFLAGS_FOR_BUILD}"
+    # Avoid msvcrt's broken stdio routines.
+    if [ ! "${CT_BUILD/mingw/}" = "${CT_BUILD}" ]; then
+        CT_CFLAGS_FOR_BUILD+=" -D__USE_MINGW_ANSI_STDIO=1"
+    fi
     CT_LDFLAGS_FOR_BUILD=
     CT_LDFLAGS_FOR_BUILD+=" ${CT_EXTRA_LDFLAGS_FOR_BUILD}"
     
     # Help host gcc
     # Explicitly optimise, else the lines below will overide the
     # package's default optimisation flags
-    CT_CFLAGS_FOR_HOST="-O2 -g"
+    CT_CFLAGS_FOR_HOST="$OPTIM_FLAGS"
     [ "${CT_USE_PIPES}" = "y" ] && CT_CFLAGS_FOR_HOST+=" -pipe"
     CT_CFLAGS_FOR_HOST+=" ${CT_EXTRA_CFLAGS_FOR_HOST}"
+    # Avoid msvcrt's broken stdio routines.
+    if [ ! "${CT_HOST/mingw/}" = "${CT_HOST}" ]; then
+        CT_CFLAGS_FOR_HOST+=" -D__USE_MINGW_ANSI_STDIO=1"
+    fi
     CT_LDFLAGS_FOR_HOST=
     CT_LDFLAGS_FOR_HOST+=" ${CT_EXTRA_LDFLAGS_FOR_HOST}"
     CT_DoLog DEBUG "CFLAGS for host compiler: '${CT_CFLAGS_FOR_HOST}'"
@@ -520,8 +558,19 @@ if [ -z "${CT_RESTART}" ]; then
     # Use the number of processors+1 when automatically setting the number of
     # parallel jobs.  Fall back to 1 if the host doesn't use GLIBC.
     AUTO_JOBS=$((`getconf _NPROCESSORS_ONLN 2> /dev/null || echo 0` + 1))
-    [ ${CT_PARALLEL_JOBS} -eq 0 ] && JOBSFLAGS="${JOBSFLAGS} -j${AUTO_JOBS}"
-    [ ${CT_PARALLEL_JOBS} -gt 0 ] && JOBSFLAGS="${JOBSFLAGS} -j${CT_PARALLEL_JOBS}"
+    IS_PARALLEL="no"
+    [ ${CT_PARALLEL_JOBS} -eq 0 ] && JOBSFLAGS="${JOBSFLAGS} -j${AUTO_JOBS}" && IS_PARALLEL="yes"
+    [ ${CT_PARALLEL_JOBS} -gt 0 ] && JOBSFLAGS="${JOBSFLAGS} -j${CT_PARALLEL_JOBS}" && IS_PARALLEL="yes"
+    # If building in parallel and gnumake supports it, then --output-sync=target
+    # makes the logs easier to read as output from targets are not intermingled.
+    # This doesn't work so nicely on Windows at present though; outputs lots of:
+    # "fcntl(): Invalid argument" (this is the case with msys2-20131003)
+    if [ "${IS_PARALLEL}" = "yes" ]; then
+        if [ "${CT_PARALLEL_JOBS_OUTPUT_SYNC}" != "" ]; then
+#        if [ "${CT_BUILD/mingw/}" = "${CT_BUILD}" ]; then
+            make --output-sync=target -v > /dev/null && JOBSFLAGS="${JOBSFLAGS} --output-sync=target"
+        fi
+    fi
     JOBSFLAGS="${JOBSFLAGS} -l${CT_LOAD}"
 
     # Now that we've set up $PATH and $CT_CFLAGS_FOR_HOST, sanity test that gcc
@@ -548,8 +597,8 @@ if [ -z "${CT_RESTART}" ]; then
         CT_EndStep
     fi
 
-    if [ "${CT_CC_STATIC_LIBSTDCXX}" = "y" ]; then
-        CT_DoStep DEBUG "Checking that gcc can statically link libstdc++ (CT_CC_STATIC_LIBSTDCXX)"
+    if [ "${CT_CC_GCC_STATIC_LIBSTDCXX}" = "y" ]; then
+        CT_DoStep DEBUG "Checking that gcc can statically link libstdc++ (CT_CC_GCC_STATIC_LIBSTDCXX)"
         CT_DoLog DEBUG "You may need to ensure that libstdc++.a is installed on your system"
         CT_DoExecLog DEBUG "${CT_HOST}-gcc" ${CT_CFLAGS_FOR_HOST} ${CT_LDFLAGS_FOR_HOST} "${testc}" -static -lstdc++ -o "${gccout}"
         rm -f "${gccout}"
@@ -609,6 +658,11 @@ if [ -z "${CT_RESTART}" ]; then
         do_libc_extract
         do_debug_extract
         do_test_suite_extract
+        if [ "$CT_SRC_REFERENCE_DATETIME" != "" ]; then
+            CT_DoStep INFO "Forcing date and time of patched sources to $CT_SRC_REFERENCE_DATETIME"
+            find ${CT_SRC_DIR} \( -type f -or -type d \) -exec touch -t "$CT_SRC_REFERENCE_DATETIME" "{}" \;
+            CT_EndStep
+        fi
         CT_EndStep
     fi
 fi

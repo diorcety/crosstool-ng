@@ -1,0 +1,71 @@
+diff -urN a/lib/Driver/Driver.cpp b/lib/Driver/Driver.cpp
+--- a/lib/Driver/Driver.cpp	2012-11-19 21:31:56.000000000 +0000
++++ b/lib/Driver/Driver.cpp	2013-10-28 19:11:09.883509264 +0000
+@@ -43,6 +43,10 @@
+ using namespace clang::driver;
+ using namespace clang;
+ 
++static llvm::Triple computeTargetTriple(StringRef DefaultTargetTriple,
++                                        const ArgList &Args,
++                                        StringRef DarwinArchName);
++
+ Driver::Driver(StringRef ClangExecutable,
+                StringRef DefaultTargetTriple,
+                StringRef DefaultImageName,
+@@ -288,8 +292,23 @@
+     A->claim();
+     PrefixDirs.push_back(A->getValue(0));
+   }
+-  if (const Arg *A = Args->getLastArg(options::OPT__sysroot_EQ))
++
++  // Owned by the host.
++  llvm::Triple Target = computeTargetTriple(DefaultTargetTriple, *Args, "");
++
++  if (const Arg *A = Args->getLastArg(options::OPT__sysroot_EQ)) {
+     SysRoot = A->getValue();
++  } else if (const Arg *A = Args->getLastArg(options::OPT_isysroot)) {
++    SysRoot = A->getValue();
++  } else {
++      llvm::sys::Path P(Dir);
++      if (!P.isEmpty()) {
++        P.eraseComponent(); // Remove /bin from foo/bin
++        P.appendComponent(this->Prefix);
++        P.appendComponent("sysroot");
++        SysRoot = P.str();
++      }
++  }
+   if (Args->hasArg(options::OPT_nostdlib))
+     UseStdLib = false;
+ 
+diff -urN a/lib/Driver/Tools.cpp b/lib/Driver/Tools.cpp
+--- a/lib/Driver/Tools.cpp	2012-11-21 07:56:23.000000000 +0000
++++ b/lib/Driver/Tools.cpp	2013-10-28 19:11:09.886842665 +0000
+@@ -1617,6 +1617,12 @@
+   std::string TripleStr = getToolChain().ComputeEffectiveClangTriple(Args);
+   CmdArgs.push_back(Args.MakeArgString(TripleStr));
+ 
++  // Set sysroot
++  if(!D.SysRoot.empty()) {
++    CmdArgs.push_back("-isysroot");
++    CmdArgs.push_back(Args.MakeArgString(D.SysRoot));
++  }
++
+   // Select the appropriate action.
+   RewriteKind rewriteKind = RK_None;
+   
+@@ -4546,6 +4552,15 @@
+     CmdArgs.push_back("-syslibroot");
+     CmdArgs.push_back(A->getValue());
+   }
++  
++  std::string libPath;
++  bool Exists;
++  //libPath = D.Dir + "/../lib/gcc/" + D.Prefix + "/4.2.1";
++  //if (!llvm::sys::fs::exists(libPath, Exists) && Exists)
++  //  CmdArgs.push_back(Args.MakeArgString("-L" + libPath));
++  libPath = D.SysRoot + "/usr/lib/gcc/" + D.Prefix + "/4.2.1";
++  if (!llvm::sys::fs::exists(libPath, Exists) && Exists)
++    CmdArgs.push_back(Args.MakeArgString("-L" + libPath));
+ 
+   Args.AddLastArg(CmdArgs, options::OPT_twolevel__namespace);
+   Args.AddLastArg(CmdArgs, options::OPT_twolevel__namespace__hints);

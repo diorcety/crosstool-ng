@@ -1,0 +1,12 @@
+diff -urN a/gcc/config/i386/t-darwin b/gcc/config/i386/t-darwin
+--- a/gcc/config/i386/t-darwin	2013-05-31 00:32:14.922794736 +0100
++++ b/gcc/config/i386/t-darwin	2013-05-31 00:32:15.729801135 +0100
+@@ -4,7 +4,7 @@
+ LIB1ASMFUNCS = _get_pc_thunk_ax _get_pc_thunk_dx _get_pc_thunk_cx _get_pc_thunk_bx _get_pc_thunk_si _get_pc_thunk_di _get_pc_thunk_bp
+ # APPLE LOCAL end 4099000
+ # APPLE LOCAL avoid try fat on thin system
+-ifneq ($(shell lipo -info /usr/lib/libSystem.B.dylib | grep x86_64),)
++ifneq ($(shell lipo -info $(prefix)/lib/libSystem.B.dylib | grep x86_64),)
+ MULTILIB_OPTIONS = m64
+ MULTILIB_DIRNAMES = x86_64
+ # APPLE LOCAL avoid try fat on thin system

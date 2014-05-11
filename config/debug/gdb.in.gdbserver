@@ -3,7 +3,7 @@
 config GDB_GDBSERVER
     bool
     prompt "gdbserver"
-    depends on ! BARE_METAL
+    depends on ! BARE_METAL && ! DARWIN
     help
       Build and install a gdbserver for the target, to run on the target.
 
@@ -43,3 +43,6 @@ if BARE_METAL
 comment "In bare-metal, you'll need to   "
 comment "provide your own gdbserver stub."
 endif # BARE_METAL
+if DARWIN 
+comment "In darwin, gdbserver is not supported "
+endif # DARWIN

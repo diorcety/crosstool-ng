@@ -1,0 +1,48 @@
+diff -urN a/Makefile.rules b/Makefile.rules
+--- a/Makefile.rules	2011-03-25 07:26:58.000000000 +0100
++++ b/Makefile.rules	2014-02-13 22:34:41.209830842 +0100
+@@ -648,33 +648,33 @@
+ 
+ ifeq ($(BUILD_COMPONENT), 1)
+   Compile.C     = $(BUILD_CC) $(CPP.Flags) $(C.Flags) $(CFLAGS) $(CPPFLAGS) \
+-                  $(TargetCommonOpts) $(CompileCommonOpts) -c
++                  $(CompileCommonOpts) -c
+   Compile.CXX   = $(BUILD_CXX) $(CPP.Flags) $(CXX.Flags) $(CXXFLAGS) \
+ 		  $(CPPFLAGS) \
+-                  $(TargetCommonOpts) $(CompileCommonOpts) -c
+-  Preprocess.CXX= $(BUILD_CXX) $(CPP.Flags) $(CPPFLAGS) $(TargetCommonOpts) \
++                  $(CompileCommonOpts) -c
++  Preprocess.CXX= $(BUILD_CXX) $(CPP.Flags) $(CPPFLAGS) \
+                   $(CompileCommonOpts) $(CXX.Flags) -E
+   Link          = $(BUILD_CXX) $(CPP.Flags) $(CXX.Flags) $(CXXFLAGS) \
+ 		  $(LD.Flags) $(LDFLAGS) \
+-                  $(TargetCommonOpts) $(CompileCommonOpts) $(Strip)
++                  $(CompileCommonOpts) $(Strip)
+ else
+   Compile.C     = $(CC) $(CPP.Flags) $(C.Flags) $(CFLAGS) $(CPPFLAGS) \
+-                  $(TargetCommonOpts) $(CompileCommonOpts) -c
++                  $(CompileCommonOpts) -c
+   Compile.CXX   = $(CXX) $(CPP.Flags) $(CXX.Flags) $(CXXFLAGS) $(CPPFLAGS) \
+-                  $(TargetCommonOpts) $(CompileCommonOpts) -c
+-  Preprocess.CXX= $(CXX) $(CPP.Flags) $(TargetCommonOpts) $(CPPFLAGS) \
++                  $(CompileCommonOpts) -c
++  Preprocess.CXX= $(CXX) $(CPP.Flags) $(CPPFLAGS) \
+                   $(CompileCommonOpts) $(CXX.Flags) -E
+   Link          = $(CXX) $(CPP.Flags) $(CXX.Flags) $(CXXFLAGS) $(LD.Flags) \
+-                  $(LDFLAGS) $(TargetCommonOpts)  $(CompileCommonOpts) $(Strip)
++                  $(LDFLAGS)  $(CompileCommonOpts) $(Strip)
+ endif
+ 
+ BCCompile.C   = $(LLVMCC) $(CPP.Flags) $(C.Flags) $(CFLAGS) $(CPPFLAGS) \
+-                $(TargetCommonOpts) $(CompileCommonOpts)
++                $(CompileCommonOpts)
+ Preprocess.C  = $(CC) $(CPP.Flags) $(C.Flags) $(CPPFLAGS) \
+-                $(TargetCommonOpts) $(CompileCommonOpts) -E
++                $(CompileCommonOpts) -E
+ 
+ BCCompile.CXX = $(LLVMCXX) $(CPP.Flags) $(CXX.Flags) $(CXXFLAGS) $(CPPFLAGS) \
+-                $(TargetCommonOpts) $(CompileCommonOpts)
++                $(CompileCommonOpts)
+ 
+ ProgInstall   = $(INSTALL) $(Install.StripFlag) -m 0755
+ ScriptInstall = $(INSTALL) -m 0755

@@ -1,0 +1,11 @@
+diff -urN b/include/clang/Analysis/Support/BumpVector.h c/include/clang/Analysis/Support/BumpVector.h
+--- b/include/clang/Analysis/Support/BumpVector.h	2013-09-12 22:27:24.508374961 +0200
++++ c/include/clang/Analysis/Support/BumpVector.h	2013-09-12 22:27:39.000004157 +0200
+@@ -25,6 +25,7 @@
+ #include "llvm/ADT/PointerIntPair.h"
+ #include <algorithm>
+ #include <cstring>
++#include <memory>
+ 
+ namespace clang {
+   

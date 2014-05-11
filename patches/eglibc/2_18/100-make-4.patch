@@ -1,0 +1,24 @@
+diff -urN eglibc-2_18.orig/configure eglibc-2_18/configure
+--- eglibc-2_18.orig/configure	2013-12-07 17:39:02.482532200 +0000
++++ eglibc-2_18/configure	2013-12-07 17:40:10.835441800 +0000
+@@ -4772,7 +4772,7 @@
+   ac_prog_version=`$MAKE --version 2>&1 | sed -n 's/^.*GNU Make[^0-9]*\([0-9][0-9.]*\).*$/\1/p'`
+   case $ac_prog_version in
+     '') ac_prog_version="v. ?.??, bad"; ac_verc_fail=yes;;
+-    3.79* | 3.[89]*)
++    3.79* | 3.[89]* | 4.*)
+        ac_prog_version="$ac_prog_version, ok"; ac_verc_fail=no;;
+     *) ac_prog_version="$ac_prog_version, bad"; ac_verc_fail=yes;;
+ 
+diff -urN eglibc-2_18.orig/configure.in eglibc-2_18/configure.in
+--- eglibc-2_18.orig/configure.in	2013-12-07 17:39:02.484532400 +0000
++++ eglibc-2_18/configure.in	2013-12-07 17:40:10.839442000 +0000
+@@ -989,7 +989,7 @@
+   critic_missing="$critic_missing gcc")
+ AC_CHECK_PROG_VER(MAKE, gnumake gmake make, --version,
+   [GNU Make[^0-9]*\([0-9][0-9.]*\)],
+-  [3.79* | 3.[89]*], critic_missing="$critic_missing make")
++  [3.79* | 3.[89]* | 4.*], critic_missing="$critic_missing make")
+ 
+ AC_CHECK_PROG_VER(MSGFMT, gnumsgfmt gmsgfmt msgfmt, --version,
+   [GNU gettext.* \([0-9]*\.[0-9.]*\)],

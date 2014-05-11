@@ -1,0 +1,82 @@
+diff -urN a/as/driver.c b/as/driver.c
+--- a/as/driver.c	2013-10-07 17:09:13.009173442 +0100
++++ b/as/driver.c	2013-10-07 17:09:13.195842989 +0100
+@@ -53,17 +53,30 @@
+ 	 */
+ 	bufsize = MAXPATHLEN;
+ 	p = buf;
++	if(progname != NULL){
++	    strcpy(p, progname);
++	}
+ 	i = _NSGetExecutablePath(p, &bufsize);
+ 	if(i == -1){
+ 	    p = allocate(bufsize);
+ 	    _NSGetExecutablePath(p, &bufsize);
+ 	}
+-	prefix = realpath(p, resolved_name);
+-	if(realpath == NULL)
++	if(p != NULL){
++	    p = rindex(p, '/');
++	    if(p != NULL)
++		    p[1] = '\0';
++	}
++	prefix = realpath(buf, resolved_name);
++	if(prefix == NULL)
+ 	    system_fatal("realpath(3) for %s failed", p);
+-	p = rindex(prefix, '/');
+-	if(p != NULL)
+-	    p[1] = '\0';
++
++	/* Append slash at the end if not exist */
++	p = prefix + strlen(prefix);
++	if((p-prefix)<(MAXPATHLEN-1) && prefix[p-prefix-1] != '/'){
++	   *(p++) = '/';
++	   *(p++) = '\0';
++	}
++
+ 	/*
+ 	 * Process the assembler flags exactly like the assembler would (except
+ 	 * let the assembler complain about multiple flags, bad combinations of
+diff -urN a/libstuff/execute.c b/libstuff/execute.c
+--- a/libstuff/execute.c	2013-10-07 17:09:12.942505740 +0100
++++ b/libstuff/execute.c	2013-10-07 17:09:13.125841923 +0100
+@@ -161,10 +161,23 @@
+ 	    p = allocate(bufsize);
+ 	    _NSGetExecutablePath(p, &bufsize);
+ 	}
+-	prefix = realpath(p, resolved_name);
+-	p = rindex(prefix, '/');
+-	if(p != NULL)
+-	    p[1] = '\0';
++	if(p != NULL){
++	    p = rindex(p, '/');
++	    if(p != NULL)
++		    p[1] = '\0';
++	}
++	strcpy(resolved_name, buf);
++	prefix = realpath(buf, resolved_name);
++	if(prefix == NULL){
++	    prefix = resolved_name;
++	}
++
++	/* Append slash at the end if not exist */
++	p = prefix + strlen(prefix);
++	if((p-prefix)<(MAXPATHLEN-1) && prefix[p-prefix-1] != '/'){
++	   *(p++) = '/';
++	   *(p++) = '\0';
++	}
+ 
+ 	return(makestr(prefix, str, NULL));
+ }
+diff -urN a/misc/libtool.c b/misc/libtool.c
+--- a/misc/libtool.c	2013-10-07 17:09:12.945839126 +0100
++++ b/misc/libtool.c	2013-10-07 17:09:13.129175299 +0100
+@@ -374,7 +374,7 @@
+ 	    p++;
+ 	else
+ 	    p = argv[0];
+-	if(strncmp(p, "ranlib", sizeof("ranlib") - 1) == 0)
++	if(strstr(p, "ranlib") != NULL)
+ 	    cmd_flags.ranlib = TRUE;
+ 
+ 	/* The default is to used long names */

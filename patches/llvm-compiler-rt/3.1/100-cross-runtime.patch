@@ -1,0 +1,74 @@
+diff -urN a/make/config.mk b/make/config.mk
+--- a/make/config.mk	2011-12-29 18:29:20.000000000 +0100
++++ b/make/config.mk	2013-11-08 20:51:46.695511864 +0100
+@@ -19,7 +19,7 @@
+ # FIXME: LLVM uses autoconf/mkinstalldirs ?
+ MKDIR := mkdir -p
+ DATE := date
+-LIPO := lipo
++LIPO := $(prefix)/bin/$(TARGET_TRIPLE)-lipo
+ CP := cp
+ 
+ VERBOSE := 0
+@@ -42,5 +42,5 @@
+ 
+ ###
+ # Common compiler options
+-COMMON_CXXFLAGS=-fno-exceptions -fPIC -funwind-tables
+-COMMON_CFLAGS=-fPIC
++COMMON_CXXFLAGS=-fno-exceptions -fPIC -funwind-tables --sysroot=$(prefix)/$(TARGET_TRIPLE)/sysroot
++COMMON_CFLAGS=-fPIC --sysroot=$(prefix)/$(TARGET_TRIPLE)/sysroot
+diff -urN a/make/options.mk b/make/options.mk
+--- a/make/options.mk	2011-06-21 01:47:02.000000000 +0200
++++ b/make/options.mk	2013-11-08 20:51:30.337329245 +0100
+@@ -25,12 +25,12 @@
+ 
+ # Miscellaneous tools.
+ 
+-AR := ar
++AR := $(prefix)/bin/$(TARGET_TRIPLE)-ar
+ # FIXME: Remove these pipes once ranlib errors are fixed.
+ ARFLAGS := cru 2> /dev/null
+-RANLIB := ranlib
++RANLIB := $(prefix)/bin/$(TARGET_TRIPLE)-ranlib
+ # FIXME: Remove these pipes once ranlib errors are fixed.
+ RANLIBFLAGS := 2> /dev/null
+ 
+-STRIP := strip
+-LIPO := lipo
++STRIP := $(prefix)/bin/$(TARGET_TRIPLE)-strip
++LIPO := $(prefix)/bin/$(TARGET_TRIPLE)-lipo
+diff -urN a/make/platform/darwin_bni.mk b/make/platform/darwin_bni.mk
+--- a/make/platform/darwin_bni.mk	2011-11-16 01:20:40.000000000 +0100
++++ b/make/platform/darwin_bni.mk	2013-11-08 20:51:30.337329245 +0100
+@@ -9,11 +9,11 @@
+ UniversalArchs := $(RC_ARCHS)
+ 
+ ifneq (,$(SDKROOT))
+-	override CC := $(shell xcrun -sdk $(SDKROOT) -find clang) 
+-	AR := $(shell xcrun -sdk $(SDKROOT) -find ar) 
+-	RANLIB := $(shell xcrun -sdk $(SDKROOT) -find ranlib) 
+-	STRIP := $(shell xcrun -sdk $(SDKROOT) -find strip) 
+-	LIPO := $(shell xcrun -sdk $(SDKROOT) -find lipo)
++#	override CC := $(shell xcrun -sdk $(SDKROOT) -find clang) 
++#	AR := $(shell xcrun -sdk $(SDKROOT) -find ar) 
++#	RANLIB := $(shell xcrun -sdk $(SDKROOT) -find ranlib) 
++#	STRIP := $(shell xcrun -sdk $(SDKROOT) -find strip) 
++#	LIPO := $(shell xcrun -sdk $(SDKROOT) -find lipo)
+ endif
+ 
+ ifneq ($(IPHONEOS_DEPLOYMENT_TARGET),)
+diff -urN a/Makefile b/Makefile
+--- a/Makefile	2011-12-13 19:58:47.000000000 +0100
++++ b/Makefile	2013-11-08 20:51:30.337329245 +0100
+@@ -11,6 +11,10 @@
+   include make/AppleBI.mk
+ endif
+ 
++LEVEL=../..
++
++include $(LEVEL)/Makefile.config
++
+ # Make sure we don't build with a missing ProjObjRoot.
+ ifeq ($(ProjObjRoot),)
+ $(error Refusing to build with empty ProjObjRoot variable)

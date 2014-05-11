@@ -1,0 +1,258 @@
+diff -urN a/fixincludes/configure b/fixincludes/configure
+--- a/fixincludes/configure	2014-01-11 18:43:31.712377200 +0000
++++ b/fixincludes/configure	2014-01-11 18:44:20.323050000 +0000
+@@ -2562,7 +2562,7 @@
+ else
+   case $host in
+ 	i?86-*-msdosdjgpp* | \
+-	i?86-*-mingw32* | \
++	*mingw* | \
+ 	*-*-beos* )
+ 		TARGET=twoprocess
+ 		;;
+diff -urN a/fixincludes/configure.ac b/fixincludes/configure.ac
+--- a/fixincludes/configure.ac	2014-01-11 18:43:31.712877300 +0000
++++ b/fixincludes/configure.ac	2014-01-11 18:44:20.324550200 +0000
+@@ -48,7 +48,7 @@
+ fi],
+ [case $host in
+ 	i?86-*-msdosdjgpp* | \
+-	i?86-*-mingw32* | \
++	*mingw* | \
+ 	*-*-beos* )
+ 		TARGET=twoprocess
+ 		;;
+diff -urN a/fixincludes/fixincl.c b/fixincludes/fixincl.c
+--- a/fixincludes/fixincl.c	2014-01-11 18:43:31.713877400 +0000
++++ b/fixincludes/fixincl.c	2014-01-11 18:44:20.327550500 +0000
+@@ -289,6 +289,16 @@
+   /* NULL as the first argument to `tempnam' causes it to DTRT
+      wrt the temporary directory where the file will be created.  */
+   pz_temp_file = tempnam( NULL, "fxinc" );
++  /* tempnam() is a windows thing, and returns '\' as path sep, but end
++     up with mixed / and \ so fix them all to unix style. */
++  {
++	  char *pz_temp_temp = strchr(pz_temp_file,'\\');
++	  while (pz_temp_temp)
++	  {
++		*pz_temp_temp = '/';
++		pz_temp_temp = strchr(pz_temp_temp,'\\');
++	  }
++  }
+ # endif
+ 
+   signal (SIGQUIT, SIG_IGN);
+@@ -784,7 +794,6 @@
+ }
+ #endif /* !SEPARATE_FIX_PROC */
+ 
+-
+ #ifdef SEPARATE_FIX_PROC
+ static void
+ fix_with_system (tFixDesc* p_fixd,
+@@ -795,6 +804,7 @@
+   char*  pz_cmd;
+   char*  pz_scan;
+   size_t argsize;
++  size_t actualargsize;
+ 
+   if (p_fixd->fd_flags & FD_SUBROUTINE)
+     {
+@@ -829,13 +839,13 @@
+       /*
+        *  Now add the fix number and file names that may be needed
+        */
+-      sprintf (pz_scan, " %ld '%s' '%s' '%s'", p_fixd - fixDescList,
++      sprintf (pz_scan, " %d \"%s\" \"%s\" \"%s\"",  (int) (p_fixd - fixDescList),
+ 	       pz_fix_file, pz_file_source, pz_temp_file);
+     }
+   else /* NOT an "internal" fix: */
+     {
+       size_t parg_size;
+-#ifdef __MSDOS__
++#ifdef HAVE_DOS_BASED_FILE_SYSTEM
+       /* Don't use the "src > dstX; rm -f dst; mv -f dstX dst" trick:
+          dst is a temporary file anyway, so we know there's no other
+          file by that name; and DOS's system(3) doesn't mind to
+@@ -848,7 +858,7 @@
+          the following bizarre use of 'cat' only works on DOS boxes.
+          It causes the file to be dropped into a temporary file for
+          'cat' to read (pipes do not work on DOS).  */
+-      tSCC   z_cmd_fmt[] = " '%s' | cat > '%s'";
++	  tSCC   z_cmd_fmt[] = " %s > %s";
+ #else
+       /* Don't use positional formatting arguments because some lame-o
+          implementations cannot cope  :-(.  */
+@@ -877,7 +887,9 @@
+         }
+ 
+       /* Estimated buffer size we will need.  */
+-      pz_scan = pz_cmd = XNEWVEC (char, argsize);
++	  actualargsize = argsize*2;
++      pz_scan = pz_cmd = XNEWVEC (char, actualargsize);
++
+       /* How much of it do we allot to the program name and its
+          arguments.  */
+       parg_size = argsize - parg_size;
+@@ -894,6 +906,7 @@
+             char ch = *(pArg++);
+             if (ch == NUL)
+               break;
++
+             *(pz_scan++) = ch;
+           }
+       }
+@@ -917,7 +930,7 @@
+ 	  while (pz_scan == (char*)NULL)
+ 	    {
+ 	      size_t already_filled = pz_scan_save - pz_cmd;
+-	      pz_cmd = xrealloc (pz_cmd, argsize += 100);
++              pz_cmd = xrealloc (pz_cmd, actualargsize += 100);
+ 	      pz_scan_save = pz_scan = pz_cmd + already_filled;
+ 	      parg_size += 100;
+ 	      pz_scan = make_raw_shell_str( pz_scan, pArg,
+@@ -928,7 +941,7 @@
+       /*
+        *  add the file machinations.
+        */
+-#ifdef __MSDOS__
++#ifdef HAVE_DOS_BASED_FILE_SYSTEM
+       sprintf (pz_scan, z_cmd_fmt, pz_file_source, pz_temp_file );
+ #else
+       sprintf (pz_scan, z_cmd_fmt, pz_file_source, pz_temp_file,
+diff -urN a/fixincludes/fixincl.x b/fixincludes/fixincl.x
+--- a/fixincludes/fixincl.x	2014-01-11 18:43:31.714377500 +0000
++++ b/fixincludes/fixincl.x	2014-01-11 18:44:20.333551300 +0000
+@@ -1315,12 +1315,12 @@
+  *  Fix Command Arguments for Alpha_Pthread_Init
+  */
+ static const char* apzAlpha_Pthread_InitPatch[] = { "sed",
+-    "-e", "s@MVALID\\(.*\\)A}@MVALID\\1A, 0, 0, 0, 0, 0, 0 }@\n\
+-s@MVALID\\(.*\\)_}@MVALID\\1_, 0, 0, 0, 0 }@\n\
+-s@CVALID\\(.*\\)A}@CVALID\\1A, 0, 0, 0, 0 }@\n\
+-s@CVALID\\(.*\\)_}@CVALID\\1_, 0, 0 }@\n\
+-s@WVALID\\(.*\\)A}@WVALID\\1A, 0, 0, 0, 0, 0, 0, 0, 0, 0 }@\n\
+-s@WVALID\\(.*\\)_}@WVALID\\1_, 0, 0, 0, 0, 0, 0, 0 }@\n",
++    "-e", "s@MVALID\\(.*\\)A}@MVALID\\1A, 0, 0, 0, 0, 0, 0 }@",
++    "-e", "s@MVALID\\(.*\\)_}@MVALID\\1_, 0, 0, 0, 0 }@",
++    "-e", "s@CVALID\\(.*\\)A}@CVALID\\1A, 0, 0, 0, 0 }@",
++    "-e", "s@CVALID\\(.*\\)_}@CVALID\\1_, 0, 0 }@",
++    "-e", "s@WVALID\\(.*\\)A}@WVALID\\1A, 0, 0, 0, 0, 0, 0, 0, 0, 0 }@",
++    "-e", "s@WVALID\\(.*\\)_}@WVALID\\1_, 0, 0, 0, 0, 0, 0, 0 }@",
+     (char*)NULL };
+ 
+ /* * * * * * * * * * * * * * * * * * * * * * * * * *
+@@ -6597,20 +6597,20 @@
+  *  Fix Command Arguments for Stdio_Va_List
+  */
+ static const char* apzStdio_Va_ListPatch[] = { "sed",
+-    "-e", "s@[ \t]va_list\\([ \t)]\\)@ __gnuc_va_list\\1@\n\
+-s@(va_list)&@(__gnuc_va_list)\\&@\n\
+-s@ _VA_LIST_));@ __gnuc_va_list));@\n\
+-s@ __VA_LIST__));@ __gnuc_va_list));@\n\
+-s@ va_list@ __not_va_list__@\n\
+-s@\\*va_list@*__not_va_list__@\n\
+-s@ __va_list)@ __gnuc_va_list)@\n\
+-s@typedef[ \t]\\(.*\\)[ \t]va_list[ \t]*;@typedef \\1 __not_va_list__;@\n\
+-s@typedef[ \t]*__va_list__@typedef __gnuc_va_list@\n\
+-s@GNUC_VA_LIST@GNUC_Va_LIST@\n\
+-s@_VA_LIST_DEFINED@_Va_LIST_DEFINED@\n\
+-s@_NEED___VA_LIST@_NEED___Va_LIST@\n\
+-s@VA_LIST@DUMMY_VA_LIST@\n\
+-s@_Va_LIST@_VA_LIST@",
++    "-e", "s@[ \t]va_list\\([ \t)]\\)@ __gnuc_va_list\\1@",
++    "-e", "s@(va_list)&@(__gnuc_va_list)\\&@",
++    "-e", "s@ _VA_LIST_));@ __gnuc_va_list));@",
++    "-e", "s@ __VA_LIST__));@ __gnuc_va_list));@",
++    "-e", "s@ va_list@ __not_va_list__@",
++    "-e", "s@\\*va_list@*__not_va_list__@",
++    "-e", "s@ __va_list)@ __gnuc_va_list)@",
++    "-e", "s@typedef[ \t]\\(.*\\)[ \t]va_list[ \t]*;@typedef \\1 __not_va_list__;@",
++    "-e", "s@typedef[ \t]*__va_list__@typedef __gnuc_va_list@",
++    "-e", "s@GNUC_VA_LIST@GNUC_Va_LIST@",
++    "-e", "s@_VA_LIST_DEFINED@_Va_LIST_DEFINED@",
++    "-e", "s@_NEED___VA_LIST@_NEED___Va_LIST@",
++    "-e", "s@VA_LIST@DUMMY_VA_LIST@",
++    "-e", "s@_Va_LIST@_VA_LIST@",
+     (char*)NULL };
+ 
+ /* * * * * * * * * * * * * * * * * * * * * * * * * *
+@@ -6647,20 +6647,20 @@
+  *  Fix Command Arguments for Stdio_Va_List_Clients
+  */
+ static const char* apzStdio_Va_List_ClientsPatch[] = { "sed",
+-    "-e", "s@[ \t]va_list\\([ \t)]\\)@ __gnuc_va_list\\1@\n\
+-s@(va_list)&@(__gnuc_va_list)\\&@\n\
+-s@ _VA_LIST_));@ __gnuc_va_list));@\n\
+-s@ __VA_LIST__));@ __gnuc_va_list));@\n\
+-s@ va_list@ __not_va_list__@\n\
+-s@\\*va_list@*__not_va_list__@\n\
+-s@ __va_list)@ __gnuc_va_list)@\n\
+-s@typedef[ \t]\\(.*\\)[ \t]va_list[ \t]*;@typedef \\1 __not_va_list__;@\n\
+-s@typedef[ \t]*__va_list__@typedef __gnuc_va_list@\n\
+-s@GNUC_VA_LIST@GNUC_Va_LIST@\n\
+-s@_VA_LIST_DEFINED@_Va_LIST_DEFINED@\n\
+-s@_NEED___VA_LIST@_NEED___Va_LIST@\n\
+-s@VA_LIST@DUMMY_VA_LIST@\n\
+-s@_Va_LIST@_VA_LIST@",
++    "-e", "s@[ \t]va_list\\([ \t)]\\)@ __gnuc_va_list\\1@",
++    "-e", "s@(va_list)&@(__gnuc_va_list)\\&@",
++    "-e", "s@ _VA_LIST_));@ __gnuc_va_list));@",
++    "-e", "s@ __VA_LIST__));@ __gnuc_va_list));@",
++    "-e", "s@ va_list@ __not_va_list__@",
++    "-e", "s@\\*va_list@*__not_va_list__@",
++    "-e", "s@ __va_list)@ __gnuc_va_list)@",
++    "-e", "s@typedef[ \t]\\(.*\\)[ \t]va_list[ \t]*;@typedef \\1 __not_va_list__;@",
++    "-e", "s@typedef[ \t]*__va_list__@typedef __gnuc_va_list@",
++    "-e", "s@GNUC_VA_LIST@GNUC_Va_LIST@",
++    "-e", "s@_VA_LIST_DEFINED@_Va_LIST_DEFINED@",
++    "-e", "s@_NEED___VA_LIST@_NEED___Va_LIST@",
++    "-e", "s@VA_LIST@DUMMY_VA_LIST@",
++    "-e", "s@_Va_LIST@_VA_LIST@",
+     (char*)NULL };
+ 
+ /* * * * * * * * * * * * * * * * * * * * * * * * * *
+@@ -7411,9 +7411,7 @@
+     "-e", "/^extern int$/N",
+     "-e", "s/^extern int\\(\\n\tstrlen(),\\)/extern size_t\\1/",
+     "-e", "/^\tstrncmp(),$/N",
+-    "-e", "s/^\\(\tstrncmp()\\),\\n\\(\tstrlen(),\\)$/\\1;\\\n\
+-extern unsigned int\\\n\
+-\\2/",
++    "-e", "s/^\\(\tstrncmp()\\),\\n\\(\tstrlen(),\\)$/\\1;\\extern unsigned int \\\\2/",
+     (char*)NULL };
+ 
+ /* * * * * * * * * * * * * * * * * * * * * * * * * *
+diff -urN a/fixincludes/fixlib.c b/fixincludes/fixlib.c
+--- a/fixincludes/fixlib.c	2014-01-11 18:43:31.714877500 +0000
++++ b/fixincludes/fixlib.c	2014-01-11 18:44:20.336051600 +0000
+@@ -235,6 +235,11 @@
+ char*
+ make_raw_shell_str( char* pz_d, tCC* pz_s, size_t smax )
+ {
++#ifndef HAVE_DOS_BASED_FILE_SYSTEM
++  char qc = '\'';
++#else
++  char qc = '\"';
++#endif
+   tSCC zQ[] = "'\\''";
+   size_t     dtaSize;
+   char*      pz_d_start = pz_d;
+@@ -256,7 +261,7 @@
+   if (dtaSize > smax)
+     return (char*)NULL;
+ 
+-  *(pz_d++) = '\'';
++  *(pz_d++) = qc;
+ 
+   for (;;) {
+     if (pz_d - pz_d_start >= smax)
+@@ -272,7 +277,7 @@
+       pz_d += sizeof( zQ )-2;
+     }
+   } loopDone:;
+-  pz_d[-1] = '\'';
++  pz_d[-1] = qc;
+   *pz_d    = NUL;
+ 
+   return pz_d;

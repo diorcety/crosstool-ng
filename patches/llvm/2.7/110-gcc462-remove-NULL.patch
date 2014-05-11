@@ -1,0 +1,25 @@
+diff -urN a/lib/Target/ARM/ARMConstantPoolValue.h b/lib/Target/ARM/ARMConstantPoolValue.h
+--- a/lib/Target/ARM/ARMConstantPoolValue.h	2009-11-07 04:52:02.000000000 +0100
++++ b/lib/Target/ARM/ARMConstantPoolValue.h	2013-09-02 20:25:59.466888396 +0200
+@@ -48,10 +48,10 @@
+ public:
+   ARMConstantPoolValue(Constant *cval, unsigned id,
+                        ARMCP::ARMCPKind Kind = ARMCP::CPValue,
+-                       unsigned char PCAdj = 0, const char *Modifier = NULL,
++                       unsigned char PCAdj = 0, const char *Modifier = 0,
+                        bool AddCurrentAddress = false);
+   ARMConstantPoolValue(LLVMContext &C, const char *s, unsigned id,
+-                       unsigned char PCAdj = 0, const char *Modifier = NULL,
++                       unsigned char PCAdj = 0, const char *Modifier = 0,
+                        bool AddCurrentAddress = false);
+   ARMConstantPoolValue(GlobalValue *GV, const char *Modifier);
+   ARMConstantPoolValue();
+@@ -61,7 +61,7 @@
+   const char *getSymbol() const { return S; }
+   BlockAddress *getBlockAddress() const;
+   const char *getModifier() const { return Modifier; }
+-  bool hasModifier() const { return Modifier != NULL; }
++  bool hasModifier() const { return Modifier != 0; }
+   bool mustAddCurrentAddress() const { return AddCurrentAddress; }
+   unsigned getLabelId() const { return LabelId; }
+   unsigned char getPCAdjustment() const { return PCAdjust; }

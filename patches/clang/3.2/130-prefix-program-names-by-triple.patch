@@ -1,0 +1,66 @@
+diff -urN a/include/clang/Driver/Driver.h b/include/clang/Driver/Driver.h
+--- a/include/clang/Driver/Driver.h	2013-10-28 19:11:10.223514539 +0000
++++ b/include/clang/Driver/Driver.h	2013-10-28 19:11:10.410184087 +0000
+@@ -64,6 +64,9 @@
+   /// command line.
+   std::string Dir;
+ 
++  /// The prefix of the clang executable.
++  std::string Prefix;
++
+   /// The original path to the clang executable.
+   std::string ClangExecutable;
+ 
+diff -urN a/lib/Driver/ToolChain.cpp b/lib/Driver/ToolChain.cpp
+--- a/lib/Driver/ToolChain.cpp	2013-10-28 19:11:10.236848059 +0000
++++ b/lib/Driver/ToolChain.cpp	2013-10-28 19:11:10.410184087 +0000
+@@ -58,6 +58,16 @@
+ }
+ 
+ std::string ToolChain::GetProgramPath(const char *Name) const {
++  if(getDriver().Prefix != "") {
++    // first try prefixed with Driver::Prefix
++    std::string targetName = getDriver().Prefix;
++    targetName += "-";
++    targetName += Name;
++    std::string targetProgram = D.GetProgramPath(targetName.c_str(), *this);
++    if(targetProgram != targetName) {
++      return targetProgram;
++    }
++  }
+   return D.GetProgramPath(Name, *this);
+ }
+ 
+diff -urN a/tools/driver/driver.cpp b/tools/driver/driver.cpp
+--- a/tools/driver/driver.cpp	2013-10-28 19:11:10.246848229 +0000
++++ b/tools/driver/driver.cpp	2013-10-28 19:11:10.410184087 +0000
+@@ -277,6 +277,11 @@
+   // "x86_64-linux-clang" as interpreted as suffix "clang" with
+   // target prefix "x86_64-linux". If such a target prefix is found,
+   // is gets added via -target as implicit first argument.
++  // .. with one caveat:
++  // Force i<N>86*darwin* to i386*darwin* as i386 has special meaning there
++  // of "The first Intel CPU that Darwin was available for, i.e. Yonah" while
++  // e.g. i686 means "The next Intel CPU after Pentium, i.e. Pentium Pro".
++
+   static const struct {
+     const char *Suffix;
+     bool IsCXX;
+@@ -326,9 +331,17 @@
+     ProgNameRef = ProgNameRef.slice(0, LastComponent);
+   }
+ 
++  TheDriver.Prefix = Prefix;
++
+   if (Prefix.empty())
+     return;
+ 
++  // Force i<N>86*darwin* to i386*darwin* (see above for reason)
++  if (ProgName.find("darwin") != std::string::npos &&
++      ProgName[0] == 'i' && isdigit(ProgName[1]) &&
++      ProgName[2] == '8' && ProgName[3] == '6')
++    ProgName[1] = '3';
++
+   std::string IgnoredError;
+   if (llvm::TargetRegistry::lookupTarget(Prefix, IgnoredError)) {
+     SmallVectorImpl<const char *>::iterator it = ArgVector.begin();

@@ -33,11 +33,11 @@ do_libc_start_files() {
 
     CT_DoLog EXTRA "Configuring Headers"
 
-    CT_DoExecLog CFG        \
+    CT_DoExecLog CFG                             \
     "${CT_SRC_DIR}/mingw-w64-v${CT_WINAPI_VERSION}/mingw-w64-headers/configure" \
-        --build=${CT_BUILD} \
-        --host=${CT_TARGET} \
-        --prefix=/usr       \
+        --build=${CT_BUILD}                      \
+        --host=${CT_TARGET}                      \
+        --prefix=/${CT_TARGET_MINGW_SYSROOT_TOP} \
         "${sdk_opts[@]}"
 
     CT_DoLog EXTRA "Compile Headers"
@@ -47,11 +47,6 @@ do_libc_start_files() {
     CT_DoExecLog ALL make install DESTDIR=${CT_SYSROOT_DIR}
     
     CT_Popd
-
-    # It seems mingw is strangely set up to look into /mingw instead of
-    # /usr (notably when looking for the headers). This symlink is
-    # here to workaround this, and seems to be here to last... :-/
-    CT_DoExecLog ALL ln -sv "usr/${CT_TARGET}" "${CT_SYSROOT_DIR}/mingw"
 
     CT_EndStep
 }
@@ -65,7 +60,7 @@ do_libc() {
 
     CT_DoExecLog CFG                                                        \
     "${CT_SRC_DIR}/mingw-w64-v${CT_WINAPI_VERSION}/mingw-w64-crt/configure" \
-        --prefix=/usr                                                       \
+        --prefix=/${CT_TARGET_MINGW_SYSROOT_TOP}                            \
         --build=${CT_BUILD}                                                 \
         --host=${CT_TARGET}                                                 \
 

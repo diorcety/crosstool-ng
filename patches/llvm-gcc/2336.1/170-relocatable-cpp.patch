@@ -1,0 +1,174 @@
+diff -urN a/gcc/c-incpath.c b/gcc/c-incpath.c
+--- a/gcc/c-incpath.c	2013-05-31 00:32:16.352806075 +0100
++++ b/gcc/c-incpath.c	2013-05-31 00:32:17.108812071 +0100
+@@ -56,6 +56,7 @@
+ static const char dir_separator_str[] = { DIR_SEPARATOR, 0 };
+ 
+ static void add_env_var_paths (const char *, int);
++static void fix_standard_paths ();
+ static void add_standard_paths (const char *, const char *, const char *, int);
+ static void free_path (struct cpp_dir *, int);
+ static void merge_include_chains (cpp_reader *, int);
+@@ -139,6 +140,26 @@
+ #endif
+ /* LLVM LOCAL end sysroot */
+ 
++extern char original_prefix[MAXPATHLEN];
++extern char relocated_prefix[MAXPATHLEN];
++
++static void
++fix_standard_paths ()
++{
++  struct default_include *p;
++  for (p = cpp_include_defaults; p->fname; p++)
++  {
++      if (strstr (p->fname,original_prefix) == p->fname)
++      {
++          char* temp_fname = (char*)xmalloc(strlen(relocated_prefix)+strlen(p->fname)-strlen(original_prefix)+1);
++          strcpy(temp_fname,relocated_prefix);
++          strcat(temp_fname,p->fname+strlen(original_prefix));
++          p->fname = temp_fname;
++          p->add_sysroot = 0;
++      }
++  }
++}
++
+ /* Append the standard include chain defined in cppdefault.c.  */
+ static void
+ add_standard_paths (const char *sysroot, const char *iprefix,
+@@ -147,6 +168,7 @@
+   const struct default_include *p;
+   size_t len;
+ 
++  fix_standard_paths ();
+   if (iprefix && (len = cpp_GCC_INCLUDE_DIR_len) != 0)
+     {
+       /* Look for directories that start with the standard prefix.
+diff -urN a/gcc/cppdefault.c b/gcc/cppdefault.c
+--- a/gcc/cppdefault.c	2013-05-31 00:32:16.364806171 +0100
++++ b/gcc/cppdefault.c	2013-05-31 00:32:17.108812071 +0100
+@@ -52,7 +52,7 @@
+ #else
+ #define ADD_SYSROOT 0
+ #endif
+-const struct default_include cpp_include_defaults[]
++struct default_include cpp_include_defaults[]
+ #ifdef INCLUDE_DEFAULTS
+ = INCLUDE_DEFAULTS;
+ #else
+diff -urN a/gcc/cppdefault.h b/gcc/cppdefault.h
+--- a/gcc/cppdefault.h	2013-05-31 00:32:16.347806036 +0100
++++ b/gcc/cppdefault.h	2013-05-31 00:32:17.108812071 +0100
+@@ -34,21 +34,21 @@
+ 
+ struct default_include
+ {
+-  const char *const fname;	/* The name of the directory.  */
++  const char * fname;	/* The name of the directory.  */
+   const char *const component;	/* The component containing the directory
+ 				   (see update_path in prefix.c) */
+   const char cplusplus;		/* Only look here if we're compiling C++.  */
+   const char cxx_aware;		/* Includes in this directory don't need to
+ 				   be wrapped in extern "C" when compiling
+ 				   C++.  */
+-  const char add_sysroot;	/* FNAME should be prefixed by
++  char add_sysroot;	/* FNAME should be prefixed by
+ 				   cpp_SYSROOT.  */
+   const char multilib;		/* FNAME should have the multilib path
+ 				   specified with -imultilib
+ 				   appended.  */
+ };
+ 
+-extern const struct default_include cpp_include_defaults[];
++extern struct default_include cpp_include_defaults[];
+ extern const char cpp_GCC_INCLUDE_DIR[];
+ extern const size_t cpp_GCC_INCLUDE_DIR_len;
+ 
+diff -urN a/gcc/toplev.c b/gcc/toplev.c
+--- a/gcc/toplev.c	2013-05-31 00:32:16.262805362 +0100
++++ b/gcc/toplev.c	2013-05-31 00:32:17.109812078 +0100
+@@ -82,6 +82,7 @@
+ #include "value-prof.h"
+ #include "alloc-pool.h"
+ #include "tree-mudflap.h"
++#include "cppdefault.h"
+ 
+ /* LLVM LOCAL begin */
+ #ifdef ENABLE_LLVM
+@@ -106,6 +107,11 @@
+ 				   declarations for e.g. AIX 4.x.  */
+ #endif
+ 
++#ifdef __MINGW32__
++__declspec(dllimport) unsigned long __stdcall GetModuleFileNameA(void*,char*,unsigned long);
++#endif
++
++static void determine_relocated_prefix();
+ static void general_init (const char *);
+ static void do_compile (void);
+ static void process_options (void);
+@@ -1641,6 +1647,56 @@
+   return true;
+ }
+ 
++char relocated_prefix[MAXPATHLEN];
++char original_prefix[MAXPATHLEN];
++
++static void
++determine_relocated_prefix()
++{
++  {
++   int slashes = 6;
++#if defined(__linux__) || defined(__CYGWIN__)
++  {
++      int len;
++      if ((len = readlink("/proc/self/exe", relocated_prefix, sizeof(relocated_prefix)-1)) != -1)
++        {
++          relocated_prefix[len] = '\0';
++        }
++  }
++#elif defined(__APPLE__)
++   size_t bufsize=sizeof(relocated_prefix);
++   _NSGetExecutablePath(relocated_prefix, &bufsize);
++#else
++   unsigned long bufsize=sizeof(relocated_prefix);
++   if (GetModuleFileNameA(NULL, relocated_prefix, bufsize) != 0)
++   {
++        /* Early conversion to unix slashes instead of more changes
++         * everywhere else... */
++        char *winslash = strchr(relocated_prefix,'\\');
++        while (winslash)
++        {
++            *winslash = '/';
++            winslash = strchr(winslash,'\\');
++        }
++   }
++#endif
++  /* From: $PREFIX/libexec/gcc/i686-apple-darwin11/4.2.1/collect2
++   *   to: $PREFIX
++   *   is: remove 5 /'s then append /bin/
++   */
++   while (--slashes && strrchr (relocated_prefix,DIR_SEPARATOR))
++   {
++     *strrchr (relocated_prefix,DIR_SEPARATOR) = '\0';
++   }
++   strcpy(original_prefix,cpp_GCC_INCLUDE_DIR);
++   slashes=6;
++   while (--slashes && strrchr (original_prefix,DIR_SEPARATOR))
++   {
++     *strrchr (original_prefix,DIR_SEPARATOR) = '\0';
++   }
++  }
++}
++
+ /* Initialization of the front end environment, before command line
+    options are parsed.  Signal handlers, internationalization etc.
+    ARGV0 is main's argv[0].  */
+@@ -1649,6 +1705,7 @@
+ {
+   const char *p;
+ 
++  determine_relocated_prefix ();
+   p = argv0 + strlen (argv0);
+   while (p != argv0 && !IS_DIR_SEPARATOR (p[-1]))
+     --p;

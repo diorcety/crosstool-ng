@@ -1,0 +1,38 @@
+diff -urN a/llvmCore/lib/System/Win32/Path.inc b/llvmCore/lib/System/Win32/Path.inc
+--- a/llvmCore/lib/System/Win32/Path.inc	2013-10-06 20:13:06.732445711 +0100
++++ b/llvmCore/lib/System/Win32/Path.inc	2013-10-06 20:13:07.362455447 +0100
+@@ -47,6 +47,16 @@
+ namespace sys {
+ const char PathSeparator = ';';
+ 
++// Fix for warning:
++// dereferencing type-punned pointer will break strict-aliasing rules [-Wstrict-aliasing]
++#if defined(__GNUC__)
++typedef __int64 __attribute__ ((__may_alias__)) __int64_alias;
++typedef uint64_t __attribute__ ((__may_alias__)) uint64_t_alias;
++#else
++typedef __int64 __int64_alias;
++typedef uint64_t uint64_t_alias;
++#endif
++
+ Path::Path(llvm::StringRef p)
+   : path(p) {
+   FlipBackSlashes(path);
+@@ -406,7 +416,7 @@
+     for (unsigned i = 0; i < path.length(); ++i)
+       status.uniqueID += path[i];
+ 
+-    __int64 ft = *reinterpret_cast<__int64*>(&fi.ftLastWriteTime);
++    __int64 ft = *reinterpret_cast<__int64_alias*>(&fi.ftLastWriteTime);
+     status.modTime.fromWin32Time(ft);
+ 
+     status.isDir = fi.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY;
+@@ -784,7 +794,7 @@
+   }
+ 
+   FILETIME ft;
+-  (uint64_t&)ft = si.modTime.toWin32Time();
++  *reinterpret_cast<uint64_t_alias*>(&ft) = si.modTime.toWin32Time();
+   BOOL ret = SetFileTime(h, NULL, &ft, &ft);
+   DWORD err = GetLastError();
+   CloseHandle(h);

@@ -1,0 +1,104 @@
+diff -urN a/ld/pass1.c b/ld/pass1.c
+--- a/ld/pass1.c	2013-10-07 17:09:08.972444334 +0100
++++ b/ld/pass1.c	2013-10-07 17:09:09.145780353 +0100
+@@ -5978,7 +5978,11 @@
+  * symbols and if found sets *(int *)fail_p.
+  */
+ static int
++#if defined(HAVE_BSD_QSORT_R)
+ symbol_address_compare (void *fail_p, const void *a_p, const void *b_p)
++#else /* HAVE_BSD_QSORT_R */
++symbol_address_compare (const void *a_p, const void *b_p, void *fail_p)
++#endif /* HAVE_BSD_QSORT_R */
+ {
+   const struct nlist * const * aa = a_p;
+   const struct nlist * a = *aa;
+@@ -6129,8 +6133,13 @@
+   sst = allocate (sizeof (struct nlist *) * cur_obj->symtab->nsyms);
+   for (i = 0; i < cur_obj->symtab->nsyms; i++)
+     sst[i] = st + i;
++#if defined(HAVE_BSD_QSORT_R)
+   qsort_r (sst, cur_obj->symtab->nsyms, sizeof (struct nlist *), &has_stabs,
+ 	   symbol_address_compare);
++#else /* HAVE_BSD_QSORT_R */
++  qsort_r (sst, cur_obj->symtab->nsyms, sizeof (struct nlist *), symbol_address_compare,
++	   &has_stabs);
++#endif /* HAVE_BSD_QSORT_R */
+   if (has_stabs) {
+     error_with_cur_obj("has both STABS and DWARF debugging info");
+     free (sst);
+diff -urN a/ld64/src/ld/parsers/macho_relocatable_file.cpp b/ld64/src/ld/parsers/macho_relocatable_file.cpp
+--- a/ld64/src/ld/parsers/macho_relocatable_file.cpp	2013-10-07 17:09:08.975777780 +0100
++++ b/ld64/src/ld/parsers/macho_relocatable_file.cpp	2013-10-07 17:09:09.149113735 +0100
+@@ -51,6 +51,11 @@
+ #include "macho_relocatable_file.h"
+ 
+ 
++#ifdef HAVE_BSD_QSORT_R
++ #define QSORT_R(_a,_b,_c,_vp,_fn) ::qsort_r((_a), (_b), (_c), (_vp), (_fn))
++#else
++ #define QSORT_R(_a,_b,_c,_vp,_fn) ::qsort_r((_a), (_b), (_c), (int(*)(const void*, const void*, void*))(_fn), (_vp))
++#endif
+ 
+ extern void throwf(const char* format, ...) __attribute__ ((noreturn,format(printf, 1, 2)));
+ extern void warning(const char* format, ...) __attribute__((format(printf, 1, 2)));
+@@ -1058,8 +1063,13 @@
+ 	void											makeSortedSymbolsArray(uint32_t symArray[], const uint32_t sectionArray[]);
+ 	void											makeSortedSectionsArray(uint32_t array[]);
+ 	static int										pointerSorter(const void* l, const void* r);
++#ifdef HAVE_BSD_QSORT_R
+ 	static int										symbolIndexSorter(void* extra, const void* l, const void* r);
+ 	static int										sectionIndexSorter(void* extra, const void* l, const void* r);
++#else
++	static int										symbolIndexSorter(const void* l, const void* r, void* extra);
++	static int										sectionIndexSorter(const void* l, const void* r, void* extra);
++#endif
+ 
+ 	void											parseDebugInfo();
+ 	void											parseStabs();
+@@ -1841,8 +1851,13 @@
+ 	}
+ }
+ 
++#ifdef HAVE_BSD_QSORT_R
+ template <typename A>
+ int Parser<A>::sectionIndexSorter(void* extra, const void* l, const void* r)
++#else
++template <typename A>
++int Parser<A>::sectionIndexSorter(const void* l, const void* r, void* extra)
++#endif
+ {
+ 	Parser<A>* parser = (Parser<A>*)extra;
+ 	const uint32_t* left = (uint32_t*)l;
+@@ -1885,7 +1900,7 @@
+ 	// sort by symbol table address
+ 	for (uint32_t i=0; i < _machOSectionsCount; ++i)
+ 		array[i] = i;
+-	::qsort_r(array, _machOSectionsCount, sizeof(uint32_t), this, &sectionIndexSorter);
++	QSORT_R(array, _machOSectionsCount, sizeof(uint32_t), this, sectionIndexSorter);
+ 
+ 	if ( log ) {
+ 		fprintf(stderr, "sorted sections:\n");
+@@ -1896,8 +1911,13 @@
+ 
+ 
+ 
++#ifdef HAVE_BSD_QSORT_R
+ template <typename A>
+ int Parser<A>::symbolIndexSorter(void* extra, const void* l, const void* r)
++#else
++template <typename A>
++int Parser<A>::symbolIndexSorter(const void* l, const void* r, void* extra)
++#endif
+ {
+ 	ParserAndSectionsArray* extraInfo = (ParserAndSectionsArray*)extra;
+ 	Parser<A>* parser = extraInfo->parser;
+@@ -1969,7 +1989,7 @@
+ 	
+ 	// sort by symbol table address
+ 	ParserAndSectionsArray extra = { this, sectionArray };
+-	::qsort_r(array, _symbolsInSections, sizeof(uint32_t), &extra, &symbolIndexSorter);
++	QSORT_R(array, _symbolsInSections, sizeof(uint32_t), &extra, symbolIndexSorter);
+ 	
+ 	// look for two symbols at same address
+ 	_overlappingSymbols = false;

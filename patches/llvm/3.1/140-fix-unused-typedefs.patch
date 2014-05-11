@@ -1,0 +1,33 @@
+diff -urN a/include/llvm/ADT/Hashing.h b/include/llvm/ADT/Hashing.h
+--- a/include/llvm/ADT/Hashing.h	2012-04-07 21:01:31.000000000 +0100
++++ b/include/llvm/ADT/Hashing.h	2013-09-08 22:53:28.190932500 +0100
+@@ -413,7 +413,6 @@
+ /// combining them, this (as an optimization) directly combines the integers.
+ template <typename InputIteratorT>
+ hash_code hash_combine_range_impl(InputIteratorT first, InputIteratorT last) {
+-  typedef typename std::iterator_traits<InputIteratorT>::value_type ValueT;
+   const size_t seed = get_execution_seed();
+   char buffer[64], *buffer_ptr = buffer;
+   char *const buffer_end = buffer_ptr + array_lengthof(buffer);
+diff -urN a/include/llvm/Analysis/LoopInfo.h b/include/llvm/Analysis/LoopInfo.h
+--- a/include/llvm/Analysis/LoopInfo.h	2012-04-10 06:14:42.000000000 +0100
++++ b/include/llvm/Analysis/LoopInfo.h	2013-09-08 22:53:43.880924900 +0100
+@@ -293,7 +293,6 @@
+ 
+     // Loop over the predecessors of the header node...
+     BlockT *Header = getHeader();
+-    typedef GraphTraits<BlockT*> BlockTraits;
+     typedef GraphTraits<Inverse<BlockT*> > InvBlockTraits;
+     for (typename InvBlockTraits::ChildIteratorType PI =
+          InvBlockTraits::child_begin(Header),
+diff -urN a/include/llvm/SymbolTableListTraits.h b/include/llvm/SymbolTableListTraits.h
+--- a/include/llvm/SymbolTableListTraits.h	2010-06-10 16:06:05.000000000 +0100
++++ b/include/llvm/SymbolTableListTraits.h	2013-09-08 22:46:59.568083700 +0100
+@@ -46,7 +46,6 @@
+   /// getListOwner - Return the object that owns this list.  If this is a list
+   /// of instructions, it returns the BasicBlock that owns them.
+   ItemParentClass *getListOwner() {
+-    typedef iplist<ValueSubClass> ItemParentClass::*Sublist;
+     size_t Offset(size_t(&((ItemParentClass*)0->*ItemParentClass::
+                            getSublistAccess(static_cast<ValueSubClass*>(0)))));
+     iplist<ValueSubClass>* Anchor(static_cast<iplist<ValueSubClass>*>(this));

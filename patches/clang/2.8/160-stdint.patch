@@ -1,0 +1,11 @@
+diff -urN b/include/clang/Basic/Diagnostic.h c/include/clang/Basic/Diagnostic.h
+--- b/include/clang/Basic/Diagnostic.h	2010-08-19 00:29:43.000000000 +0200
++++ c/include/clang/Basic/Diagnostic.h	2013-09-06 00:47:07.426285213 +0200
+@@ -19,6 +19,7 @@
+ #include "llvm/ADT/OwningPtr.h"
+ #include "llvm/ADT/StringRef.h"
+ #include "llvm/Support/type_traits.h"
++#include <stdint.h>
+ #include <string>
+ #include <vector>
+ #include <cassert>

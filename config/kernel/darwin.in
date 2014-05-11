@@ -1,0 +1,60 @@
+# darwin config options
+
+## depends on EXPERIMENTAL && (ARCH_x86 || ARCH_arm || ARCH_powerpc)
+##
+## select DARWIN
+## select KERNEL_SUPPORTS_SHARED_LIBS
+##
+## help Build a toolchain targeting systems running Darwin as host
+
+choice
+    bool
+    prompt "Darwin api version"
+
+# Don't remove next line
+# CT_INSERT_VERSION_BELOW
+config DARWIN_MAC_OSX_V_10_7
+    bool
+    prompt "Mac OSX 10.7"
+
+config DARWIN_MAC_OSX_V_10_6
+    bool
+    prompt "Mac OSX 10.6"
+
+config DARWIN_IOS_V_5_0
+    bool
+    prompt "iOS 5.0"
+
+config DARWIN_IOS_V_6_0
+    bool
+    prompt "iOS 6.0"
+
+config DARWIN_IOS_V_6_1
+    bool
+    prompt "iOS 6.1"
+
+endchoice
+
+config DARWIN_VERSION
+    string
+    prompt "Darwin version"
+    default "10" if DARWIN_MAC_OSX_V_10_6
+    default "11" if DARWIN_MAC_OSX_V_10_7
+    default "10" if DARWIN_IOS_V_5_0 
+    default "10" if DARWIN_IOS_V_6_0 
+    default "10" if DARWIN_IOS_V_6_1 
+
+config DARWIN_SDK_PATH
+    string
+    prompt "Darwin SDK path"
+    default ""
+
+config DARWIN_SDK
+    string
+# Don't remove next line
+# CT_INSERT_VERSION_STRING_BELOW
+    default "MacOSX10.7.sdk" if DARWIN_MAC_OSX_V_10_7
+    default "MacOSX10.6.sdk" if DARWIN_MAC_OSX_V_10_6
+    default "iPhoneOS5.0.sdk" if DARWIN_IOS_V_5_0
+    default "iPhoneOS6.0.sdk" if DARWIN_IOS_V_6_0
+    default "iPhoneOS6.1.sdk" if DARWIN_IOS_V_6_1
