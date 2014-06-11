@@ -1,4 +1,4 @@
-From 5dc72a67e4c41a864f560d6b895eaa40cd0ab860 Mon Sep 17 00:00:00 2001
+From 98cf1f76eef3cd80979a203464112372e05ad414 Mon Sep 17 00:00:00 2001
 From: Ray Donnelly <mingw.android@gmail.com>
 Date: Wed, 13 Nov 2013 18:27:28 +0000
 Subject: [PATCH 2/8] program prefix ld
@@ -9,31 +9,31 @@ Subject: [PATCH 2/8] program prefix ld
  2 files changed, 2 insertions(+), 2 deletions(-)
 
 diff --git a/autoconf/m4/link_options.m4 b/autoconf/m4/link_options.m4
-index b58d617..5fc465e 100644
+index abf6596..fe66203 100644
 --- a/autoconf/m4/link_options.m4
 +++ b/autoconf/m4/link_options.m4
 @@ -6,7 +6,7 @@
  AC_DEFUN([AC_LINK_GET_VERSION],
    [AC_CACHE_CHECK([for linker version],[llvm_cv_link_version],
    [
--   version_string="$(ld -v 2>&1 | head -1)"
-+   version_string="$(${program_prefix}ld -v 2>&1 | head -1)"
+-   version_string="$(${LD:-ld} -v 2>&1 | head -1)"
++   version_string="$(${LD:-${program_prefix}ld} -v 2>&1 | head -1)"
  
     # Check for ld64.
     if (echo "$version_string" | grep -q "ld64"); then
 diff --git a/configure b/configure
-index aada393..6a7c777 100755
+index d846f95..87ba6ee 100755
 --- a/configure
 +++ b/configure
-@@ -7602,7 +7602,7 @@ if test "${llvm_cv_link_version+set}" = set; then
+@@ -7612,7 +7612,7 @@ if test "${llvm_cv_link_version+set}" = set; then
    echo $ECHO_N "(cached) $ECHO_C" >&6
  else
  
--   version_string="$(ld -v 2>&1 | head -1)"
-+   version_string="$(${program_prefix}ld -v 2>&1 | head -1)"
+-   version_string="$(${LD:-ld} -v 2>&1 | head -1)"
++   version_string="$(${LD:-${program_prefix}ld} -v 2>&1 | head -1)"
  
     # Check for ld64.
     if (echo "$version_string" | grep -q "ld64"); then
 -- 
-1.8.5.4
+2.0.0
 

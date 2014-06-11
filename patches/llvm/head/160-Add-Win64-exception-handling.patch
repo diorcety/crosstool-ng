@@ -1,4 +1,4 @@
-From 7c2f86eaaab0ee9b226ef338eacbde6335cd7864 Mon Sep 17 00:00:00 2001
+From 933ebd80c587a1a914f06e75c96d2c7e9a42083c Mon Sep 17 00:00:00 2001
 From: Ray Donnelly <mingw.android@gmail.com>
 Date: Thu, 13 Feb 2014 18:35:53 +0000
 Subject: [PATCH 7/8] Add Win64 exception handling.
@@ -22,23 +22,25 @@ personality function is emitted as handler function and the Dwarf code
 is emitted as handler data.
 
 Most of this patch is based on work by Charles Davis.
+
+Updated to continue working on llvm 3.5 head by martell malone
 ---
- lib/CodeGen/AsmPrinter/Win64Exception.cpp    |  12 +--
- lib/MC/MCObjectFileInfo.cpp                  |  15 ++--
- lib/Target/X86/MCTargetDesc/X86MCAsmInfo.cpp |  15 +++-
+ lib/CodeGen/AsmPrinter/Win64Exception.cpp    |  13 +--
+ lib/MC/MCObjectFileInfo.cpp                  |  15 ++-
+ lib/Target/X86/MCTargetDesc/X86MCAsmInfo.cpp |  25 +++--
  lib/Target/X86/X86AsmPrinter.h               |   2 +
  lib/Target/X86/X86ISelLowering.cpp           |   3 +-
- lib/Target/X86/X86MCInstLower.cpp            | 129 ++++++++++++++++++++++++++
+ lib/Target/X86/X86MCInstLower.cpp            | 131 +++++++++++++++++++++++++++
  test/CodeGen/X86/avx-win64-args.ll           |   2 +
- test/CodeGen/X86/win64_eh.ll                 | 130 +++++++++++++++++++++++++++
- 8 files changed, 290 insertions(+), 18 deletions(-)
+ test/CodeGen/X86/win64_eh.ll                 | 130 ++++++++++++++++++++++++++
+ 8 files changed, 298 insertions(+), 23 deletions(-)
  create mode 100644 test/CodeGen/X86/win64_eh.ll
 
 diff --git a/lib/CodeGen/AsmPrinter/Win64Exception.cpp b/lib/CodeGen/AsmPrinter/Win64Exception.cpp
-index eda444bd..268b5c6 100644
+index 4768a43..674a0c0 100644
 --- a/lib/CodeGen/AsmPrinter/Win64Exception.cpp
 +++ b/lib/CodeGen/AsmPrinter/Win64Exception.cpp
-@@ -78,9 +78,9 @@ void Win64Exception::beginFunction(const MachineFunction *MF) {
+@@ -77,9 +77,9 @@ void Win64Exception::beginFunction(const MachineFunction *MF) {
    if (!shouldEmitPersonality)
      return;
  
@@ -46,31 +48,32 @@ index eda444bd..268b5c6 100644
 -    Asm->GetExternalSymbolSymbol("_GCC_specific_handler");
 -  Asm->OutStreamer.EmitWin64EHHandler(GCCHandlerSym, true, true);
 +  const MCSymbol *PersHandlerSym = TLOF.getCFIPersonalitySymbol(Per, *Asm->Mang,
-+                                                                MMI);
++                                                                Asm->TM, MMI);
 +  Asm->OutStreamer.EmitWin64EHHandler(PersHandlerSym, true, true);
  
    Asm->OutStreamer.EmitLabel(Asm->GetTempSymbol("eh_func_begin",
                                                  Asm->getFunctionNumber()));
-@@ -99,14 +99,8 @@ void Win64Exception::endFunction(const MachineFunction *) {
+@@ -98,15 +98,8 @@ void Win64Exception::endFunction(const MachineFunction *) {
    MMI->TidyLandingPads();
  
    if (shouldEmitPersonality) {
 -    const TargetLoweringObjectFile &TLOF = Asm->getObjFileLowering();
 -    const Function *Per = MMI->getPersonalities()[MMI->getPersonalityIndex()];
--    const MCSymbol *Sym = TLOF.getCFIPersonalitySymbol(Per, *Asm->Mang, MMI);
+-    const MCSymbol *Sym =
+-        TLOF.getCFIPersonalitySymbol(Per, *Asm->Mang, Asm->TM, MMI);
 -
      Asm->OutStreamer.PushSection();
      Asm->OutStreamer.EmitWin64EHHandlerData();
 -    Asm->OutStreamer.EmitValue(MCSymbolRefExpr::Create(Sym, Asm->OutContext),
 -                               4);
-     EmitExceptionTable();
+     emitExceptionTable();
      Asm->OutStreamer.PopSection();
    }
 diff --git a/lib/MC/MCObjectFileInfo.cpp b/lib/MC/MCObjectFileInfo.cpp
-index a160f29..e5e55f0 100644
+index d12f60c..a784ec4 100644
 --- a/lib/MC/MCObjectFileInfo.cpp
 +++ b/lib/MC/MCObjectFileInfo.cpp
-@@ -606,11 +606,16 @@ void MCObjectFileInfo::InitCOFFMCObjectFileInfo(Triple T) {
+@@ -632,11 +632,16 @@ void MCObjectFileInfo::InitCOFFMCObjectFileInfo(Triple T) {
    // though it contains relocatable pointers.  In PIC mode, this is probably a
    // big runtime hit for C++ apps.  Either the contents of the LSDA need to be
    // adjusted or this should be a data section.
@@ -93,45 +96,50 @@ index a160f29..e5e55f0 100644
    // Debug info.
    COFFDebugSymbolsSection =
 diff --git a/lib/Target/X86/MCTargetDesc/X86MCAsmInfo.cpp b/lib/Target/X86/MCTargetDesc/X86MCAsmInfo.cpp
-index 6561804..2a537db 100644
+index 39480ea..9ae55a7 100644
 --- a/lib/Target/X86/MCTargetDesc/X86MCAsmInfo.cpp
 +++ b/lib/Target/X86/MCTargetDesc/X86MCAsmInfo.cpp
-@@ -142,7 +142,8 @@ getNonexecutableStackSection(MCContext &Ctx) const {
+@@ -141,9 +141,15 @@ getNonexecutableStackSection(MCContext &Ctx) const {
+ 
  void X86MCAsmInfoMicrosoft::anchor() { }
  
- X86MCAsmInfoMicrosoft::X86MCAsmInfoMicrosoft(const Triple &Triple) {
+-X86MCAsmInfoMicrosoft::X86MCAsmInfoMicrosoft(const Triple &Triple) {
 -  if (Triple.getArch() == Triple::x86_64)
-+  bool is64Bit = Triple.getArch() == Triple::x86_64;
-+  if (is64Bit)
++X86MCAsmInfoMicrosoft::X86MCAsmInfoMicrosoft(const Triple &T) {
++  bool is64Bit = T.getArch() == Triple::x86_64;
++
++  if (is64Bit) {
      PrivateGlobalPrefix = ".L";
++    ExceptionsType = ExceptionHandling::Win64;
++  }
++
++  PointerSize = is64Bit ? 8 : 4;
  
    AssemblerDialect = AsmWriterFlavor;
-@@ -151,13 +152,18 @@ X86MCAsmInfoMicrosoft::X86MCAsmInfoMicrosoft(const Triple &Triple) {
  
-   AllowAtInName = true;
- 
-+  // Exceptions handling
-+  if (is64Bit)
-+    ExceptionsType = ExceptionHandling::Win64;
-+
-   UseIntegratedAssembler = true;
- }
+@@ -156,18 +162,23 @@ X86MCAsmInfoMicrosoft::X86MCAsmInfoMicrosoft(const Triple &Triple) {
  
  void X86MCAsmInfoGNUCOFF::anchor() { }
  
- X86MCAsmInfoGNUCOFF::X86MCAsmInfoGNUCOFF(const Triple &Triple) {
--  if (Triple.getArch() == Triple::x86_64)
-+  bool is64Bit = Triple.getArch() == Triple::x86_64;
+-X86MCAsmInfoGNUCOFF::X86MCAsmInfoGNUCOFF(const Triple &Triple) {
+-  if (Triple.getArch() == Triple::x86_64) {
++X86MCAsmInfoGNUCOFF::X86MCAsmInfoGNUCOFF(const Triple &T) {
++  bool is64Bit = T.getArch() == Triple::x86_64;
++
 +  if (is64Bit)
      PrivateGlobalPrefix = ".L";
+-    PointerSize = 8;
+-  }
++
++  PointerSize = is64Bit ? 8 : 4;
  
    AssemblerDialect = AsmWriterFlavor;
-@@ -165,7 +171,10 @@ X86MCAsmInfoGNUCOFF::X86MCAsmInfoGNUCOFF(const Triple &Triple) {
+ 
    TextAlignFillValue = 0x90;
  
    // Exceptions handling
 -  ExceptionsType = ExceptionHandling::DwarfCFI;
-+  if (is64Bit && Triple.getOS() == Triple::MinGW32)
++  if (is64Bit && T.isWindowsGNUEnvironment())
 +    ExceptionsType = ExceptionHandling::Win64;
 +  else
 +    ExceptionsType = ExceptionHandling::DwarfCFI;
@@ -139,12 +147,12 @@ index 6561804..2a537db 100644
    UseIntegratedAssembler = true;
  }
 diff --git a/lib/Target/X86/X86AsmPrinter.h b/lib/Target/X86/X86AsmPrinter.h
-index d6adf68..2477a84 100644
+index e4eef5d..415eafb 100644
 --- a/lib/Target/X86/X86AsmPrinter.h
 +++ b/lib/Target/X86/X86AsmPrinter.h
-@@ -27,6 +27,8 @@ class LLVM_LIBRARY_VISIBILITY X86AsmPrinter : public AsmPrinter {
-   const X86Subtarget *Subtarget;
-   StackMaps SM;
+@@ -25,6 +25,8 @@ class LLVM_LIBRARY_VISIBILITY X86AsmPrinter : public AsmPrinter {
+ 
+   void GenerateExportDirective(const MCSymbol *Sym, bool IsData);
  
 +  void EmitUnwindingInstruction(const MachineInstr *MI);
 +
@@ -152,10 +160,10 @@ index d6adf68..2477a84 100644
    explicit X86AsmPrinter(TargetMachine &TM, MCStreamer &Streamer)
      : AsmPrinter(TM, Streamer), SM(*this) {
 diff --git a/lib/Target/X86/X86ISelLowering.cpp b/lib/Target/X86/X86ISelLowering.cpp
-index 4ce2ea3..e292701 100644
+index 06d50b9..5dce46d 100644
 --- a/lib/Target/X86/X86ISelLowering.cpp
 +++ b/lib/Target/X86/X86ISelLowering.cpp
-@@ -597,7 +597,8 @@ void X86TargetLowering::resetOperationActions() {
+@@ -607,7 +607,8 @@ void X86TargetLowering::resetOperationActions() {
    // FIXME - use subtarget debug flags
    if (!Subtarget->isTargetDarwin() &&
        !Subtarget->isTargetELF() &&
@@ -166,15 +174,31 @@ index 4ce2ea3..e292701 100644
    }
  
 diff --git a/lib/Target/X86/X86MCInstLower.cpp b/lib/Target/X86/X86MCInstLower.cpp
-index 6f88cf1..2eab008 100644
+index 0190080..0cc9413 100644
 --- a/lib/Target/X86/X86MCInstLower.cpp
 +++ b/lib/Target/X86/X86MCInstLower.cpp
-@@ -776,7 +776,129 @@ static void LowerPATCHPOINT(MCStreamer &OS, StackMaps &SM,
+@@ -13,6 +13,7 @@
+ //===----------------------------------------------------------------------===//
+ 
+ #include "X86AsmPrinter.h"
++#include "X86RegisterInfo.h"
+ #include "InstPrinter/X86ATTInstPrinter.h"
+ #include "MCTargetDesc/X86BaseInfo.h"
+ #include "llvm/ADT/SmallString.h"
+@@ -20,6 +21,7 @@
+ #include "llvm/CodeGen/MachineModuleInfoImpls.h"
+ #include "llvm/CodeGen/StackMaps.h"
+ #include "llvm/IR/DataLayout.h"
++#include "llvm/IR/Function.h"
+ #include "llvm/IR/GlobalValue.h"
+ #include "llvm/IR/Mangler.h"
+ #include "llvm/MC/MCAsmInfo.h"
+@@ -777,7 +779,129 @@ static void LowerPATCHPOINT(MCStreamer &OS, StackMaps &SM,
    EmitNops(OS, NumBytes - EncodedBytes, Is64Bit, STI);
  }
  
 +static bool isCalleeSavedReg(const MachineFunction *MF,
-+                             const TargetRegisterInfo *RI, unsigned Reg) {
++                             const X86RegisterInfo *RI, unsigned Reg) {
 +  const uint16_t *NVRegs = RI->getCalleeSavedRegs(MF);
 +  while (*NVRegs) {
 +    if (*NVRegs == Reg)
@@ -275,11 +299,11 @@ index 6f88cf1..2eab008 100644
 +    break;
 +  }
 +  // Prolog ends if next instruction does not have the FrameSetup flag
-+  // and is not the PROLOG_LABEL.
++  // and is not the CFI_Instruction.
 +  if (MI->getNextNode()) {
 +    const MachineInstr *MI2 = MI->getNextNode();
 +    if (!(MI2->getFlag(MachineInstr::FrameSetup) ||
-+          (MI2->isPrologLabel() && MI2->getNextNode() &&
++          (MI2->isCFIInstruction() && MI2->getNextNode() &&
 +           MI2->getNextNode()->getFlag(MachineInstr::FrameSetup)))) {
 +      OutStreamer.EmitWin64EHEndProlog();
 +    }
@@ -299,7 +323,7 @@ index 6f88cf1..2eab008 100644
    X86MCInstLower MCInstLowering(*MF, *this);
    switch (MI->getOpcode()) {
    case TargetOpcode::DBG_VALUE:
-@@ -887,4 +1009,11 @@ void X86AsmPrinter::EmitInstruction(const MachineInstr *MI) {
+@@ -888,4 +1012,11 @@ void X86AsmPrinter::EmitInstruction(const MachineInstr *MI) {
    MCInst TmpInst;
    MCInstLowering.Lower(MI, TmpInst);
    EmitToStreamer(OutStreamer, TmpInst);
@@ -459,5 +483,5 @@ index 0000000..101ae39
 +; WIN64: .seh_handlerdata
 +; WIN64: .seh_endproc
 -- 
-1.8.5.4
+2.0.0
 

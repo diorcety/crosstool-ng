@@ -1,4 +1,4 @@
-From 2ec9fc0d82865392e3f3492f6f7a94e400a87614 Mon Sep 17 00:00:00 2001
+From d8366b3535dda469a0b14974e19ef9d8f41825c2 Mon Sep 17 00:00:00 2001
 From: Ray Donnelly <mingw.android@gmail.com>
 Date: Wed, 13 Nov 2013 18:29:44 +0000
 Subject: [PATCH 5/8] fix triple transformation
@@ -8,7 +8,7 @@ Subject: [PATCH 5/8] fix triple transformation
  1 file changed, 8 deletions(-)
 
 diff --git a/lib/Support/Unix/Host.inc b/lib/Support/Unix/Host.inc
-index 726e2fb..745e548 100644
+index c5d36ff..e59dcdd 100644
 --- a/lib/Support/Unix/Host.inc
 +++ b/lib/Support/Unix/Host.inc
 @@ -51,13 +51,5 @@ std::string sys::getDefaultTargetTriple() {
@@ -23,8 +23,8 @@ index 726e2fb..745e548 100644
 -    Triple += getOSVersion();
 -  }
 -
-   return Triple;
+   return Triple::normalize(Triple);
  }
 -- 
-1.8.5.4
+2.0.0
 

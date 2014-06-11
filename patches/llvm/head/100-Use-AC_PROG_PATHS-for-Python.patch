@@ -1,4 +1,4 @@
-From 0371c7fd4e9019ae23307a1c3f5f32e7dfb751e4 Mon Sep 17 00:00:00 2001
+From 9e1ba0b1c0f33cc16dccbeddd21196244f400895 Mon Sep 17 00:00:00 2001
 From: Ray Donnelly <mingw.android@gmail.com>
 Date: Thu, 16 Jan 2014 12:10:25 +0000
 Subject: [PATCH 1/8] Use AC_PROG_PATHS for Python
@@ -17,10 +17,10 @@ also installed can be used.
  2 files changed, 13 insertions(+), 8 deletions(-)
 
 diff --git a/autoconf/configure.ac b/autoconf/configure.ac
-index f376e03..631a0f7 100644
+index a1c2ac5..44d150b 100644
 --- a/autoconf/configure.ac
 +++ b/autoconf/configure.ac
-@@ -1479,7 +1479,7 @@ else
+@@ -1429,7 +1429,7 @@ else
      AC_MSG_WARN([specified python ($PYTHON) is not usable, searching path])
    fi
  
@@ -30,10 +30,10 @@ index f376e03..631a0f7 100644
                  AC_MSG_ERROR([could not find python 2.5 or higher])])
  fi
 diff --git a/configure b/configure
-index 46d557d..aada393 100755
+index e9aba06..d846f95 100755
 --- a/configure
 +++ b/configure
-@@ -11890,8 +11890,10 @@ else
+@@ -8694,8 +8694,10 @@ else
  echo "$as_me: WARNING: specified python ($PYTHON) is not usable, searching path" >&2;}
    fi
  
@@ -46,7 +46,7 @@ index 46d557d..aada393 100755
  { echo "$as_me:$LINENO: checking for $ac_word" >&5
  echo $ECHO_N "checking for $ac_word... $ECHO_C" >&6; }
  if test "${ac_cv_path_PYTHON+set}" = set; then
-@@ -11917,11 +11919,6 @@ done
+@@ -8721,11 +8723,6 @@ done
  done
  IFS=$as_save_IFS
  
@@ -58,7 +58,7 @@ index 46d557d..aada393 100755
    ;;
  esac
  fi
-@@ -11935,6 +11932,14 @@ echo "${ECHO_T}no" >&6; }
+@@ -8739,6 +8736,14 @@ echo "${ECHO_T}no" >&6; }
  fi
  
  
@@ -74,5 +74,5 @@ index 46d557d..aada393 100755
  
  { echo "$as_me:$LINENO: checking for python >= 2.5" >&5
 -- 
-1.8.5.4
+2.0.0
 
