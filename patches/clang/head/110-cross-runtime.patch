@@ -1,4 +1,4 @@
-From 1a8097b9b37a2e247fd0a6134c60a1266b540e45 Mon Sep 17 00:00:00 2001
+From 31e887f05a60a3922733784bedd52b916b6b6746 Mon Sep 17 00:00:00 2001
 From: Ray Donnelly <mingw.android@gmail.com>
 Date: Sun, 9 Feb 2014 21:44:03 +0000
 Subject: [PATCH 1/5] cross runtime
@@ -9,7 +9,7 @@ Subject: [PATCH 1/5] cross runtime
  1 file changed, 5 insertions(+), 5 deletions(-)
 
 diff --git a/runtime/compiler-rt/Makefile b/runtime/compiler-rt/Makefile
-index b683fcd..f23a73f 100644
+index ccd83a3..51378c0 100644
 --- a/runtime/compiler-rt/Makefile
 +++ b/runtime/compiler-rt/Makefile
 @@ -77,7 +77,7 @@ ifeq ($(shell test -d $(COMPILERRT_SRC_ROOT) && echo OK),OK)
@@ -31,7 +31,7 @@ index b683fcd..f23a73f 100644
  RuntimeLibrary.linux.Configs :=
  
 @@ -130,11 +130,11 @@ Runtime32BitConfigs = \
- 	ubsan_cxx-i386.a
+ 	ubsan-i386.a ubsan_cxx-i386.a
  
  # We currently only try to generate runtime libraries on x86.
 -ifeq ($(ARCH),x86)
@@ -42,9 +42,9 @@ index b683fcd..f23a73f 100644
 -ifeq ($(ARCH),x86_64)
 +ifeq ($(TARGET_ARCH),x86_64)
  RuntimeLibrary.linux.Configs += \
- 	full-x86_64.a profile-x86_64.a san-x86_64.a asan-x86_64.a \
- 	tsan-x86_64.a msan-x86_64.a ubsan-x86_64.a ubsan_cxx-x86_64.a \
-@@ -220,7 +220,7 @@ $(ResourceLibDir)/$1/libclang_rt.%.dylib: \
+ 	builtins-x86_64.a profile-x86_64.a san-x86_64.a asan-x86_64.a \
+ 	asan_cxx-x86_64.a tsan-x86_64.a msan-x86_64.a ubsan-x86_64.a \
+@@ -222,7 +222,7 @@ $(ResourceLibDir)/$1/libclang_rt.%.dylib: \
  	$(Echo) Copying runtime library $1/$$* to build dir
  	$(Verb) cp $(PROJ_OBJ_DIR)/clang_$1/$$*/libcompiler_rt.dylib $$@
  	$(Echo) Fixing LC_ID_DYLIB of $$@
@@ -54,5 +54,5 @@ index b683fcd..f23a73f 100644
  		$(RuntimeLibrary.$1.Configs:%=$(ResourceLibDir)/$1/libclang_rt.%)
  .PHONY: RuntimeLibrary.$1
 -- 
-1.8.5.4
+2.0.0
 

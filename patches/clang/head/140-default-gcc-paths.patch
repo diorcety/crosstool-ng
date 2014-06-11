@@ -1,4 +1,4 @@
-From 13e55825c7d3b6cbc39bfd654c82fdaaa878dd37 Mon Sep 17 00:00:00 2001
+From d5ad47b78354e6af1437968168997581669df9a3 Mon Sep 17 00:00:00 2001
 From: Ray Donnelly <mingw.android@gmail.com>
 Date: Wed, 13 Nov 2013 18:10:54 +0000
 Subject: [PATCH 4/5] default gcc paths
@@ -10,7 +10,7 @@ Subject: [PATCH 4/5] default gcc paths
  3 files changed, 50 insertions(+)
 
 diff --git a/include/clang/Driver/ToolChain.h b/include/clang/Driver/ToolChain.h
-index e8f2c78..13a9826 100644
+index f3db2c1..7b0f043 100644
 --- a/include/clang/Driver/ToolChain.h
 +++ b/include/clang/Driver/ToolChain.h
 @@ -127,6 +127,11 @@ public:
@@ -26,7 +26,7 @@ index e8f2c78..13a9826 100644
    const path_list &getFilePaths() const { return FilePaths; }
  
 diff --git a/lib/Driver/ToolChain.cpp b/lib/Driver/ToolChain.cpp
-index f48a811..031b83d 100644
+index 8a3e5fa..044d223 100644
 --- a/lib/Driver/ToolChain.cpp
 +++ b/lib/Driver/ToolChain.cpp
 @@ -25,6 +25,13 @@ using namespace clang::driver;
@@ -83,10 +83,10 @@ index f48a811..031b83d 100644
    return D.GetFilePath(Name, *this);
  
 diff --git a/lib/Driver/Tools.cpp b/lib/Driver/Tools.cpp
-index c61a1b4..6b32058 100644
+index fb7989a..0605ce2 100644
 --- a/lib/Driver/Tools.cpp
 +++ b/lib/Driver/Tools.cpp
-@@ -2815,6 +2815,12 @@ void Clang::ConstructJob(Compilation &C, const JobAction &JA,
+@@ -3090,6 +3090,12 @@ void Clang::ConstructJob(Compilation &C, const JobAction &JA,
    // preprocessed inputs and configure concludes that -fPIC is not supported.
    Args.ClaimAllArgs(options::OPT_D);
  
@@ -100,5 +100,5 @@ index c61a1b4..6b32058 100644
    if (Arg *A = Args.getLastArg(options::OPT_O_Group)) {
      if (A->getOption().matches(options::OPT_O4)) {
 -- 
-1.8.5.4
+2.0.0
 

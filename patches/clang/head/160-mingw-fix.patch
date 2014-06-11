@@ -1,4 +1,4 @@
-From a42ac4eeb568e7c708986f7287ef4dde32986c95 Mon Sep 17 00:00:00 2001
+From d6804dd2dc10d60ab64af39184b94a660e3f2735 Mon Sep 17 00:00:00 2001
 From: Ray Donnelly <mingw.android@gmail.com>
 Date: Thu, 14 Nov 2013 13:30:18 +0000
 Subject: [PATCH 5/5] mingw fix
@@ -11,7 +11,7 @@ Subject: [PATCH 5/5] mingw fix
  4 files changed, 29 insertions(+), 7 deletions(-)
 
 diff --git a/include/clang/Driver/ToolChain.h b/include/clang/Driver/ToolChain.h
-index 13a9826..e50fbfe 100644
+index 7b0f043..8287864 100644
 --- a/include/clang/Driver/ToolChain.h
 +++ b/include/clang/Driver/ToolChain.h
 @@ -131,6 +131,8 @@ public:
@@ -24,7 +24,7 @@ index 13a9826..e50fbfe 100644
    path_list &getFilePaths() { return FilePaths; }
    const path_list &getFilePaths() const { return FilePaths; }
 diff --git a/lib/Driver/ToolChain.cpp b/lib/Driver/ToolChain.cpp
-index 031b83d..e1a4754 100644
+index 044d223..7201ef3 100644
 --- a/lib/Driver/ToolChain.cpp
 +++ b/lib/Driver/ToolChain.cpp
 @@ -161,6 +161,29 @@ void ToolChain::AddIncludeSearchPathArgs(const ArgList &Args, ArgStringList &Cmd
@@ -58,10 +58,10 @@ index 031b83d..e1a4754 100644
    std::string GccVersion(CLANG_GCC_VERSION_STR);
  
 diff --git a/lib/Driver/Tools.cpp b/lib/Driver/Tools.cpp
-index 6b32058..d153147 100644
+index 0605ce2..d2fb58e 100644
 --- a/lib/Driver/Tools.cpp
 +++ b/lib/Driver/Tools.cpp
-@@ -2818,6 +2818,9 @@ void Clang::ConstructJob(Compilation &C, const JobAction &JA,
+@@ -3093,6 +3093,9 @@ void Clang::ConstructJob(Compilation &C, const JobAction &JA,
    if (isa<LinkJobAction>(JA)) {
       getToolChain().AddLinkSearchPathArgs(Args, CmdArgs);
    } else {
@@ -72,12 +72,12 @@ index 6b32058..d153147 100644
    }
  
 diff --git a/lib/Frontend/InitHeaderSearch.cpp b/lib/Frontend/InitHeaderSearch.cpp
-index bb1fe2d..e35041d 100644
+index d2edc94..fa80d13 100644
 --- a/lib/Frontend/InitHeaderSearch.cpp
 +++ b/lib/Frontend/InitHeaderSearch.cpp
-@@ -312,14 +312,8 @@ void InitHeaderSearch::AddDefaultCIncludePaths(const llvm::Triple &triple,
-     break;
-   case llvm::Triple::MinGW32: { 
+@@ -314,14 +314,8 @@ void InitHeaderSearch::AddDefaultCIncludePaths(const llvm::Triple &triple,
+       break;
+     case llvm::Triple::GNU:
        // mingw-w64 crt include paths
 -      // <sysroot>/i686-w64-mingw32/include
        SmallString<128> P = StringRef(HSOpts.ResourceDir);
@@ -92,5 +92,5 @@ index bb1fe2d..e35041d 100644
  
        // mingw.org crt include paths
 -- 
-1.8.5.4
+2.0.0
 

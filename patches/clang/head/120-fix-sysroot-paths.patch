@@ -1,4 +1,4 @@
-From 1ea6a3f167c1a6bb8f843998f890520512461c3d Mon Sep 17 00:00:00 2001
+From 91d7fcfc7b0fcef3b1a25428380732a045fee0d3 Mon Sep 17 00:00:00 2001
 From: Ray Donnelly <mingw.android@gmail.com>
 Date: Wed, 13 Nov 2013 18:04:57 +0000
 Subject: [PATCH 2/5] fix sysroot paths
@@ -9,10 +9,10 @@ Subject: [PATCH 2/5] fix sysroot paths
  2 files changed, 23 insertions(+)
 
 diff --git a/lib/Driver/Driver.cpp b/lib/Driver/Driver.cpp
-index dd650ae..2ee8a92 100644
+index 1d7f180..65f5425 100644
 --- a/lib/Driver/Driver.cpp
 +++ b/lib/Driver/Driver.cpp
-@@ -45,6 +45,10 @@ using namespace clang::driver;
+@@ -42,6 +42,10 @@ using namespace clang::driver;
  using namespace clang;
  using namespace llvm::opt;
  
@@ -22,8 +22,8 @@ index dd650ae..2ee8a92 100644
 +
  Driver::Driver(StringRef ClangExecutable,
                 StringRef DefaultTargetTriple,
-                StringRef DefaultImageName,
-@@ -355,6 +359,16 @@ Compilation *Driver::BuildCompilation(ArrayRef<const char *> ArgList) {
+                DiagnosticsEngine &Diags)
+@@ -350,6 +354,16 @@ Compilation *Driver::BuildCompilation(ArrayRef<const char *> ArgList) {
    }
    if (const Arg *A = Args->getLastArg(options::OPT__sysroot_EQ))
      SysRoot = A->getValue();
@@ -41,10 +41,10 @@ index dd650ae..2ee8a92 100644
      DyldPrefix = A->getValue();
    if (Args->hasArg(options::OPT_nostdlib))
 diff --git a/lib/Driver/Tools.cpp b/lib/Driver/Tools.cpp
-index 73437f6..c61a1b4 100644
+index 9d8356a..fb7989a 100644
 --- a/lib/Driver/Tools.cpp
 +++ b/lib/Driver/Tools.cpp
-@@ -5054,6 +5054,15 @@ void darwin::Link::AddLinkArgs(Compilation &C,
+@@ -5426,6 +5426,15 @@ void darwin::Link::AddLinkArgs(Compilation &C,
      CmdArgs.push_back(A->getValue());
    }
  
@@ -61,5 +61,5 @@ index 73437f6..c61a1b4 100644
    Args.AddLastArg(CmdArgs, options::OPT_twolevel__namespace__hints);
    Args.AddAllArgs(CmdArgs, options::OPT_umbrella);
 -- 
-1.8.5.4
+2.0.0
 

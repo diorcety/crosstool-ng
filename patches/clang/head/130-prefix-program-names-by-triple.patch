@@ -1,4 +1,4 @@
-From 244323440af572dd4a2044fdc03bd3f47b4b6acd Mon Sep 17 00:00:00 2001
+From bcee376a1c76317669f3dcbd1e8ae0d0d20c692b Mon Sep 17 00:00:00 2001
 From: Ray Donnelly <mingw.android@gmail.com>
 Date: Wed, 13 Nov 2013 18:07:01 +0000
 Subject: [PATCH 3/5] prefix program names by triple
@@ -10,7 +10,7 @@ Subject: [PATCH 3/5] prefix program names by triple
  3 files changed, 26 insertions(+)
 
 diff --git a/include/clang/Driver/Driver.h b/include/clang/Driver/Driver.h
-index 867444e..5923163 100644
+index df974ad..171002b 100644
 --- a/include/clang/Driver/Driver.h
 +++ b/include/clang/Driver/Driver.h
 @@ -75,6 +75,9 @@ public:
@@ -24,7 +24,7 @@ index 867444e..5923163 100644
    std::string ClangExecutable;
  
 diff --git a/lib/Driver/ToolChain.cpp b/lib/Driver/ToolChain.cpp
-index 9c43706..f48a811 100644
+index eefe487..8a3e5fa 100644
 --- a/lib/Driver/ToolChain.cpp
 +++ b/lib/Driver/ToolChain.cpp
 @@ -144,6 +144,16 @@ std::string ToolChain::GetFilePath(const char *Name) const {
@@ -45,10 +45,10 @@ index 9c43706..f48a811 100644
  }
  
 diff --git a/tools/driver/driver.cpp b/tools/driver/driver.cpp
-index 8acd9b3..6ec645a 100644
+index d2e3b64..6c8ea12 100644
 --- a/tools/driver/driver.cpp
 +++ b/tools/driver/driver.cpp
-@@ -209,6 +209,11 @@ static void ParseProgName(SmallVectorImpl<const char *> &ArgVector,
+@@ -210,6 +210,11 @@ static void ParseProgName(SmallVectorImpl<const char *> &ArgVector,
    // "x86_64-linux-clang" as interpreted as suffix "clang" with
    // target prefix "x86_64-linux". If such a target prefix is found,
    // is gets added via -target as implicit first argument.
@@ -60,7 +60,7 @@ index 8acd9b3..6ec645a 100644
    static const struct {
      const char *Suffix;
      const char *ModeFlag;
-@@ -262,9 +267,17 @@ static void ParseProgName(SmallVectorImpl<const char *> &ArgVector,
+@@ -266,9 +271,17 @@ static void ParseProgName(SmallVectorImpl<const char *> &ArgVector,
      ProgNameRef = ProgNameRef.slice(0, LastComponent);
    }
  
@@ -79,5 +79,5 @@ index 8acd9b3..6ec645a 100644
    if (llvm::TargetRegistry::lookupTarget(Prefix, IgnoredError)) {
      SmallVectorImpl<const char *>::iterator it = ArgVector.begin();
 -- 
-1.8.5.4
+2.0.0
 
