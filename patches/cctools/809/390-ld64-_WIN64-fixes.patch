@@ -4,9 +4,9 @@ diff -urN a/ld64/src/ld/parsers/libunwind/AddressSpace.hpp b/ld64/src/ld/parsers
 @@ -86,7 +86,7 @@
  {
  public:
- 
+ 	
 -	#if __LP64__
-+	#if __LP64__ || defined(__x86_64__)
++	#if defined(__LP64__) || defined(_WIN64) || defined(__x86_64__)
  		typedef uint64_t	pint_t;
  		typedef  int64_t	sint_t;
  	#else
@@ -15,7 +15,7 @@ diff -urN a/ld64/src/ld/parsers/libunwind/AddressSpace.hpp b/ld64/src/ld/parsers
  inline uintptr_t LocalAddressSpace::getP(pint_t addr)
  {
 -#if __LP64__
-+#if __LP64__ || defined(__x86_64__)
++#if defined(__LP64__) || defined(_WIN64) || defined(__x86_64__)
  	return get64(addr);
  #else
  	return get32(addr);
@@ -31,24 +31,3 @@ diff -urN a/ld64/src/ld/parsers/macho_relocatable_file.cpp b/ld64/src/ld/parsers
  	const uint64_t* literalContent = (uint64_t*)atom->contentPointer();
  	return *literalContent;
  #else
-diff -urN a/ld64/src/ld/parsers/libunwind/AddressSpace.hpp b/ld64/src/ld/parsers/libunwind/AddressSpace.hpp
---- a/ld64/src/ld/parsers/libunwind/AddressSpace.hpp	2014-02-11 02:12:49.667796653 +0000
-+++ b/ld64/src/ld/parsers/libunwind/AddressSpace.hpp	2014-02-11 02:12:42.517686082 +0000
-@@ -86,7 +86,7 @@
- {
- public:
- 
--	#if __LP64__ || defined(__x86_64__)
-+	#if defined(__LP64__) || defined(_WIN64) || defined(__x86_64__)
- 		typedef uint64_t	pint_t;
- 		typedef  int64_t	sint_t;
- 	#else
-@@ -113,7 +113,7 @@
- 
- inline uintptr_t LocalAddressSpace::getP(pint_t addr)
- {
--#if __LP64__ || defined(__x86_64__)
-+#if defined(__LP64__) || defined(_WIN64) || defined(__x86_64__)
- 	return get64(addr);
- #else
- 	return get32(addr);
