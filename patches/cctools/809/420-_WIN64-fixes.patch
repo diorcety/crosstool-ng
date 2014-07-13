@@ -341,3 +341,14 @@ diff -urN a/libstuff/ofile.c b/libstuff/ofile.c
  		/*
  		 * If runing as a 64-bit binary and on an Intel x86 host
  		 * default to 64-bit.
+--- a/include/mach/i386/vm_types.h	2014-07-12 17:09:12.832438100 +0100
++++ b/include/mach/i386/vm_types.h	2014-07-13 03:59:21.761443000 +0100
+@@ -97,7 +97,7 @@
+  * A vm_offset_t is a type-neutral pointer,
+  * e.g. an offset into a virtual memory space.
+  */
+-#ifdef __LP64__
++#if defined(__LP64__) || defined(_WIN64)
+ typedef uintptr_t		vm_offset_t;
+ #else	/* __LP64__ */
+ typedef	natural_t		vm_offset_t;
