@@ -296,39 +296,6 @@ diff -urN a/include/objc/runtime.h b/include/objc/runtime.h
  #define CACHE_HASH(sel, mask) (((uintptr_t)(sel)>>2) & (mask))
  #else
  #define CACHE_HASH(sel, mask) (((unsigned int)((uintptr_t)(sel)>>3)) & (mask))
-diff -urN a/ld64/src/ld/parsers/libunwind/AddressSpace.hpp b/ld64/src/ld/parsers/libunwind/AddressSpace.hpp
---- a/ld64/src/ld/parsers/libunwind/AddressSpace.hpp	2014-02-11 02:12:49.667796653 +0000
-+++ b/ld64/src/ld/parsers/libunwind/AddressSpace.hpp	2014-02-11 02:12:42.517686082 +0000
-@@ -86,7 +86,7 @@
- {
- public:
- 	
--	#if __LP64__ || defined(__x86_64__)
-+	#if defined(__LP64__) || defined(_WIN64) || defined(__x86_64__)
- 		typedef uint64_t	pint_t;
- 		typedef  int64_t	sint_t;
- 	#else
-@@ -113,7 +113,7 @@
- 
- inline uintptr_t LocalAddressSpace::getP(pint_t addr)
- {
--#if __LP64__ || defined(__x86_64__)
-+#if defined(__LP64__) || defined(_WIN64) || defined(__x86_64__)
- 	return get64(addr);
- #else
- 	return get32(addr);
-diff -urN a/ld64/src/ld/parsers/macho_relocatable_file.cpp b/ld64/src/ld/parsers/macho_relocatable_file.cpp
---- a/ld64/src/ld/parsers/macho_relocatable_file.cpp	2014-02-11 02:12:49.667796653 +0000
-+++ b/ld64/src/ld/parsers/macho_relocatable_file.cpp	2014-02-11 02:12:42.514352690 +0000
-@@ -4604,7 +4604,7 @@
- template <typename A>
- unsigned long Literal8Section<A>::contentHash(const class Atom<A>* atom, const ld::IndirectBindingTable& ind) const
- {
--#if __LP64__
-+#if defined(__LP64__) || defined(_WIN64)
- 	const uint64_t* literalContent = (uint64_t*)atom->contentPointer();
- 	return *literalContent;
- #else
 diff -urN a/libstuff/ofile.c b/libstuff/ofile.c
 --- a/libstuff/ofile.c	2014-02-11 02:12:49.644462964 +0000
 +++ b/libstuff/ofile.c	2014-02-11 02:12:42.534353030 +0000
@@ -352,3 +319,12 @@ diff -urN a/libstuff/ofile.c b/libstuff/ofile.c
  typedef uintptr_t		vm_offset_t;
  #else	/* __LP64__ */
  typedef	natural_t		vm_offset_t;
+@@ -108,7 +108,7 @@
+  * expressing the difference between two
+  * vm_offset_t entities.
+  */
+-#ifdef __LP64__
++#if defined(__LP64__) || defined(_WIN64)
+ typedef uintptr_t		vm_size_t;
+ #else	/* __LP64__ */
+ typedef	natural_t		vm_size_t;
