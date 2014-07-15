@@ -365,7 +365,7 @@ if [ -z "${CT_RESTART}" ]; then
 
     # Prepare mangling patterns to later modify BUILD and HOST (see below)
     case "${CT_TOOLCHAIN_TYPE}" in
-        cross)
+        cross|native)
             # A cross-compiler runs on the same machine it is built on
             CT_HOST="${CT_BUILD}"
             build_mangle="build_"
@@ -508,7 +508,7 @@ if [ -z "${CT_RESTART}" ]; then
     # Of course, neither cross-native nor canadian can run on BUILD,
     # so don't add those PATHs in this case...
     case "${CT_TOOLCHAIN_TYPE}" in
-        cross)  export PATH="${CT_PREFIX_DIR}/bin:${CT_BUILDTOOLS_PREFIX_DIR}/bin:${PATH}";;
+        cross|native)  export PATH="${CT_PREFIX_DIR}/bin:${CT_BUILDTOOLS_PREFIX_DIR}/bin:${PATH}";;
         canadian) export PATH="${CT_BUILDTOOLS_PREFIX_DIR}/bin:${PATH}";;
         *)  ;;
     esac
