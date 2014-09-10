@@ -317,7 +317,7 @@ CT_SanitiseVarDir() {
     for var in "$@"; do
         eval "old_dir=\"\${${var}}\""
         new_dir="$( printf "${old_dir}"     \
-                    |sed -r -e 's:/+:/:g;'  \
+                    |${sed} -r -e 's:/+:/:g;'  \
                   )"
         eval "${var}=\"${new_dir}\""
         CT_DoLog DEBUG "Sanitised '${var}': '${old_dir}' -> '${new_dir}'"
@@ -381,7 +381,7 @@ CT_Which() {
 # to the highest entire second
 # Usage: CT_DoDate <fmt>
 CT_DoDate() {
-    date "$1" |sed -r -e 's/%?N$/000000000/;'
+    date "$1" |${sed} -r -e 's/%?N$/000000000/;'
 }
 
 CT_STEP_COUNT=1
@@ -403,7 +403,9 @@ CT_DoStep() {
 # Usage: CT_EndStep
 CT_EndStep() {
     local stop=$(CT_DoDate +%s%N)
-    local duration=$(printf "%032d" $((stop-${CT_STEP_START[${CT_STEP_COUNT}]})) |sed -r -e 's/([[:digit:]]{2})[[:digit:]]{7}$/\.\1/; s/^0+//; s/^\./0\./;')
+    local duration=$(printf "%032d" $((stop-${CT_STEP_START[${CT_STEP_COUNT}]})) \
+                     |${sed} -r -e 's/([[:digit:]]{2})[[:digit:]]{7}$/\.\1/; s/^0+//; s/^\./0\./;'
+                    )
     local elapsed=$(printf "%02d:%02d" $((SECONDS/60)) $((SECONDS%60)))
     local level="${CT_STEP_LEVEL[${CT_STEP_COUNT}]}"
     local message="${CT_STEP_MESSAGE[${CT_STEP_COUNT}]}"
@@ -830,34 +832,56 @@ CT_GetSVN() {
 # Prerequisites: either the server does not require password,
 # or the user has already taken any action to authenticate to the server.
 # The cloned tree will *not* be stored in the local tarballs dir!
-# Usage: CT_GetGit <basename> <url [url ...]>
+# Usage: CT_GetGit <basename> <cset> <url>
 CT_GetGit() {
-    local basename="$1"; shift
-    local url
-    local cloned=0
+    local basename="${1}"
+    local cset="${2}"
+    local url="${3}"
+    local file="${basename}-${cset}.tar.gz"
+    local dir="${CT_TARBALLS_DIR}/${basename}-${cset}.git"
+    local dest="${CT_TARBALLS_DIR}/${file}"
+    local tmp="${CT_TARBALLS_DIR}/${file}.tmp-dl"
+
+    # Do we alreadyhave it?
+    if CT_GetLocal "${file}"; then
+        return 0
+    fi
+    # Nope...
 
     if [ "${CT_FORBID_DOWNLOAD}" = "y" ]; then
         CT_DoLog WARN "Downloads forbidden, not trying git retrieval"
         return 1
     fi
 
-    # Do we have it in our tarballs dir?
-    if [ -d "${CT_TARBALLS_DIR}/${basename}/.git" ]; then
-        CT_DoLog EXTRA "Updating git tree '${basename}'"
-        CT_Pushd "${CT_TARBALLS_DIR}/${basename}"
-        CT_DoExecLog ALL git pull
+    # Add URLs on the LAN mirror
+    # We subvert the normal download method, just to look for
+    # looking at the local mirror
+    if CT_GetFile "${basename}-${cset}" .tar.gz; then
+        return 0
+    fi
+
+    CT_DoLog EXTRA "Retrieving '${basename}-${cset}' (git)"
+
+    # Remove potential left-over from a previous run
+    CT_DoExecLog ALL rm -rf "${tmp}.tar.gz" "${tmp}.tar" "${tmp}" "${dir}"
+
+    if CT_DoExecLog ALL git clone "${url}" "${dir}"; then
+        # Yep, cloned OK
+        CT_Pushd "${dir}"
+        CT_DoExecLog ALL git archive --format=tar                       \
+                                     --prefix="${basename}-${cset}/"    \
+                                     -o "${tmp}.tar"                    \
+                                     "${cset}"
+        CT_DoExecLog ALL gzip -9 "${tmp}.tar"
+        CT_DoExecLog ALL mv -f "${tmp}.tar.gz" "${dest}"
+        CT_SaveLocal "${dest}"
+        CT_DoExecLog ALL rm -rf "${tmp}.tar.gz" "${tmp}.tar" "${tmp}" "${dir}"
         CT_Popd
     else
-        CT_DoLog EXTRA "Retrieving git tree '${basename}'"
-        for url in "${@}"; do
-            CT_DoLog ALL "Trying to clone from '${url}'"
-            CT_DoForceRmdir "${CT_TARBALLS_DIR}/${basename}"
-            if git clone "${url}" "${CT_TARBALLS_DIR}/${basename}" 2>&1 |CT_DoLog ALL; then
-                cloned=1
-                break
-            fi
-        done
-        CT_TestOrAbort "Could not clone '${basename}'" ${cloned} -ne 0
+        # Woops...
+        CT_DoExecLog ALL rm -rf "${dir}"
+        CT_DoLog Debug "Could not clone '${basename}'"
+        return 1
     fi
 }
 
@@ -971,9 +995,9 @@ CT_ExtractGit() {
     if [ -z "${ref}" ]; then
         ref_type=head
         ref=$(git rev-list -n1 HEAD)
-    elif git tag |grep -E "^${ref}$" >/dev/null 2>&1; then
+    elif git tag |${grep} -E "^${ref}$" >/dev/null 2>&1; then
         ref_type=tag
-    elif git branch -a --no-color |grep -E "^. ${ref}$" >/dev/null 2>&1; then
+    elif git branch -a --no-color |${grep} -E "^. ${ref}$" >/dev/null 2>&1; then
         ref_type=branch
     elif date -d "${ref}" >/dev/null 2>&1; then
         ref_type=date
@@ -1012,6 +1036,8 @@ CT_Patch() {
     local -a patch_dirs
     local bundled_patch_dir
     local local_patch_dir
+    local bundled_exp_patch_dir
+    local local_exp_patch_dir
 
     if [ "${nochdir}" = "nochdir" ]; then
         shift
@@ -1050,11 +1076,17 @@ CT_Patch() {
     bundled_patch_dir="${CT_LIB_DIR}/patches/${pkgname}/${version}"
     local_patch_dir="${CT_LOCAL_PATCH_DIR}/${pkgname}/${version}"
 
+    # Check for experimental patches, if enabled.
+    if [ "${CT_EXPERIMENTAL_PATCHES}" = "y" ]; then
+        bundled_exp_patch_dir="${CT_LIB_DIR}/patches/experimental/${pkgname}/${version}"
+        local_exp_patch_dir="${CT_LOCAL_PATCH_DIR}/experimental/${pkgname}/${version}"
+    fi
+
     case "${CT_PATCH_ORDER}" in
-        bundled)        patch_dirs=("${bundled_patch_dir}");;
-        local)          patch_dirs=("${local_patch_dir}");;
-        bundled,local)  patch_dirs=("${bundled_patch_dir}" "${local_patch_dir}");;
-        local,bundled)  patch_dirs=("${local_patch_dir}" "${bundled_patch_dir}");;
+        bundled)        patch_dirs=("${bundled_patch_dir}" "${bundled_exp_patch_dir}");;
+        local)          patch_dirs=("${local_patch_dir}" "${local_exp_patch_dir}");;
+        bundled,local)  patch_dirs=("${bundled_patch_dir}" "${bundled_exp_patch_dir}" "${local_patch_dir}" "${local_exp_patch_dir}");;
+        local,bundled)  patch_dirs=("${local_patch_dir}" "${local_exp_patch_dir}" "${bundled_patch_dir}" "${bundled_exp_patch_dir}");;
         none)           patch_dirs=;;
     esac
 
@@ -1116,15 +1148,31 @@ CT_DoBuildTargetTuple() {
     case "${CT_ARCH_ENDIAN}" in
         big)
             target_endian_eb=eb
+            target_endian_be=be
             target_endian_el=
+            target_endian_le=
             CT_ARCH_ENDIAN_CFLAG="-mbig-endian"
             CT_ARCH_ENDIAN_LDFLAG="-Wl,-EB"
             ;;
         little)
             target_endian_eb=
+            target_endian_be=
             target_endian_el=el
+            target_endian_le=le
             CT_ARCH_ENDIAN_CFLAG="-mlittle-endian"
             CT_ARCH_ENDIAN_LDFLAG="-Wl,-EL"
+            ;;
+    esac
+
+    # Set the bitness suffix
+    case "${CT_ARCH_BITNESS}" in
+        32)
+            target_bits_32=32
+            target_bits_64=
+            ;;
+        64)
+            target_bits_32=
+            target_bits_64=64
             ;;
     esac
 
@@ -1136,6 +1184,7 @@ CT_DoBuildTargetTuple() {
     case "${CT_LIBC}" in
         *glibc) CT_TARGET_SYS=gnu;;
         uClibc) CT_TARGET_SYS=uclibc;;
+        musl)   CT_TARGET_SYS=musl;;
         *)      CT_TARGET_SYS=elf;;
     esac
 
@@ -1179,7 +1228,7 @@ CT_DoBuildTargetTuple() {
     # Sanity checks
     __sed_alias=""
     if [ -n "${CT_TARGET_ALIAS_SED_EXPR}" ]; then
-        __sed_alias=$(echo "${CT_TARGET}" |sed -r -e "${CT_TARGET_ALIAS_SED_EXPR}")
+        __sed_alias=$(echo "${CT_TARGET}" |${sed} -r -e "${CT_TARGET_ALIAS_SED_EXPR}")
     fi
     case ":${CT_TARGET_VENDOR}:${CT_TARGET_ALIAS}:${__sed_alias}:" in
       :*" "*:*:*:) CT_Abort "Don't use spaces in the vendor string, it breaks things.";;
@@ -1232,7 +1281,7 @@ CT_DoTarballIfExists() {
         CT_DoLog DEBUG "  Saving '${dir}'"
         { tar c -C "${dir}" -v -f - "${extra_tar_opts[@]}" .    \
           |"${compress[@]}" >"${tarball}.tar${tar_ext}"         ;
-        } 2>&1 |sed -r -e 's/^/    /;' |CT_DoLog STATE
+        } 2>&1 |${sed} -r -e 's/^/    /;' |CT_DoLog STATE
     else
         CT_DoLog STATE "  Not saving '${dir}': does not exist"
     fi
@@ -1259,7 +1308,7 @@ CT_DoExtractTarballIfExists() {
         CT_DoExecLog DEBUG mkdir -p "${dir}"
         { "${uncompress[@]}" "${tarball}.tar${tar_ext}"     \
           |tar x -C "${dir}" -v -f - "${extra_tar_opts[@]}" ;
-        } 2>&1 |sed -r -e 's/^/    /;' |CT_DoLog STATE
+        } 2>&1 |${sed} -r -e 's/^/    /;' |CT_DoLog STATE
     else
         CT_DoLog STATE "  Not restoring '${dir}': does not exist"
     fi
@@ -1288,7 +1337,7 @@ CT_DoSaveState() {
               $0~/^[^ ]+ \(\)/ { _p = 0; }
               _p == 1
               $0 == "}" { _p = 1; }
-              ' |sed -r -e '/^BASH_(ARGC|ARGV|LINENO|SOURCE|VERSINFO)=/d;
+              ' |${sed} -r -e '/^BASH_(ARGC|ARGV|LINENO|SOURCE|VERSINFO)=/d;
                            /^(UID|EUID)=/d;
                            /^(FUNCNAME|GROUPS|PPID|SHELLOPTS)=/d;' >"${state_dir}/env.sh"
 

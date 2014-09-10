@@ -148,7 +148,8 @@ dump_single_sample() {
               printf "|  (//unknown//)  "
           fi
         )
-        sample_updated="$( hg log -l 1 --template '{date|shortdate}' "${sample_top}/samples/${sample}" )"
+        sample_updated="$( git log -n1 --pretty=format:'%ci' "${sample_top}/samples/${sample}" \
+                           |awk '{ print $1; }' )"
         printf "|  ${sample_updated}  "
         echo "|"
     fi

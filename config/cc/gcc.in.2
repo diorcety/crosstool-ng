@@ -15,6 +15,7 @@ config CC_CORE_EXTRA_CONFIG_ARRAY
     string
     prompt "Core gcc extra config"
     default ""
+    depends on CC_CORE_PASS_1_NEEDED || CC_CORE_PASS_2_NEEDED
     help
       Extra flags to pass onto ./configure when configuring the core gcc.
       
@@ -29,7 +30,6 @@ config CC_EXTRA_CONFIG_ARRAY
     string
     prompt "gcc extra config"
     default ""
-    depends on ! BARE_METAL
     help
       Extra flags to pass onto ./configure when configuring gcc.
       
@@ -141,6 +141,20 @@ config CC_GCC_LIBQUADMATH
       functions on targets supporting the __float128 datatype. See:
         http://gcc.gnu.org/onlinedocs/libquadmath/
       
+      The default is 'N'. Say 'Y' if you need it, and report success/failure.
+
+config CC_GCC_LIBSANITIZER
+    bool
+    prompt "Compile libsanitizer"
+    depends on CC_GCC_HAS_LIBSANITIZER
+    depends on THREADS_NATIVE
+    depends on ! LIBC_uClibc # Currently lacks required headers (like netrom.h)
+    help
+      libsanitizer is a library which provides run-time sanitising of either
+      or both of:
+        - memory access patterns (out-of-bonds, use-after-free)
+        - racy data accesses (in multi-threaded programs)
+
       The default is 'N'. Say 'Y' if you need it, and report success/failure.
 
 #-----------------------------------------------------------------------------

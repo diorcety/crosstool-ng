@@ -14,28 +14,30 @@ do_binutils_get() {
     fi
 
     if [ -n "${CT_ARCH_BINFMT_FLAT}" ]; then
-        CT_GetCVS "elf2flt-${CT_ELF2FLT_VERSION}"               \
-                  ":pserver:anonymous@cvs.uclinux.org:/var/cvs" \
-                  "elf2flt"                                     \
-                  ""                                            \
-                  "elf2flt-${CT_ELF2FLT_VERSION}"
+        if [ "${CT_ELF2FLT_CUSTOM}" = "y" ]; then
+            CT_GetCustom "elf2flt" "${CT_ELF2FLT_VERSION}"  \
+                         "${CT_ELF2FLT_CUSTOM_LOCATION}"
+        else
+            CT_GetGit elf2flt "${CT_ELF2FLT_GIT_CSET}" git://wh0rd.org/elf2flt.git
+        fi
     fi
 }
 
 # Extract binutils
 do_binutils_extract() {
     # If using custom directory location, nothing to do
-    if [ "${CT_BINUTILS_CUSTOM}" = "y" \
+    if ! [ "${CT_BINUTILS_CUSTOM}" = "y" \
          -a -d "${CT_SRC_DIR}/binutils-${CT_BINUTILS_VERSION}" ]; then
-        return 0
+        CT_Extract "binutils-${CT_BINUTILS_VERSION}"
+        CT_Patch "binutils" "${CT_BINUTILS_VERSION}"
     fi
 
-    CT_Extract "binutils-${CT_BINUTILS_VERSION}"
-    CT_Patch "binutils" "${CT_BINUTILS_VERSION}"
-
     if [ -n "${CT_ARCH_BINFMT_FLAT}" ]; then
-        CT_Extract "elf2flt-${CT_ELF2FLT_VERSION}"
-        CT_Patch "elf2flt" "${CT_ELF2FLT_VERSION}"
+        if ! [ "${CT_ELF2FLT_CUSTOM}" = "y" \
+             -a -d "${CT_SRC_DIR}/elf2flt-${CT_ELF2FLT_VERSION}" ]; then
+            CT_Extract "elf2flt-${CT_ELF2FLT_GIT_CSET}"
+            CT_Patch "elf2flt" "${CT_ELF2FLT_GIT_CSET}"
+        fi
     fi
 }
 

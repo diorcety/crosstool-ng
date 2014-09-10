@@ -188,6 +188,7 @@ do_cc_core_backend() {
     local -a extra_config
     local -a core_LDFLAGS
     local -a core_targets
+    local -a extra_user_config
     local arg
 
     for arg in "$@"; do
@@ -201,17 +202,20 @@ do_cc_core_backend() {
             extra_config+=("--with-newlib")
             extra_config+=("--enable-threads=no")
             extra_config+=("--disable-shared")
+            extra_user_config=( "${CT_CC_CORE_EXTRA_CONFIG_ARRAY[@]}" )
             copy_headers=y  # For baremetal, as there's no headers to copy,
                             # we copy an empty directory. So, who cares?
             ;;
         shared)
             extra_config+=("--enable-shared")
+            extra_user_config=( "${CT_CC_CORE_EXTRA_CONFIG_ARRAY[@]}" )
             copy_headers=y
             ;;
         baremetal)
             extra_config+=("--with-newlib")
             extra_config+=("--enable-threads=no")
             extra_config+=("--disable-shared")
+            extra_user_config=( "${CT_CC_EXTRA_CONFIG_ARRAY[@]}" )
             copy_headers=n
             ;;
         *)
@@ -391,7 +395,7 @@ do_cc_core_backend() {
         ${CC_CORE_SYSROOT_ARG}                      \
         "${extra_config[@]}"                        \
         --enable-languages="${lang_list}"           \
-        "${CT_CC_CORE_EXTRA_CONFIG_ARRAY[@]}"
+        "${extra_user_config[@]}"
 
     if [ "${build_libgcc}" = "yes" ]; then
         # HACK: we need to override SHLIB_LC from gcc/config/t-slibgcc-elf-ver or
@@ -653,9 +657,6 @@ do_cc_backend() {
         if [ "${CT_THREADS}" = "none" ]; then
             extra_config+=(--disable-libatomic)
         fi
-        if [ "${CT_THREADS}" != "nptl" ]; then
-            extra_config+=(--disable-libsanitizer)
-        fi
     fi
     if [ "${CT_CC_GCC_LIBMUDFLAP}" = "y" ]; then
         extra_config+=(--enable-libmudflap)
@@ -679,6 +680,13 @@ do_cc_backend() {
         else
             extra_config+=(--disable-libquadmath)
             extra_config+=(--disable-libquadmath-support)
+        fi
+    fi
+    if [ "${CT_CC_GCC_HAS_LIBSANITIZER}" = "y" ]; then
+        if [ "${CT_CC_GCC_LIBSANITIZER}" = "y" ]; then
+            extra_config+=(--enable-libsanitizer)
+        else
+            extra_config+=(--disable-libsanitizer)
         fi
     fi
 
@@ -825,9 +833,10 @@ do_cc_backend() {
         extra_config+=("--with-system-zlib")
     fi
 
-    if [ "${CT_MULTILIB}" = "y" ]; then
-        extra_config+=("--enable-multilib")
-    else
+
+    # Some versions of gcc have a deffective --enable-multilib.
+    # Since that's the default, only pass --disable-multilib.
+    if [ "${CT_MULTILIB}" != "y" ]; then
         extra_config+=("--disable-multilib")
     fi
 
