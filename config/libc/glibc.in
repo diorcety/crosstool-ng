@@ -2,11 +2,14 @@
 
 ## depends on ! WINDOWS && !DARWIN && ! BARE_METAL && ARCH_USE_MMU
 ##
-## select LIBC_SUPPORT_NPTL
+## select LIBC_SUPPORT_THREADS_NATIVE
 ## select CC_CORE_PASSES_NEEDED
 ##
 ## help The de-facto standard for Linux distributions.
 ## help Feature-rich, but large...  Most usefull for desktop-like systems.
+
+config THREADS
+    default "nptl"
 
 choice
     bool

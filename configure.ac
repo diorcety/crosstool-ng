@@ -2,7 +2,6 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ([2.67])
-#AC_INIT([crosstool-NG], [hg], [crossgcc@sourceware.org])
 AC_INIT([crosstool-NG], [m4_esyscmd_s([cat .version])], [crossgcc@sourceware.org])
 AC_CONFIG_AUX_DIR([scripts])
 
@@ -96,6 +95,11 @@ AC_ARG_WITH([install],
                    [Specify the full PATH to a BSD-compatible install]),
     [INSTALL=$withval])
 AC_PROG_INSTALL
+AC_CACHE_VAL([ac_cv_path_GREP],
+    [AC_ARG_WITH([grep],
+        AS_HELP_STRING([--with-grep=PATH],
+                       [Specify the full PATH to GNU grep]),
+        [ac_cv_path_GREP=$withval])])
 AC_PROG_GREP
 AC_PROG_EGREP
 AS_IF(
@@ -418,10 +422,9 @@ AS_IF(
     [PACKAGE_VERSION="${V}"],
     [AS_CASE(
         [${PACKAGE_VERSION}],
-        [hg|*+hg],
-        [rev_id="$( hg log -r . --template '{branch}-{node|short}\n' \
-                           2>/dev/null                               \
-                    || true                                          )"
+        [git|*+git],
+        [rev_id="$( git rev-parse --short HEAD )"
+         git diff-index --quiet HEAD || rev_id="${rev_id}-dirty"
          PACKAGE_VERSION="${PACKAGE_VERSION}+${rev_id:-unknown-$( date +%Y%m%d.%H%M%S )}"
         ])])
 # Arrange to have no / in the directory name, no need to create an

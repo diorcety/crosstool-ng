@@ -17,12 +17,6 @@ config BINUTILS_V_2_24
     depends on EXPERIMENTAL
     select BINUTILS_2_24_or_later
 
-config BINUTILS_V_2_24
-    bool
-    prompt "2.24 (EXPERIMENTAL)"
-    depends on EXPERIMENTAL
-    select BINUTILS_2_24_or_later
-
 config BINUTILS_V_2_23_2
     bool
     prompt "2.23.2 (EXPERIMENTAL)"
@@ -99,12 +93,6 @@ config BINUTILS_VERSION
     default "2.19.1a" if BINUTILS_V_2_19_1a
     default "2.18a" if BINUTILS_V_2_18a
     default "custom" if BINUTILS_CUSTOM
-
-config BINUTILS_2_24_or_later
-    bool
-    select BINUTILS_2_23_or_later
-    select BINUTILS_HAS_GOLD
-    select BINUTILS_HAS_PLUGINS
 
 config BINUTILS_2_24_or_later
     bool

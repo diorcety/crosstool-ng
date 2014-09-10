@@ -33,10 +33,19 @@ choice
 # Don't remove next line
 # CT_INSERT_VERSION_BELOW
 
+config GDB_V_7_8
+    bool
+    prompt "7.8"
+    select GDB_7_2_or_later
+
+config GDB_V_7_7_1
+    bool
+    prompt "7.7.1"
+    select GDB_7_2_or_later
+
 config GDB_V_7_7
     bool
     prompt "7.7"
-    select GDB_7_0_or_later
     select GDB_7_2_or_later
 
 config GDB_V_7_6_1
@@ -138,9 +147,13 @@ config GDB_7_2_or_later
 config GDB_7_0_or_later
     bool
     select GDB_HAS_PKGVERSION_BUGURL
+    select GDB_HAS_PYTHON
     select GDB_INSTALL_GDBINIT
 
 config GDB_HAS_PKGVERSION_BUGURL
+    bool
+
+config GDB_HAS_PYTHON
     bool
 
 config GDB_INSTALL_GDBINIT
@@ -150,6 +163,8 @@ config GDB_VERSION
     string
 # Don't remove next line
 # CT_INSERT_VERSION_STRING_BELOW
+    default "7.8" if GDB_V_7_8
+    default "7.7.1" if GDB_V_7_7_1
     default "7.7" if GDB_V_7_7
     default "7.6.1" if GDB_V_7_6_1
     default "linaro-7.6-2013.05" if GDB_V_linaro_7_6_2013_05
