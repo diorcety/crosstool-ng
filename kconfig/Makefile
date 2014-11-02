@@ -7,6 +7,15 @@ all: conf mconf nconf
 
 # Build flags
 CFLAGS = -DCONFIG_=\"CT_\" -DPACKAGE="\"crosstool-NG $(VERSION)\""
+
+ifeq ($(mkdir_one_arg),yes)
+CFLAGS += -DMKDIR_TAKES_ONE_ARG
+endif
+
+# ifeq ($(build_os),mingw32)
+# MCONF_MINGW32_LDFLAGS = -lintl -lregex -liconv
+# endif
+
 LDFLAGS =
 
 # Compiler flags to use gettext
@@ -41,14 +50,14 @@ mconf_SRC = mconf.c
 mconf_OBJ = $(patsubst %.c,%.o,$(mconf_SRC))
 mconf_DEP = $(patsubst %.c,%.dep,$(mconf_SRC))
 $(mconf_OBJ) $(mconf_DEP): CFLAGS += $(NCURSES_CFLAGS) $(INTL_CFLAGS)
-mconf: LDFLAGS += $(NCURSES_LDFLAGS)
+mconf: LDFLAGS += $(NCURSES_LDFLAGS) $(GETTEXT_LIB) $(REGEX_LIB) $(ICONV_LIB)
 
 # What's needed to build 'nconf'
 nconf_SRC = nconf.c nconf.gui.c
 nconf_OBJ = $(patsubst %.c,%.o,$(nconf_SRC))
 nconf_DEP = $(patsubst %.c,%.dep,$(nconf_SRC))
 $(nconf_OBJ) $(nconf_DEP): CFLAGS += $(INTL_CFLAGS) -I/usr/include/ncurses
-nconf: LDFLAGS += -lmenu -lpanel -lncurses
+nconf: LDFLAGS += $(GETTEXT_LIB) $(MENU_LIB) $(PANEL_LIB) -lncurses
 
 # Under Cygwin, we need to auto-import some libs (which ones, exactly?)
 # for mconf and nconf to lin properly.
@@ -106,7 +115,7 @@ nconf: $(COMMON_OBJ) $(nconf_OBJ)
 
 conf: $(COMMON_OBJ) $(conf_OBJ)
 	@echo "  LD     '$@'"
-	@$(CC) -o $@ $^ $(LDFLAGS) $(EXTRA_LDFLAGS)
+	$(CC) -o $@ $^ $(LDFLAGS) $(EXTRA_LDFLAGS) $(GETTEXT_LIB)
 
 #-----------------------------------------------------------
 # Cleaning up the mess...

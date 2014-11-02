@@ -1,0 +1,192 @@
+diff -urN a/lib/AST/DeclCXX.cpp b/lib/AST/DeclCXX.cpp
+--- a/lib/AST/DeclCXX.cpp	2010-09-03 01:19:42.000000000 +0200
++++ b/lib/AST/DeclCXX.cpp	2013-09-06 00:10:56.846191264 +0200
+@@ -780,7 +780,7 @@
+                                    unsigned NumIndices) {
+   void *Mem = Context.Allocate(sizeof(CXXBaseOrMemberInitializer) +
+                                sizeof(VarDecl *) * NumIndices,
+-                               llvm::alignof<CXXBaseOrMemberInitializer>());
++                               llvm::alignOf<CXXBaseOrMemberInitializer>());
+   return new (Mem) CXXBaseOrMemberInitializer(Context, Member, MemberLoc,
+                                               L, Init, R, Indices, NumIndices);
+ }
+diff -urN a/lib/AST/DeclObjC.cpp b/lib/AST/DeclObjC.cpp
+--- a/lib/AST/DeclObjC.cpp	2010-09-01 03:21:15.000000000 +0200
++++ b/lib/AST/DeclObjC.cpp	2013-09-06 00:10:56.846191264 +0200
+@@ -711,7 +711,7 @@
+ void ObjCClassDecl::setClassList(ASTContext &C, ObjCInterfaceDecl*const*List,
+                                  const SourceLocation *Locs, unsigned Num) {
+   ForwardDecls = (ObjCClassRef*) C.Allocate(sizeof(ObjCClassRef)*Num,
+-                                            llvm::alignof<ObjCClassRef>());
++                                            llvm::alignOf<ObjCClassRef>());
+   for (unsigned i = 0; i < Num; ++i)
+     new (&ForwardDecls[i]) ObjCClassRef(List[i], Locs[i]);
+   
+diff -urN a/lib/AST/Expr.cpp b/lib/AST/Expr.cpp
+--- a/lib/AST/Expr.cpp	2010-08-28 11:06:06.000000000 +0200
++++ b/lib/AST/Expr.cpp	2013-09-06 00:10:56.846191264 +0200
+@@ -257,7 +257,7 @@
+   if (TemplateArgs)
+     Size += ExplicitTemplateArgumentList::sizeFor(*TemplateArgs);
+   
+-  void *Mem = Context.Allocate(Size, llvm::alignof<DeclRefExpr>());
++  void *Mem = Context.Allocate(Size, llvm::alignOf<DeclRefExpr>());
+   return new (Mem) DeclRefExpr(Qualifier, QualifierRange, D, NameInfo,
+                                TemplateArgs, T);
+ }
+@@ -271,7 +271,7 @@
+   if (NumTemplateArgs)
+     Size += ExplicitTemplateArgumentList::sizeFor(NumTemplateArgs);
+   
+-  void *Mem = Context.Allocate(Size, llvm::alignof<DeclRefExpr>());
++  void *Mem = Context.Allocate(Size, llvm::alignOf<DeclRefExpr>());
+   return new (Mem) DeclRefExpr(EmptyShell());
+ }
+ 
+@@ -432,7 +432,7 @@
+   // any concatenated string tokens.
+   void *Mem = C.Allocate(sizeof(StringLiteral)+
+                          sizeof(SourceLocation)*(NumStrs-1),
+-                         llvm::alignof<StringLiteral>());
++                         llvm::alignOf<StringLiteral>());
+   StringLiteral *SL = new (Mem) StringLiteral(Ty);
+ 
+   // OPTIMIZE: could allocate this appended to the StringLiteral.
+@@ -452,7 +452,7 @@
+ StringLiteral *StringLiteral::CreateEmpty(ASTContext &C, unsigned NumStrs) {
+   void *Mem = C.Allocate(sizeof(StringLiteral)+
+                          sizeof(SourceLocation)*(NumStrs-1),
+-                         llvm::alignof<StringLiteral>());
++                         llvm::alignOf<StringLiteral>());
+   StringLiteral *SL = new (Mem) StringLiteral(QualType());
+   SL->StrData = 0;
+   SL->ByteLength = 0;
+@@ -706,7 +706,7 @@
+   if (targs)
+     Size += ExplicitTemplateArgumentList::sizeFor(*targs);
+ 
+-  void *Mem = C.Allocate(Size, llvm::alignof<MemberExpr>());
++  void *Mem = C.Allocate(Size, llvm::alignOf<MemberExpr>());
+   MemberExpr *E = new (Mem) MemberExpr(base, isarrow, memberdecl, nameinfo, ty);
+ 
+   if (hasQualOrFound) {
+diff -urN a/lib/AST/ExprCXX.cpp b/lib/AST/ExprCXX.cpp
+--- a/lib/AST/ExprCXX.cpp	2010-09-03 01:19:42.000000000 +0200
++++ b/lib/AST/ExprCXX.cpp	2013-09-06 00:10:56.846191264 +0200
+@@ -189,7 +189,7 @@
+   if (NumTemplateArgs != 0)
+     size += ExplicitTemplateArgumentList::sizeFor(NumTemplateArgs);
+ 
+-  void *Mem = C.Allocate(size, llvm::alignof<UnresolvedLookupExpr>());
++  void *Mem = C.Allocate(size, llvm::alignOf<UnresolvedLookupExpr>());
+   UnresolvedLookupExpr *E = new (Mem) UnresolvedLookupExpr(EmptyShell());
+   E->HasExplicitTemplateArgs = NumTemplateArgs != 0;
+   return E;
+@@ -217,7 +217,7 @@
+   if (NumResults) {
+     Results = static_cast<DeclAccessPair *>(
+                                 C.Allocate(sizeof(DeclAccessPair) * NumResults, 
+-                                           llvm::alignof<DeclAccessPair>()));
++                                           llvm::alignOf<DeclAccessPair>()));
+     memcpy(Results, &*Begin.getIterator(), 
+            NumResults * sizeof(DeclAccessPair));
+   }
+@@ -877,7 +877,7 @@
+   if (TemplateArgs)
+     size += ExplicitTemplateArgumentList::sizeFor(*TemplateArgs);
+ 
+-  void *Mem = C.Allocate(size, llvm::alignof<CXXDependentScopeMemberExpr>());
++  void *Mem = C.Allocate(size, llvm::alignOf<CXXDependentScopeMemberExpr>());
+   return new (Mem) CXXDependentScopeMemberExpr(C, Base, BaseType,
+                                                IsArrow, OperatorLoc,
+                                                Qualifier, QualifierRange,
+@@ -896,7 +896,7 @@
+ 
+   std::size_t size = sizeof(CXXDependentScopeMemberExpr) +
+                      ExplicitTemplateArgumentList::sizeFor(NumTemplateArgs);
+-  void *Mem = C.Allocate(size, llvm::alignof<CXXDependentScopeMemberExpr>());
++  void *Mem = C.Allocate(size, llvm::alignOf<CXXDependentScopeMemberExpr>());
+   CXXDependentScopeMemberExpr *E
+     =  new (Mem) CXXDependentScopeMemberExpr(C, 0, QualType(),
+                                              0, SourceLocation(), 0,
+@@ -952,7 +952,7 @@
+   if (TemplateArgs)
+     size += ExplicitTemplateArgumentList::sizeFor(*TemplateArgs);
+ 
+-  void *Mem = C.Allocate(size, llvm::alignof<UnresolvedMemberExpr>());
++  void *Mem = C.Allocate(size, llvm::alignOf<UnresolvedMemberExpr>());
+   return new (Mem) UnresolvedMemberExpr(C, 
+                              Dependent ? C.DependentTy : C.OverloadTy,
+                              Dependent, HasUnresolvedUsing, Base, BaseType,
+@@ -966,7 +966,7 @@
+   if (NumTemplateArgs != 0)
+     size += ExplicitTemplateArgumentList::sizeFor(NumTemplateArgs);
+ 
+-  void *Mem = C.Allocate(size, llvm::alignof<UnresolvedMemberExpr>());
++  void *Mem = C.Allocate(size, llvm::alignOf<UnresolvedMemberExpr>());
+   UnresolvedMemberExpr *E = new (Mem) UnresolvedMemberExpr(EmptyShell());
+   E->HasExplicitTemplateArgs = NumTemplateArgs != 0;
+   return E;
+diff -urN a/lib/AST/Stmt.cpp b/lib/AST/Stmt.cpp
+--- a/lib/AST/Stmt.cpp	2010-08-25 13:45:40.000000000 +0200
++++ b/lib/AST/Stmt.cpp	2013-09-06 00:10:56.846191264 +0200
+@@ -416,7 +416,7 @@
+                                      Stmt *atFinallyStmt) {
+   unsigned Size = sizeof(ObjCAtTryStmt) + 
+     (1 + NumCatchStmts + (atFinallyStmt != 0)) * sizeof(Stmt *);
+-  void *Mem = Context.Allocate(Size, llvm::alignof<ObjCAtTryStmt>());
++  void *Mem = Context.Allocate(Size, llvm::alignOf<ObjCAtTryStmt>());
+   return new (Mem) ObjCAtTryStmt(atTryLoc, atTryStmt, CatchStmts, NumCatchStmts,
+                                  atFinallyStmt);
+ }
+@@ -426,7 +426,7 @@
+                                                  bool HasFinally) {
+   unsigned Size = sizeof(ObjCAtTryStmt) + 
+     (1 + NumCatchStmts + HasFinally) * sizeof(Stmt *);
+-  void *Mem = Context.Allocate(Size, llvm::alignof<ObjCAtTryStmt>());
++  void *Mem = Context.Allocate(Size, llvm::alignOf<ObjCAtTryStmt>());
+   return new (Mem) ObjCAtTryStmt(EmptyShell(), NumCatchStmts, HasFinally);  
+ }
+ 
+@@ -448,7 +448,7 @@
+   std::size_t Size = sizeof(CXXTryStmt);
+   Size += ((numHandlers + 1) * sizeof(Stmt));
+ 
+-  void *Mem = C.Allocate(Size, llvm::alignof<CXXTryStmt>());
++  void *Mem = C.Allocate(Size, llvm::alignOf<CXXTryStmt>());
+   return new (Mem) CXXTryStmt(tryLoc, tryBlock, handlers, numHandlers);
+ }
+ 
+@@ -457,7 +457,7 @@
+   std::size_t Size = sizeof(CXXTryStmt);
+   Size += ((numHandlers + 1) * sizeof(Stmt));
+ 
+-  void *Mem = C.Allocate(Size, llvm::alignof<CXXTryStmt>());
++  void *Mem = C.Allocate(Size, llvm::alignOf<CXXTryStmt>());
+   return new (Mem) CXXTryStmt(Empty, numHandlers);
+ }
+ 
+diff -urN a/lib/Basic/IdentifierTable.cpp b/lib/Basic/IdentifierTable.cpp
+--- a/lib/Basic/IdentifierTable.cpp	2010-09-03 03:29:35.000000000 +0200
++++ b/lib/Basic/IdentifierTable.cpp	2013-09-06 00:10:56.846191264 +0200
+@@ -374,7 +374,7 @@
+   unsigned Size = sizeof(MultiKeywordSelector) + nKeys*sizeof(IdentifierInfo *);
+   MultiKeywordSelector *SI =
+     (MultiKeywordSelector*)SelTabImpl.Allocator.Allocate(Size,
+-                                         llvm::alignof<MultiKeywordSelector>());
++                                         llvm::alignOf<MultiKeywordSelector>());
+   new (SI) MultiKeywordSelector(nKeys, IIV);
+   SelTabImpl.Table.InsertNode(SI, InsertPos);
+   return Selector(SI);
+diff -urN a/lib/Lex/TokenLexer.cpp b/lib/Lex/TokenLexer.cpp
+--- a/lib/Lex/TokenLexer.cpp	2010-08-21 02:27:00.000000000 +0200
++++ b/lib/Lex/TokenLexer.cpp	2013-09-06 00:10:56.846191264 +0200
+@@ -287,7 +287,7 @@
+     llvm::BumpPtrAllocator &Alloc = PP.getPreprocessorAllocator();
+     Token *Res =
+       static_cast<Token *>(Alloc.Allocate(sizeof(Token)*ResultToks.size(),
+-                                          llvm::alignof<Token>()));
++                                          llvm::alignOf<Token>()));
+     if (NumTokens)
+       memcpy(Res, &ResultToks[0], NumTokens*sizeof(Token));
+     Tokens = Res;

@@ -1,0 +1,42 @@
+From 836c7b83c2c9c01a504a019eac8295e01c66b527 Mon Sep 17 00:00:00 2001
+From: Ray Donnelly <mingw.android@gmail.com>
+Date: Thu, 13 Feb 2014 22:02:05 +0000
+Subject: [PATCH 6/8] Fix llvm compilation with diffing bitness
+
+TargetCommonOpts are no longer passed to the compiler.
+---
+ Makefile.rules | 10 +++++-----
+ 1 file changed, 5 insertions(+), 5 deletions(-)
+
+diff --git a/Makefile.rules b/Makefile.rules
+index 1966631..4c10d8d 100644
+--- a/Makefile.rules
++++ b/Makefile.rules
+@@ -762,19 +762,19 @@ endif
+ 
+ Compile.C     = $(Compile.Wrapper) \
+ 	          $(CC) $(CPP.Flags) $(C.Flags) $(CFLAGS) $(CPPFLAGS) \
+-                $(TargetCommonOpts) $(CompileCommonOpts) -c
++                $(CompileCommonOpts) -c
+ Compile.CXX   = $(Compile.Wrapper) \
+ 	          $(CXX) $(CPP.Flags) $(CXX.Flags) $(CXXFLAGS) $(CPPFLAGS) \
+-                $(TargetCommonOpts) $(CompileCommonOpts) -c
++                $(CompileCommonOpts) -c
+ Preprocess.CXX= $(Compile.Wrapper) \
+-	          $(CXX) $(CPP.Flags) $(TargetCommonOpts) $(CPPFLAGS) \
++	          $(CXX) $(CPP.Flags) $(CPPFLAGS) \
+                 $(CompileCommonOpts) $(CXX.Flags) -E
+ Link          = $(Compile.Wrapper) \
+ 	          $(CXX) $(CXXFLAGS) $(LD.Flags) $(LDFLAGS) \
+-                $(TargetCommonOpts) $(Strip)
++                $(Strip)
+ 
+ Preprocess.C  = $(CC) $(CPP.Flags) $(C.Flags) $(CPPFLAGS) \
+-                $(TargetCommonOpts) $(CompileCommonOpts) -E
++                $(CompileCommonOpts) -E
+ 
+ ProgInstall   = $(INSTALL) $(Install.StripFlag) -m 0755
+ ScriptInstall = $(INSTALL) -m 0755
+-- 
+2.0.0
+

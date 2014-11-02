@@ -1,0 +1,21 @@
+diff -urN a/gcc/Makefile.in b/gcc/Makefile.in
+--- a/gcc/Makefile.in	2013-10-06 20:13:12.245864304 +0100
++++ b/gcc/Makefile.in	2013-10-06 20:13:13.325881017 +0100
+@@ -734,7 +734,7 @@
+ 
+ # Native compiler for the build machine and its switches.
+ CC_FOR_BUILD = @CC_FOR_BUILD@
+-BUILD_CFLAGS= @BUILD_CFLAGS@ -DGENERATOR_FILE
++BUILD_CFLAGS= @BUILD_CFLAGS@ $(CFLAGS_FOR_BUILD) -DGENERATOR_FILE
+ 
+ # Native linker and preprocessor flags.  For x-fragment overrides.
+ BUILD_LDFLAGS=$(LDFLAGS)
+@@ -901,7 +901,7 @@
+ 
+ # This is the variable actually used when we compile. If you change this,
+ # you probably want to update BUILD_CFLAGS in configure.ac
+-ALL_CFLAGS = $(X_CFLAGS) $(T_CFLAGS) \
++ALL_CFLAGS = $(X_CFLAGS) $(T_CFLAGS) $(CFLAGS_FOR_BUILD) \
+   $(CFLAGS) $(INTERNAL_CFLAGS) $(COVERAGE_FLAGS) $(WARN_CFLAGS) $(XCFLAGS) @DEFS@
+ 
+ # Likewise.  Put INCLUDES at the beginning: this way, if some autoconf macro

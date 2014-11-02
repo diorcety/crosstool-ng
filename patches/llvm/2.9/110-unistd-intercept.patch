@@ -1,0 +1,11 @@
+diff -urN a/lib/ExecutionEngine/JIT/Intercept.cpp b/lib/ExecutionEngine/JIT/Intercept.cpp
+--- a/lib/ExecutionEngine/JIT/Intercept.cpp	2010-11-29 19:16:10.000000000 +0100
++++ b/lib/ExecutionEngine/JIT/Intercept.cpp	2013-11-08 13:58:56.720031711 +0100
+@@ -19,6 +19,7 @@
+ #include "llvm/Support/ErrorHandling.h"
+ #include "llvm/Support/DynamicLibrary.h"
+ #include "llvm/Config/config.h"
++#include <unistd.h>
+ using namespace llvm;
+ 
+ // AtExitHandlers - List of functions to call when the program exits,

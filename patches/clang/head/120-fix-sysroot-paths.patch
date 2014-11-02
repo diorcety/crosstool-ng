@@ -1,0 +1,65 @@
+From 91d7fcfc7b0fcef3b1a25428380732a045fee0d3 Mon Sep 17 00:00:00 2001
+From: Ray Donnelly <mingw.android@gmail.com>
+Date: Wed, 13 Nov 2013 18:04:57 +0000
+Subject: [PATCH 2/5] fix sysroot paths
+
+---
+ lib/Driver/Driver.cpp | 14 ++++++++++++++
+ lib/Driver/Tools.cpp  |  9 +++++++++
+ 2 files changed, 23 insertions(+)
+
+diff --git a/lib/Driver/Driver.cpp b/lib/Driver/Driver.cpp
+index 1d7f180..65f5425 100644
+--- a/lib/Driver/Driver.cpp
++++ b/lib/Driver/Driver.cpp
+@@ -42,6 +42,10 @@ using namespace clang::driver;
+ using namespace clang;
+ using namespace llvm::opt;
+ 
++static llvm::Triple computeTargetTriple(StringRef DefaultTargetTriple,
++                                        const ArgList &Args,
++                                        StringRef DarwinArchName);
++
+ Driver::Driver(StringRef ClangExecutable,
+                StringRef DefaultTargetTriple,
+                DiagnosticsEngine &Diags)
+@@ -350,6 +354,16 @@ Compilation *Driver::BuildCompilation(ArrayRef<const char *> ArgList) {
+   }
+   if (const Arg *A = Args->getLastArg(options::OPT__sysroot_EQ))
+     SysRoot = A->getValue();
++  else if (const Arg *A = Args->getLastArg(options::OPT_isysroot)) {
++    SysRoot = A->getValue();
++  } else {
++      if (!Dir.empty()) {
++        SmallString<256> P = llvm::sys::path::parent_path(Dir);
++        llvm::sys::path::append(P,this->Prefix);
++        llvm::sys::path::append(P,"sysroot");
++        SysRoot = P.str();
++      }
++  }
+   if (const Arg *A = Args->getLastArg(options::OPT__dyld_prefix_EQ))
+     DyldPrefix = A->getValue();
+   if (Args->hasArg(options::OPT_nostdlib))
+diff --git a/lib/Driver/Tools.cpp b/lib/Driver/Tools.cpp
+index 9d8356a..fb7989a 100644
+--- a/lib/Driver/Tools.cpp
++++ b/lib/Driver/Tools.cpp
+@@ -5426,6 +5426,15 @@ void darwin::Link::AddLinkArgs(Compilation &C,
+     CmdArgs.push_back(A->getValue());
+   }
+ 
++  std::string libPath;
++  bool Exists;
++  //libPath = D.Dir + "/../lib/gcc/" + D.Prefix + "/4.2.1";
++  //if (!llvm::sys::fs::exists(libPath, Exists) && Exists)
++  //  CmdArgs.push_back(Args.MakeArgString("-L" + libPath));
++  libPath = D.SysRoot + "/usr/lib/gcc/" + D.Prefix + "/4.2.1";
++  if (!llvm::sys::fs::exists(libPath, Exists) && Exists)
++    CmdArgs.push_back(Args.MakeArgString("-L" + libPath));
++
+   Args.AddLastArg(CmdArgs, options::OPT_twolevel__namespace);
+   Args.AddLastArg(CmdArgs, options::OPT_twolevel__namespace__hints);
+   Args.AddAllArgs(CmdArgs, options::OPT_umbrella);
+-- 
+2.0.0
+

@@ -1,6 +1,6 @@
 # eglibc options
 
-## depends on ! WINDOWS && ! BARE_METAL && ARCH_USE_MMU
+## depends on ! WINDOWS && !DARWIN && ! BARE_METAL && ARCH_USE_MMU
 ##
 ## select LIBC_SUPPORT_THREADS_NATIVE
 ## select CC_CORE_PASSES_NEEDED
@@ -20,6 +20,11 @@ choice
     prompt "eglibc version"
 # Don't remove next line
 # CT_INSERT_VERSION_BELOW
+
+config LIBC_EGLIBC_V_2_19
+    bool
+    prompt "2_19"
+    select LIBC_EGLIBC_2_16_or_later
 
 config LIBC_EGLIBC_V_2_18
     bool
@@ -85,6 +90,7 @@ config LIBC_VERSION
     string
 # Don't remove next line
 # CT_INSERT_VERSION_STRING_BELOW
+    default "2_19" if LIBC_EGLIBC_V_2_19
     default "2_18" if LIBC_EGLIBC_V_2_18
     default "2_17" if LIBC_EGLIBC_V_2_17
     default "2_16" if LIBC_EGLIBC_V_2_16

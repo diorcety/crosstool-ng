@@ -1,0 +1,55 @@
+diff -urN a/Makefile.rules b/Makefile.rules
+--- a/Makefile.rules	2011-10-11 14:51:44.000000000 +0200
++++ b/Makefile.rules	2014-02-13 22:33:50.359289998 +0100
+@@ -642,40 +642,40 @@
+ ifeq ($(BUILD_COMPONENT), 1)
+   Compile.C     = $(Compile.Wrapper) \
+ 	          $(BUILD_CC) $(CPP.Flags) $(C.Flags) $(CFLAGS) $(CPPFLAGS) \
+-                  $(TargetCommonOpts) $(CompileCommonOpts) -c
++                  $(CompileCommonOpts) -c
+   Compile.CXX   = $(Compile.Wrapper) \
+ 	          $(BUILD_CXX) $(CPP.Flags) $(CXX.Flags) $(CXXFLAGS) \
+ 		  $(CPPFLAGS) \
+-                  $(TargetCommonOpts) $(CompileCommonOpts) -c
++                  $(CompileCommonOpts) -c
+   Preprocess.CXX= $(Compile.Wrapper) \
+-	          $(BUILD_CXX) $(CPP.Flags) $(CPPFLAGS) $(TargetCommonOpts) \
++	          $(BUILD_CXX) $(CPP.Flags) $(CPPFLAGS) \
+                   $(CompileCommonOpts) $(CXX.Flags) -E
+   Link          = $(Compile.Wrapper) \
+ 	          $(BUILD_CXX) $(CPP.Flags) $(CXX.Flags) $(CXXFLAGS) \
+ 		  $(LD.Flags) $(LDFLAGS) \
+-                  $(TargetCommonOpts) $(CompileCommonOpts) $(Strip)
++                  $(CompileCommonOpts) $(Strip)
+ else
+   Compile.C     = $(Compile.Wrapper) \
+ 	          $(CC) $(CPP.Flags) $(C.Flags) $(CFLAGS) $(CPPFLAGS) \
+-                  $(TargetCommonOpts) $(CompileCommonOpts) -c
++                  $(CompileCommonOpts) -c
+   Compile.CXX   = $(Compile.Wrapper) \
+ 	          $(CXX) $(CPP.Flags) $(CXX.Flags) $(CXXFLAGS) $(CPPFLAGS) \
+-                  $(TargetCommonOpts) $(CompileCommonOpts) -c
++                  $(CompileCommonOpts) -c
+   Preprocess.CXX= $(Compile.Wrapper) \
+-	          $(CXX) $(CPP.Flags) $(TargetCommonOpts) $(CPPFLAGS) \
++	          $(CXX) $(CPP.Flags) $(CPPFLAGS) \
+                   $(CompileCommonOpts) $(CXX.Flags) -E
+   Link          = $(Compile.Wrapper) \
+ 	          $(CXX) $(CPP.Flags) $(CXX.Flags) $(CXXFLAGS) $(LD.Flags) \
+-                  $(LDFLAGS) $(TargetCommonOpts)  $(CompileCommonOpts) $(Strip)
++                  $(LDFLAGS)  $(CompileCommonOpts) $(Strip)
+ endif
+ 
+ BCCompile.C   = $(LLVMCC) $(CPP.Flags) $(C.Flags) $(CFLAGS) $(CPPFLAGS) \
+-                $(TargetCommonOpts) $(CompileCommonOpts)
++                $(CompileCommonOpts)
+ Preprocess.C  = $(CC) $(CPP.Flags) $(C.Flags) $(CPPFLAGS) \
+-                $(TargetCommonOpts) $(CompileCommonOpts) -E
++                $(CompileCommonOpts) -E
+ 
+ BCCompile.CXX = $(LLVMCXX) $(CPP.Flags) $(CXX.Flags) $(CXXFLAGS) $(CPPFLAGS) \
+-                $(TargetCommonOpts) $(CompileCommonOpts)
++                $(CompileCommonOpts)
+ 
+ ProgInstall   = $(INSTALL) $(Install.StripFlag) -m 0755
+ ScriptInstall = $(INSTALL) -m 0755

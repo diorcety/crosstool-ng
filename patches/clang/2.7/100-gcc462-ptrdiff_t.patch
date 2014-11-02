@@ -1,0 +1,44 @@
+diff -urN a/include/clang/Analysis/Support/BumpVector.h b/include/clang/Analysis/Support/BumpVector.h
+--- a/include/clang/Analysis/Support/BumpVector.h	2010-02-21 23:14:52.000000000 +0100
++++ b/include/clang/Analysis/Support/BumpVector.h	2013-07-24 21:30:27.475868494 +0200
+@@ -19,6 +19,7 @@
+ #ifndef LLVM_CLANG_BUMP_VECTOR
+ #define LLVM_CLANG_BUMP_VECTOR
+ 
++#include <cstddef>
+ #include "llvm/Support/type_traits.h"
+ #include "llvm/Support/Allocator.h"
+ #include "llvm/ADT/PointerIntPair.h"
+diff -urN a/include/clang/AST/StmtIterator.h b/include/clang/AST/StmtIterator.h
+--- a/include/clang/AST/StmtIterator.h	2009-12-24 00:38:34.000000000 +0100
++++ b/include/clang/AST/StmtIterator.h	2013-07-24 21:30:27.475868494 +0200
+@@ -14,6 +14,7 @@
+ #ifndef LLVM_CLANG_AST_STMT_ITR_H
+ #define LLVM_CLANG_AST_STMT_ITR_H
+ 
++#include <cstddef>
+ #include "llvm/System/DataTypes.h"
+ #include <cassert>
+ #include <iterator>
+diff -urN a/include/clang/Basic/Diagnostic.h b/include/clang/Basic/Diagnostic.h
+--- a/include/clang/Basic/Diagnostic.h	2010-02-18 19:08:43.000000000 +0100
++++ b/include/clang/Basic/Diagnostic.h	2013-07-24 21:30:27.475868494 +0200
+@@ -14,6 +14,7 @@
+ #ifndef LLVM_CLANG_DIAGNOSTIC_H
+ #define LLVM_CLANG_DIAGNOSTIC_H
+ 
++#include <stdint.h>
+ #include "clang/Basic/SourceLocation.h"
+ #include "llvm/ADT/StringRef.h"
+ #include "llvm/Support/type_traits.h"
+diff -urN a/include/clang/Rewrite/RewriteRope.h b/include/clang/Rewrite/RewriteRope.h
+--- a/include/clang/Rewrite/RewriteRope.h	2009-09-09 17:08:12.000000000 +0200
++++ b/include/clang/Rewrite/RewriteRope.h	2013-07-24 21:28:45.773571945 +0200
+@@ -15,6 +15,7 @@
+ #define LLVM_CLANG_REWRITEROPE_H
+ 
+ #include <cstring>
++#include <cstddef>
+ #include <cassert>
+ #include <iterator>
+ 

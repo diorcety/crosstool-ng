@@ -260,6 +260,32 @@ struct mitem {
 	int is_visible;
 };
 
+
+#if defined(__WIN32)
+// This should be done via configure.
+char *strcasestr(const char *haystack, const char *needle)
+{
+        int nlen = strlen(needle);
+        int hlen = strlen(haystack) - nlen + 1;
+        int i;
+
+        for (i = 0; i < hlen; i++) {
+                int j;
+                for (j = 0; j < nlen; j++) {
+                        unsigned char c1 = haystack[i+j];
+                        unsigned char c2 = needle[j];
+                        if (toupper(c1) != toupper(c2))
+                                goto next;
+                }
+                return (char *) haystack + i;
+        next:
+                ;
+        }
+        return NULL;
+}
+#define bzero(_p,_s) memset((_p),0,(_s))
+#endif
+
 #define MAX_MENU_ITEMS 4096
 static int show_all_items;
 static int indent;

@@ -1,0 +1,14 @@
+diff -urN a/gcc/config/arm/arm.c b/gcc/config/arm/arm.c
+--- a/gcc/config/arm/arm.c	2013-07-07 22:09:06.119404344 +0100
++++ b/gcc/config/arm/arm.c	2013-07-07 22:08:53.079404288 +0100
+@@ -23,8 +23,10 @@
+    Boston, MA 02110-1301, USA.  */
+ 
+ /* APPLE LOCAL begin 6902792 Q register clobbers in inline asm */
++#ifdef __APPLE__
+ #include <stdlib.h>
+ #include <ctype.h>
++#endif
+ /* APPLE LOCAL end 6902792 Q register clobbers in inline asm */
+ #include "config.h"
+ #include "system.h"

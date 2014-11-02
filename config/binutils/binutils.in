@@ -1,5 +1,8 @@
 # binutils options
 
+## depends on (ARCH_USE_MMU || BARE_METAL) && !DARWIN
+##
+
 comment "GNU binutils"
 
 choice

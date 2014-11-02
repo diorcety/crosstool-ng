@@ -1,0 +1,78 @@
+# LLVM options
+
+choice
+    bool
+    prompt "LLVM version"
+# Don't remove next line
+# CT_INSERT_VERSION_BELOW
+
+config LLVM_V_HEAD
+    bool
+    prompt "head (git)"
+
+config LLVM_V_3_5
+    bool
+    prompt "3.5"
+
+config LLVM_V_3_4_2
+    bool
+    prompt "3.4.2"
+
+config LLVM_V_3_4
+    bool
+    prompt "3.4"
+
+config LLVM_V_3_3
+    bool
+    prompt "3.3"
+
+config LLVM_V_3_2
+    bool
+    prompt "3.2"
+
+config LLVM_V_3_1
+    bool
+    prompt "3.1"
+
+config LLVM_V_3_0
+    bool
+    prompt "3.0"
+
+config LLVM_V_2_9
+    bool
+    prompt "2.9"
+
+config LLVM_V_2_8
+    bool
+    prompt "2.8"
+    
+config LLVM_V_2_7
+    bool
+    prompt "2.7"
+    
+endchoice
+
+config LLVM_VERSION
+    string
+# Don't remove next line
+# CT_INSERT_VERSION_STRING_BELOW
+    default "head" if LLVM_V_HEAD
+    default "3.5" if LLVM_V_3_5
+    default "3.4.2" if LLVM_V_3_4_2
+    default "3.4" if LLVM_V_3_4
+    default "3.3" if LLVM_V_3_3
+    default "3.2" if LLVM_V_3_2
+    default "3.1" if LLVM_V_3_1
+    default "3.0" if LLVM_V_3_0
+    default "2.9" if LLVM_V_2_9
+    default "2.8" if LLVM_V_2_8
+    default "2.7" if LLVM_V_2_7
+    
+config LLVM_APPLE
+    bool
+
+config LLVM_COMPILER_RT
+    bool
+    prompt "LLVM Compiler RT"
+    depends on CC_CLANG_NEED_COMPILER_RT
+    default y

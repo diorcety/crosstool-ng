@@ -1,0 +1,61 @@
+diff -urN a/runtime/compiler-rt/Makefile b/runtime/compiler-rt/Makefile
+--- a/runtime/compiler-rt/Makefile	2013-03-21 00:49:07.000000000 +0100
++++ b/runtime/compiler-rt/Makefile	2013-11-09 13:09:34.723376826 +0100
+@@ -61,7 +61,7 @@
+ #     information that compiler-rt would need to build libraries for all the
+ #     requested targets. This might be a simple short term solution, but is
+ #     likely to be unwieldly and irritating to maintain in the long term.
+-ifneq ($(LLVM_CROSS_COMPILING),1)
++#ifneq ($(LLVM_CROSS_COMPILING),1)
+ ifneq ($(CLANG_NO_RUNTIME),1)
+ ifeq ($(shell test -d $(COMPILERRT_SRC_ROOT) && echo OK),OK)
+ 
+@@ -71,7 +71,7 @@
+ # build/install runtime libraries for as many targets as clang was configured to
+ # support.
+ RuntimeDirs :=
+-ifeq ($(OS),Darwin)
++ifeq ($(TARGET_OS),Darwin)
+ RuntimeDirs += darwin
+ RuntimeLibrary.darwin.Configs := \
+ 	eprintf.a 10.4.a osx.a ios.a cc_kext.a cc_kext_ios5.a \
+@@ -81,7 +81,7 @@
+ endif
+ 
+ # On Linux, include a library which has all the runtime functions.
+-ifeq ($(OS),Linux)
++ifeq ($(TARGET_OS),Linux)
+ RuntimeDirs += linux
+ RuntimeLibrary.linux.Configs :=
+ 
+@@ -97,13 +97,13 @@
+     echo $$?)
+ 
+ # We currently only try to generate runtime libraries on x86.
+-ifeq ($(ARCH),x86)
++ifeq ($(TARGET_ARCH),x86)
+ RuntimeLibrary.linux.Configs += \
+ 	full-i386.a profile-i386.a san-i386.a asan-i386.a ubsan-i386.a \
+ 	ubsan_cxx-i386.a
+ endif
+ 
+-ifeq ($(ARCH),x86_64)
++ifeq ($(TARGET_ARCH),x86_64)
+ RuntimeLibrary.linux.Configs += \
+ 	full-x86_64.a profile-x86_64.a san-x86_64.a asan-x86_64.a \
+ 	tsan-x86_64.a msan-x86_64.a ubsan-x86_64.a ubsan_cxx-x86_64.a
+@@ -179,7 +179,7 @@
+ 	$(Echo) Copying runtime library $1/$$* to build dir
+ 	$(Verb) cp $(PROJ_OBJ_DIR)/clang_$1/$$*/libcompiler_rt.dylib $$@
+ 	$(Echo) Fixing LC_ID_DYLIB of $$@
+-	$(Verb) install_name_tool $$@ -id $$@
++	$(Verb) ${prefix}/bin/$(TARGET_TRIPLE)-install_name_tool $$@ -id $$@
+ RuntimeLibrary.$1: \
+ 		$(RuntimeLibrary.$1.Configs:%=$(ResourceLibDir)/$1/libclang_rt.%)
+ .PHONY: RuntimeLibrary.$1
+@@ -214,4 +214,4 @@
+ 
+ endif
+ endif
+-endif
++#endif

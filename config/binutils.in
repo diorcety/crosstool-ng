@@ -9,10 +9,17 @@ choice
 config ARCH_BINFMT_ELF
     bool
     prompt "ELF"
-    depends on ARCH_USE_MMU || BARE_METAL
+    depends on (ARCH_USE_MMU && ! DARWIN ) || BARE_METAL
     help
       This will make your system build ELF executables,
       suitable for architectures with an MMU.
+
+config ARCH_BINFMT_MACH_O
+    bool
+    prompt "MACH-O"
+    depends on DARWIN
+    help
+      This will make your system build MACH-O executables.
 
 config ARCH_BINFMT_FLAT
     bool

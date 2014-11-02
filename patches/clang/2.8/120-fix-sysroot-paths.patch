@@ -1,0 +1,114 @@
+diff -urN b/include/clang/Driver/Driver.h c/include/clang/Driver/Driver.h
+--- b/include/clang/Driver/Driver.h	2010-08-02 07:43:51.000000000 +0200
++++ c/include/clang/Driver/Driver.h	2013-09-04 22:29:47.358550165 +0200
+@@ -76,6 +76,8 @@
+   /// universal driver when it is ready.
+   std::string PrefixDir;
+ 
++  std::string SysrootDir;
++
+   /// Default host triple.
+   std::string DefaultHostTriple;
+ 
+diff -urN b/lib/Driver/Driver.cpp c/lib/Driver/Driver.cpp
+--- b/lib/Driver/Driver.cpp	2010-08-23 22:58:50.000000000 +0200
++++ c/lib/Driver/Driver.cpp	2013-09-04 22:34:34.831488199 +0200
+@@ -245,6 +245,20 @@
+     PrefixDir = A->getValue(*Args);
+ 
+   Host = GetHostInfo(DefaultHostTriple.c_str());
++  
++  if (const Arg *A = Args->getLastArg(options::OPT__sysroot_EQ)) {
++    SysrootDir = A->getValue(*Args);
++  } else if (const Arg *A = Args->getLastArg(options::OPT_isysroot)) {
++    SysrootDir = A->getValue(*Args);
++  } else {
++      llvm::sys::Path P(Dir);
++      if (!P.isEmpty()) {
++        P.eraseComponent(); // Remove /bin from foo/bin
++        P.appendComponent(Host->getTriple().getTriple());
++        P.appendComponent("sysroot");
++        SysrootDir = P.str();
++      }
++  }
+ 
+   // Perform the default argument translations.
+   DerivedArgList *TranslatedArgs = TranslateInputArgs(*Args);
+diff -urN b/lib/Driver/ToolChains.cpp c/lib/Driver/ToolChains.cpp
+--- b/lib/Driver/ToolChains.cpp	2010-09-03 19:16:03.000000000 +0200
++++ c/lib/Driver/ToolChains.cpp	2013-09-04 22:37:08.005869875 +0200
+@@ -289,16 +289,17 @@
+                                       ArgStringList &CmdArgs) const {
+   std::string Tmp;
+ 
++  std::string sysroot = getDriver().SysrootDir;
+   // FIXME: Derive these correctly.
+   if (getArchName() == "x86_64") {
+-    CmdArgs.push_back(Args.MakeArgString("-L/usr/lib/gcc/" + ToolChainDir +
++    CmdArgs.push_back(Args.MakeArgString("-L"+sysroot+"/usr/lib/gcc/" + ToolChainDir +
+                                          "/x86_64"));
+     // Intentionally duplicated for (temporary) gcc bug compatibility.
+-    CmdArgs.push_back(Args.MakeArgString("-L/usr/lib/gcc/" + ToolChainDir +
++    CmdArgs.push_back(Args.MakeArgString("-L"+sysroot+"/usr/lib/gcc/" + ToolChainDir +
+                                          "/x86_64"));
+   }
+ 
+-  CmdArgs.push_back(Args.MakeArgString("-L/usr/lib/" + ToolChainDir));
++  CmdArgs.push_back(Args.MakeArgString("-L"+sysroot+"/usr/lib/" + ToolChainDir));
+ 
+   Tmp = getDriver().Dir + "/../lib/gcc/" + ToolChainDir;
+   if (llvm::sys::Path(Tmp).exists())
+@@ -306,18 +307,18 @@
+   Tmp = getDriver().Dir + "/../lib/gcc";
+   if (llvm::sys::Path(Tmp).exists())
+     CmdArgs.push_back(Args.MakeArgString("-L" + Tmp));
+-  CmdArgs.push_back(Args.MakeArgString("-L/usr/lib/gcc/" + ToolChainDir));
++  CmdArgs.push_back(Args.MakeArgString("-L"+sysroot+"/usr/lib/gcc/" + ToolChainDir));
+   // Intentionally duplicated for (temporary) gcc bug compatibility.
+-  CmdArgs.push_back(Args.MakeArgString("-L/usr/lib/gcc/" + ToolChainDir));
++  CmdArgs.push_back(Args.MakeArgString("-L"+sysroot+"/usr/lib/gcc/" + ToolChainDir));
+   Tmp = getDriver().Dir + "/../lib/" + ToolChainDir;
+   if (llvm::sys::Path(Tmp).exists())
+     CmdArgs.push_back(Args.MakeArgString("-L" + Tmp));
+   Tmp = getDriver().Dir + "/../lib";
+   if (llvm::sys::Path(Tmp).exists())
+     CmdArgs.push_back(Args.MakeArgString("-L" + Tmp));
+-  CmdArgs.push_back(Args.MakeArgString("-L/usr/lib/gcc/" + ToolChainDir +
++  CmdArgs.push_back(Args.MakeArgString("-L"+sysroot+"/usr/lib/gcc/" + ToolChainDir +
+                                        "/../../../" + ToolChainDir));
+-  CmdArgs.push_back(Args.MakeArgString("-L/usr/lib/gcc/" + ToolChainDir +
++  CmdArgs.push_back(Args.MakeArgString("-L"+sysroot+"/usr/lib/gcc/" + ToolChainDir +
+                                        "/../../.."));
+ }
+ 
+diff -urN b/lib/Driver/Tools.cpp c/lib/Driver/Tools.cpp
+--- b/lib/Driver/Tools.cpp	2010-09-03 01:59:25.000000000 +0200
++++ c/lib/Driver/Tools.cpp	2013-09-04 22:29:47.362550071 +0200
+@@ -687,6 +687,12 @@
+   std::string TripleStr = getToolChain().ComputeEffectiveClangTriple(Args);
+   CmdArgs.push_back(Args.MakeArgString(TripleStr));
+ 
++  // Set sysroot
++  if(!D.SysrootDir.empty()) {
++    CmdArgs.push_back("-isysroot");
++    CmdArgs.push_back(Args.MakeArgString(D.SysrootDir));
++  }
++
+   // Select the appropriate action.
+   bool IsRewriter = false;
+   if (isa<AnalyzeJobAction>(JA)) {
+@@ -2317,11 +2323,9 @@
+   Args.AddAllArgs(CmdArgs, options::OPT_sub__umbrella);
+ 
+   Args.AddAllArgsTranslated(CmdArgs, options::OPT_isysroot, "-syslibroot");
+-  if (getDarwinToolChain().isTargetIPhoneOS()) {
+-    if (!Args.hasArg(options::OPT_isysroot)) {
+-      CmdArgs.push_back("-syslibroot");
+-      CmdArgs.push_back("/Developer/SDKs/Extra");
+-    }
++  if (!D.SysrootDir.empty()) {
++    CmdArgs.push_back("-syslibroot");
++    CmdArgs.push_back(Args.MakeArgString(D.SysrootDir));
+   }
+ 
+   Args.AddLastArg(CmdArgs, options::OPT_twolevel__namespace);

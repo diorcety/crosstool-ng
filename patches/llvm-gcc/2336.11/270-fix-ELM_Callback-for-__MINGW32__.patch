@@ -1,0 +1,12 @@
+diff -urN a/llvmCore/lib/System/Win32/DynamicLibrary.inc b/llvmCore/lib/System/Win32/DynamicLibrary.inc
+--- a/llvmCore/lib/System/Win32/DynamicLibrary.inc	2013-10-06 20:13:04.745748330 +0100
++++ b/llvmCore/lib/System/Win32/DynamicLibrary.inc	2013-10-06 20:13:05.375758077 +0100
+@@ -55,7 +55,7 @@
+ // Use new callback if:
+ //  - Newer Visual Studio (comes with newer SDK).
+ //  - Visual Studio 2005 with Windows SDK 6.0+
+-#if !defined(_MSC_VER) || _MSC_VER < 1500 && (!defined(VER_PRODUCTBUILD) || VER_PRODUCTBUILD < 6000)
++#if !defined(__MINGW32__) && (!defined(_MSC_VER) || _MSC_VER < 1500 && (!defined(VER_PRODUCTBUILD) || VER_PRODUCTBUILD < 6000))
+   static BOOL CALLBACK ELM_Callback(PSTR  ModuleName,
+                                     ModuleBaseType ModuleBase,
+                                     ULONG ModuleSize,

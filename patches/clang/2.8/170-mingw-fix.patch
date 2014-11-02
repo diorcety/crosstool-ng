@@ -1,0 +1,125 @@
+diff -urN b/include/clang/Driver/ToolChain.h c/include/clang/Driver/ToolChain.h
+--- b/include/clang/Driver/ToolChain.h	2013-09-13 08:16:28.476481064 +0200
++++ c/include/clang/Driver/ToolChain.h	2013-09-13 08:17:22.827428079 +0200
+@@ -67,6 +67,7 @@
+   }
+ 
+   virtual void AddLinkSearchPathArgs(const ArgList &Args, ArgStringList &CmdArgs) const;
++  virtual void AddCPlusPlusIncludeSearchPathArgs(const ArgList &Args, ArgStringList &CmdArgs) const;
+   virtual void AddIncludeSearchPathArgs(const ArgList &Args, ArgStringList &CmdArgs) const;
+   
+   path_list &getFilePaths() { return FilePaths; }
+diff -urN b/lib/Basic/Targets.cpp c/lib/Basic/Targets.cpp
+--- b/lib/Basic/Targets.cpp	2010-08-31 18:44:54.000000000 +0200
++++ c/lib/Basic/Targets.cpp	2013-09-13 08:17:22.827428079 +0200
+@@ -1487,6 +1487,7 @@
+   virtual void getTargetDefines(const LangOptions &Opts,
+                                 MacroBuilder &Builder) const {
+     X86_64TargetInfo::getTargetDefines(Opts, Builder);
++    Builder.defineMacro("_WIN32");
+     Builder.defineMacro("_WIN64");
+     DefineStd(Builder, "WIN64", Opts);
+   }
+@@ -2588,6 +2589,7 @@
+     case llvm::Triple::Cygwin:
+       return new CygwinX86_32TargetInfo(T);
+     case llvm::Triple::MinGW32:
++    case llvm::Triple::MinGW64:
+       return new MinGWX86_32TargetInfo(T);
+     case llvm::Triple::Win32:
+       return new VisualStudioWindowsX86_32TargetInfo(T);
+@@ -2615,6 +2617,7 @@
+       return new FreeBSDTargetInfo<X86_64TargetInfo>(T);
+     case llvm::Triple::Solaris:
+       return new SolarisTargetInfo<X86_64TargetInfo>(T);
++    case llvm::Triple::MinGW32:
+     case llvm::Triple::MinGW64:
+       return new MinGWX86_64TargetInfo(T);
+     case llvm::Triple::Win32:   // This is what Triple.h supports now.
+diff -urN b/lib/Driver/ToolChain.cpp c/lib/Driver/ToolChain.cpp
+--- b/lib/Driver/ToolChain.cpp	2013-09-13 08:16:28.476481064 +0200
++++ c/lib/Driver/ToolChain.cpp	2013-09-13 08:17:22.827428079 +0200
+@@ -56,6 +56,23 @@
+   CmdArgs.push_back(Args.MakeArgString("-I" + BaseDir + "/../../../../" + Host.getTriple().getTriple() + "/include"));
+ }
+ 
++void ToolChain::AddCPlusPlusIncludeSearchPathArgs(const ArgList &Args, ArgStringList &CmdArgs) const {
++  llvm::sys::Path P(getDriver().Dir);
++  std::string GccVersion(CLANG_GCC_VERSION_STR);
++
++  // Checks
++  if (P.isEmpty() || GccVersion.empty()) {
++    return;
++  }
++
++  P.eraseComponent(); // Remove /bin from foo/bin
++  std::string BaseDir = P.str() + std::string("/lib/gcc/") + Host.getTriple().getTriple() + std::string("/") + GccVersion;
++
++  CmdArgs.push_back(Args.MakeArgString("-I" + BaseDir + "/../../../../" + Host.getTriple().getTriple() + "/include/c++/" + GccVersion));
++  CmdArgs.push_back(Args.MakeArgString("-I" + BaseDir + "/../../../../" + Host.getTriple().getTriple() + "/include/c++/" + GccVersion + "/" + Host.getTriple().getTriple()));
++  CmdArgs.push_back(Args.MakeArgString("-I" + BaseDir + "/../../../../" + Host.getTriple().getTriple() + "/include/c++/" + GccVersion + "/backward"));
++}
++
+ void ToolChain::AddLinkSearchPathArgs(const ArgList &Args, ArgStringList &CmdArgs) const {
+   llvm::sys::Path P(getDriver().Dir);
+   std::string GccVersion(CLANG_GCC_VERSION_STR);
+diff -urN b/lib/Driver/Tools.cpp c/lib/Driver/Tools.cpp
+--- b/lib/Driver/Tools.cpp	2013-09-13 08:16:28.476481064 +0200
++++ c/lib/Driver/Tools.cpp	2013-09-13 09:25:26.409969927 +0200
+@@ -1002,6 +1002,9 @@
+   if (isa<LinkJobAction>(JA)) {
+      getToolChain().AddLinkSearchPathArgs(Args, CmdArgs);
+   } else {
++     if (types::isCXX(InputType)) {
++       getToolChain().AddCPlusPlusIncludeSearchPathArgs(Args, CmdArgs);
++     }
+      getToolChain().AddIncludeSearchPathArgs(Args, CmdArgs);
+   }
+ 
+@@ -1220,7 +1223,10 @@
+ 
+   // -fuse-cxa-atexit is default.
+   if (KernelOrKext || !Args.hasFlag(options::OPT_fuse_cxa_atexit,
+-                                    options::OPT_fno_use_cxa_atexit))
++                                    options::OPT_fno_use_cxa_atexit,
++                   getToolChain().getTriple().getOS() != llvm::Triple::Cygwin &&
++                  getToolChain().getTriple().getOS() != llvm::Triple::MinGW32))
++
+     CmdArgs.push_back("-fno-use-cxa-atexit");
+ 
+   // -fms-extensions=0 is default.
+diff -urN b/lib/Frontend/InitHeaderSearch.cpp c/lib/Frontend/InitHeaderSearch.cpp
+--- b/lib/Frontend/InitHeaderSearch.cpp	2010-09-03 18:45:53.000000000 +0200
++++ c/lib/Frontend/InitHeaderSearch.cpp	2013-09-13 08:18:08.778545396 +0200
+@@ -525,7 +525,7 @@
+     break;
+   case llvm::Triple::MinGW64:
+   case llvm::Triple::MinGW32:
+-    AddPath("c:/mingw/include", System, true, false, false);
++    AddPath("/mingw/include", System, true, false, false);
+     break;
+   default:
+     break;
+@@ -560,22 +560,6 @@
+     AddPath("/lib/gcc/i686-pc-cygwin/3.4.4/include/c++/i686-pc-cygwin",
+         System, true, false, false);
+     break;
+-  case llvm::Triple::MinGW64:
+-    // Try gcc 4.5.0
+-    AddMinGWCPlusPlusIncludePaths("c:/MinGW/lib/gcc", "mingw64", "4.5.0");
+-    // Try gcc 4.4.0
+-    AddMinGWCPlusPlusIncludePaths("c:/MinGW/lib/gcc", "mingw64", "4.4.0");
+-    // Try gcc 4.3.0
+-    AddMinGWCPlusPlusIncludePaths("c:/MinGW/lib/gcc", "mingw64", "4.3.0");
+-    // Fall through.
+-  case llvm::Triple::MinGW32:
+-   // Try gcc 4.5.0
+-    AddMinGWCPlusPlusIncludePaths("c:/MinGW/lib/gcc", "mingw32", "4.5.0"); 
+-    // Try gcc 4.4.0
+-    AddMinGWCPlusPlusIncludePaths("c:/MinGW/lib/gcc", "mingw32", "4.4.0");
+-    // Try gcc 4.3.0
+-    AddMinGWCPlusPlusIncludePaths("c:/MinGW/lib/gcc", "mingw32", "4.3.0");
+-    break;
+   case llvm::Triple::Darwin:
+     switch (triple.getArch()) {
+     default: break;

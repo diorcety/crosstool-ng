@@ -1,0 +1,30 @@
+diff -urN a/lib/Support/Errno.cpp b/lib/Support/Errno.cpp
+--- a/lib/Support/Errno.cpp	2013-09-09 01:00:21.481697700 +0100
++++ b/lib/Support/Errno.cpp	2013-09-09 01:00:52.035077500 +0100
+@@ -52,7 +52,7 @@
+ # endif
+ #elif HAVE_DECL_STRERROR_S // "Windows Secure API"
+     if (errnum)
+-      strerror_s(buffer, errnum);
++      strerror_s(buffer, MaxErrStrLen-1, errnum);
+ #elif defined(HAVE_STRERROR)
+   // Copy the thread un-safe result of strerror into
+   // the buffer as fast as possible to minimize impact
+diff -urN a/lib/Support/Windows/Windows.h b/lib/Support/Windows/Windows.h
+--- a/lib/Support/Windows/Windows.h	2013-09-09 01:00:21.620215300 +0100
++++ b/lib/Support/Windows/Windows.h	2013-09-09 01:02:04.478276600 +0100
+@@ -20,7 +20,13 @@
+ #undef _WIN32_WINNT
+ 
+ // Require at least Windows XP(5.1) API.
+-#define _WIN32_WINNT 0x0501
++#if !defined(_WIN32_WINNT)
++ #define _WIN32_WINNT 0x0501
++#else
++ #if (_WIN32_WINNT < 0x0501)
++  #error Require at least Windows 2000 API.
++ #endif
++#endif
+ #define _WIN32_IE    0x0600 // MinGW at it again.
+ #define WIN32_LEAN_AND_MEAN
+ 

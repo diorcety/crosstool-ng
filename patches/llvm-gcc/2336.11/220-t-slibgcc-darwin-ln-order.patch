@@ -1,0 +1,27 @@
+diff -urN a/gcc/config/t-slibgcc-darwin b/gcc/config/t-slibgcc-darwin
+--- a/gcc/config/t-slibgcc-darwin	2013-10-06 20:12:54.598924753 +0100
++++ b/gcc/config/t-slibgcc-darwin	2013-10-06 20:12:55.405603887 +0100
+@@ -51,12 +51,6 @@
+ 	# libraries are expected to exist in the multilib directory.
+ 	MLIBS=`$(GCC_FOR_TARGET) --print-multi-lib \
+ 		| sed -e 's/;.*$$//' -e '/^\.$$/d'` ; \
+-	for mlib in $$MLIBS ; do \
+-	  rm -f $${mlib}/$@ || exit 1 ; \
+-	  $(LN_S) ../$@ $${mlib}/$@ || exit 1 ; \
+-	done
+-	MLIBS=`$(GCC_FOR_TARGET) --print-multi-lib \
+-		| sed -e 's/;.*$$//' -e '/^\.$$/d'` ; \
+ 	for mlib in '' $$MLIBS ; do \
+ 	  $(STRIP_FOR_TARGET) -o $(@)_T$${mlib} \
+ 	    -s $(SHLIB_VERPFX).$(*).ver -c -u \
+@@ -64,6 +58,10 @@
+ 	done
+ 	$(LIPO_FOR_TARGET) -output $@ -create $(@)_T*
+ 	rm $(@)_T*
++	for mlib in $$MLIBS ; do \
++	  rm -f $${mlib}/$@ || exit 1 ; \
++	  $(LN_S) ../$@ $${mlib}/$@ || exit 1 ; \
++	done
+ 
+ libgcc_s.$(SHLIB_SOVERSION)$(SHLIB_EXT): stmp-multilib libgcc_s.10.4.dylib \
+ 	libgcc_s.10.5.dylib

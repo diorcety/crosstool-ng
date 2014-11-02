@@ -1,0 +1,141 @@
+diff -urN a/gcc/config.build b/gcc/config.build
+--- a/gcc/config.build	2014-01-12 00:42:14.150683000 +0000
++++ b/gcc/config.build	2014-01-12 00:47:54.498149800 +0000
+@@ -77,7 +77,7 @@
+     build_xm_file=i386/xm-cygwin.h
+     build_exeext=.exe
+     ;;
+-  i[34567]86-*-mingw32*)
++  *-*-mingw*)
+     build_xm_file=i386/xm-mingw32.h
+     build_exeext=.exe
+     ;;
+diff -urN a/gcc/config.gcc b/gcc/config.gcc
+--- a/gcc/config.gcc	2014-01-12 00:42:14.150683000 +0000
++++ b/gcc/config.gcc	2014-01-12 00:55:13.749273500 +0000
+@@ -1377,7 +1377,7 @@
+ 	fi
+ 	;;
+ # LLVM LOCAL begin mainline
+-i[34567]86-*-mingw32* | x86_64-*-mingw32*)
++*-*-mingw*)
+ # LLVM LOCAL end mainline
+ 	tm_file="${tm_file} i386/unix.h i386/bsd.h i386/gas.h dbxcoff.h i386/cygming.h i386/mingw32.h"
+ 	xm_file=i386/xm-mingw32.h
+@@ -1400,7 +1400,7 @@
+ 		*mingw32crt*)
+ 			tm_file="${tm_file} i386/crtdll.h"
+ 			;;
+-		*mingw32msv* | *mingw32*)
++		*mingw*)
+ 			;;
+ 	esac
+ 	;;
+diff -urN a/gcc/config.host b/gcc/config.host
+--- a/gcc/config.host	2014-01-12 00:42:14.150683000 +0000
++++ b/gcc/config.host	2014-01-12 00:48:53.822542900 +0000
+@@ -180,7 +180,7 @@
+     host_exeext=.exe
+     ;;
+ # LLVM LOCAL begin mainline
+-  i[34567]86-*-mingw32* | x86_64-*-mingw32*)
++  *mingw*)
+ # LLVM LOCAL end mainline
+     host_xm_file=i386/xm-mingw32.h
+     host_xmake_file="${host_xmake_file} i386/x-mingw32"
+diff -urN a/gcc/configure b/gcc/configure
+--- a/gcc/configure	2014-01-12 00:42:14.151683100 +0000
++++ b/gcc/configure	2014-01-12 00:49:04.608159800 +0000
+@@ -17633,7 +17633,7 @@
+ 
+   i[34567]86-*-* | x86_64-*-*)
+     case $target_os in
+-      cygwin* | pe | mingw32*)
++      cygwin* | pe | mingw*)
+ 	# Used for DWARF 2 in PE
+ 	{ echo "$as_me:$LINENO: checking assembler for .secrel32 relocs" >&5
+ echo $ECHO_N "checking assembler for .secrel32 relocs... $ECHO_C" >&6; }
+diff -urN a/gcc/configure.ac b/gcc/configure.ac
+--- a/gcc/configure.ac	2014-01-12 00:42:14.152683100 +0000
++++ b/gcc/configure.ac	2014-01-12 00:49:13.034641800 +0000
+@@ -2924,7 +2924,7 @@
+   i[34567]86-*-* | x86_64-*-*)
+ changequote([,])dnl
+     case $target_os in
+-      cygwin* | pe | mingw32*)
++      cygwin* | pe | mingw*)
+ 	# Used for DWARF 2 in PE
+ 	gcc_GAS_CHECK_FEATURE([.secrel32 relocs],
+ 	  gcc_cv_as_ix86_pe_secrel32,
+diff -urN a/libgomp/configure.tgt b/libgomp/configure.tgt
+--- a/libgomp/configure.tgt	2014-01-12 00:42:22.535162600 +0000
++++ b/libgomp/configure.tgt	2014-01-12 00:49:18.403948900 +0000
+@@ -96,7 +96,7 @@
+ 	XLDFLAGS="${XLDFLAGS} -lrt"
+ 	;;
+ 
+-  *-*-mingw32*)
++  *-*-mingw*)
+ 	config_path="mingw32 posix"
+ 	;;
+ 
+diff -urN a/libiberty/configure b/libiberty/configure
+--- a/libiberty/configure	2014-01-12 00:42:22.634168200 +0000
++++ b/libiberty/configure	2014-01-12 00:49:24.056272200 +0000
+@@ -6079,7 +6079,7 @@
+     fi
+     ;;
+ 
+-  *-*-mingw32*)
++  *-*-mingw*)
+     # Under mingw32, sys_nerr and sys_errlist exist, but they are
+     # macros, so the test below won't find them.
+     libiberty_cv_var_sys_nerr=yes
+diff -urN a/libiberty/configure.ac b/libiberty/configure.ac
+--- a/libiberty/configure.ac	2014-01-12 00:42:22.634168200 +0000
++++ b/libiberty/configure.ac	2014-01-12 00:49:43.084360500 +0000
+@@ -582,7 +582,7 @@
+     fi
+     ;;
+ 
+-  *-*-mingw32*)
++  *-*-mingw*)
+     # Under mingw32, sys_nerr and sys_errlist exist, but they are
+     # macros, so the test below won't find them.
+     libiberty_cv_var_sys_nerr=yes
+diff -urN a/libstdc++-v3/configure b/libstdc++-v3/configure
+--- a/libstdc++-v3/configure	2014-01-12 00:42:22.846180400 +0000
++++ b/libstdc++-v3/configure	2014-01-12 00:50:48.598107700 +0000
+@@ -100534,7 +100534,7 @@
+ echo "${ECHO_T}$glibcxx_cv_WRITEV" >&6
+ 
+     ;;
+-  *-mingw32*)
++  *-mingw*)
+ 
+ 
+ 
+diff -urN a/libstdc++-v3/configure.host b/libstdc++-v3/configure.host
+--- a/libstdc++-v3/configure.host	2014-01-12 00:42:22.847180400 +0000
++++ b/libstdc++-v3/configure.host	2014-01-12 00:51:13.714544300 +0000
+@@ -231,7 +231,7 @@
+     atomicity_dir=os/irix
+     atomic_word_dir=os/irix
+     ;;
+-  mingw32*)
++  mingw*)
+     os_include_dir="os/mingw32"
+     ;;
+   netbsd*)
+diff -urN a/libstdc++-v3/crossconfig.m4 b/libstdc++-v3/crossconfig.m4
+--- a/libstdc++-v3/crossconfig.m4	2014-01-12 00:42:22.848180500 +0000
++++ b/libstdc++-v3/crossconfig.m4	2014-01-12 00:51:18.791834700 +0000
+@@ -168,7 +168,7 @@
+     AC_CHECK_HEADERS(sys/uio.h)
+     GLIBCXX_CHECK_WRITEV
+     ;;
+-  *-mingw32*)
++  *-mingw*)
+     AC_CHECK_HEADERS([sys/types.h locale.h float.h])
+     GLIBCXX_CHECK_LINKER_FEATURES
+     GLIBCXX_CHECK_COMPLEX_MATH_SUPPORT

@@ -1,0 +1,68 @@
+diff -urN a/libiberty/configure.ac b/libiberty/configure.ac
+--- a/libiberty/configure.ac	2013-05-31 00:32:21.885849952 +0100
++++ b/libiberty/configure.ac	2013-05-31 00:32:22.460854511 +0100
+@@ -297,7 +297,15 @@
+ # This is the list of functions which libiberty will provide if they
+ # are not available on the host.
+ 
+-funcs="asprintf"
++case "${host}" in
++*-*-mingw*)
++  funcs=
++	;;
++*)
++  funcs="asprintf"
++	;;
++esac
++
+ funcs="$funcs atexit"
+ funcs="$funcs basename"
+ funcs="$funcs bcmp"
+@@ -424,7 +432,6 @@
+ 
+   case "${host}" in
+   *-*-mingw*)
+-    AC_LIBOBJ([asprintf])
+     AC_LIBOBJ([basename])
+     AC_LIBOBJ([bcmp])
+     AC_LIBOBJ([bcopy])
+@@ -448,7 +455,7 @@
+ 
+     for f in $funcs; do
+       case "$f" in
+-	asprintf | basename | bcmp | bcopy | bzero | clock | ffs | getpagesize | index | insque | mempcpy | mkstemps | random | rindex | sigsetmask | stpcpy | stpncpy | strdup | strndup | strverscmp | vasprintf | waitpid)
++	basename | bcmp | bcopy | bzero | clock | ffs | getpagesize | index | insque | mempcpy | mkstemps | random | rindex | sigsetmask | stpcpy | stpncpy | strdup | strndup | strverscmp | vasprintf | waitpid)
+ 	  ;;
+ 	*)
+ 	  n=HAVE_`echo $f | tr 'abcdefghijklmnopqrstuvwxyz' 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'`
+diff -urN a/libiberty/getcwd.c b/libiberty/getcwd.c
+--- a/libiberty/getcwd.c	2013-05-31 00:32:21.884849944 +0100
++++ b/libiberty/getcwd.c	2013-05-31 00:32:22.461854519 +0100
+@@ -30,13 +30,19 @@
+ #include <stdlib.h>
+ #endif
+ 
+-extern char *getwd ();
++#ifdef __MINGW32__
++extern char *_getcwd (char*, int);
++char *
++getcwd (char *buf, size_t len)
++{
++    return _getcwd(buf,(int)len);
++}
++#else
+ extern int errno;
+-
++extern char *getwd ();
+ #ifndef MAXPATHLEN
+ #define MAXPATHLEN 1024
+ #endif
+-
+ char *
+ getcwd (char *buf, size_t len)
+ {
+@@ -60,3 +66,4 @@
+   }
+   return buf;
+ }
++#endif

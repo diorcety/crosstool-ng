@@ -81,6 +81,7 @@ AC_CANONICAL_HOST
 # ... but refuse --target
 AS_IF([test -n "$target_alias"],
       AC_MSG_ERROR([--target is not allowed]))
+AC_SUBST([build_os])
 
 # Allow program name tranformation (--program-{prefix,suffix,transform-name})
 AC_ARG_PROGRAM
@@ -331,6 +332,63 @@ AS_IF(
          #include <$ac_ct_gettext_hdr>])])
 
 #----------------------------------------
+# Check for gettext via libintl as opposed
+# to via e.g. glibc
+OLD_LIBS=$LIBS
+LIBS=
+AC_SEARCH_LIBS(
+    [libintl_gettext],
+    [intl])
+GETTEXT_LIB=$LIBS
+LIBS=$OLD_LIBS
+AC_SUBST([GETTEXT_LIB])
+
+#----------------------------------------
+# Check for regcomp via regex (tml's
+# mingw-regex-2.5.1)
+OLD_LIBS=$LIBS
+LIBS=
+AC_SEARCH_LIBS(
+    [regcomp],
+    [regex])
+REGEX_LIB=$LIBS
+LIBS=$OLD_LIBS
+AC_SUBST([REGEX_LIB])
+
+#----------------------------------------
+# Check for iconv_canonicalize via iconv
+OLD_LIBS=$LIBS
+LIBS=
+AC_SEARCH_LIBS(
+    [iconv_canonicalize],
+    [iconv])
+ICONV_LIB=$LIBS
+LIBS=$OLD_LIBS
+AC_SUBST([ICONV_LIB])
+
+#----------------------------------------
+# Check for new_panel via panel/panelw
+OLD_LIBS=$LIBS
+LIBS=
+AC_SEARCH_LIBS(
+    [new_panel],
+    [panel panelw])
+PANEL_LIB=$LIBS
+LIBS=$OLD_LIBS
+AC_SUBST([PANEL_LIB])
+
+#----------------------------------------
+# Check for new_menu via menu/menuw
+OLD_LIBS=$LIBS
+LIBS=
+AC_SEARCH_LIBS(
+    [new_menu],
+    [menu menuw])
+MENU_LIB=$LIBS
+LIBS=$OLD_LIBS
+AC_SUBST([MENU_LIB])
+
+#----------------------------------------
 # Check for ncurses, for the kconfig frontends
 AC_SUBST([ac_ct_curses_hdr])
 AC_CHECK_HEADERS(
@@ -390,6 +448,20 @@ AS_IF(
      mandir="$docdir"],
     [sublibdir="/ct-ng.\${VERSION}"
      subdocdir="/ct-ng.\${VERSION}"])
+
+#----------------------------------------
+# Check whether mkdir takes one argument
+AC_SUBST([ac_cv_mkdir_takes_one_arg])
+AC_CACHE_VAL([ac_cv_mkdir_takes_one_arg],
+    [AC_CHECK_FUNCS([mkdir _mkdir])
+        AC_CACHE_CHECK([whether mkdir takes one argument],
+                       [ac_cv_mkdir_takes_one_arg],
+    [AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
+#include <sys/stat.h>
+#if HAVE_UNISTD_H
+#  include <unistd.h>
+#endif
+        ]], [[mkdir (".");]])],[ac_cv_mkdir_takes_one_arg=yes],[ac_cv_mkdir_takes_one_arg=no])])])
 
 #--------------------------------------------------------------------
 # Finally, generate the output file(s)

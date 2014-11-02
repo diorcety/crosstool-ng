@@ -1,0 +1,24 @@
+diff -urN a/autoconf/m4/link_options.m4 b/autoconf/m4/link_options.m4
+--- a/autoconf/m4/link_options.m4	2012-02-28 03:55:41.000000000 +0100
++++ b/autoconf/m4/link_options.m4	2013-11-06 08:02:14.596485396 +0100
+@@ -6,7 +6,7 @@
+ AC_DEFUN([AC_LINK_GET_VERSION],
+   [AC_CACHE_CHECK([for linker version],[llvm_cv_link_version],
+   [
+-   version_string="$(ld -v 2>&1 | head -1)"
++   version_string="$(${program_prefix}ld -v 2>&1 | head -1)"
+ 
+    # Check for ld64.
+    if (echo "$version_string" | grep -q "ld64"); then
+diff -urN a/configure b/configure
+--- a/configure	2013-05-20 22:16:54.000000000 +0200
++++ b/configure	2013-11-06 09:49:37.242716488 +0100
+@@ -7850,7 +7850,7 @@
+   echo $ECHO_N "(cached) $ECHO_C" >&6
+ else
+ 
+-   version_string="$(ld -v 2>&1 | head -1)"
++   version_string="$(${program_prefix}ld -v 2>&1 | head -1)"
+ 
+    # Check for ld64.
+    if (echo "$version_string" | grep -q "ld64"); then

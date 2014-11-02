@@ -1,0 +1,82 @@
+diff -urN a/mingw-w64-crt/Makefile.am b/mingw-w64-crt/Makefile.am
+--- a/mingw-w64-crt/Makefile.am	2012-09-12 15:55:41.000000000 +0200
++++ b/mingw-w64-crt/Makefile.am	2013-10-09 17:56:51.754196191 +0200
+@@ -278,7 +278,7 @@
+ # Compiling 32-bit runtime
+ #
+ 
+-lib32dir=$(prefix)/$(host)/@LIB32SUFFIXDIR@
++lib32dir=$(prefix)/@LIB32SUFFIXDIR@
+ crt32dir=$(lib32dir)
+ 
+ crt32_DATA = \
+@@ -559,7 +559,7 @@
+ # Compiling 64-bit runtime
+ # #######################################################################
+ 
+-lib64dir=$(prefix)/$(host)/@LIB64SUFFIXDIR@
++lib64dir=$(prefix)/@LIB64SUFFIXDIR@
+ crt64dir=$(lib64dir)
+ 
+ crt64_DATA = \
+@@ -1009,7 +1009,7 @@
+ 
+ # Don't compile these, but install as is:
+ #
+-libsrcdir=$(prefix)/$(host)/libsrc
++libsrcdir=$(prefix)/libsrc
+ libsrc_DATA = \
+   libsrc/agtctl_i.c   libsrc/agtsvr_i.c     libsrc/cdoex_i.c    libsrc/cdoexm_i.c     \
+   libsrc/cdosys_i.c   libsrc/emostore_i.c   libsrc/iisext_i.c   libsrc/mtsadmin_i.c   \
+diff -urN a/mingw-w64-crt/Makefile.in b/mingw-w64-crt/Makefile.in
+--- a/mingw-w64-crt/Makefile.in	2012-09-12 15:55:41.000000000 +0200
++++ b/mingw-w64-crt/Makefile.in	2013-10-09 17:57:12.217780964 +0200
+@@ -3369,7 +3369,7 @@
+ #########
+ # Compiling 32-bit runtime
+ #
+-@LIB32_TRUE@lib32dir = $(prefix)/$(host)/@LIB32SUFFIXDIR@
++@LIB32_TRUE@lib32dir = $(prefix)/@LIB32SUFFIXDIR@
+ @LIB32_TRUE@crt32dir = $(lib32dir)
+ @LIB32_TRUE@crt32_DATA = \
+ @LIB32_TRUE@  lib32/crt1.o    lib32/crt2.o     lib32/crt1u.o   lib32/crt2u.o    lib32/dllcrt1.o    lib32/dllcrt2.o \
+@@ -3553,7 +3553,7 @@
+ #########################################################################
+ # Compiling 64-bit runtime
+ # #######################################################################
+-@LIB64_TRUE@lib64dir = $(prefix)/$(host)/@LIB64SUFFIXDIR@
++@LIB64_TRUE@lib64dir = $(prefix)/@LIB64SUFFIXDIR@
+ @LIB64_TRUE@crt64dir = $(lib64dir)
+ @LIB64_TRUE@crt64_DATA = \
+ @LIB64_TRUE@  lib64/crt1.o    lib64/crt2.o     lib64/crt1u.o   lib64/crt2u.o   lib64/dllcrt1.o lib64/dllcrt2.o \
+@@ -3910,7 +3910,7 @@
+ 
+ # Don't compile these, but install as is:
+ #
+-libsrcdir = $(prefix)/$(host)/libsrc
++libsrcdir = $(prefix)/libsrc
+ libsrc_DATA = \
+   libsrc/agtctl_i.c   libsrc/agtsvr_i.c     libsrc/cdoex_i.c    libsrc/cdoexm_i.c     \
+   libsrc/cdosys_i.c   libsrc/emostore_i.c   libsrc/iisext_i.c   libsrc/mtsadmin_i.c   \
+diff -urN a/mingw-w64-headers/Makefile.am b/mingw-w64-headers/Makefile.am
+--- a/mingw-w64-headers/Makefile.am	2011-11-17 08:52:30.000000000 +0100
++++ b/mingw-w64-headers/Makefile.am	2013-10-09 17:57:23.065565842 +0200
+@@ -1,5 +1,5 @@
+ 
+-baseheaddir = $(includedir)/../$(host)/include
++baseheaddir = $(includedir)
+ sysheaddir = $(baseheaddir)/sys
+ secheaddir = $(baseheaddir)/sec_api
+ secsysheaddir = $(baseheaddir)/sec_api/sys
+diff -urN a/mingw-w64-headers/Makefile.in b/mingw-w64-headers/Makefile.in
+--- a/mingw-w64-headers/Makefile.in	2011-11-17 08:52:30.000000000 +0100
++++ b/mingw-w64-headers/Makefile.in	2013-10-09 17:57:33.049370751 +0200
+@@ -195,7 +195,7 @@
+ top_build_prefix = @top_build_prefix@
+ top_builddir = @top_builddir@
+ top_srcdir = @top_srcdir@
+-baseheaddir = $(includedir)/../$(host)/include
++baseheaddir = $(includedir)
+ sysheaddir = $(baseheaddir)/sys
+ secheaddir = $(baseheaddir)/sec_api
+ secsysheaddir = $(baseheaddir)/sec_api/sys

@@ -23,3 +23,27 @@ Non-recurring tasks:
 
 - uClinux
   - check whether we can use newlib under uClinux (?)
+
+- Darwin / Clang
+  - driverdriver needs to be added to the project
+
+  - llvm-gcc needs to work again.
+
+  - HOST_LINK_VERSION is used instead of `${program-prefix}-ld --version`
+
+  - `${program-prefix}-ld -v` yields @(#)PROGRAM:ld  PROJECT:cctools-809
+    instead of e.g. @(#)PROGRAM:ld  PROJECT:ld64-127
+
+  - Add llvm-config-build and llvm-config-host for when going Canadian.
+
+  - Consider adding PPC support?
+
+  - Copy cctools' needed SDK headers from the SDK at patch-time instead
+    of providing them in a patch - needs an OSX SDK to be identified
+    though, even for an iPhone build.
+
+- Python Support
+  - gdb has Python integration, so add option to build Python.
+
+- LLDB Support
+  - Add this, it also has Python integration.

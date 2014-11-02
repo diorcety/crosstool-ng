@@ -1,0 +1,72 @@
+diff -urN a/lib/Target/X86/X86AsmPrinter.cpp b/lib/Target/X86/X86AsmPrinter.cpp
+--- a/lib/Target/X86/X86AsmPrinter.cpp	2013-11-19 00:08:12.000000000 +0100
++++ b/lib/Target/X86/X86AsmPrinter.cpp	2014-05-05 14:25:30.913709871 +0200
+@@ -542,6 +542,26 @@
+   }
+ }
+ 
++void X86AsmPrinter::GenerateExportDirective(const MCSymbol *Sym, bool IsData) {
++  SmallString<128> name;
++
++  if (Subtarget->isTargetWindows())
++    name += " /EXPORT:";
++  else
++    name += " -export:";
++
++  name += Sym->getName();
++
++  if (IsData) {
++    if (Subtarget->isTargetWindows())
++      name += ",DATA";
++    else
++      name += ",data";
++  }
++
++  OutStreamer.EmitBytes(name);
++}
++
+ 
+ void X86AsmPrinter::EmitEndOfAsmFile(Module &M) {
+   if (Subtarget->isTargetEnvMacho()) {
+@@ -679,27 +699,12 @@
+     // Output linker support code for dllexported globals on windows.
+     if (!DLLExportedGlobals.empty() || !DLLExportedFns.empty()) {
+       OutStreamer.SwitchSection(TLOFCOFF.getDrectveSection());
+-      SmallString<128> name;
+       for (unsigned i = 0, e = DLLExportedGlobals.size(); i != e; ++i) {
+-        if (Subtarget->isTargetWindows())
+-          name = " /EXPORT:";
+-        else
+-          name = " -export:";
+-        name += DLLExportedGlobals[i]->getName();
+-        if (Subtarget->isTargetWindows())
+-          name += ",DATA";
+-        else
+-        name += ",data";
+-        OutStreamer.EmitBytes(name);
++        GenerateExportDirective(DLLExportedGlobals[i], /*IsData=*/true);
+       }
+ 
+       for (unsigned i = 0, e = DLLExportedFns.size(); i != e; ++i) {
+-        if (Subtarget->isTargetWindows())
+-          name = " /EXPORT:";
+-        else
+-          name = " -export:";
+-        name += DLLExportedFns[i]->getName();
+-        OutStreamer.EmitBytes(name);
++        GenerateExportDirective(DLLExportedFns[i], /*IsData=*/false);
+       }
+     }
+   }
+diff -urN a/lib/Target/X86/X86AsmPrinter.h b/lib/Target/X86/X86AsmPrinter.h
+--- a/lib/Target/X86/X86AsmPrinter.h	2013-11-17 02:36:23.000000000 +0100
++++ b/lib/Target/X86/X86AsmPrinter.h	2014-05-05 14:43:56.832074011 +0200
+@@ -37,6 +37,8 @@
+                           MachineInstr::const_mop_iterator MOE,
+                           const TargetMachine &TM);
+ 
++  void GenerateExportDirective(const MCSymbol *Sym, bool IsData);
++
+  public:
+   explicit X86AsmPrinter(TargetMachine &TM, MCStreamer &Streamer)
+     : AsmPrinter(TM, Streamer), SM(*this, stackmapOperandParser) {

@@ -1,0 +1,18 @@
+diff -urN a/gcc/Makefile.in b/gcc/Makefile.in
+--- a/gcc/Makefile.in	2013-10-06 20:13:14.245895242 +0100
++++ b/gcc/Makefile.in	2013-10-06 20:13:15.319245182 +0100
+@@ -4113,8 +4113,12 @@
+ 	-rm -f $(DESTDIR)$(bindir)/$(GCC_INSTALL_NAME)$(exeext)
+ 	-$(INSTALL_PROGRAM) xgcc$(exeext) $(DESTDIR)$(bindir)/$(GCC_INSTALL_NAME)$(exeext)
+ 	-rm -f $(DESTDIR)$(bindir)/$(target_noncanonical)-gcc-$(version)$(exeext)
+-	-rm -f $(DESTDIR)$(libsubdir)/libstdc++.dylib
+-	$(LN_S) /usr/lib/libstdc++.6.dylib $(DESTDIR)$(libsubdir)/libstdc++.dylib
++	# Only overwrite libstdc++.dylib if specified DESTDIR, otherwise we're messing with
++	# the native Darwin system or placing .dylib files in /usr/lib on Linux or Windows.
++	-if [ ! "$(DESTDIR)" = "" -a -f $(DESTDIR)$(libsubdir)/libstdc++.dylib ]; then \
++	  rm -f $(DESTDIR)$(libsubdir)/libstdc++.dylib; \
++	  $(LN_S) /usr/lib/libstdc++.6.dylib $(DESTDIR)$(libsubdir)/libstdc++.dylib; \
++	else true; fi
+ 	-( cd $(DESTDIR)$(bindir) && \
+ 	   $(LN) $(GCC_INSTALL_NAME)$(exeext) $(target_noncanonical)-gcc-$(version)$(exeext) )
+ 	-if [ -f gcc-cross$(exeext) ] ; then \

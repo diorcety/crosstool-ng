@@ -1,0 +1,26 @@
+From f5e03059db6c38565d38e84fc01389792c10fb87 Mon Sep 17 00:00:00 2001
+From: Ray Donnelly <mingw.android@gmail.com>
+Date: Wed, 13 Nov 2013 18:28:57 +0000
+Subject: [PATCH 4/8] Makefile rules remove ld option -modules
+
+---
+ Makefile.rules | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/Makefile.rules b/Makefile.rules
+index 9417971..1966631 100644
+--- a/Makefile.rules
++++ b/Makefile.rules
+@@ -401,6 +401,9 @@ endif
+ ifdef LOADABLE_MODULE
+   SHARED_LIBRARY := 1
+   LINK_LIBS_IN_SHARED := 1
++  ifeq ($(HOST_OS),Darwin)
++  LD.Flags += -module
++  endif
+ endif
+ 
+ ifdef SHARED_LIBRARY
+-- 
+2.0.0
+

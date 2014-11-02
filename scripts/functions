@@ -342,6 +342,16 @@ CT_Test() {
     return 0
 }
 
+# Test a condition, and warn if satisfied
+# Usage: CT_TestAndWarn <message> <tests>
+CT_TestAndWarn() {
+    local m="$1"
+    shift
+    CT_DoLog DEBUG "Testing '! ( $* )'"
+    test "$@" && CT_DoLog WARN "$m"
+    return 0
+}
+
 # Test a condition, and abort with an error message if satisfied
 # Usage: CT_TestAndAbort <message> <tests>
 CT_TestAndAbort() {
@@ -458,11 +468,14 @@ CT_DoForceRmdir() {
     for dir in "${@}"; do
         [ -d "${dir}" ] || continue
         case "$CT_SYS_OS" in
-            Linux|CYGWIN*)
+            Linux|CYGWIN|MSYS*)
                 mode="$(stat -c '%a' "$(dirname "${dir}")")"
                 ;;
             Darwin|*BSD)
                 mode="$(stat -f '%Lp' "$(dirname "${dir}")")"
+                ;;
+            MINGW*)
+                mode=0777
                 ;;
             *)
                 CT_Abort "Unhandled host OS $CT_SYS_OS"
@@ -1339,6 +1352,9 @@ CT_DoSaveState() {
               $0 == "}" { _p = 1; }
               ' |${sed} -r -e '/^BASH_(ARGC|ARGV|LINENO|SOURCE|VERSINFO)=/d;
                            /^(UID|EUID)=/d;
+                           /^.*\(.*\).*=/d;
+                           /^!::=/d;
+                           /^ASL\.LOG=/d;
                            /^(FUNCNAME|GROUPS|PPID|SHELLOPTS)=/d;' >"${state_dir}/env.sh"
 
     CT_DoTarballIfExists "${CT_BUILDTOOLS_PREFIX_DIR}" "${state_dir}/buildtools_dir"
@@ -1381,6 +1397,12 @@ CT_DoLoadState(){
     CT_DoLog STATE "  Restoring environment"
     . "${state_dir}/env.sh" >/dev/null 2>&1 || true
 
+    # Export needed build tools variables.
+    if [ "$CT_EXPORT_BUILD_TOOLS" = "y" ]; then
+        CT_DoLog STATE "   Exporting build tools (as CT_EXPORT_BUILD_TOOLS=y)"
+        export AR AS DLLTOOL CC CXX LD NM OBJCOPY OBJDUMP RANLIB STRIP WINDRES
+    fi
+
     # Restore the new RESTART and STOP steps
     CT_RESTART="${old_RESTART}"
     CT_STOP="${old_STOP}"
@@ -1395,4 +1417,66 @@ CT_DoLoadState(){
     cat "${state_dir}/tail.log" >>"${tmp_log_file}"
     exec >>"${tmp_log_file}"
     rm -f "${state_dir}/tail.log"
+}
+
+# Based on https://github.com/Offirmo/offirmo-shell-lib/blob/master/bin/osl_lib_file.sh
+# .. modified to work with Dash.
+
+# both $1 and $2 are absolute paths beginning with /
+# returns relative path to $2/$target from $1/$source
+CT_FindRelativePath()
+{
+    local source=$1
+    local target=$2
+
+    #echo "source : \"$source\""
+    #echo "target : \"$target\""
+    return_value="OSL_FILE_compute_relative_path ERROR"
+
+    local common_part=$source # for now
+
+    local result=""
+
+    #echo "common_part is now : \"$common_part\""
+    #echo "result is now      : \"$result\""
+    #echo "target#common_part : \"${target#$common_part}\""
+    while [ "${target#$common_part}" = "${target}" ]; do
+        # no match, means that candidate common part is not correct
+        # go up one level (reduce common part)
+        common_part="$(dirname $common_part)"
+        # and record that we went back
+        if [ -z "${result}" ]; then
+            result=".."
+        else
+            result="../$result"
+        fi
+        #echo "common_part is now : \"$common_part\""
+        #echo "result is now      : \"$result\""
+        #echo "target#common_part : \"${target#$common_part}\""
+    done
+
+    #echo "common_part is     : \"$common_part\""
+
+    if [ "${common_part}" = "/" ]; then
+        # special case for root (no common path)
+        result="$result/"
+    fi
+
+    # since we now have identified the common part,
+    # compute the non-common part
+    forward_part="${target#$common_part}"
+    #echo "forward_part = \"$forward_part\""
+
+    if [ -n "${result}" -a -n "${forward_part}" ]; then
+        #echo "(simple concat)"
+        result="$result$forward_part"
+    elif [ -n "${forward_part}" ]; then
+        #echo "(concat with slash removal)"
+        result=$(echo $forward_part | awk '{ string=substr($0, 2, length($0)); print string; }' )
+    fi
+    #echo "result = \"$result\""
+    #return_value=$result
+    echo $result
+
+    return 0
 }

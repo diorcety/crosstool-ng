@@ -16,6 +16,10 @@
 #define LKC_DIRECT_LINK
 #include "lkc.h"
 
+#ifdef MKDIR_TAKES_ONE_ARG
+#define mkdir(_n,_p) mkdir((_n))
+#endif
+
 static void conf_warning(const char *fmt, ...)
 	__attribute__ ((format (printf, 1, 2)));
 

@@ -1,0 +1,39 @@
+diff -urN a/gcc/llvm-types.cpp b/gcc/llvm-types.cpp
+--- a/gcc/llvm-types.cpp	2013-05-31 00:32:19.049827462 +0100
++++ b/gcc/llvm-types.cpp	2013-05-31 00:32:19.730832863 +0100
+@@ -828,15 +828,15 @@
+       const_cast<OpaqueType*>(OT)->refineAbstractTypeTo(Actual);
+       return GET_TYPE_LLVM(type);
+     } else {
+-      const Type *Ty;
++      const Type *Ty2;
+ 
+       // If we are converting a struct, and if we haven't converted the pointee
+       // type, add this pointer to PointersToReresolve and return an opaque*.
+       if (ConvertingStruct) {
+         // If the pointee type has not already been converted to LLVM, create 
+         // a new opaque type and remember it in the database.
+-        Ty = GET_TYPE_LLVM(TYPE_MAIN_VARIANT(TREE_TYPE(type)));
+-        if (Ty == 0) {
++        Ty2 = GET_TYPE_LLVM(TYPE_MAIN_VARIANT(TREE_TYPE(type)));
++        if (Ty2 == 0) {
+           PointersToReresolve.push_back(type);
+           return TypeDB.setType(type, OpaqueType::get(Context)->getPointerTo());
+         }
+@@ -851,12 +851,12 @@
+         // If we're not in a struct, just call ConvertType.  If it has already 
+         // been converted, this will return the precomputed value, otherwise 
+         // this will compute and return the new type.
+-        Ty = ConvertType(TREE_TYPE(type));
++        Ty2 = ConvertType(TREE_TYPE(type));
+       }
+     
+-      if (Ty->isVoidTy())
+-        Ty = Type::getInt8Ty(Context);  // void* -> sbyte*
+-      return TypeDB.setType(type, Ty->getPointerTo());
++      if (Ty2->isVoidTy())
++        Ty2 = Type::getInt8Ty(Context);  // void* -> sbyte*
++      return TypeDB.setType(type, Ty2->getPointerTo());
+     }
+    
+   case METHOD_TYPE:

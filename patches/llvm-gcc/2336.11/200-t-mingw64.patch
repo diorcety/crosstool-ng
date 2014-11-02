@@ -1,0 +1,30 @@
+diff -urN a/llvmCore/lib/System/Errno.cpp b/llvmCore/lib/System/Errno.cpp
+--- a/llvmCore/lib/System/Errno.cpp	2013-10-06 20:12:50.802199358 +0100
++++ b/llvmCore/lib/System/Errno.cpp	2013-10-06 20:12:51.432209093 +0100
+@@ -52,7 +52,7 @@
+ # endif
+ #elif defined(HAVE_STRERROR_S)  // Windows.
+     if (errnum)
+-      strerror_s(buffer, errnum);
++      strerror_s(buffer, MaxErrStrLen-1, errnum);
+ #elif defined(HAVE_STRERROR)
+   // Copy the thread un-safe result of strerror into
+   // the buffer as fast as possible to minimize impact
+diff -urN a/llvmCore/lib/System/Win32/Win32.h b/llvmCore/lib/System/Win32/Win32.h
+--- a/llvmCore/lib/System/Win32/Win32.h	2013-10-06 20:12:50.802199358 +0100
++++ b/llvmCore/lib/System/Win32/Win32.h	2013-10-06 20:12:51.432209093 +0100
+@@ -17,7 +17,13 @@
+ //===----------------------------------------------------------------------===//
+ 
+ // Require at least Windows 2000 API.
+-#define _WIN32_WINNT 0x0500
++#if !defined(_WIN32_WINNT)
++ #define _WIN32_WINNT 0x0500
++#else
++ #if (_WIN32_WINNT < 0x0500)
++  #error Require at least Windows 2000 API.
++ #endif
++#endif
+ 
+ #include "llvm/Config/config.h"     // Get autoconf configuration settings
+ #include "windows.h"
