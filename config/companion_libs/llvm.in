@@ -10,6 +10,10 @@ config LLVM_V_HEAD
     bool
     prompt "head (git)"
 
+config LLVM_V_3_6
+    bool
+    prompt "3.6"
+
 config LLVM_V_3_5
     bool
     prompt "3.5"
@@ -57,6 +61,7 @@ config LLVM_VERSION
 # Don't remove next line
 # CT_INSERT_VERSION_STRING_BELOW
     default "head" if LLVM_V_HEAD
+    default "3.6" if LLVM_V_3_6
     default "3.5" if LLVM_V_3_5
     default "3.4.2" if LLVM_V_3_4_2
     default "3.4" if LLVM_V_3_4
