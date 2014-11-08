@@ -28,33 +28,31 @@ elif [ "${CT_LLVM_V_3_4}" = "y" ]; then
     CT_LLVM_SUFFIX=".src"
 elif [ "${CT_LLVM_V_3_4_2}" = "y" ]; then
     CT_LLVM_SUFFIX=".src"
-elif [ "${CT_LLVM_V_3_5}" = "y" ]; then
+elif [ "${CT_LLVM_V_3_5_0}" = "y" ]; then
     CT_LLVM_SUFFIX=".src"
-elif [ "${CT_LLVM_V_3_6}" = "y" ]; then
+elif [ "${CT_LLVM_V_3_6_0}" = "y" ]; then
+    # This will be changed to release_36 when it's branched
+    # at that time, add CT_LLVM_V_3_7 on master.
+    LLVM_BRANCH="master"
+elif [ "${CT_LLVM_V_HEAD}" = "y" ]; then
+    LLVM_BRANCH="master"
+fi
+
+if [ -n "$LLVM_BRANCH" ]; then
     CT_LLVM_SUFFIX=".git"
     LLVM_GET_FN="CT_GetGit"
     LLVM_URL=http://llvm.org/git/llvm.git
     LLVM_BRANCH="master" # will be changed to release_35 when it's branched
     LLVM_CRT_URL=http://llvm.org/git/compiler-rt.git
     LLVM_CRT_BRANCH=${LLVM_BRANCH}
-elif [ "${CT_LLVM_V_HEAD}" = "y" ]; then
-    CT_LLVM_SUFFIX=".git"
-    LLVM_GET_FN="CT_GetGit"
-    LLVM_URL=http://llvm.org/git/llvm.git
-    LLVM_BRANCH="master" # just to make git clone quicker
-    LLVM_CRT_URL=http://llvm.org/git/compiler-rt.git
-    LLVM_CRT_BRANCH=${LLVM_BRANCH} # just to make git clone quicker
 fi
 
 CT_LLVM_FULLNAME="llvm-${CT_LLVM_VERSION}${CT_LLVM_SUFFIX}"
+echo CT_LLVM_FULLNAME = $CT_LLVM_FULLNAME
 
 # Download LLVM
 do_llvm_get() {
-    if [ -z "${LLVM_BRANCH}" ]; then
-        $LLVM_GET_FN "${CT_LLVM_FULLNAME}" "${LLVM_URL}"
-    else
-        $LLVM_GET_FN "${CT_LLVM_FULLNAME}" "branch" "${LLVM_BRANCH}" "${LLVM_URL}"
-    fi
+    $LLVM_GET_FN "${CT_LLVM_FULLNAME}" "${LLVM_URL}"
 
     if [ "${CT_LLVM_COMPILER_RT}" = "y" ]; then
         $LLVM_GET_FN "compiler-rt-${CT_LLVM_VERSION}${CT_LLVM_SUFFIX}" \
