@@ -461,8 +461,9 @@ do_libc_backend_once() {
 
     if [ "${libc_full}" = "y" ]; then
         CT_DoLog EXTRA "Building C library"
-        CT_DoExecLog ALL ${make} ${JOBSFLAGS}         \
-                              "${extra_make_args[@]}" \
+        MSYS2_ARG_CONV_EXCL="-DNLSPATH=;-DLOCALEDIR=;-DLOCALE_ALIAS_PATH=;-DLOCALE_PATH=" \
+        CT_DoExecLog ALL ${make} ${JOBSFLAGS}                                             \
+                              "${extra_make_args[@]}"                                     \
                               all
 
         CT_DoLog EXTRA "Installing C library"
