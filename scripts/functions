@@ -1171,6 +1171,13 @@ CT_Patch() {
 
     for d in "${patch_dirs[@]}"; do
         CT_DoLog DEBUG "Looking for patches in '${d}'..."
+        if [ -n "${d}" ]; then
+            # Allows symlinks-as-files on Windows (Cygwin and MSYS2).
+            if [ -f "${d}" ]; then
+                d=$(dirname "${d}")/$(cat "${d}")
+                CT_DoLog DEBUG ".. patches directory fake (Cygwin/MSYS2) symlinked to '${d}'..."
+            fi
+        fi
         if [ -n "${d}" -a -d "${d}" ]; then
             for p in "${d}"/*.patch; do
                 if [ -f "${p}" ]; then
