@@ -1,0 +1,248 @@
+diff -urN a/sunrpc/rpc/types.h b/sunrpc/rpc/types.h
+--- a/sunrpc/rpc/types.h	2014-02-23 14:22:33.460167300 +0000
++++ b/sunrpc/rpc/types.h	2014-02-23 14:22:42.816855500 +0000
+@@ -69,6 +69,7 @@
+ #include <sys/types.h>
+ #endif
+ 
++#ifdef __linux__
+ #ifndef __u_char_defined
+ typedef __u_char u_char;
+ typedef __u_short u_short;
+@@ -84,11 +85,14 @@
+ typedef __caddr_t caddr_t;
+ # define __daddr_t_defined
+ #endif
++#endif
+ 
+ #include <sys/time.h>
+ #include <sys/param.h>
+ 
++#ifndef _WIN32
+ #include <netinet/in.h>
++#endif
+ 
+ #ifndef INADDR_LOOPBACK
+ #define       INADDR_LOOPBACK         (u_long)0x7F000001
+diff -urN a/sunrpc/rpc_main.c b/sunrpc/rpc_main.c
+--- a/sunrpc/rpc_main.c	2014-02-23 14:22:33.469168500 +0000
++++ b/sunrpc/rpc_main.c	2014-02-23 14:22:42.819355800 +0000
+@@ -38,14 +38,20 @@
+ #include <stdio.h>
+ #include <string.h>
+ #include <unistd.h>
++#ifndef IS_IN_build
+ #include <libintl.h>
++#endif
+ #include <locale.h>
+ #include <ctype.h>
+ #include <sys/types.h>
+ #include <sys/param.h>
+ #include <sys/file.h>
+ #include <sys/stat.h>
++#ifndef _WIN32
+ #include <sys/wait.h>
++#else
++#include <windows.h>
++#endif
+ #include "rpc_parse.h"
+ #include "rpc_util.h"
+ #include "rpc_scan.h"
+@@ -54,6 +60,33 @@
+ #include "../version.h"
+ #define PACKAGE _libc_intl_domainname
+ 
++#ifdef _WIN32
++#define rindex(_dest, _src) strrchr((_dest), (_src))
++
++char* __cdecl stpcpy(char* __restrict__ dest, char const* __restrict__ src);
++
++char* __cdecl stpcpy(char* __restrict__ dest, char const* __restrict__ src)
++{
++  if (src == NULL)
++      return NULL;
++  return strcpy(dest, src) + strlen(dest);
++}
++#endif /* _WIN32 */
++
++#if defined(_WIN32) || defined(__BSD__)
++
++char* __cdecl stpncpy(char* __restrict__ dest, char const* __restrict__ src, size_t len);
++
++char* __cdecl stpncpy(char* __restrict__ dest, char const* __restrict__ src, size_t len)
++{
++  size_t min_len = strlen(src);
++  if (min_len > len)
++    min_len = len;
++  return strncpy(dest, src, len) + min_len;
++}
++
++#endif /* defined(_WIN32) || defined(__BSD__) */
++
+ #define EXTEND	1		/* alias for TRUE */
+ #define DONT_EXTEND	0	/* alias for FALSE */
+ 
+@@ -81,7 +114,11 @@
+ static const char *CPP = "/lib/cpp";
+ static const char CPPFLAGS[] = "-C";
+ static char *pathbuf;
++#ifdef _WIN32
++static HANDLE cpp_pid;
++#else
+ static int cpp_pid;
++#endif
+ static const char *allv[] =
+ {
+   "rpcgen", "-s", "udp", "-s", "tcp"
+@@ -328,6 +365,20 @@
+ {
+   struct stat64 buf;
+ 
++  /* Avoid trying to directly execute a bash script on Windows. */
++#ifdef _WIN32
++  char* CPPENVV = getenv("CPP");
++  if (CPPENVV)
++    {
++      CPP = (char*)malloc(strlen(CPPENVV)+1);
++      strcpy((char*)CPP, CPPENVV);
++      /* Don't bother checking that it exists with stat64 as
++       * we'd have to check in the path, also it usually ends
++       * with a few arguments. */
++      return;
++    }
++#endif
++
+   if (stat64 (CPP, &buf) == 0)
+     return;
+ 
+@@ -341,9 +392,122 @@
+   CPP = "cpp";
+ }
+ 
++#ifdef _WIN32
++/*
++ * Open input file with given define for C-preprocessor
++ */
++static void
++open_input (const char *infile, const char *define)
++{
++  int argi;
++  int argcc = 0;
++  LPSTR argsall;
++  HANDLE StdOutHandle;
++  HANDLE StdErrHandle;
++  HANDLE ReadPipe;
++  HANDLE WritePipe;
++  SECURITY_ATTRIBUTES SecAttr;
++  STARTUPINFO StartupInfo;
++  PROCESS_INFORMATION ProcessInfo;
++  DWORD Status;
++
++  find_cpp ();
++  putarg (0, CPP);
++  putarg (1, CPPFLAGS);
++  addarg (define);
++  if (infile)
++    addarg (infile);
++  addarg ((char *) NULL);
++  for (argi = 0; argi < argcount - 1; ++argi)
++    {
++      argcc += strlen(arglist[argi])+2;
++    }
++  argsall = (LPSTR)alloca(argcc + 1);
++  if (!argsall)
++    {
++      fprintf (stderr, _ ("cannot alloca for argsall\n"));
++      exit (1);
++    }
++  argsall[0] = '\0';
++  for (argi = 0; argi < argcount - 1; ++argi)
++    {
++      strcat((char*)argsall, arglist[argi]);
++      strcat((char*)argsall, " ");
++    }
++
++  memset(&SecAttr,     0, sizeof(SecAttr));
++  memset(&StartupInfo, 0, sizeof(StartupInfo));
++  memset(&ProcessInfo, 0, sizeof(ProcessInfo));
++
++  SecAttr.nLength = sizeof(SecAttr);
++  SecAttr.bInheritHandle = TRUE;
++
++  Status = CreatePipe( &ReadPipe, &WritePipe, &SecAttr, 0 );
++  if (!Status)
++    {
++      fprintf (stderr, _ ("cannot CreatePipe: GetLastError() -> %d\n"), GetLastError());
++      exit (1);
++    }
++
++  SetHandleInformation( ReadPipe, HANDLE_FLAG_INHERIT, 0 );
++
++  /*
++  StdOutHandle = GetStdHandle( STD_OUTPUT_HANDLE );
++  StdErrHandle = GetStdHandle( STD_ERROR_HANDLE );
++  if (StdOutHandle != INVALID_HANDLE_VALUE) {
++      SetHandleInformation( StdOutHandle, HANDLE_FLAG_INHERIT, 0 );
++  }
++  if (StdErrHandle != INVALID_HANDLE_VALUE) {
++      SetHandleInformation( StdErrHandle, HANDLE_FLAG_INHERIT, 0 );
++  }
++  */
++
++  StartupInfo.cb         = sizeof(StartupInfo);
++  StartupInfo.hStdInput  = GetStdHandle( STD_INPUT_HANDLE );
++  StartupInfo.hStdOutput = WritePipe;
++  StartupInfo.hStdError  = GetStdHandle( STD_ERROR_HANDLE );
++  StartupInfo.dwFlags    = STARTF_USESTDHANDLES;
++
++  Status = CreateProcess(
++          NULL,           /* lpApplicationName */
++          argsall,        /* lpCommandLine */
++          NULL,           /* lpProcessAttributes */
++          NULL,           /* lpThreadAttributes */
++          TRUE,           /* bInheritHandles */
++          0,              /* dwCreationFlags */
++          NULL,           /* lpEnvironment */
++          NULL,           /* lpCurrentDirectory */
++          &StartupInfo,   /* lpStartupInfo */
++          &ProcessInfo ); /* lpProcessInformation */
++
++  CloseHandle( WritePipe );
++  if (!Status)
++    {
++      fprintf (stderr, _ ("cannot find C preprocessor: %s, GetLastError() -> %d\n"), CPP, GetLastError());
++      exit (1);
++    }
++  int fd = _open_osfhandle((intptr_t)ReadPipe, _O_APPEND | _O_RDONLY);
++  if(fd != -1)
++    {
++      fin = _fdopen(fd, "a+");
++    }
++  cpp_pid = ProcessInfo.hProcess;
++}
++
++/* Close the connection to the C-preprocessor and check for successfull
++   termination.  */
++static void
++close_input (void)
++{
++  WaitForSingleObject(cpp_pid, INFINITE);
++}
++
++#else
++
+ /*
+  * Open input file with given define for C-preprocessor
+  */
++
+ static void
+ open_input (const char *infile, const char *define)
+ {
+@@ -416,6 +580,7 @@
+       crash ();
+     }
+ }
++#endif
+ 
+ /* valid tirpc nettypes */
+ static const char *valid_ti_nettypes[] =
