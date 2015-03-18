@@ -1,0 +1,24 @@
+# dlfcn-win32 options
+
+choice
+    bool
+    prompt "dlfcn-win32 version"
+# Don't remove next line
+# CT_INSERT_VERSION_BELOW
+
+config DLFCN_WIN32_V_DEVEL
+    bool
+    prompt "devel"
+
+config DLFCN_WIN32_V_1_0_0
+    bool
+    prompt "1.0.0"
+
+endchoice
+
+config DLFCN_WIN32_VERSION
+    string
+# Don't remove next line
+# CT_INSERT_VERSION_STRING_BELOW
+    default "devel" if DLFCN_WIN32_V_DEVEL
+    default "1.0.0" if DLFCN_WIN32_V_1_0_0

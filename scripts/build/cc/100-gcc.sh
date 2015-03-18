@@ -760,6 +760,13 @@ do_gcc_for_build() {
         build_final_backend=do_gcc_backend
     fi
 
+    # Perhaps it's better to just do this globally?
+    if [ ! "${CT_BUILD/mingw/}" = "${CT_BUILD}" -a "${CT_DLFCN_WIN32}" = "y" ]; then
+        # cpp flags so it works with AC_CHECK_HEADERS
+        build_final_opts+=( "cppflags=-I${CT_BUILDTOOLS_PREFIX_DIR}/include" )
+        build_final_opts+=( "ldflags=-L${CT_BUILDTOOLS_PREFIX_DIR}/lib" )
+    fi
+
     CT_DoStep INFO "Installing final gcc compiler for build"
     CT_mkdir_pushd "${CT_BUILD_DIR}/build-cc-gcc-final-build-${CT_BUILD}"
 
@@ -796,6 +803,13 @@ do_gcc_for_host() {
         final_backend=do_gcc_core_backend
     else
         final_backend=do_gcc_backend
+    fi
+
+    # Perhaps it's better to just do this globally?
+    if [ ! "${CT_HOST/mingw/}" = "${CT_HOST}" -a "${CT_DLFCN_WIN32}" = "y" ]; then
+        # cpp flags so it works with AC_CHECK_HEADERS
+        final_opts+=( "cppflags=-I${CT_HOST_COMPLIBS_DIR}/include" )
+        final_opts+=( "ldflags=-L${CT_BUILDTOOLS_PREFIX_DIR}/lib" )
     fi
 
     CT_DoStep INFO "Installing final gcc compiler"

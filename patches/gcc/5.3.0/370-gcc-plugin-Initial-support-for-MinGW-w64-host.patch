@@ -1,0 +1,295 @@
+From 555676e1ab8a24849b2afb1fb5b23e5961580d14 Mon Sep 17 00:00:00 2001
+From: Ray Donnelly <mingw.android@gmail.com>
+Date: Tue, 16 Jun 2015 21:26:56 +0100
+Subject: [PATCH] gcc-plugin: Initial support for MinGW-w64 host
+
+Requires dlfcn-win32, and links to the psapi library.
+libcc1 does not build yet. As it stands, it needs fork ()
+Perhaps pex-win32 from libibery could be used instead?
+---
+ config/gcc-plugin.m4 | 24 ++++++++++++----
+ gcc/configure        | 78 +++++++++++++++++++++++++++++++++++++++++++++++-----
+ gcc/plugin.c         |  3 ++
+ libcc1/configure     | 32 ++++++++++++++++-----
+ 4 files changed, 118 insertions(+), 19 deletions(-)
+
+diff --git a/config/gcc-plugin.m4 b/config/gcc-plugin.m4
+index dd06a58..d6c5a70 100644
+--- a/config/gcc-plugin.m4
++++ b/config/gcc-plugin.m4
+@@ -20,6 +20,9 @@ AC_DEFUN([GCC_ENABLE_PLUGINS],
+ 
+    pluginlibs=
+ 
++   PICFLAG="-fPIC"
++   UNDEFINEDPREAMBLE="extern int X;"
++   UNDEFINEDCODE="return X == 0;"
+    case "${host}" in
+      *-*-darwin*)
+        if test x$build = x$host; then
+@@ -30,6 +33,14 @@ AC_DEFUN([GCC_ENABLE_PLUGINS],
+ 	 export_sym_check=
+        fi
+      ;;
++     *-*-mingw*|*-*-cygwin*|*-*-msys*)
++       PICFLAG=""
++       UNDEFINEDPREAMBLE=""
++       UNDEFINEDCODE=""
++       AC_CHECK_DECL([EnumProcessModules], [LIBS="$LIBS -lpsapi"], [],
++	 [[#include <windows.h>
++	   #include <psapi.h>]])
++     ;;
+      *)
+        if test x$build = x$host; then
+ 	 export_sym_check="objdump${exeext} -T"
+@@ -73,6 +84,9 @@ AC_DEFUN([GCC_ENABLE_PLUGINS],
+      if test x"$ac_cv_search_dlopen" = x"-ldl"; then
+        pluginlibs="$pluginlibs -ldl"
+      fi
++     if test x"$ac_cv_have_decl_EnumProcessModules" = x"yes"; then
++       pluginlibs="$pluginlibs -lpsapi"
++     fi
+      LIBS="$saved_LIBS"
+ 
+      # Check that we can build shared objects with -fPIC -shared
+@@ -81,17 +95,17 @@ AC_DEFUN([GCC_ENABLE_PLUGINS],
+      case "${host}" in
+        *-*-darwin*)
+ 	 CFLAGS=`echo $CFLAGS | sed s/-mdynamic-no-pic//g`
+-	 CFLAGS="$CFLAGS -fPIC"
++	 CFLAGS="$CFLAGS ${PICFLAG}"
+ 	 LDFLAGS="$LDFLAGS -shared -undefined dynamic_lookup"
+        ;;
+        *)
+-	 CFLAGS="$CFLAGS -fPIC"
+-	 LDFLAGS="$LDFLAGS -fPIC -shared"
++	 CFLAGS="$CFLAGS ${PICFLAG}"
++	 LDFLAGS="$LDFLAGS ${PICFLAG} -shared"
+        ;;
+      esac
+-     AC_MSG_CHECKING([for -fPIC -shared])
++     AC_MSG_CHECKING([for ${PICFLAG} -shared])
+      AC_TRY_LINK(
+-       [extern int X;],[return X == 0;],
++       [${UNDEFINEDPREAMBLE}],[${UNDEFINEDCODE}],
+        [AC_MSG_RESULT([yes]); have_pic_shared=yes],
+        [AC_MSG_RESULT([no]); have_pic_shared=no])
+      if test x"$have_pic_shared" != x"yes" -o x"$ac_cv_search_dlopen" = x"no"; then
+diff --git a/gcc/configure b/gcc/configure
+index b26a86f..b45394d 100755
+--- a/gcc/configure
++++ b/gcc/configure
+@@ -2439,6 +2439,52 @@ $as_echo "$ac_res" >&6; }
+ 
+ } # ac_fn_c_check_func
+
++# ac_fn_cxx_check_decl LINENO SYMBOL VAR INCLUDES
++# ---------------------------------------------
++# Tests whether SYMBOL is declared in INCLUDES, setting cache variable VAR
++# accordingly.
++ac_fn_cxx_check_decl ()
++{
++  as_lineno=${as_lineno-"$1"} as_lineno_stack=as_lineno_stack=$as_lineno_stack
++  as_decl_name=`echo $2|sed 's/ *(.*//'`
++  as_decl_use=`echo $2|sed -e 's/(/((/' -e 's/)/) 0&/' -e 's/,/) 0& (/g'`
++  { $as_echo "$as_me:${as_lineno-$LINENO}: checking whether $as_decl_name is declared" >&5
++$as_echo_n "checking whether $as_decl_name is declared... " >&6; }
++if eval \${$3+:} false; then :
++  $as_echo_n "(cached) " >&6
++else
++  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
++/* end confdefs.h.  */
++$4
++int
++main ()
++{
++#ifndef $as_decl_name
++#ifdef __cplusplus
++  (void) $as_decl_use;
++#else
++  (void) $as_decl_name;
++#endif
++#endif
++
++  ;
++  return 0;
++}
++_ACEOF
++if ac_fn_cxx_try_compile "$LINENO"; then :
++  eval "$3=yes"
++else
++  eval "$3=no"
++fi
++rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
++fi
++eval ac_res=\$$3
++               { $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_res" >&5
++$as_echo "$ac_res" >&6; }
++  eval $as_lineno_stack; ${as_lineno_stack:+:} unset as_lineno
++
++} # ac_fn_cxx_check_decl
++
+ # ac_fn_cxx_try_link LINENO
+ # -------------------------
+ # Try to link conftest.$ac_ext, and return whether this succeeded.
+@@ -28436,6 +28482,9 @@ fi
+ 
+    pluginlibs=
+ 
++   PICFLAG="-fPIC"
++   UNDEFINEDPREAMBLE="extern int X;"
++   UNDEFINEDCODE="return X == 0;"
+    case "${host}" in
+      *-*-darwin*)
+        if test x$build = x$host; then
+@@ -28446,6 +28495,18 @@ fi
+ 	 export_sym_check=
+        fi
+      ;;
++     *-*-mingw*|*-*-cygwin*|*-*-msys*)
++       PICFLAG=""
++       UNDEFINEDPREAMBLE=""
++       UNDEFINEDCODE=""
++       ac_fn_cxx_check_decl "$LINENO" "EnumProcessModules" "ac_cv_have_decl_EnumProcessModules" "#include <windows.h>
++	   #include <psapi.h>
++"
++if test "x$ac_cv_have_decl_EnumProcessModules" = x""yes; then :
++  LIBS="$LIBS -lpsapi"
++fi
++
++     ;;
+      *)
+        if test x$build = x$host; then
+ 	 export_sym_check="objdump${exeext} -T"
+@@ -28550,6 +28611,9 @@ fi
+      if test x"$ac_cv_search_dlopen" = x"-ldl"; then
+        pluginlibs="$pluginlibs -ldl"
+      fi
++     if test x"$ac_cv_have_decl_EnumProcessModules" = x"yes"; then
++       pluginlibs="$pluginlibs -lpsapi"
++     fi
+      LIBS="$saved_LIBS"
+ 
+      # Check that we can build shared objects with -fPIC -shared
+@@ -28558,23 +28622,23 @@ fi
+      case "${host}" in
+        *-*-darwin*)
+ 	 CFLAGS=`echo $CFLAGS | sed s/-mdynamic-no-pic//g`
+-	 CFLAGS="$CFLAGS -fPIC"
++	 CFLAGS="$CFLAGS ${PICFLAG}"
+ 	 LDFLAGS="$LDFLAGS -shared -undefined dynamic_lookup"
+        ;;
+        *)
+-	 CFLAGS="$CFLAGS -fPIC"
+-	 LDFLAGS="$LDFLAGS -fPIC -shared"
++	 CFLAGS="$CFLAGS ${PICFLAG}"
++	 LDFLAGS="$LDFLAGS ${PICFLAG} -shared"
+        ;;
+      esac
+-     { $as_echo "$as_me:${as_lineno-$LINENO}: checking for -fPIC -shared" >&5
+-$as_echo_n "checking for -fPIC -shared... " >&6; }
++     { $as_echo "$as_me:${as_lineno-$LINENO}: checking for ${PICFLAG} -shared" >&5
++$as_echo_n "checking for ${PICFLAG} -shared... " >&6; }
+      cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+ /* end confdefs.h.  */
+-extern int X;
++${UNDEFINEDPREAMBLE}
+ int
+ main ()
+ {
+-return X == 0;
++${UNDEFINEDCODE}
+   ;
+   return 0;
+ }
+diff --git a/gcc/plugin.c b/gcc/plugin.c
+index 15756f3..86512d8 100644
+--- a/gcc/plugin.c
++++ b/gcc/plugin.c
+@@ -35,6 +35,9 @@ along with GCC; see the file COPYING3.  If not see
+ 
+ #ifdef ENABLE_PLUGIN
+ #include "plugin-version.h"
++#ifdef HAVE_DLFCN_H
++#include "dlfcn.h"
++#endif
+ #endif
+ 
+ #define GCC_PLUGIN_STRINGIFY0(X) #X
+diff --git a/libcc1/configure b/libcc1/configure
+index bbd3e72..29b5a3f 100755
+--- a/libcc1/configure
++++ b/libcc1/configure
+@@ -14504,6 +14504,9 @@ fi
+ 
+    pluginlibs=
+ 
++   PICFLAG="-fPIC"
++   UNDEFINEDPREAMBLE="extern int X;"
++   UNDEFINEDCODE="return X == 0;"
+    case "${host}" in
+      *-*-darwin*)
+        if test x$build = x$host; then
+@@ -14514,6 +14517,18 @@ fi
+ 	 export_sym_check=
+        fi
+      ;;
++     *-*-mingw*|*-*-cygwin*|*-*-msys*)
++       PICFLAG=""
++       UNDEFINEDPREAMBLE=""
++       UNDEFINEDCODE=""
++       ac_fn_c_check_decl "$LINENO" "EnumProcessModules" "ac_cv_have_decl_EnumProcessModules" "#include <windows.h>
++	   #include <psapi.h>
++"
++if test "x$ac_cv_have_decl_EnumProcessModules" = x""yes; then :
++  LIBS="$LIBS -lpsapi"
++fi
++
++     ;;
+      *)
+        if test x$build = x$host; then
+ 	 export_sym_check="objdump${exeext} -T"
+@@ -14618,6 +14633,9 @@ fi
+      if test x"$ac_cv_search_dlopen" = x"-ldl"; then
+        pluginlibs="$pluginlibs -ldl"
+      fi
++     if test x"$ac_cv_have_decl_EnumProcessModules" = x"yes"; then
++       pluginlibs="$pluginlibs -lpsapi"
++     fi
+      LIBS="$saved_LIBS"
+ 
+      # Check that we can build shared objects with -fPIC -shared
+@@ -14626,23 +14644,23 @@ fi
+      case "${host}" in
+        *-*-darwin*)
+ 	 CFLAGS=`echo $CFLAGS | sed s/-mdynamic-no-pic//g`
+-	 CFLAGS="$CFLAGS -fPIC"
++	 CFLAGS="$CFLAGS ${PICFLAG}"
+ 	 LDFLAGS="$LDFLAGS -shared -undefined dynamic_lookup"
+        ;;
+        *)
+-	 CFLAGS="$CFLAGS -fPIC"
+-	 LDFLAGS="$LDFLAGS -fPIC -shared"
++	 CFLAGS="$CFLAGS ${PICFLAG}"
++	 LDFLAGS="$LDFLAGS ${PICFLAG} -shared"
+        ;;
+      esac
+-     { $as_echo "$as_me:${as_lineno-$LINENO}: checking for -fPIC -shared" >&5
+-$as_echo_n "checking for -fPIC -shared... " >&6; }
++     { $as_echo "$as_me:${as_lineno-$LINENO}: checking for ${PICFLAG} -shared" >&5
++$as_echo_n "checking for ${PICFLAG} -shared... " >&6; }
+      cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+ /* end confdefs.h.  */
+-extern int X;
++${UNDEFINEDPREAMBLE}
+ int
+ main ()
+ {
+-return X == 0;
++${UNDEFINEDCODE}
+   ;
+   return 0;
+ }
+-- 
+2.4.3
+
