@@ -23,11 +23,8 @@ do_libc_extract() {
     CT_Popd
 }
 
-do_set_mingw_install_prefix(){
-    MINGW_INSTALL_PREFIX=/usr/${CT_TARGET}
-    if [[ ${CT_WINAPI_VERSION} == 2* ]]; then
-        MINGW_INSTALL_PREFIX=/usr
-    fi
+do_set_mingw_install_prefix() {
+    MINGW_INSTALL_PREFIX=/${CT_POST_SYSROOT_PREFIX}
 }
 
 do_libc_start_files() {
@@ -65,7 +62,12 @@ do_libc_start_files() {
     # It seems mingw is strangely set up to look into /mingw instead of
     # /usr (notably when looking for the headers). This symlink is
     # here to workaround this, and seems to be here to last... :-/
-    CT_DoExecLog ALL ln -sv "usr/${CT_TARGET}" "${CT_SYSROOT_DIR}/mingw"
+    # CT_POST_SYSROOT_PREFIX is meant to remove the need for this though,
+    # and allow msys2-style /mingw32 and /mingw64 prefixes (since multilib
+    # on mingw-w64 prevents different exception models for each this is common).
+    if [[ ! -d ${CT_SYSROOT_DIR}/mingw ]]; then
+        CT_DoExecLog ALL ln -sv "${MINGW_INSTALL_PREFIX}" "${CT_SYSROOT_DIR}/mingw"
+    fi
 
     CT_EndStep
 }
@@ -95,7 +97,7 @@ do_libc() {
     do_set_mingw_install_prefix
     CT_DoExecLog CFG                                                                  \
     "${CT_SRC_DIR}/mingw-w64-${CT_WINAPI_VERSION_DOWNLOADED}/mingw-w64-crt/configure" \
-        --with-sysroot=${CT_SYSROOT_DIR}                                              \
+        ${CC_SYSROOT_ARG}                                                             \
         --prefix=${MINGW_INSTALL_PREFIX}                                              \
         --build=${CT_BUILD}                                                           \
         --host=${CT_TARGET}                                                           \

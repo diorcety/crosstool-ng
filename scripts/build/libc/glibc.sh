@@ -123,7 +123,7 @@ do_libc_backend_once() {
     # with other multilib variants. We then remove these temporary files at
     # the beginning of the libc-final step and allow glibc to install them
     # where it thinks is proper.
-    startfiles_dir="${multi_root}/usr/lib/${multi_os_dir}"
+    startfiles_dir="${multi_root}/${CT_POST_SYSROOT_PREFIX}/lib/${multi_os_dir}"
     CT_SanitizeVarDir startfiles_dir
 
     if [ "${libc_mode}" = "final" ]; then
@@ -256,7 +256,7 @@ do_libc_backend_once() {
     RANLIB=${CT_TARGET}-ranlib                                      \
     "${CONFIG_SHELL}"                                               \
     "${src_dir}/configure"                                          \
-        --prefix=/usr                                               \
+        --prefix=/${CT_POST_SYSROOT_PREFIX}                         \
         --build=${CT_BUILD}                                         \
         --host=${multi_target}                                      \
         --cache-file="$(pwd)/config.cache"                          \
@@ -435,7 +435,7 @@ do_libc_min_kernel_config() {
                 # headers. On the other hand, both method will have the kernel
                 # version installed in "usr/include/linux/version.h" in the sysroot.
                 # Parse that instead of having two code-paths.
-                version_code_file="${CT_SYSROOT_DIR}/usr/include/linux/version.h"
+                version_code_file="${CT_SYSROOT_DIR}/${CT_POST_SYSROOT_PREFIX}/include/linux/version.h"
                 if [ ! -f "${version_code_file}" -o ! -r "${version_code_file}" ]; then
                     CT_Abort "Linux version is unavailable in installed headers files"
                 fi
@@ -501,16 +501,16 @@ do_libc_locales() {
 
     # Configure with --prefix the way we want it on the target...
 
-    CT_DoExecLog CFG                       \
-    CFLAGS="${glibc_cflags}"               \
-    "${src_dir}/configure"                 \
-        --prefix=/usr                      \
-        --cache-file="$(pwd)/config.cache" \
-        --without-cvs                      \
-        --disable-profile                  \
-        --without-gd                       \
-        --disable-debug                    \
-        --disable-sanity-checks            \
+    CT_DoExecLog CFG                         \
+    CFLAGS="${glibc_cflags}"                 \
+    "${src_dir}/configure"                   \
+        --prefix=/${CT_POST_SYSROOT_PREFIX}  \
+        --cache-file="$(pwd)/config.cache"   \
+        --without-cvs                        \
+        --disable-profile                    \
+        --without-gd                         \
+        --disable-debug                      \
+        --disable-sanity-checks              \
         "${extra_config[@]}"
 
     CT_DoLog EXTRA "Building C library localedef"

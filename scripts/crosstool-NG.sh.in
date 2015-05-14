@@ -284,10 +284,11 @@ CT_DoExecLog ALL chmod -R u+w "${CT_INSTALL_DIR}" "${CT_PREFIX_DIR}"
 # Setting up the rest of the environment only if not restarting
 if [ -z "${CT_RESTART}" ]; then
     case "${CT_SYSROOT_NAME}" in
-        "")     CT_SYSROOT_NAME="sysroot";;
+        "")     CT_SYSROOT_NAME="";;
         .)      CT_Abort "Sysroot name is set to '.' which is forbidden";;
         *' '*)  CT_Abort "Sysroot name contains forbidden space(s): '${CT_SYSROOT_NAME}'";;
         */*)    CT_Abort "Sysroot name contains forbidden slash(es): '${CT_SYSROOT_NAME}'";;
+        *)      CT_SYSROOT_NAME="${CT_SYSROOT_NAME}/"
     esac
 
     # Arrange paths depending on whether we use sysroot or not.
@@ -295,7 +296,7 @@ if [ -z "${CT_RESTART}" ]; then
         CT_SYSROOT_REL_DIR="${CT_SYSROOT_DIR_PREFIX:+${CT_SYSROOT_DIR_PREFIX}/}${CT_SYSROOT_NAME}"
         CT_SYSROOT_DIR="${CT_PREFIX_DIR}/${CT_TARGET}/${CT_SYSROOT_REL_DIR}"
         CT_DEBUGROOT_DIR="${CT_PREFIX_DIR}/${CT_TARGET}/${CT_SYSROOT_DIR_PREFIX}/debug-root"
-        CT_HEADERS_DIR="${CT_SYSROOT_DIR}/usr/include"
+        CT_HEADERS_DIR="${CT_SYSROOT_DIR}/${CT_POST_SYSROOT_PREFIX}/include"
         CT_SanitizeVarDir CT_SYSROOT_REL_DIR CT_SYSROOT_DIR CT_DEBUGROOT_DIR CT_HEADERS_DIR
         BINUTILS_SYSROOT_ARG="--with-sysroot=${CT_SYSROOT_DIR}"
         CC_CORE_SYSROOT_ARG="--with-sysroot=${CT_SYSROOT_DIR}"
@@ -330,7 +331,7 @@ if [ -z "${CT_RESTART}" ]; then
     # the paths like 'lib/../lib64' still work.
     CT_DoExecLog ALL mkdir -p "${CT_PREFIX_DIR}/lib"
     CT_DoExecLog ALL mkdir -p "${CT_SYSROOT_DIR}/lib"
-    CT_DoExecLog ALL mkdir -p "${CT_SYSROOT_DIR}/usr/lib"
+    CT_DoExecLog ALL mkdir -p "${CT_SYSROOT_DIR}/${CT_POST_SYSROOT_PREFIX}/lib"
 
     # Determine build system if not set by the user
     if [ -z "${CT_BUILD}" ]; then

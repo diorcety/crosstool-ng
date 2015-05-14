@@ -46,6 +46,22 @@ config SYSROOT_DIR_PREFIX
       In fact, the sysroot path is constructed as:
         ${CT_PREFIX_DIR}/${CT_TARGET}/${CT_SYSROOT_DIR_PREFIX}/${CT_SYSROOT_NAME}
 
+config POST_SYSROOT_PREFIX
+    string
+    prompt "prefix directory after the sysroot" if ! BACKEND
+    default "usr"
+    help
+      *
+      * Traditionally on Unix, this is 'usr'. On mingw-w64 it is often one of
+      * 'mingw', 'mingw32' or 'mingw64'. Leading and trailing '/' should not
+      * be included but subfolders may be, i.e. 'opt/mingw' is fine.
+      *
+      This string will be interpreted as a directory component to be added
+      to the sysroot path, just after the actual sysroot directory.
+
+      In fact, the final sysroot prefix path is constructed as:
+        ${CT_PREFIX_DIR}/${CT_TARGET}/${CT_SYSROOT_DIR_PREFIX}/${CT_SYSROOT_NAME}/${CT_POST_SYSROOT_PREFIX}
+
 config WANTS_STATIC_LINK
     bool
 
