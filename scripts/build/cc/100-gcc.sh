@@ -8,8 +8,7 @@ do_gcc_get() {
     local linaro_series=""
 
     if [ "${CT_CC_GCC_CUSTOM}" = "y" ]; then
-        CT_GetCustom "gcc" "${CT_CC_GCC_CUSTOM_VERSION}" \
-            "${CT_CC_GCC_CUSTOM_LOCATION}"
+        CT_GetCustom "gcc" "${CT_CC_GCC_VERSION}" "${CT_CC_GCC_CUSTOM_LOCATION}"
     else
         # Account for the Linaro versioning
         linaro_version="$( echo "${CT_CC_GCC_VERSION}"  \
@@ -335,6 +334,7 @@ do_gcc_core_pass_2() {
 #   build_libgfortran   : build libgfortran or not                  : bool      : no
 #   build_staticlinked  : build statically linked or not            : bool      : no
 #   build_manuals       : whether to build manuals or not           : bool      : no
+#   cppflags            : cppflags to use                           : string    : (empty)
 #   cflags              : cflags to use                             : string    : (empty)
 #   ldflags             : ldflags to use                            : string    : (empty)
 #   build_step          : build step 'core1', 'core2', 'gcc_build'
@@ -351,9 +351,12 @@ do_gcc_core_backend() {
     local prefix
     local complibs
     local lang_list
+    local cppflags
     local cflags
+    local cppflags_for_build
+    local cflags_for_build
     local ldflags
-    local build_step
+    local -a ldflags_for_build
     local log_txt
     local tmp
     local -a host_libstdcxx_flags
@@ -487,6 +490,22 @@ do_gcc_core_backend() {
         fi
     fi
 
+    if [ "${CT_BUILD}" != "${host}" ]; then
+        # Pass {CPP,C,CXX,LD}FLAGS as {CPP,C,CXX,LD}FLAGS_FOR_BUILD
+        # Depends on GCC patch:
+        # 200-Revert-revert-Add-CPPFLAGS_FOR_BUILD-and-CPPFLAGS.patch
+        cflags_for_build="${cflags}"
+        cppflags_for_build="${cppflags}"
+        cflags=""
+        cppflags=""
+        ldflags_for_build=("${core_LDFLAGS[*]}")
+        core_LDFLAGS=()
+    else
+        cflags_for_build="${cflags}"
+        cppflags_for_build="${cppflags}"
+        ldflags_for_build=("${core_LDFLAGS[*]}")
+    fi
+
     if [ "${CT_CC_GCC_USE_GMP_MPFR}" = "y" ]; then
         extra_config+=("--with-gmp=${complibs}")
         extra_config+=("--with-mpfr=${complibs}")
@@ -593,6 +612,11 @@ do_gcc_core_backend() {
     # Use --with-local-prefix so older gccs don't look in /usr/local (http://gcc.gnu.org/PR10532)
     CT_DoExecLog CFG                                   \
     CC_FOR_BUILD="${CT_BUILD}-gcc"                     \
+    CPPFLAGS_FOR_BUILD="${cppflags_for_build}"         \
+    CFLAGS_FOR_BUILD="${cflags_for_build}"             \
+    CXXFLAGS_FOR_BUILD="${cflags_for_build}"           \
+    LDFLAGS_FOR_BUILD="${ldflags_for_build[*]}"        \
+    CPPFLAGS="${cppflags}"                             \
     CFLAGS="${cflags}"                                 \
     CXXFLAGS="${cflags}"                               \
     LDFLAGS="${core_LDFLAGS[*]}"                       \
@@ -814,6 +838,7 @@ do_gcc_for_host() {
 #   host          : the host we run onto                : tuple     : (none)
 #   prefix        : the runtime prefix                  : dir       : (none)
 #   complibs      : the companion libraries prefix      : dir       : (none)
+#   cppflags      : cppflags to use                     : string    : (empty)
 #   cflags        : cflags to use                       : string    : (empty)
 #   ldflags       : ldflags to use                      : string    : (empty)
 #   lang_list     : the list of languages to build      : string    : (empty)
@@ -823,8 +848,12 @@ do_gcc_backend() {
     local prefix
     local complibs
     local lang_list
+    local cppflags
     local cflags
+    local cppflags_for_build
+    local cflags_for_build
     local ldflags
+    local -a ldflags_for_build
     local build_manuals
     local -a host_libstdcxx_flags
     local -a extra_config
@@ -937,6 +966,22 @@ do_gcc_backend() {
             final_LDFLAGS+=("-lstdc++")
             final_LDFLAGS+=("-lm")
         fi
+    fi
+
+    if [ "${CT_BUILD}" != "${host}" ]; then
+        # Pass {C,CPP,CXX,LD}FLAGS as {C,CPP,CXX,LD}FLAGS_FOR_BUILD
+        # Depends on GCC patch:
+        # 200-Revert-revert-Add-CPPFLAGS_FOR_BUILD-and-CPPFLAGS.patch
+        cflags_for_build="${cflags}"
+        cppflags_for_build="${cppflags}"
+        cflags=""
+        cppflags=""
+        ldflags_for_build=("${final_LDFLAGS[*]}")
+        final_LDFLAGS=()
+    else
+        cflags_for_build="${cflags}"
+        cppflags_for_build="${cppflags}"
+        ldflags_for_build=("${final_LDFLAGS[*]}")
     fi
 
     if [ "${CT_CC_GCC_USE_GMP_MPFR}" = "y" ]; then
@@ -1057,9 +1102,14 @@ do_gcc_backend() {
 
     CT_DoExecLog CFG                                \
     CC_FOR_BUILD="${CT_BUILD}-gcc"                  \
+    CPPFLAGS="${cppflags}"                          \
     CFLAGS="${cflags}"                              \
     CXXFLAGS="${cflags}"                            \
     LDFLAGS="${final_LDFLAGS[*]}"                   \
+    CFLAGS_FOR_BUILD="${cflags_for_build}"          \
+    CPPFLAGS_FOR_BUILD="${cppflags_for_build}"      \
+    CXXFLAGS_FOR_BUILD="${cflags_for_build}"        \
+    LDFLAGS_FOR_BUILD="${ldflags_for_build[*]}"     \
     CFLAGS_FOR_TARGET="${CT_TARGET_CFLAGS}"         \
     CXXFLAGS_FOR_TARGET="${CT_TARGET_CFLAGS}"       \
     LDFLAGS_FOR_TARGET="${CT_TARGET_LDFLAGS}"       \
