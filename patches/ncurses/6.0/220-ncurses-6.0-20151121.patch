@@ -1,0 +1,728 @@
+From fd1066cc97c836a67fa2623b6cf7ffd2ece39dc7 Mon Sep 17 00:00:00 2001
+From: "Thomas E. Dickey" <dickey@invisible-island.net>
+Date: Sun, 22 Nov 2015 02:17:21 +0000
+Subject: [PATCH 13/50] ncurses 6.0 - patch 20151121
+
++ fix some inconsistencies in the pccon* entries -TD
++ add bold to pccon+sgr+acs and pccon-base (Tati Chevron).
++ add keys f12-f124 to pccon+keys (Tati Chevron).
++ add test/test_sgr.c program to exercise all combinations of sgr.
+---
+ MANIFEST                         |   1 +
+ NEWS                             |   8 +-
+ VERSION                          |   2 +-
+ dist.mk                          |   4 +-
+ man/curs_bkgd.3x                 |   3 +-
+ misc/terminfo.src                |  56 ++++--
+ package/debian-mingw/changelog   |   4 +-
+ package/debian-mingw64/changelog |   4 +-
+ package/debian/changelog         |   4 +-
+ package/mingw-ncurses.nsi        |   4 +-
+ package/mingw-ncurses.spec       |   2 +-
+ package/ncurses.spec             |   2 +-
+ test/modules                     |   3 +-
+ test/programs                    |   3 +-
+ test/test_sgr.c                  | 363 +++++++++++++++++++++++++++++++++++++++
+ 15 files changed, 428 insertions(+), 35 deletions(-)
+ create mode 100644 test/test_sgr.c
+
+diff --git a/MANIFEST b/MANIFEST
+index ecbdc78..4054ef4 100644
+--- a/MANIFEST
++++ b/MANIFEST
+@@ -1162,6 +1162,7 @@
+ ./test/test_inwstr.c
+ ./test/test_opaque.c
+ ./test/test_setupterm.c
++./test/test_sgr.c
+ ./test/test_vid_puts.c
+ ./test/test_vidputs.c
+ ./test/testaddch.c
+diff --git a/NEWS b/NEWS
+index 43dfe16..c90b0f2 100644
+--- a/NEWS
++++ b/NEWS
+@@ -25,7 +25,7 @@
+ -- sale, use or other dealings in this Software without prior written        --
+ -- authorization.                                                            --
+ -------------------------------------------------------------------------------
+--- $Id: NEWS,v 1.2526 2015/11/08 01:57:15 tom Exp $
++-- $Id: NEWS,v 1.2530 2015/11/21 23:33:30 tom Exp $
+ -------------------------------------------------------------------------------
+ 
+ This is a log of changes that ncurses has gone through since Zeyd started
+@@ -45,6 +45,12 @@ See the AUTHORS file for the corresponding full names.
+ Changes through 1.9.9e did not credit all contributions;
+ it is not possible to add this information.
+ 
++20151121
++	+ fix some inconsistencies in the pccon* entries -TD
++	+ add bold to pccon+sgr+acs and pccon-base (Tati Chevron).
++	+ add keys f12-f124 to pccon+keys (Tati Chevron).
++	+ add test/test_sgr.c program to exercise all combinations of sgr.
++
+ 20151107
+ 	+ modify tset's assignment to TERM in its output to reflect the name by
+ 	  which the terminal description is found, rather than the primary
+diff --git a/VERSION b/VERSION
+index 8d76fa0..ccabf82 100644
+--- a/VERSION
++++ b/VERSION
+@@ -1 +1 @@
+-5:0:9	6.0	20151107
++5:0:9	6.0	20151121
+diff --git a/dist.mk b/dist.mk
+index 8b93297..6652459 100644
+--- a/dist.mk
++++ b/dist.mk
+@@ -25,7 +25,7 @@
+ # use or other dealings in this Software without prior written               #
+ # authorization.                                                             #
+ ##############################################################################
+-# $Id: dist.mk,v 1.1078 2015/11/06 00:44:10 tom Exp $
++# $Id: dist.mk,v 1.1080 2015/11/21 15:55:51 tom Exp $
+ # Makefile for creating ncurses distributions.
+ #
+ # This only needs to be used directly as a makefile by developers, but
+@@ -37,7 +37,7 @@ SHELL = /bin/sh
+ # These define the major/minor/patch versions of ncurses.
+ NCURSES_MAJOR = 6
+ NCURSES_MINOR = 0
+-NCURSES_PATCH = 20151107
++NCURSES_PATCH = 20151121
+ 
+ # We don't append the patch to the version, since this only applies to releases
+ VERSION = $(NCURSES_MAJOR).$(NCURSES_MINOR)
+diff --git a/man/curs_bkgd.3x b/man/curs_bkgd.3x
+index 50c3b30..ef00f7e 100644
+--- a/man/curs_bkgd.3x
++++ b/man/curs_bkgd.3x
+@@ -26,7 +26,7 @@
+ .\" authorization.                                                           *
+ .\"***************************************************************************
+ .\"
+-.\" $Id: curs_bkgd.3x,v 1.23 2015/07/21 00:11:05 tom Exp $
++.\" $Id: curs_bkgd.3x,v 1.24 2015/11/21 01:53:42 tom Exp $
+ .de bP
+ .IP \(bu 4
+ ..
+@@ -76,7 +76,6 @@ the new background rendition.
+ .bP
+ Wherever the former background character
+ appears, it is changed to the new background character.
+-.RE
+ .SS getbkgd
+ .PP
+ The \fBgetbkgd\fR function returns the given window's current background
+diff --git a/misc/terminfo.src b/misc/terminfo.src
+index 1b409f2..ad5cf18 100644
+--- a/misc/terminfo.src
++++ b/misc/terminfo.src
+@@ -6,8 +6,8 @@
+ # Report bugs and new terminal descriptions to
+ #	bug-ncurses@gnu.org
+ #
+-#	$Revision: 1.554 $
+-#	$Date: 2015/10/24 16:00:04 $
++#	$Revision: 1.558 $
++#	$Date: 2015/11/22 01:01:00 $
+ #
+ # The original header is preserved below for reference.  It is noted that there
+ # is a "newer" version which differs in some cosmetic details (but actually
+@@ -1277,7 +1277,7 @@ nsterm-build343|Terminal.app in OS X 10.10,
+ # + kLFT5/kRIT5 work, but not up/down with control-modifier
+ # + kLFT/kRIT work, but not up/down with shift-modifier
+ # + there are a few predefined bindings with Alt, but no clear pattern.
+-# + uses alt-key as UTF-8 "meta" something like xterm altSendsEscape 
++# + uses alt-key as UTF-8 "meta" something like xterm altSendsEscape
+ # Using ncurses test-program with xterm-new:
+ # + no italics
+ # Using xterm's scripts:
+@@ -2211,37 +2211,52 @@ iris-color|xwsh|IRIX ANSI with color,
+ # Added several capabilities to pccon+base, reading wsemul_vt100_subr.c -TD
+ # Changed kbs to DEL and removed keys that duplicate stty settings -TD
+ #
++# Notes from testing with vttest:
++#	fails wrapping test
++#	no 8-bit controls
++#	identifies as vt200 with selective erase, but does not implement DECSCA
++#	no vt52 mode
++#	also lacks these:
++# 		ESC # 8   DEC Screen Alignment Test (DECALN).
++# 		CSI ? 5 h Reverse Video (DECSCNM).
++#
+ pccon+keys|OpenBSD PC keyboard keys,
+ 	kbs=\177, kcub1=\E[D, kcud1=\E[B, kcuf1=\E[C, kcuu1=\E[A,
+ 	kdch1=\E[3~, kend=\E[8~, kent=^M, kf1=\E[11~, kf10=\E[21~,
+-	kf11=\E[23~, kf12=\E[24~, kf2=\E[12~, kf3=\E[13~,
++	kf11=\E[23~, kf12=\E[24~, kf13=\E[25~, kf14=\E[26~,
++	kf15=\E[28~, kf16=\E[29~, kf17=\E[31~, kf18=\E[32~,
++	kf19=\E[33~, kf2=\E[12~, kf20=\E[34~, kf21=\E[35~,
++	kf22=\E[36~, kf23=\E[37~, kf24=\E[38~, kf3=\E[13~,
+ 	kf4=\E[14~, kf5=\E[15~, kf6=\E[17~, kf7=\E[18~, kf8=\E[19~,
+ 	kf9=\E[20~, khome=\E[7~, kich1=\E[2~, knp=\E[6~, kpp=\E[5~,
+ 	krfr=^R,
+ pccon+sgr+acs0|sgr and simple ASCII pseudographics for OpenBSD PC console,
+ 	acsc=+>\,<-\^.v0#`+a\:f\\h#i#j+k+l+m+n+o~p-q-r-s_t+u+v+w+x|y#z#{*|!}#~o,
+-	sgr=\E[0%?%p1%p3%|%t;7%;m, sgr0=\E[m,
++	sgr=\E[0%?%p1%p3%|%t;7%;%?%p6%t;1%;%?%p2%t;4%;m,
++	sgr0=\E[m,
+ pccon+sgr+acs|sgr and default ASCII pseudographics for OpenBSD PC console,
+ 	acsc=++\,\,--..00``aaffgghhiijjkkllmmnnooppqqrrssttuuvvwwxxyyzz{{||}}~~,
+ 	enacs=\E)0$<5>, rmacs=\E(B$<5>,
+-	sgr=\E[0%?%p1%p3%|%t;7%;m%?%p9%t\E(0%e\E(B%;$<5>,
++	sgr=\E[0%?%p6%t;1%;%?%p2%t;4%;%?%p1%p3%|%t;7%;m%?%p9%t\E(0%e\E(B%;$<2>,
+ 	sgr0=\E[m\E(B$<5>, smacs=\E(0$<5>,
++# underline renders as color
+ pccon+colors|ANSI colors for OpenBSD PC console,
+ 	bce,
+-	colors#8, pairs#64,
+-	op=\E[m, setab=\E[4%p1%dm, setaf=\E[3%p1%dm,
++	colors#8, ncv#2, pairs#64,
++	op=\E[47;30m, setab=\E[4%p1%dm, setaf=\E[3%p1%dm,
+ pccon+base|base capabilities for OpenBSD PC console,
+ 	am, km, mc5i, msgr, npc, nxon, xenl, xon,
+ 	cols#80, it#8, lines#24,
+-	bel=^G, clear=\E[H\E[J, cr=^M, cub1=^H, cud1=^J, cuf1=\E[C,
+-	cup=\E[%i%p1%d;%p2%dH, cuu1=\E[A, dch=\E[%p1%dP,
+-	dch1=\E[P, dl1=\E[M, ech=\E[%p1%dX, ed=\E[J, el=\E[K,
+-	el1=\E[1K, home=\E[H, ht=^I, hts=\EH, ich=\E[%p1%d@,
++	bel=^G, bold=\E[1m, clear=\E[H\E[J, cr=^M, cub1=^H, cud1=^J,
++	cuf1=\E[C, cup=\E[%i%p1%d;%p2%dH, cuu1=\E[A,
++	dch=\E[%p1%dP, dch1=\E[P, dl1=\E[M, ech=\E[%p1%dX, ed=\E[J,
++	el=\E[K, el1=\E[1K, home=\E[H, ht=^I, hts=\EH, ich=\E[%p1%d@,
+ 	il1=\E[L, ind=\ED, nel=\EE, rev=\E[7m, ri=\EM, rmam=\E[?7l,
+-	rmso=\E[m, rs2=\Ec$<50>, smam=\E[?7h, smso=\E[7m,
+-	tbc=\E[3g, u6=\E[%i%d;%dR, u7=\E[6n,
++	rmso=\E[27m, rmul=\E[24m, rs2=\Ec$<50>, smam=\E[?7h,
++	smso=\E[7m, smul=\E[4m, tbc=\E[3g, u6=\E[%i%d;%dR,
++	u7=\E[6n,
+ pccon0-m|OpenBSD PC console without colors & with simple ASCII pseudographics,
+-	use=pccon+base, use=pccon+sgr+acs0, use=pccon+keys,
++	use=pccon+sgr+acs0, use=pccon+base, use=pccon+keys,
+ pccon0|OpenBSD PC console with simple ASCII pseudographics,
+ 	use=pccon0-m, use=pccon+colors,
+ pccon-m|OpenBSD PC console without colors,
+@@ -9750,7 +9765,7 @@ vi603|visual603|visual 603,
+ # (800)-800-WYSE (option 5 gets you a human).  There's a Web page at the
+ # obvious address, <http://www.wyse.com>.  They keep terminfo entries at
+ # https://web.archive.org/web/19970712022641/http://www.wyse.co.uk/support/appnotes/idxappnt.htm
+-# 
++#
+ #
+ # Wyse bought out Link Technology, Inc. in 1990 and closed it down in 1995.
+ # They now own the Qume and Amdek brands, too.  So these are the people to
+@@ -23767,7 +23782,14 @@ v3220|LANPAR Vision II model 3220/3221/3222,
+ #	+ updated minitel entries to fix kel problem with emacs, and add
+ #	  minitel1b-nb (Alexandre Montaron).
+ #	+ reviewed/updated nsterm entry Terminal.app in OSX -TD
+-#	+ replace some dead URLs in comments with equivalents from the
++#	+ replace some dead URLs in commands with equivalents from the
+ #	  Internet Archive -TD
+ #
++# 2015-11-14
++#	+ add bold to pccon+sgr+acs and pccon-base (Tati Chevron).
++#	+ add keys f12-f124 to pccon+keys (Tati Chevron).
++#
++# 2015-11-21
++#	+ fix some inconsistencies in the pccon* entries -TD
++#
+ ######## SHANTIH!  SHANTIH!  SHANTIH!
+diff --git a/package/debian-mingw/changelog b/package/debian-mingw/changelog
+index c0b6df2..28dbca4 100644
+--- a/package/debian-mingw/changelog
++++ b/package/debian-mingw/changelog
+@@ -1,8 +1,8 @@
+-ncurses6 (6.0+20151107) unstable; urgency=low
++ncurses6 (6.0+20151121) unstable; urgency=low
+ 
+   * latest weekly patch
+ 
+- -- Thomas E. Dickey <dickey@invisible-island.net>  Thu, 05 Nov 2015 19:44:10 -0500
++ -- Thomas E. Dickey <dickey@invisible-island.net>  Sat, 21 Nov 2015 10:55:51 -0500
+ 
+ ncurses6 (5.9-20131005) unstable; urgency=low
+ 
+diff --git a/package/debian-mingw64/changelog b/package/debian-mingw64/changelog
+index c0b6df2..28dbca4 100644
+--- a/package/debian-mingw64/changelog
++++ b/package/debian-mingw64/changelog
+@@ -1,8 +1,8 @@
+-ncurses6 (6.0+20151107) unstable; urgency=low
++ncurses6 (6.0+20151121) unstable; urgency=low
+ 
+   * latest weekly patch
+ 
+- -- Thomas E. Dickey <dickey@invisible-island.net>  Thu, 05 Nov 2015 19:44:10 -0500
++ -- Thomas E. Dickey <dickey@invisible-island.net>  Sat, 21 Nov 2015 10:55:51 -0500
+ 
+ ncurses6 (5.9-20131005) unstable; urgency=low
+ 
+diff --git a/package/debian/changelog b/package/debian/changelog
+index e173396..bfe3549 100644
+--- a/package/debian/changelog
++++ b/package/debian/changelog
+@@ -1,8 +1,8 @@
+-ncurses6 (6.0+20151107) unstable; urgency=low
++ncurses6 (6.0+20151121) unstable; urgency=low
+ 
+   * latest weekly patch
+ 
+- -- Thomas E. Dickey <dickey@invisible-island.net>  Thu, 05 Nov 2015 19:44:10 -0500
++ -- Thomas E. Dickey <dickey@invisible-island.net>  Sat, 21 Nov 2015 10:55:51 -0500
+ 
+ ncurses6 (5.9-20120608) unstable; urgency=low
+ 
+diff --git a/package/mingw-ncurses.nsi b/package/mingw-ncurses.nsi
+index dc90ca3..bbc42f6 100644
+--- a/package/mingw-ncurses.nsi
++++ b/package/mingw-ncurses.nsi
+@@ -1,4 +1,4 @@
+-; $Id: mingw-ncurses.nsi,v 1.131 2015/11/06 00:44:10 tom Exp $
++; $Id: mingw-ncurses.nsi,v 1.133 2015/11/21 15:55:51 tom Exp $
+ 
+ ; TODO add examples
+ ; TODO bump ABI to 6
+@@ -10,7 +10,7 @@
+ !define VERSION_MAJOR "6"
+ !define VERSION_MINOR "0"
+ !define VERSION_YYYY  "2015"
+-!define VERSION_MMDD  "1107"
++!define VERSION_MMDD  "1121"
+ !define VERSION_PATCH ${VERSION_YYYY}${VERSION_MMDD}
+ 
+ !define MY_ABI   "5"
+diff --git a/package/mingw-ncurses.spec b/package/mingw-ncurses.spec
+index ae862e8..03a90f0 100644
+--- a/package/mingw-ncurses.spec
++++ b/package/mingw-ncurses.spec
+@@ -3,7 +3,7 @@
+ Summary: shared libraries for terminal handling
+ Name: mingw32-ncurses6
+ Version: 6.0
+-Release: 20151107
++Release: 20151121
+ License: X11
+ Group: Development/Libraries
+ Source: ncurses-%{version}-%{release}.tgz
+diff --git a/package/ncurses.spec b/package/ncurses.spec
+index eb1e7f1..11743f9 100644
+--- a/package/ncurses.spec
++++ b/package/ncurses.spec
+@@ -1,7 +1,7 @@
+ Summary: shared libraries for terminal handling
+ Name: ncurses6
+ Version: 6.0
+-Release: 20151107
++Release: 20151121
+ License: X11
+ Group: Development/Libraries
+ Source: ncurses-%{version}-%{release}.tgz
+diff --git a/test/modules b/test/modules
+index e255c28..c1d87d3 100644
+--- a/test/modules
++++ b/test/modules
+@@ -1,4 +1,4 @@
+-# $Id: modules,v 1.52 2015/06/27 10:40:27 tom Exp $
++# $Id: modules,v 1.53 2015/11/21 16:05:48 tom Exp $
+ ##############################################################################
+ # Copyright (c) 1998-2014,2015 Free Software Foundation, Inc.                #
+ #                                                                            #
+@@ -90,6 +90,7 @@ test_instr	progs		$(srcdir)	$(HEADER_DEPS)
+ test_inwstr	progs		$(srcdir)	$(HEADER_DEPS)
+ test_opaque	progs		$(srcdir)	$(HEADER_DEPS)
+ test_setupterm	progs		$(srcdir)	$(HEADER_DEPS)
++test_sgr	progs		$(srcdir)	$(HEADER_DEPS)
+ test_vid_puts	progs		$(srcdir)	$(HEADER_DEPS)
+ test_vidputs	progs		$(srcdir)	$(HEADER_DEPS)
+ testaddch	progs		$(srcdir)	$(HEADER_DEPS)
+diff --git a/test/programs b/test/programs
+index 94765e2..704d666 100644
+--- a/test/programs
++++ b/test/programs
+@@ -1,4 +1,4 @@
+-# $Id: programs,v 1.26 2015/06/27 10:40:53 tom Exp $
++# $Id: programs,v 1.27 2015/11/21 16:06:12 tom Exp $
+ ##############################################################################
+ # Copyright (c) 2006-2014,2015 Free Software Foundation, Inc.                #
+ #                                                                            #
+@@ -87,6 +87,7 @@ test_instr	$(LDFLAGS_CURSES)	$(LOCAL_LIBS)	test_instr
+ test_inwstr	$(LDFLAGS_CURSES)	$(LOCAL_LIBS)	test_inwstr
+ test_opaque	$(LDFLAGS_CURSES)	$(LOCAL_LIBS)	test_opaque
+ test_setupterm	$(LDFLAGS_CURSES)	$(LOCAL_LIBS)	test_setupterm
++test_sgr	$(LDFLAGS_TINFO)	$(LOCAL_LIBS)	test_sgr
+ test_vid_puts	$(LDFLAGS_CURSES)	$(LOCAL_LIBS)	test_vid_puts
+ test_vidputs	$(LDFLAGS_CURSES)	$(LOCAL_LIBS)	test_vidputs
+ testaddch	$(LDFLAGS_CURSES)	$(LOCAL_LIBS)	testaddch
+diff --git a/test/test_sgr.c b/test/test_sgr.c
+new file mode 100644
+index 0000000..cff9d0d
+--- /dev/null
++++ b/test/test_sgr.c
+@@ -0,0 +1,363 @@
++/****************************************************************************
++ * Copyright (c) 2015 Free Software Foundation, Inc.                        *
++ *                                                                          *
++ * Permission is hereby granted, free of charge, to any person obtaining a  *
++ * copy of this software and associated documentation files (the            *
++ * "Software"), to deal in the Software without restriction, including      *
++ * without limitation the rights to use, copy, modify, merge, publish,      *
++ * distribute, distribute with modifications, sublicense, and/or sell       *
++ * copies of the Software, and to permit persons to whom the Software is    *
++ * furnished to do so, subject to the following conditions:                 *
++ *                                                                          *
++ * The above copyright notice and this permission notice shall be included  *
++ * in all copies or substantial portions of the Software.                   *
++ *                                                                          *
++ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS  *
++ * OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF               *
++ * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.   *
++ * IN NO EVENT SHALL THE ABOVE COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,   *
++ * DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR    *
++ * OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR    *
++ * THE USE OR OTHER DEALINGS IN THE SOFTWARE.                               *
++ *                                                                          *
++ * Except as contained in this notice, the name(s) of the above copyright   *
++ * holders shall not be used in advertising or otherwise to promote the     *
++ * sale, use or other dealings in this Software without prior written       *
++ * authorization.                                                           *
++ ****************************************************************************/
++
++/*
++ * Author: Thomas E. Dickey
++ *
++ * $Id: test_sgr.c,v 1.4 2015/11/21 22:43:50 tom Exp $
++ *
++ * A simple demo of the sgr/sgr0 terminal capabilities.
++ */
++#define USE_TINFO
++#include <test.priv.h>
++
++static void failed(const char *) GCC_NORETURN;
++
++static void
++failed(const char *msg)
++{
++    fprintf(stderr, "%s\n", msg);
++    ExitProgram(EXIT_FAILURE);
++}
++
++#if HAVE_TIGETSTR
++
++static bool q_opt = FALSE;
++
++static char *d_opt;
++static char *e_opt;
++static char **db_list;
++static int db_item;
++
++static long total_values;
++
++static char *
++make_dbitem(char *p, char *q)
++{
++    char *result = malloc(strlen(e_opt) + 2 + (size_t) (p - q));
++    sprintf(result, "%s=%.*s", e_opt, (int) (p - q), q);
++    return result;
++}
++
++static void
++make_dblist(void)
++{
++    if (d_opt && e_opt) {
++	int pass;
++
++	for (pass = 0; pass < 2; ++pass) {
++	    char *p, *q;
++	    size_t count = 0;
++
++	    for (p = q = d_opt; *p != '\0'; ++p) {
++		if (*p == ':') {
++		    if (p != q + 1) {
++			if (pass) {
++			    db_list[count] = make_dbitem(p, q);
++			}
++			count++;
++		    }
++		    q = p + 1;
++		}
++	    }
++	    if (p != q + 1) {
++		if (pass) {
++		    db_list[count] = make_dbitem(p, q);
++		}
++		count++;
++	    }
++	    if (!pass) {
++		db_list = typeCalloc(char *, count + 1);
++	    }
++	}
++    }
++}
++
++static char *
++next_dbitem(void)
++{
++    char *result = 0;
++
++    if (db_list) {
++	if ((result = db_list[db_item]) == 0) {
++	    db_item = 0;
++	    result = db_list[0];
++	} else {
++	    db_item++;
++	}
++    }
++    printf("** %s\n", result);
++    return result;
++}
++
++#ifdef NO_LEAKS
++static void
++free_dblist(void)
++{
++    if (db_list) {
++	int n;
++	for (n = 0; db_list[n]; ++n)
++	    free(db_list[n]);
++	free(db_list);
++	db_list = 0;
++    }
++}
++#endif
++
++#define MAXPAR    9
++#define MAXSGR    (1 << MAXPAR)
++#define BITS2P(n) (count & (1 << (n - 1)))
++#define MASK_SMSO (1 << 0)
++#define MASK_BOLD (1 << 5)
++#define MASK_REV  (1 << 2)
++
++static void
++dumpit(unsigned bits, unsigned ignore, const char *sgr, const char *sgr0)
++{
++    static const char sample[] = "abcdefghijklm";
++    static char params[] = "SURBDBIPA";
++    unsigned n;
++
++    printf("%4d ", bits);
++    bits &= ~ignore;
++    for (n = 0; n < MAXPAR; ++n) {
++	putchar((bits & (1 << n)) ? params[n] : '-');
++    }
++    putchar(' ');
++    putp(sgr);
++    putp(sample);
++    putp(sgr0);
++    putchar('\n');
++}
++
++static bool
++one_bit(unsigned a, unsigned b)
++{
++    unsigned c = (a ^ b);
++    bool result = FALSE;
++    if (c) {
++	while (!(c & 1)) {
++	    c >>= 1;
++	}
++	result = (c == 1);
++    }
++    return result;
++}
++
++static void
++brute_force(const char *name)
++{
++    unsigned count;
++    char *my_sgr;
++    char *my_sgr0;
++    char *my_bold;
++    char *my_revs;
++    char *my_smso;
++
++    if (db_list) {
++	putenv(next_dbitem());
++    }
++    if (!q_opt)
++	printf("Terminal type \"%s\"\n", name);
++    setupterm((NCURSES_CONST char *) name, 1, (int *) 0);
++    if (!q_opt) {
++	if (strcmp(name, ttytype))
++	    printf("... actual \"%s\"\n", ttytype);
++    }
++
++    my_sgr = tigetstr("sgr");
++    my_sgr0 = tigetstr("sgr0");
++    my_bold = tigetstr("bold");
++    my_revs = tigetstr("rev");
++    my_smso = tigetstr("smso");
++
++    if (!VALID_STRING(my_sgr)) {
++	fprintf(stderr, "no \"sgr\" capability found\n");
++    } else if (!VALID_STRING(my_sgr0)) {
++	fprintf(stderr, "no \"sgr0\" capability found\n");
++    } else {
++	char *values[MAXSGR];
++	unsigned j;
++	unsigned ignore = 0;
++	unsigned reason = 0;
++	unsigned repeat = 0;
++	for (count = 0; count < MAXSGR; ++count) {
++	    values[count] = tparm(my_sgr,
++				  BITS2P(1),
++				  BITS2P(2),
++				  BITS2P(3),
++				  BITS2P(4),
++				  BITS2P(5),
++				  BITS2P(6),
++				  BITS2P(7),
++				  BITS2P(8),
++				  BITS2P(9));
++	    if (values[count] != 0) {
++		values[count] = strdup(values[count]);
++	    }
++	}
++	for (count = 0; count < MAXSGR; ++count) {
++	    if (values[count] != 0) {
++		for (j = count + 1; j < MAXSGR; ++j) {
++		    if (values[j] == 0)
++			continue;
++		    if (strcmp(values[count], values[j]))
++			continue;
++		    if (one_bit(count, j)) {
++			free(values[j]);
++			values[j] = 0;
++		    }
++		}
++	    }
++	}
++	for (j = 0; j < MAXPAR; ++j) {
++	    unsigned mask = (1 << j);
++	    for (count = 0; count < MAXSGR; ++count) {
++		if ((count & mask) != 0)
++		    continue;
++		if (values[count] != 0 && values[count + mask] != 0) {
++		    mask = 0;
++		    break;
++		}
++	    }
++	    ignore |= mask;
++	}
++	/* smso is tested first, but often duplicates bold or reverse. */
++	if (VALID_STRING(my_smso)) {
++	    if (VALID_STRING(my_bold) && !strcmp(my_bold, my_smso)) {
++		repeat |= MASK_SMSO;
++		reason = MASK_BOLD;
++	    }
++	    if (VALID_STRING(my_revs) && !strcmp(my_revs, my_smso)) {
++		repeat |= MASK_SMSO;
++		reason = MASK_REV;
++	    }
++	}
++	for (count = 0; count < MAXSGR; ++count) {
++	    if (values[count] != 0) {
++		bool found = FALSE;
++		if ((repeat & MASK_SMSO) != 0
++		    && (count & MASK_SMSO) != 0) {
++		    found = TRUE;
++		} else {
++		    for (j = 0; j < count; ++j) {
++			if (values[j] != 0 && !strcmp(values[j], values[count])) {
++			    if ((repeat & MASK_SMSO) != 0
++				&& (j & MASK_SMSO) != 0
++				&& (count & reason) != 0) {
++				continue;
++			    }
++			    found = TRUE;
++			    break;
++			}
++		    }
++		}
++		if (!found) {
++		    dumpit(count, ignore, values[count], my_sgr0);
++		    ++total_values;
++		}
++	    }
++	}
++    }
++    del_curterm(cur_term);
++}
++
++static void
++usage(void)
++{
++    static const char *msg[] =
++    {
++	"Usage: test_sgr [options] [terminal]",
++	"",
++	"Print all distinct combinations of sgr capability.",
++	"",
++	"Options:",
++	" -d LIST  colon-separated list of databases to use",
++	" -e NAME  environment variable to set with -d option",
++	" -q       quiet (prints only counts)",
++    };
++    unsigned n;
++    for (n = 0; n < SIZEOF(msg); ++n) {
++	fprintf(stderr, "%s\n", msg[n]);
++    }
++    ExitProgram(EXIT_FAILURE);
++}
++
++int
++main(int argc, char *argv[])
++{
++    int n;
++    char *name;
++
++    while ((n = getopt(argc, argv, "d:e:q")) != -1) {
++	switch (n) {
++	case 'd':
++	    d_opt = optarg;
++	    break;
++	case 'e':
++	    e_opt = optarg;
++	    break;
++	case 'q':
++	    q_opt = TRUE;
++	    break;
++	default:
++	    usage();
++	    break;
++	}
++    }
++
++    make_dblist();
++
++    if (optind < argc) {
++	for (n = optind; n < argc; ++n) {
++	    brute_force(argv[n]);
++	}
++    } else if ((name = getenv("TERM")) != 0) {
++	brute_force(name);
++    } else {
++	static char dumb[] = "dumb";
++	brute_force(dumb);
++    }
++
++    printf("%ld distinct values\n", total_values);
++
++#ifdef NO_LEAKS
++    free_dblist();
++#endif
++
++    ExitProgram(EXIT_SUCCESS);
++}
++
++#else /* !HAVE_TIGETSTR */
++int
++main(int argc GCC_UNUSED, char *argv[]GCC_UNUSED)
++{
++    failed("This program requires the terminfo functions such as tigetstr");
++    ExitProgram(EXIT_FAILURE);
++}
++#endif /* HAVE_TIGETSTR */
+-- 
+2.9.1
+

@@ -1,0 +1,947 @@
+From 5dbe81a41e3c75806996cd762b9e55dcc9edb835 Mon Sep 17 00:00:00 2001
+From: "Thomas E. Dickey" <dickey@invisible-island.net>
+Date: Sun, 15 May 2016 01:40:05 +0000
+Subject: [PATCH 35/50] ncurses 6.0 - patch 20160514
+
++ regenerate HTML manpages.
++ improve manual pages for wgetch and wget_wch to point out that they
+  might return values without names in curses.h (Debian #822426).
++ make linux3.0 entry the default linux entry (Debian #823658) -TD
++ modify linux2.6 entry to improve line-drawing so that the linux3.0
+  entry can be used in non-UTF-8 mode -TD
++ document return value of use_extended_names (report by Mike Gran).
+---
+ NEWS                              | 11 ++++-
+ VERSION                           |  2 +-
+ dist.mk                           |  4 +-
+ doc/html/man/captoinfo.1m.html    |  2 +-
+ doc/html/man/clear.1.html         |  2 +-
+ doc/html/man/curs_extend.3x.html  | 24 +++++++++--
+ doc/html/man/curs_get_wch.3x.html | 89 ++++++++++++++++++++++-----------------
+ doc/html/man/curs_getch.3x.html   | 24 +++++++----
+ doc/html/man/form.3x.html         |  2 +-
+ doc/html/man/infocmp.1m.html      |  2 +-
+ doc/html/man/infotocap.1m.html    |  2 +-
+ doc/html/man/menu.3x.html         |  2 +-
+ doc/html/man/ncurses.3x.html      |  2 +-
+ doc/html/man/panel.3x.html        |  2 +-
+ doc/html/man/tabs.1.html          |  2 +-
+ doc/html/man/terminfo.5.html      |  2 +-
+ doc/html/man/tic.1m.html          |  2 +-
+ doc/html/man/toe.1m.html          |  2 +-
+ doc/html/man/tput.1.html          |  2 +-
+ doc/html/man/tset.1.html          | 35 +++++++++------
+ man/curs_extend.3x                | 13 +++++-
+ man/curs_get_wch.3x               | 32 ++++++++++----
+ man/curs_getch.3x                 | 19 ++++++---
+ misc/terminfo.src                 | 26 ++++++++----
+ package/debian-mingw/changelog    |  4 +-
+ package/debian-mingw64/changelog  |  4 +-
+ package/debian/changelog          |  4 +-
+ package/mingw-ncurses.nsi         |  4 +-
+ package/mingw-ncurses.spec        |  2 +-
+ package/ncurses.spec              |  2 +-
+ 30 files changed, 210 insertions(+), 115 deletions(-)
+
+diff --git a/NEWS b/NEWS
+index f2c8b78..4538903 100644
+--- a/NEWS
++++ b/NEWS
+@@ -25,7 +25,7 @@
+ -- sale, use or other dealings in this Software without prior written        --
+ -- authorization.                                                            --
+ -------------------------------------------------------------------------------
+--- $Id: NEWS,v 1.2600 2016/05/07 23:49:50 tom Exp $
++-- $Id: NEWS,v 1.2606 2016/05/15 01:20:32 tom Exp $
+ -------------------------------------------------------------------------------
+ 
+ This is a log of changes that ncurses has gone through since Zeyd started
+@@ -45,6 +45,15 @@ See the AUTHORS file for the corresponding full names.
+ Changes through 1.9.9e did not credit all contributions;
+ it is not possible to add this information.
+ 
++20160514
++	+ regenerate HTML manpages.
++	+ improve manual pages for wgetch and wget_wch to point out that they
++	  might return values without names in curses.h (Debian #822426).
++	+ make linux3.0 entry the default linux entry (Debian #823658) -TD
++	+ modify linux2.6 entry to improve line-drawing so that the linux3.0
++	  entry can be used in non-UTF-8 mode -TD
++	+ document return value of use_extended_names (report by Mike Gran).
++
+ 20160507
+ 	+ amend change to _nc_do_color to restore the early return for the
+ 	  special case used in _nc_screen_wrap (report by Dick Streefland,
+diff --git a/VERSION b/VERSION
+index 88b60d6..38770d6 100644
+--- a/VERSION
++++ b/VERSION
+@@ -1 +1 @@
+-5:0:9	6.0	20160507
++5:0:9	6.0	20160514
+diff --git a/dist.mk b/dist.mk
+index 35dde3f..94ea1f4 100644
+--- a/dist.mk
++++ b/dist.mk
+@@ -25,7 +25,7 @@
+ # use or other dealings in this Software without prior written               #
+ # authorization.                                                             #
+ ##############################################################################
+-# $Id: dist.mk,v 1.1104 2016/05/07 17:04:36 tom Exp $
++# $Id: dist.mk,v 1.1106 2016/05/14 16:50:48 tom Exp $
+ # Makefile for creating ncurses distributions.
+ #
+ # This only needs to be used directly as a makefile by developers, but
+@@ -37,7 +37,7 @@ SHELL = /bin/sh
+ # These define the major/minor/patch versions of ncurses.
+ NCURSES_MAJOR = 6
+ NCURSES_MINOR = 0
+-NCURSES_PATCH = 20160507
++NCURSES_PATCH = 20160514
+ 
+ # We don't append the patch to the version, since this only applies to releases
+ VERSION = $(NCURSES_MAJOR).$(NCURSES_MINOR)
+diff --git a/doc/html/man/captoinfo.1m.html b/doc/html/man/captoinfo.1m.html
+index 41199b6..c8f22d6 100644
+--- a/doc/html/man/captoinfo.1m.html
++++ b/doc/html/man/captoinfo.1m.html
+@@ -198,7 +198,7 @@
+ </PRE><H2><a name="h2-SEE-ALSO">SEE ALSO</a></H2><PRE>
+        <STRONG><A HREF="infocmp.1m.html">infocmp(1m)</A></STRONG>, <STRONG><A HREF="ncurses.3x.html">curses(3x)</A></STRONG>, <STRONG><A HREF="terminfo.5.html">terminfo(5)</A></STRONG>
+ 
+-       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160402).
++       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160514).
+ 
+ 
+ </PRE><H2><a name="h2-AUTHOR">AUTHOR</a></H2><PRE>
+diff --git a/doc/html/man/clear.1.html b/doc/html/man/clear.1.html
+index a35a8eb..6399bab 100644
+--- a/doc/html/man/clear.1.html
++++ b/doc/html/man/clear.1.html
+@@ -67,7 +67,7 @@
+ </PRE><H2><a name="h2-SEE-ALSO">SEE ALSO</a></H2><PRE>
+        <STRONG><A HREF="tput.1.html">tput(1)</A></STRONG>, <STRONG><A HREF="terminfo.5.html">terminfo(5)</A></STRONG>
+ 
+-       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160402).
++       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160514).
+ 
+ 
+ 
+diff --git a/doc/html/man/curs_extend.3x.html b/doc/html/man/curs_extend.3x.html
+index 224f5ad..2ad268f 100644
+--- a/doc/html/man/curs_extend.3x.html
++++ b/doc/html/man/curs_extend.3x.html
+@@ -1,6 +1,6 @@
+ <!-- 
+   ****************************************************************************
+-  * Copyright (c) 1999-2006,2010 Free Software Foundation, Inc.              *
++  * Copyright (c) 1999-2010,2016 Free Software Foundation, Inc.              *
+   *                                                                          *
+   * Permission is hereby granted, free of charge, to any person obtaining a  *
+   * copy of this software and associated documentation files (the            *
+@@ -27,7 +27,7 @@
+   * authorization.                                                           *
+   ****************************************************************************
+   * Author: Thomas E. Dickey 1999-on
+-  * @Id: curs_extend.3x,v 1.19 2010/12/04 18:36:44 tom Exp @
++  * @Id: curs_extend.3x,v 1.20 2016/05/14 23:10:54 tom Exp @
+ -->
+ <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN">
+ <HTML>
+@@ -62,9 +62,13 @@
+        These functions are extensions to the curses library which
+        do not fit easily into other categories.
+ 
++
++</PRE><H3><a name="h3-curses_version">curses_version</a></H3><PRE>
+        Use  <EM>curses</EM><STRONG>_</STRONG><EM>version()</EM> to get the version number, including
+        patch level of the library, e.g., <STRONG>5.0.19991023</STRONG>
+ 
++
++</PRE><H3><a name="h3-use_extended_names">use_extended_names</a></H3><PRE>
+        The <EM>use</EM><STRONG>_</STRONG><EM>extended</EM><STRONG>_</STRONG><EM>names()</EM>  function  controls  whether  the
+        calling  application  is  able to use user-defined or non-
+        standard names which may be  compiled  into  the  terminfo
+@@ -76,6 +80,14 @@
+        implementations of curses.
+ 
+ 
++</PRE><H2><a name="h2-RETURN-VALUE">RETURN VALUE</a></H2><PRE>
++       <STRONG>curses_version</STRONG> returns a pointer  to  static  memory;  you
++       should not free this in your application.
++
++       <STRONG>use_extended_names</STRONG>  returns  the  previous state, allowing
++       you to save this and restore it.
++
++
+ </PRE><H2><a name="h2-PORTABILITY">PORTABILITY</a></H2><PRE>
+        These routines are specific to  ncurses.   They  were  not
+        supported  on  Version 7, BSD or System V implementations.
+@@ -100,7 +112,13 @@
+ <ul>
+ <li><a href="#h2-NAME">NAME</a></li>
+ <li><a href="#h2-SYNOPSIS">SYNOPSIS</a></li>
+-<li><a href="#h2-DESCRIPTION">DESCRIPTION</a></li>
++<li><a href="#h2-DESCRIPTION">DESCRIPTION</a>
++<ul>
++<li><a href="#h3-curses_version">curses_version</a></li>
++<li><a href="#h3-use_extended_names">use_extended_names</a></li>
++</ul>
++</li>
++<li><a href="#h2-RETURN-VALUE">RETURN VALUE</a></li>
+ <li><a href="#h2-PORTABILITY">PORTABILITY</a></li>
+ <li><a href="#h2-SEE-ALSO">SEE ALSO</a></li>
+ <li><a href="#h2-AUTHOR">AUTHOR</a></li>
+diff --git a/doc/html/man/curs_get_wch.3x.html b/doc/html/man/curs_get_wch.3x.html
+index d75b724..5229b8b 100644
+--- a/doc/html/man/curs_get_wch.3x.html
++++ b/doc/html/man/curs_get_wch.3x.html
+@@ -1,6 +1,6 @@
+ <!-- 
+   ****************************************************************************
+-  * Copyright (c) 2002-2010,2012 Free Software Foundation, Inc.              *
++  * Copyright (c) 2002-2012,2016 Free Software Foundation, Inc.              *
+   *                                                                          *
+   * Permission is hereby granted, free of charge, to any person obtaining a  *
+   * copy of this software and associated documentation files (the            *
+@@ -26,7 +26,7 @@
+   * sale, use or other dealings in this Software without prior written       *
+   * authorization.                                                           *
+   ****************************************************************************
+-  * @Id: curs_get_wch.3x,v 1.8 2012/11/03 23:03:59 tom Exp @
++  * @Id: curs_get_wch.3x,v 1.9 2016/05/15 01:12:50 tom Exp @
+ -->
+ <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN">
+ <HTML>
+@@ -46,9 +46,9 @@
+ 
+ 
+ </PRE><H2><a name="h2-NAME">NAME</a></H2><PRE>
+-       <STRONG>get_wch</STRONG>,  <STRONG>wget_wch</STRONG>, <STRONG>mvget_wch</STRONG>, <STRONG>mvwget_wch</STRONG>, <STRONG>unget_wch</STRONG> - get
+-       (or push back) a wide character from curses terminal  key-
+-       board
++       <STRONG>get_wch</STRONG>, <STRONG>wget_wch</STRONG>, <STRONG>mvget_wch</STRONG>, <STRONG>mvwget_wch</STRONG>, <STRONG>unget_wch</STRONG> - get
++       (or push back) a wide character from curses terminal
++       keyboard
+ 
+ 
+ </PRE><H2><a name="h2-SYNOPSIS">SYNOPSIS</a></H2><PRE>
+@@ -64,14 +64,14 @@
+ </PRE><H2><a name="h2-DESCRIPTION">DESCRIPTION</a></H2><PRE>
+        The <STRONG>get_wch</STRONG>, <STRONG>wget_wch</STRONG>, <STRONG>mvget_wch</STRONG>, and <STRONG>mvwget_wch</STRONG> functions
+        read a character from the  terminal  associated  with  the
+-       current  or  specified  window.   In  no-delay mode, if no
+-       input is waiting, the value <STRONG>ERR</STRONG>  is  returned.   In  delay
+-       mode,  the  program  waits  until  the  system passes text
+-       through to the  program.   Depending  on  the  setting  of
+-       <STRONG>cbreak</STRONG>,  this  is  after  one  character (cbreak mode), or
+-       after the first newline (nocbreak  mode).   In  half-delay
+-       mode,  the  program waits until the user types a character
+-       or the specified timeout interval has elapsed.
++       current  or specified window.  In no-delay mode, if no in-
++       put is waiting, the value <STRONG>ERR</STRONG> is returned.  In delay mode,
++       the  program waits until the system passes text through to
++       the program.  Depending on the setting of <STRONG>cbreak</STRONG>, this  is
++       after one character (cbreak mode), or after the first new-
++       line (nocbreak mode).  In  half-delay  mode,  the  program
++       waits  until  the  user types a character or the specified
++       timeout interval has elapsed.
+ 
+        Unless <STRONG>noecho</STRONG> has been set, these routines echo the  char-
+        acter into the designated window.
+@@ -82,59 +82,70 @@
+ 
+        If  <STRONG>keypad</STRONG>  is  enabled,  these  functions  respond to the
+        pressing of a function key by setting the  object  pointed
+-       to  by  <EM>wch</EM>  to  the  corresponding  <STRONG>KEY_</STRONG> value defined in
+-       <STRONG>&lt;curses.h&gt;</STRONG> and returning  <STRONG>KEY_CODE_YES</STRONG>.   If  a  character
+-       (such as escape) that could be the beginning of a function
+-       key is received, curses sets a timer.  If the remainder of
+-       the  sequence  does  arrive  within  the  designated time,
+-       curses passes through  the  character;  otherwise,  curses
+-       returns  the  function  key  value.  For this reason, many
+-       terminals experience a  delay  between  the  time  a  user
+-       presses the escape key and the time the escape is returned
+-       to the program.
+-
+-       The <STRONG>unget_wch</STRONG> function pushes the wide character <EM>wch</EM>  back
++       to by <EM>wch</EM> to the keycode assigned to the function key, and
++       returning <STRONG>KEY_CODE_YES</STRONG>.  If a character (such  as  escape)
++       that could be the beginning of a function key is received,
++       curses sets a timer.  If the  remainder  of  the  sequence
++       does  arrive  within  the  designated  time, curses passes
++       through the character; otherwise, curses returns the func-
++       tion  key  value.  For this reason, many terminals experi-
++       ence a delay between the time a user  presses  the  escape
++       key and the time the escape is returned to the program.
++
++       The  keycodes  returned by these functions are the same as
++       those returned by <STRONG>wgetch</STRONG>:
++
++       <STRONG>o</STRONG>   The predefined function keys are listed in  <STRONG>&lt;curses.h&gt;</STRONG>
++           as macros with values outside the range of 8-bit char-
++           acters.  Their names begin with <STRONG>KEY_</STRONG>.
++
++       <STRONG>o</STRONG>   Other (user-defined) function keys which  may  be  de-
++           fined using <STRONG><A HREF="define_key.3x.html">define_key(3x)</A></STRONG> have no names, but also are
++           expected to have values outside  the  range  of  8-bit
++           characters.
++
++       The  <STRONG>unget_wch</STRONG> function pushes the wide character <EM>wch</EM> back
+        onto the head of the input queue, so the wide character is
+        returned by the next call to <STRONG>get_wch</STRONG>.  The pushback of one
+-       character  is  guaranteed.  If the program calls <STRONG>unget_wch</STRONG>
++       character is guaranteed.  If the program  calls  <STRONG>unget_wch</STRONG>
+        too many times without an intervening call to <STRONG>get_wch</STRONG>, the
+        operation may fail.
+ 
+ 
+ </PRE><H2><a name="h2-NOTES">NOTES</a></H2><PRE>
+-       The  header  file  <STRONG>&lt;curses.h&gt;</STRONG>  automatically  includes the
++       The header  file  <STRONG>&lt;curses.h&gt;</STRONG>  automatically  includes  the
+        header file <STRONG>&lt;stdio.h&gt;</STRONG>.
+ 
+        Applications should not define the escape key by itself as
+        a single-character function.
+ 
+-       When  using  <STRONG>get_wch</STRONG>,  <STRONG>wget_wch</STRONG>, <STRONG>mvget_wch</STRONG>, or <STRONG>mvwget_wch</STRONG>,
++       When using <STRONG>get_wch</STRONG>, <STRONG>wget_wch</STRONG>,  <STRONG>mvget_wch</STRONG>,  or  <STRONG>mvwget_wch</STRONG>,
+        applications should not use <STRONG>nocbreak</STRONG> mode and <STRONG>echo</STRONG> mode at
+-       the  same  time.  Depending on the state of the tty driver
+-       when each character is  typed,  the  program  may  produce
+-       undesirable results.
++       the same time.  Depending on the state of the  tty  driver
++       when  each character is typed, the program may produce un-
++       desirable results.
+ 
+        All functions except <STRONG>wget_wch</STRONG> and <STRONG>unget_wch</STRONG> may be macros.
+ 
+ 
+ </PRE><H2><a name="h2-RETURN-VALUE">RETURN VALUE</a></H2><PRE>
+-       When  <STRONG>get_wch</STRONG>,  <STRONG>wget_wch</STRONG>,  <STRONG>mvget_wch</STRONG>, and <STRONG>mvwget_wch</STRONG> func-
+-       tions successfully report the pressing of a function  key,
++       When <STRONG>get_wch</STRONG>, <STRONG>wget_wch</STRONG>, <STRONG>mvget_wch</STRONG>,  and  <STRONG>mvwget_wch</STRONG>  func-
++       tions  successfully report the pressing of a function key,
+        they return <STRONG>KEY_CODE_YES</STRONG>.  When they successfully report a
+-       wide character, they return <STRONG>OK</STRONG>.   Otherwise,  they  return
++       wide  character,  they  return <STRONG>OK</STRONG>.  Otherwise, they return
+        <STRONG>ERR</STRONG>.
+ 
+-       Upon  successful completion, <STRONG>unget_wch</STRONG> returns <STRONG>OK</STRONG>.  Other-
++       Upon successful completion, <STRONG>unget_wch</STRONG> returns <STRONG>OK</STRONG>.   Other-
+        wise, the function returns <STRONG>ERR</STRONG>.
+ 
+-       Functions with a "mv" prefix first perform a cursor  move-
+-       ment  using  <STRONG>wmove</STRONG>, and return an error if the position is
++       Functions  with a "mv" prefix first perform a cursor move-
++       ment using <STRONG>wmove</STRONG>, and return an error if the  position  is
+        outside the window, or if the window pointer is null.
+ 
+ 
+ </PRE><H2><a name="h2-SEE-ALSO">SEE ALSO</a></H2><PRE>
+-       <STRONG><A HREF="ncurses.3x.html">curses(3x)</A></STRONG>,       <STRONG><A HREF="curs_getch.3x.html">curs_getch(3x)</A></STRONG>,        <STRONG><A HREF="curs_ins_wch.3x.html">curs_ins_wch(3x)</A></STRONG>,
+-       <STRONG><A HREF="curs_inopts.3x.html">curs_inopts(3x)</A></STRONG>, <STRONG><A HREF="curs_move.3x.html">curs_move(3x)</A></STRONG>, <STRONG><A HREF="curs_refresh.3x.html">curs_refresh(3x)</A></STRONG>
++       <STRONG><A HREF="ncurses.3x.html">curses(3x)</A></STRONG>,   <STRONG><A HREF="curs_getch.3x.html">curs_getch(3x)</A></STRONG>,  <STRONG><A HREF="curs_ins_wch.3x.html">curs_ins_wch(3x)</A></STRONG>,  <STRONG>curs_in-</STRONG>
++       <STRONG><A HREF="curs_inopts.3x.html">opts(3x)</A></STRONG>, <STRONG><A HREF="curs_move.3x.html">curs_move(3x)</A></STRONG>, <STRONG><A HREF="curs_refresh.3x.html">curs_refresh(3x)</A></STRONG>
+ 
+ 
+ 
+diff --git a/doc/html/man/curs_getch.3x.html b/doc/html/man/curs_getch.3x.html
+index 1a3b376..90d336f 100644
+--- a/doc/html/man/curs_getch.3x.html
++++ b/doc/html/man/curs_getch.3x.html
+@@ -1,7 +1,7 @@
+ <!-- 
+   * t
+   ****************************************************************************
+-  * Copyright (c) 1998-2014,2015 Free Software Foundation, Inc.              *
++  * Copyright (c) 1998-2015,2016 Free Software Foundation, Inc.              *
+   *                                                                          *
+   * Permission is hereby granted, free of charge, to any person obtaining a  *
+   * copy of this software and associated documentation files (the            *
+@@ -27,7 +27,7 @@
+   * sale, use or other dealings in this Software without prior written       *
+   * authorization.                                                           *
+   ****************************************************************************
+-  * @Id: curs_getch.3x,v 1.44 2015/12/20 01:43:03 tom Exp @
++  * @Id: curs_getch.3x,v 1.45 2016/05/15 01:05:18 tom Exp @
+ -->
+ <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN">
+ <HTML>
+@@ -102,11 +102,19 @@
+ </PRE><H3><a name="h3-Keypad-mode">Keypad mode</a></H3><PRE>
+        If  <STRONG>keypad</STRONG> is <STRONG>TRUE</STRONG>, and a function key is pressed, the to-
+        ken for that function key is returned instead of  the  raw
+-       characters.   Possible function keys are defined in <STRONG>&lt;curs-</STRONG>
+-       <STRONG>es.h&gt;</STRONG> as macros with values outside  the  range  of  8-bit
+-       characters  whose names begin with <STRONG>KEY_</STRONG>.  Thus, a variable
+-       intended to hold the return value of a function  key  must
+-       be of short size or larger.
++       characters:
++
++       <STRONG>o</STRONG>   The  predefined function keys are listed in <STRONG>&lt;curses.h&gt;</STRONG>
++           as macros with values outside the range of 8-bit char-
++           acters.  Their names begin with <STRONG>KEY_</STRONG>.
++
++       <STRONG>o</STRONG>   Other  (user-defined)  function  keys which may be de-
++           fined using <STRONG><A HREF="define_key.3x.html">define_key(3x)</A></STRONG> have no names, but also are
++           expected  to  have  values  outside the range of 8-bit
++           characters.
++
++       Thus, a variable intended to hold the return  value  of  a
++       function key must be of short size or larger.
+ 
+        When a character that could be the beginning of a function
+        key is received (which, on modern terminals, means an  es-
+@@ -171,6 +179,7 @@
+             KEY_RESET       Reset or hard reset
+             KEY_PRINT       Print or copy
+             KEY_LL          Home down or bottom (lower left)
++
+             KEY_A1          Upper left of keypad
+             KEY_A3          Upper right of keypad
+             KEY_B2          Center of keypad
+@@ -179,7 +188,6 @@
+             KEY_BTAB        Back tab key
+             KEY_BEG         Beg(inning) key
+             KEY_CANCEL      Cancel key
+-
+             KEY_CLOSE       Close key
+             KEY_COMMAND     Cmd (command) key
+             KEY_COPY        Copy key
+diff --git a/doc/html/man/form.3x.html b/doc/html/man/form.3x.html
+index f157f61..e2191d2 100644
+--- a/doc/html/man/form.3x.html
++++ b/doc/html/man/form.3x.html
+@@ -235,7 +235,7 @@
+        <STRONG><A HREF="ncurses.3x.html">curses(3x)</A></STRONG> and related pages whose names begin "form_" for
+        detailed descriptions of the entry points.
+ 
+-       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160402).
++       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160514).
+ 
+ 
+ 
+diff --git a/doc/html/man/infocmp.1m.html b/doc/html/man/infocmp.1m.html
+index 979e3b4..32a24bd 100644
+--- a/doc/html/man/infocmp.1m.html
++++ b/doc/html/man/infocmp.1m.html
+@@ -475,7 +475,7 @@
+ 
+        http://invisible-island.net/ncurses/tctest.html
+ 
+-       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160402).
++       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160514).
+ 
+ 
+ </PRE><H2><a name="h2-AUTHOR">AUTHOR</a></H2><PRE>
+diff --git a/doc/html/man/infotocap.1m.html b/doc/html/man/infotocap.1m.html
+index 2451209..fa07eac 100644
+--- a/doc/html/man/infotocap.1m.html
++++ b/doc/html/man/infotocap.1m.html
+@@ -88,7 +88,7 @@
+ </PRE><H2><a name="h2-SEE-ALSO">SEE ALSO</a></H2><PRE>
+        <STRONG><A HREF="ncurses.3x.html">curses(3x)</A></STRONG>, <STRONG><A HREF="tic.1m.html">tic(1m)</A></STRONG>, <STRONG><A HREF="infocmp.1m.html">infocmp(1m)</A></STRONG>, <STRONG><A HREF="terminfo.5.html">terminfo(5)</A></STRONG>
+ 
+-       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160402).
++       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160514).
+ 
+ 
+ </PRE><H2><a name="h2-AUTHOR">AUTHOR</a></H2><PRE>
+diff --git a/doc/html/man/menu.3x.html b/doc/html/man/menu.3x.html
+index a0d1e65..4704f59 100644
+--- a/doc/html/man/menu.3x.html
++++ b/doc/html/man/menu.3x.html
+@@ -217,7 +217,7 @@
+        <STRONG><A HREF="ncurses.3x.html">curses(3x)</A></STRONG> and related pages whose names begin "menu_" for
+        detailed descriptions of the entry points.
+ 
+-       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160402).
++       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160514).
+ 
+ 
+ 
+diff --git a/doc/html/man/ncurses.3x.html b/doc/html/man/ncurses.3x.html
+index 52c3eac..6a0f8f9 100644
+--- a/doc/html/man/ncurses.3x.html
++++ b/doc/html/man/ncurses.3x.html
+@@ -60,7 +60,7 @@
+        sonable optimization.  This implementation is "new curses"
+        (ncurses) and is the approved replacement for 4.4BSD clas-
+        sic  curses,  which has been discontinued.  This describes
+-       <STRONG>ncurses</STRONG> version 6.0 (patch 20160402).
++       <STRONG>ncurses</STRONG> version 6.0 (patch 20160514).
+ 
+        The <STRONG>ncurses</STRONG> library emulates the curses library of  System
+        V  Release  4  UNIX,  and  XPG4 (X/Open Portability Guide)
+diff --git a/doc/html/man/panel.3x.html b/doc/html/man/panel.3x.html
+index f69ccea..e270043 100644
+--- a/doc/html/man/panel.3x.html
++++ b/doc/html/man/panel.3x.html
+@@ -209,7 +209,7 @@
+ </PRE><H2><a name="h2-SEE-ALSO">SEE ALSO</a></H2><PRE>
+        <STRONG><A HREF="ncurses.3x.html">curses(3x)</A></STRONG>, <STRONG><A HREF="curs_variables.3x.html">curs_variables(3x)</A></STRONG>,
+ 
+-       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160402).
++       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160514).
+ 
+ 
+ </PRE><H2><a name="h2-AUTHOR">AUTHOR</a></H2><PRE>
+diff --git a/doc/html/man/tabs.1.html b/doc/html/man/tabs.1.html
+index 1c34f9d..8fbe88e 100644
+--- a/doc/html/man/tabs.1.html
++++ b/doc/html/man/tabs.1.html
+@@ -164,7 +164,7 @@
+ </PRE><H2><a name="h2-SEE-ALSO">SEE ALSO</a></H2><PRE>
+        <STRONG><A HREF="tset.1.html">tset(1)</A></STRONG>, <STRONG><A HREF="infocmp.1m.html">infocmp(1m)</A></STRONG>, <STRONG><A HREF="ncurses.3x.html">curses(3x)</A></STRONG>, <STRONG><A HREF="terminfo.5.html">terminfo(5)</A></STRONG>.
+ 
+-       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160402).
++       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160514).
+ 
+ 
+ 
+diff --git a/doc/html/man/terminfo.5.html b/doc/html/man/terminfo.5.html
+index 5a6c87f..d7d88a2 100644
+--- a/doc/html/man/terminfo.5.html
++++ b/doc/html/man/terminfo.5.html
+@@ -75,7 +75,7 @@
+        nals by giving a set of capabilities which they  have,  by
+        specifying how to perform screen operations, and by speci-
+        fying padding requirements and  initialization  sequences.
+-       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160402).
++       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160514).
+ 
+        Entries in <EM>terminfo</EM> consist of a sequence of `,' separated
+        fields (embedded commas may be escaped with a backslash or
+diff --git a/doc/html/man/tic.1m.html b/doc/html/man/tic.1m.html
+index 94dcec0..5146836 100644
+--- a/doc/html/man/tic.1m.html
++++ b/doc/html/man/tic.1m.html
+@@ -398,7 +398,7 @@
+        <STRONG><A HREF="infocmp.1m.html">infocmp(1m)</A></STRONG>,    <STRONG><A HREF="captoinfo.1m.html">captoinfo(1m)</A></STRONG>,   <STRONG><A HREF="infotocap.1m.html">infotocap(1m)</A></STRONG>,   <STRONG><A HREF="toe.1m.html">toe(1m)</A></STRONG>,
+        <STRONG><A HREF="ncurses.3x.html">curses(3x)</A></STRONG>, <STRONG><A HREF="term.5.html">term(5)</A></STRONG>.  <STRONG><A HREF="terminfo.5.html">terminfo(5)</A></STRONG>.
+ 
+-       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160402).
++       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160514).
+ 
+ 
+ </PRE><H2><a name="h2-AUTHOR">AUTHOR</a></H2><PRE>
+diff --git a/doc/html/man/toe.1m.html b/doc/html/man/toe.1m.html
+index 3c52f4d..4130b7f 100644
+--- a/doc/html/man/toe.1m.html
++++ b/doc/html/man/toe.1m.html
+@@ -117,7 +117,7 @@
+        <STRONG><A HREF="tic.1m.html">tic(1m)</A></STRONG>,   <STRONG><A HREF="infocmp.1m.html">infocmp(1m)</A></STRONG>,   <STRONG><A HREF="captoinfo.1m.html">captoinfo(1m)</A></STRONG>,    <STRONG><A HREF="infotocap.1m.html">infotocap(1m)</A></STRONG>,
+        <STRONG><A HREF="ncurses.3x.html">curses(3x)</A></STRONG>, <STRONG><A HREF="terminfo.5.html">terminfo(5)</A></STRONG>.
+ 
+-       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160402).
++       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160514).
+ 
+ 
+ 
+diff --git a/doc/html/man/tput.1.html b/doc/html/man/tput.1.html
+index 3bd8ea6..362db56 100644
+--- a/doc/html/man/tput.1.html
++++ b/doc/html/man/tput.1.html
+@@ -383,7 +383,7 @@
+        <STRONG><A HREF="clear.1.html">clear(1)</A></STRONG>,    <STRONG>stty(1)</STRONG>,   <STRONG><A HREF="tabs.1.html">tabs(1)</A></STRONG>,   <STRONG><A HREF="tset.1.html">tset(1)</A></STRONG>,   <STRONG><A HREF="terminfo.5.html">terminfo(5)</A></STRONG>,
+        <STRONG><A HREF="curs_termcap.3x.html">curs_termcap(3x)</A></STRONG>.
+ 
+-       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160402).
++       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160514).
+ 
+ 
+ 
+diff --git a/doc/html/man/tset.1.html b/doc/html/man/tset.1.html
+index e68112f..3ecc39a 100644
+--- a/doc/html/man/tset.1.html
++++ b/doc/html/man/tset.1.html
+@@ -26,7 +26,7 @@
+   * sale, use or other dealings in this Software without prior written       *
+   * authorization.                                                           *
+   ****************************************************************************
+-  * @Id: tset.1,v 1.31 2016/01/30 15:41:41 tom Exp @
++  * @Id: tset.1,v 1.33 2016/04/16 18:48:44 tom Exp @
+ -->
+ <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN">
+ <HTML>
+@@ -245,6 +245,10 @@
+ 
+ 
+ </PRE><H2><a name="h2-COMPATIBILITY">COMPATIBILITY</a></H2><PRE>
++       Neither IEEE Std 1003.1/The Open Group Base Specifications
++       Issue 7 (POSIX.1-2008) nor X/Open Curses Issue 7 documents
++       <STRONG>tset</STRONG> or <STRONG>reset</STRONG>.
++
+        The  <STRONG>tset</STRONG>  utility has been provided for backward-compati-
+        bility with BSD environments (under  most  modern  UNIXes,
+        <STRONG>/etc/inittab</STRONG>  and  <STRONG>getty(1)</STRONG> can set <STRONG>TERM</STRONG> appropriately for
+@@ -270,16 +274,23 @@
+        <STRONG>-d</STRONG>, and <STRONG>-p</STRONG> options are similarly not documented or useful,
+        but were retained as they appear to be in widespread  use.
+        It  is  strongly recommended that any usage of these three
+-       options be changed to use the <STRONG>-m</STRONG> option instead.   The  <STRONG>-n</STRONG>
+-       option  remains, but has no effect.  The <STRONG>-adnp</STRONG> options are
+-       therefore omitted from the usage summary above.
+-
+-       It is still permissible to specify  the  <STRONG>-e</STRONG>,  <STRONG>-i</STRONG>,  and  <STRONG>-k</STRONG>
+-       options  without arguments, although it is strongly recom-
+-       mended that such usage be fixed to explicitly specify  the
++       options be changed to use the <STRONG>-m</STRONG> option instead.  The  <STRONG>-a</STRONG>,
++       <STRONG>-d</STRONG>,  and  <STRONG>-p</STRONG>  options are therefore omitted from the usage
++       summary above.
++
++       Very old systems, e.g., 3BSD, used  a  different  terminal
++       driver  which was replaced in 4BSD in the early 1980s.  To
++       accommodate these older systems, the 4BSD <STRONG>tset</STRONG> provided  a
++       <STRONG>-n</STRONG>  option  to specify that the new terminal driver should
++       be  used.   This  implementation  does  not  provide  that
++       choice.
++
++       It  is  still  permissible  to  specify the <STRONG>-e</STRONG>, <STRONG>-i</STRONG>, and <STRONG>-k</STRONG>
++       options without arguments, although it is strongly  recom-
++       mended  that such usage be fixed to explicitly specify the
+        character.
+ 
+-       As  of  4.4BSD,  executing <STRONG>tset</STRONG> as <STRONG>reset</STRONG> no longer implies
++       As of 4.4BSD, executing <STRONG>tset</STRONG> as <STRONG>reset</STRONG>  no  longer  implies
+        the <STRONG>-Q</STRONG> option.  Also, the interaction between the - option
+        and the <EM>terminal</EM> argument in some historic implementations
+        of <STRONG>tset</STRONG> has been removed.
+@@ -292,7 +303,7 @@
+             tells <STRONG>tset</STRONG> whether to initialize <STRONG>TERM</STRONG> using <STRONG>sh</STRONG> or <STRONG>csh</STRONG>
+             syntax.
+ 
+-       TERM Denotes  your  terminal  type.  Each terminal type is
++       TERM Denotes your terminal type.  Each  terminal  type  is
+             distinct, though many are similar.
+ 
+        TERMCAP
+@@ -304,7 +315,7 @@
+ 
+ </PRE><H2><a name="h2-FILES">FILES</a></H2><PRE>
+        /etc/ttys
+-            system  port  name  to terminal type mapping database
++            system port name to terminal  type  mapping  database
+             (BSD versions only).
+ 
+        /usr/share/terminfo
+@@ -315,7 +326,7 @@
+        <STRONG>csh(1)</STRONG>,   <STRONG>sh(1)</STRONG>,   <STRONG>stty(1)</STRONG>,   <STRONG><A HREF="curs_terminfo.3x.html">curs_terminfo(3x)</A></STRONG>,   <STRONG>tty(4)</STRONG>,
+        <STRONG><A HREF="terminfo.5.html">terminfo(5)</A></STRONG>, <STRONG>ttys(5)</STRONG>, <STRONG>environ(7)</STRONG>
+ 
+-       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160402).
++       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160514).
+ 
+ 
+ 
+diff --git a/man/curs_extend.3x b/man/curs_extend.3x
+index 9a52f93..6c5309e 100644
+--- a/man/curs_extend.3x
++++ b/man/curs_extend.3x
+@@ -1,5 +1,5 @@
+ .\"***************************************************************************
+-.\" Copyright (c) 1999-2006,2010 Free Software Foundation, Inc.              *
++.\" Copyright (c) 1999-2010,2016 Free Software Foundation, Inc.              *
+ .\"                                                                          *
+ .\" Permission is hereby granted, free of charge, to any person obtaining a  *
+ .\" copy of this software and associated documentation files (the            *
+@@ -28,7 +28,7 @@
+ .\"
+ .\" Author: Thomas E. Dickey 1999-on
+ .\"
+-.\" $Id: curs_extend.3x,v 1.19 2010/12/04 18:36:44 tom Exp $
++.\" $Id: curs_extend.3x,v 1.20 2016/05/14 23:10:54 tom Exp $
+ .TH curs_extend 3X ""
+ .SH NAME
+ \fBcurses_version\fP,
+@@ -43,11 +43,13 @@
+ .SH DESCRIPTION
+ These functions are extensions to the curses library
+ which do not fit easily into other categories.
++.SS curses_version
+ .PP
+ Use
+ .I curses_version()
+ to get the version number, including patch level of the library, e.g.,
+ .B 5.0.19991023
++.SS use_extended_names
+ .PP
+ The
+ .I use_extended_names()
+@@ -60,6 +62,13 @@ is made by using the \fB\-x\fP option of \fB@TIC@\fP to compile
+ extended terminal definitions.
+ However you can disable this feature
+ to ensure compatibility with other implementations of curses.
++.SH RETURN VALUE
++.PP
++\fBcurses_version\fP returns a pointer to static memory; you should not free
++this in your application.
++.PP
++\fBuse_extended_names\fP returns the previous state, allowing you to
++save this and restore it.
+ .SH PORTABILITY
+ These routines are specific to ncurses.  They were not supported on
+ Version 7, BSD or System V implementations.  It is recommended that
+diff --git a/man/curs_get_wch.3x b/man/curs_get_wch.3x
+index df9bc6a..fd55b37 100644
+--- a/man/curs_get_wch.3x
++++ b/man/curs_get_wch.3x
+@@ -1,5 +1,5 @@
+ .\"***************************************************************************
+-.\" Copyright (c) 2002-2010,2012 Free Software Foundation, Inc.              *
++.\" Copyright (c) 2002-2012,2016 Free Software Foundation, Inc.              *
+ .\"                                                                          *
+ .\" Permission is hereby granted, free of charge, to any person obtaining a  *
+ .\" copy of this software and associated documentation files (the            *
+@@ -26,14 +26,21 @@
+ .\" authorization.                                                           *
+ .\"***************************************************************************
+ .\"
+-.\" $Id: curs_get_wch.3x,v 1.8 2012/11/03 23:03:59 tom Exp $
++.\" $Id: curs_get_wch.3x,v 1.9 2016/05/15 01:12:50 tom Exp $
+ .TH curs_get_wch 3X ""
++.na
++.hy 0
++.de bP
++.IP \(bu 4
++..
+ .SH NAME
+ \fBget_wch\fR,
+ \fBwget_wch\fR,
+ \fBmvget_wch\fR,
+ \fBmvwget_wch\fR,
+ \fBunget_wch\fR \- get (or push back) a wide character from curses terminal keyboard
++.ad
++.hy
+ .SH SYNOPSIS
+ \fB#include <curses.h>\fR
+ .sp
+@@ -76,13 +83,8 @@ If \fBkeypad\fR is enabled,
+ these functions respond to
+ the pressing of a function key by setting the object pointed to by
+ \fIwch\fR
+-to the corresponding
+-\fBKEY_\fR
+-value defined
+-in
+-\fB<curses.h>\fR
+-and returning
+-\fBKEY_CODE_YES\fR.
++to the keycode assigned to the function key,
++and returning \fBKEY_CODE_YES\fR.
+ If a character (such as escape) that could be the
+ beginning of a function key is received, curses sets a timer.
+ If the remainder
+@@ -92,6 +94,18 @@ For this
+ reason, many terminals experience a delay between the time a user presses
+ the escape key and the time the escape is returned to the program.
+ .PP
++The keycodes returned by these functions are the same as those
++returned by \fBwgetch\fP:
++.bP
++The predefined function
++keys are listed in \fB<curses.h>\fR as macros with values outside the range
++of 8-bit characters.
++Their names begin with \fBKEY_\fR.
++.bP
++Other (user-defined) function keys which may be defined using \fBdefine_key\fP(3X)
++have no names, but also are expected to have values outside the range of
++8-bit characters.
++.PP
+ The
+ \fBunget_wch\fR
+ function pushes the wide character
+diff --git a/man/curs_getch.3x b/man/curs_getch.3x
+index 1ef0601..642205a 100644
+--- a/man/curs_getch.3x
++++ b/man/curs_getch.3x
+@@ -1,6 +1,6 @@
+ '\" t
+ .\"***************************************************************************
+-.\" Copyright (c) 1998-2014,2015 Free Software Foundation, Inc.              *
++.\" Copyright (c) 1998-2015,2016 Free Software Foundation, Inc.              *
+ .\"                                                                          *
+ .\" Permission is hereby granted, free of charge, to any person obtaining a  *
+ .\" copy of this software and associated documentation files (the            *
+@@ -27,7 +27,7 @@
+ .\" authorization.                                                           *
+ .\"***************************************************************************
+ .\"
+-.\" $Id: curs_getch.3x,v 1.44 2015/12/20 01:43:03 tom Exp $
++.\" $Id: curs_getch.3x,v 1.45 2016/05/15 01:05:18 tom Exp $
+ .TH curs_getch 3X ""
+ .na
+ .hy 0
+@@ -95,10 +95,17 @@ is read.
+ .SS Keypad mode
+ .PP
+ If \fBkeypad\fR is \fBTRUE\fR, and a function key is pressed, the token for
+-that function key is returned instead of the raw characters.
+-Possible function
+-keys are defined in \fB<curses.h>\fR as macros with values outside the range
+-of 8-bit characters whose names begin with \fBKEY_\fR.
++that function key is returned instead of the raw characters:
++.bP
++The predefined function
++keys are listed in \fB<curses.h>\fR as macros with values outside the range
++of 8-bit characters.
++Their names begin with \fBKEY_\fR.
++.bP
++Other (user-defined) function keys which may be defined using \fBdefine_key\fP(3X)
++have no names, but also are expected to have values outside the range of
++8-bit characters.
++.PP
+ Thus, a variable
+ intended to hold the return value of a function key must be of short size or
+ larger.
+diff --git a/misc/terminfo.src b/misc/terminfo.src
+index 1e28783..4808542 100644
+--- a/misc/terminfo.src
++++ b/misc/terminfo.src
+@@ -6,8 +6,8 @@
+ # Report bugs and new terminal descriptions to
+ #	bug-ncurses@gnu.org
+ #
+-#	$Revision: 1.562 $
+-#	$Date: 2016/04/23 10:59:12 $
++#	$Revision: 1.563 $
++#	$Date: 2016/05/15 00:30:28 $
+ #
+ # The original header is preserved below for reference.  It is noted that there
+ # is a "newer" version which differs in some cosmetic details (but actually
+@@ -1681,13 +1681,17 @@ linux2.2|linux 2.2.x console,
+ 	cvvis=\E[?25h\E[?8c, use=linux-c-nc,
+ 
+ # Linux 2.6.x has a fix for SI/SO to work with UTF-8 encoding added here:
+-#	http://lkml.indiana.edu/hypermail/linux/kernel/0602.2/0868.html
+-# Using SI/SO has the drawback that it confuses screen.  SCS would work.
+-# However, SCS is buggy (see comment in Debian #515609) -TD
+-# Further, this breaks longstanding workarounds for Linux console's line
+-# drawing (see Debian 665959) -TD
++#	http://lkml.iu.edu/hypermail/linux/kernel/0602.2/0738.html
++# Although the kernel has mappings for these, they were not in the default
++# font (tested with Debian and Fedora):
++#	'`' diamond
++#	'~' scan line 1
++#	'p' scan line 3
++#	'r' scan line 7
++#	'_' scan line 9
+ linux2.6|linux 2.6.x console,
+-	rmacs=^O,
++	acsc=++\,\,--..00__``aaffgghhiijjkkllmmnnooppqqrrssttuuvvwwxxyyzz{{||}c~~,
++	enacs=\E(B\E)0, rmacs=^O,
+ 	sgr=\E[0;10%?%p1%t;7%;%?%p2%t;4%;%?%p3%t;7%;%?%p4%t;5%;%?%p5%t;2%;%?%p6%t;1%;m%?%p9%t\016%e\017%;,
+ 	sgr0=\E[m\017, smacs=^N, use=linux2.2,
+ 
+@@ -1698,7 +1702,7 @@ linux3.0|linux 3.0 kernels,
+ 
+ # This is Linux console for ncurses.
+ linux|linux console,
+-	use=linux2.2,
++	use=linux3.0,
+ 
+ # Subject: linux 2.6.26 vt back_color_erase
+ # Changes to the Linux console driver broke bce model as reported in
+@@ -23828,4 +23832,8 @@ v3220|LANPAR Vision II model 3220/3221/3222,
+ #	+ add 'oc' capability to xterm+256color, allowing palette reset for
+ #	  xterm -TD
+ #
++# 2016-05-14
++#	+ modify linux2.6 entry to improve line-drawing -TD
++#	+ make linux3.0 entry the default linux entry (Debian #823658) -TD
++#
+ ######## SHANTIH!  SHANTIH!  SHANTIH!
+diff --git a/package/debian-mingw/changelog b/package/debian-mingw/changelog
+index fdf73ef..3c0196b 100644
+--- a/package/debian-mingw/changelog
++++ b/package/debian-mingw/changelog
+@@ -1,8 +1,8 @@
+-ncurses6 (6.0+20160507) unstable; urgency=low
++ncurses6 (6.0+20160514) unstable; urgency=low
+ 
+   * latest weekly patch
+ 
+- -- Thomas E. Dickey <dickey@invisible-island.net>  Sat, 07 May 2016 13:04:36 -0400
++ -- Thomas E. Dickey <dickey@invisible-island.net>  Sat, 14 May 2016 12:50:48 -0400
+ 
+ ncurses6 (5.9-20131005) unstable; urgency=low
+ 
+diff --git a/package/debian-mingw64/changelog b/package/debian-mingw64/changelog
+index fdf73ef..3c0196b 100644
+--- a/package/debian-mingw64/changelog
++++ b/package/debian-mingw64/changelog
+@@ -1,8 +1,8 @@
+-ncurses6 (6.0+20160507) unstable; urgency=low
++ncurses6 (6.0+20160514) unstable; urgency=low
+ 
+   * latest weekly patch
+ 
+- -- Thomas E. Dickey <dickey@invisible-island.net>  Sat, 07 May 2016 13:04:36 -0400
++ -- Thomas E. Dickey <dickey@invisible-island.net>  Sat, 14 May 2016 12:50:48 -0400
+ 
+ ncurses6 (5.9-20131005) unstable; urgency=low
+ 
+diff --git a/package/debian/changelog b/package/debian/changelog
+index 27b3ebb..a460188 100644
+--- a/package/debian/changelog
++++ b/package/debian/changelog
+@@ -1,8 +1,8 @@
+-ncurses6 (6.0+20160507) unstable; urgency=low
++ncurses6 (6.0+20160514) unstable; urgency=low
+ 
+   * latest weekly patch
+ 
+- -- Thomas E. Dickey <dickey@invisible-island.net>  Sat, 07 May 2016 13:04:36 -0400
++ -- Thomas E. Dickey <dickey@invisible-island.net>  Sat, 14 May 2016 12:50:48 -0400
+ 
+ ncurses6 (5.9-20120608) unstable; urgency=low
+ 
+diff --git a/package/mingw-ncurses.nsi b/package/mingw-ncurses.nsi
+index 4217db7..d48621c 100644
+--- a/package/mingw-ncurses.nsi
++++ b/package/mingw-ncurses.nsi
+@@ -1,4 +1,4 @@
+-; $Id: mingw-ncurses.nsi,v 1.156 2016/05/07 17:04:36 tom Exp $
++; $Id: mingw-ncurses.nsi,v 1.158 2016/05/14 16:50:48 tom Exp $
+ 
+ ; TODO add examples
+ ; TODO bump ABI to 6
+@@ -10,7 +10,7 @@
+ !define VERSION_MAJOR "6"
+ !define VERSION_MINOR "0"
+ !define VERSION_YYYY  "2016"
+-!define VERSION_MMDD  "0507"
++!define VERSION_MMDD  "0514"
+ !define VERSION_PATCH ${VERSION_YYYY}${VERSION_MMDD}
+ 
+ !define MY_ABI   "5"
+diff --git a/package/mingw-ncurses.spec b/package/mingw-ncurses.spec
+index 0dca7c9..8af364d 100644
+--- a/package/mingw-ncurses.spec
++++ b/package/mingw-ncurses.spec
+@@ -3,7 +3,7 @@
+ Summary: shared libraries for terminal handling
+ Name: mingw32-ncurses6
+ Version: 6.0
+-Release: 20160507
++Release: 20160514
+ License: X11
+ Group: Development/Libraries
+ Source: ncurses-%{version}-%{release}.tgz
+diff --git a/package/ncurses.spec b/package/ncurses.spec
+index f18ff21..4c377e4 100644
+--- a/package/ncurses.spec
++++ b/package/ncurses.spec
+@@ -1,7 +1,7 @@
+ Summary: shared libraries for terminal handling
+ Name: ncurses6
+ Version: 6.0
+-Release: 20160507
++Release: 20160514
+ License: X11
+ Group: Development/Libraries
+ Source: ncurses-%{version}-%{release}.tgz
+-- 
+2.9.1
+

@@ -1,0 +1,1235 @@
+From 092f1e4b79bca1d1cd3e24baa7abc3ad4cea8420 Mon Sep 17 00:00:00 2001
+From: "Thomas E. Dickey" <dickey@invisible-island.net>
+Date: Sun, 3 Apr 2016 01:37:30 +0000
+Subject: [PATCH 30/50] ncurses 6.0 - patch 20160402
+
++ regenerate HTML manpages.
++ improve manual pages for utilities with respect to POSIX versus
+  X/Open Curses.
+---
+ NEWS                             |   7 +-
+ VERSION                          |   2 +-
+ dist.mk                          |   4 +-
+ doc/html/man/captoinfo.1m.html   |   2 +-
+ doc/html/man/clear.1.html        |   2 +-
+ doc/html/man/form.3x.html        |   2 +-
+ doc/html/man/infocmp.1m.html     |   2 +-
+ doc/html/man/infotocap.1m.html   |   2 +-
+ doc/html/man/menu.3x.html        |   2 +-
+ doc/html/man/ncurses.3x.html     |   2 +-
+ doc/html/man/panel.3x.html       |   2 +-
+ doc/html/man/tabs.1.html         |  18 ++-
+ doc/html/man/terminfo.5.html     |   2 +-
+ doc/html/man/tic.1m.html         |   2 +-
+ doc/html/man/toe.1m.html         |   2 +-
+ doc/html/man/tput.1.html         | 304 +++++++++++++++++++++++----------------
+ doc/html/man/tset.1.html         |   2 +-
+ man/tabs.1                       |  15 +-
+ man/tput.1                       | 105 ++++++++++----
+ package/debian-mingw/changelog   |   4 +-
+ package/debian-mingw64/changelog |   4 +-
+ package/debian/changelog         |   4 +-
+ package/mingw-ncurses.nsi        |   4 +-
+ package/mingw-ncurses.spec       |   2 +-
+ package/ncurses.spec             |   2 +-
+ test/README                      |  32 ++---
+ 26 files changed, 328 insertions(+), 203 deletions(-)
+
+diff --git a/NEWS b/NEWS
+index b348f7e..4cb156f 100644
+--- a/NEWS
++++ b/NEWS
+@@ -25,7 +25,7 @@
+ -- sale, use or other dealings in this Software without prior written        --
+ -- authorization.                                                            --
+ -------------------------------------------------------------------------------
+--- $Id: NEWS,v 1.2586 2016/03/27 00:19:02 tom Exp $
++-- $Id: NEWS,v 1.2589 2016/04/02 23:49:12 tom Exp $
+ -------------------------------------------------------------------------------
+ 
+ This is a log of changes that ncurses has gone through since Zeyd started
+@@ -45,6 +45,11 @@ See the AUTHORS file for the corresponding full names.
+ Changes through 1.9.9e did not credit all contributions;
+ it is not possible to add this information.
+ 
++20160402
++	+ regenerate HTML manpages.
++	+ improve manual pages for utilities with respect to POSIX versus
++	  X/Open Curses.
++
+ 20160326
+ 	+ regenerate HTML manpages.
+ 	+ improve test/demo_menus.c, allowing mouse-click on the menu-headers
+diff --git a/VERSION b/VERSION
+index 1886014..d3ec3f7 100644
+--- a/VERSION
++++ b/VERSION
+@@ -1 +1 @@
+-5:0:9	6.0	20160326
++5:0:9	6.0	20160402
+diff --git a/dist.mk b/dist.mk
+index 2d2eb3c..940b77c 100644
+--- a/dist.mk
++++ b/dist.mk
+@@ -25,7 +25,7 @@
+ # use or other dealings in this Software without prior written               #
+ # authorization.                                                             #
+ ##############################################################################
+-# $Id: dist.mk,v 1.1099 2016/03/26 12:23:50 tom Exp $
++# $Id: dist.mk,v 1.1100 2016/04/02 19:01:57 tom Exp $
+ # Makefile for creating ncurses distributions.
+ #
+ # This only needs to be used directly as a makefile by developers, but
+@@ -37,7 +37,7 @@ SHELL = /bin/sh
+ # These define the major/minor/patch versions of ncurses.
+ NCURSES_MAJOR = 6
+ NCURSES_MINOR = 0
+-NCURSES_PATCH = 20160326
++NCURSES_PATCH = 20160402
+ 
+ # We don't append the patch to the version, since this only applies to releases
+ VERSION = $(NCURSES_MAJOR).$(NCURSES_MINOR)
+diff --git a/doc/html/man/captoinfo.1m.html b/doc/html/man/captoinfo.1m.html
+index 0bc7f7e..41199b6 100644
+--- a/doc/html/man/captoinfo.1m.html
++++ b/doc/html/man/captoinfo.1m.html
+@@ -198,7 +198,7 @@
+ </PRE><H2><a name="h2-SEE-ALSO">SEE ALSO</a></H2><PRE>
+        <STRONG><A HREF="infocmp.1m.html">infocmp(1m)</A></STRONG>, <STRONG><A HREF="ncurses.3x.html">curses(3x)</A></STRONG>, <STRONG><A HREF="terminfo.5.html">terminfo(5)</A></STRONG>
+ 
+-       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160326).
++       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160402).
+ 
+ 
+ </PRE><H2><a name="h2-AUTHOR">AUTHOR</a></H2><PRE>
+diff --git a/doc/html/man/clear.1.html b/doc/html/man/clear.1.html
+index aa31f12..a35a8eb 100644
+--- a/doc/html/man/clear.1.html
++++ b/doc/html/man/clear.1.html
+@@ -67,7 +67,7 @@
+ </PRE><H2><a name="h2-SEE-ALSO">SEE ALSO</a></H2><PRE>
+        <STRONG><A HREF="tput.1.html">tput(1)</A></STRONG>, <STRONG><A HREF="terminfo.5.html">terminfo(5)</A></STRONG>
+ 
+-       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160326).
++       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160402).
+ 
+ 
+ 
+diff --git a/doc/html/man/form.3x.html b/doc/html/man/form.3x.html
+index 32a724a..f157f61 100644
+--- a/doc/html/man/form.3x.html
++++ b/doc/html/man/form.3x.html
+@@ -235,7 +235,7 @@
+        <STRONG><A HREF="ncurses.3x.html">curses(3x)</A></STRONG> and related pages whose names begin "form_" for
+        detailed descriptions of the entry points.
+ 
+-       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160326).
++       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160402).
+ 
+ 
+ 
+diff --git a/doc/html/man/infocmp.1m.html b/doc/html/man/infocmp.1m.html
+index bd0619a..979e3b4 100644
+--- a/doc/html/man/infocmp.1m.html
++++ b/doc/html/man/infocmp.1m.html
+@@ -475,7 +475,7 @@
+ 
+        http://invisible-island.net/ncurses/tctest.html
+ 
+-       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160326).
++       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160402).
+ 
+ 
+ </PRE><H2><a name="h2-AUTHOR">AUTHOR</a></H2><PRE>
+diff --git a/doc/html/man/infotocap.1m.html b/doc/html/man/infotocap.1m.html
+index 5ca1010..2451209 100644
+--- a/doc/html/man/infotocap.1m.html
++++ b/doc/html/man/infotocap.1m.html
+@@ -88,7 +88,7 @@
+ </PRE><H2><a name="h2-SEE-ALSO">SEE ALSO</a></H2><PRE>
+        <STRONG><A HREF="ncurses.3x.html">curses(3x)</A></STRONG>, <STRONG><A HREF="tic.1m.html">tic(1m)</A></STRONG>, <STRONG><A HREF="infocmp.1m.html">infocmp(1m)</A></STRONG>, <STRONG><A HREF="terminfo.5.html">terminfo(5)</A></STRONG>
+ 
+-       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160326).
++       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160402).
+ 
+ 
+ </PRE><H2><a name="h2-AUTHOR">AUTHOR</a></H2><PRE>
+diff --git a/doc/html/man/menu.3x.html b/doc/html/man/menu.3x.html
+index bf1fabb..a0d1e65 100644
+--- a/doc/html/man/menu.3x.html
++++ b/doc/html/man/menu.3x.html
+@@ -217,7 +217,7 @@
+        <STRONG><A HREF="ncurses.3x.html">curses(3x)</A></STRONG> and related pages whose names begin "menu_" for
+        detailed descriptions of the entry points.
+ 
+-       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160326).
++       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160402).
+ 
+ 
+ 
+diff --git a/doc/html/man/ncurses.3x.html b/doc/html/man/ncurses.3x.html
+index 7ebff4c..52c3eac 100644
+--- a/doc/html/man/ncurses.3x.html
++++ b/doc/html/man/ncurses.3x.html
+@@ -60,7 +60,7 @@
+        sonable optimization.  This implementation is "new curses"
+        (ncurses) and is the approved replacement for 4.4BSD clas-
+        sic  curses,  which has been discontinued.  This describes
+-       <STRONG>ncurses</STRONG> version 6.0 (patch 20160326).
++       <STRONG>ncurses</STRONG> version 6.0 (patch 20160402).
+ 
+        The <STRONG>ncurses</STRONG> library emulates the curses library of  System
+        V  Release  4  UNIX,  and  XPG4 (X/Open Portability Guide)
+diff --git a/doc/html/man/panel.3x.html b/doc/html/man/panel.3x.html
+index dc31c7a..f69ccea 100644
+--- a/doc/html/man/panel.3x.html
++++ b/doc/html/man/panel.3x.html
+@@ -209,7 +209,7 @@
+ </PRE><H2><a name="h2-SEE-ALSO">SEE ALSO</a></H2><PRE>
+        <STRONG><A HREF="ncurses.3x.html">curses(3x)</A></STRONG>, <STRONG><A HREF="curs_variables.3x.html">curs_variables(3x)</A></STRONG>,
+ 
+-       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160326).
++       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160402).
+ 
+ 
+ </PRE><H2><a name="h2-AUTHOR">AUTHOR</a></H2><PRE>
+diff --git a/doc/html/man/tabs.1.html b/doc/html/man/tabs.1.html
+index 866c4df..1c34f9d 100644
+--- a/doc/html/man/tabs.1.html
++++ b/doc/html/man/tabs.1.html
+@@ -1,6 +1,6 @@
+ <!-- 
+   ****************************************************************************
+-  * Copyright (c) 2008-2011,2013 Free Software Foundation, Inc.              *
++  * Copyright (c) 2008-2013,2016 Free Software Foundation, Inc.              *
+   *                                                                          *
+   * Permission is hereby granted, free of charge, to any person obtaining a  *
+   * copy of this software and associated documentation files (the            *
+@@ -26,7 +26,7 @@
+   * sale, use or other dealings in this Software without prior written       *
+   * authorization.                                                           *
+   ****************************************************************************
+-  * @Id: tabs.1,v 1.11 2013/06/22 18:11:57 tom Exp @
++  * @Id: tabs.1,v 1.12 2016/04/02 23:40:46 tom Exp @
+ -->
+ <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN">
+ <HTML>
+@@ -140,9 +140,15 @@
+ 
+ 
+ </PRE><H2><a name="h2-PORTABILITY">PORTABILITY</a></H2><PRE>
+-       X/Open describes a <STRONG>+m</STRONG> option, to set  a  terminal's  left-
+-       margin.   Very few of the entries in the terminal database
+-       provide this capability.
++       IEEE Std 1003.1/The Open Group  Base Specifications  Issue
++       7 (POSIX.1-2008) describes a <STRONG>tabs</STRONG> utility.  However
++
++       <STRONG>o</STRONG>   This  standard  describes a <STRONG>+m</STRONG> option, to set a termi-
++           nal's left-margin.  Very few of  the  entries  in  the
++           terminal database provide this capability.
++
++       <STRONG>o</STRONG>   There  is  no counterpart in X/Open Curses Issue 7 for
++           this utility, unlike <STRONG><A HREF="tput.3x.html">tput(3x)</A></STRONG>.
+ 
+        The <STRONG>-d</STRONG> (debug) and <STRONG>-n</STRONG> (no-op) options are  extensions  not
+        provided by other implementations.
+@@ -158,7 +164,7 @@
+ </PRE><H2><a name="h2-SEE-ALSO">SEE ALSO</a></H2><PRE>
+        <STRONG><A HREF="tset.1.html">tset(1)</A></STRONG>, <STRONG><A HREF="infocmp.1m.html">infocmp(1m)</A></STRONG>, <STRONG><A HREF="ncurses.3x.html">curses(3x)</A></STRONG>, <STRONG><A HREF="terminfo.5.html">terminfo(5)</A></STRONG>.
+ 
+-       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160326).
++       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160402).
+ 
+ 
+ 
+diff --git a/doc/html/man/terminfo.5.html b/doc/html/man/terminfo.5.html
+index a769f91..5a6c87f 100644
+--- a/doc/html/man/terminfo.5.html
++++ b/doc/html/man/terminfo.5.html
+@@ -75,7 +75,7 @@
+        nals by giving a set of capabilities which they  have,  by
+        specifying how to perform screen operations, and by speci-
+        fying padding requirements and  initialization  sequences.
+-       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160326).
++       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160402).
+ 
+        Entries in <EM>terminfo</EM> consist of a sequence of `,' separated
+        fields (embedded commas may be escaped with a backslash or
+diff --git a/doc/html/man/tic.1m.html b/doc/html/man/tic.1m.html
+index 0eca59d..94dcec0 100644
+--- a/doc/html/man/tic.1m.html
++++ b/doc/html/man/tic.1m.html
+@@ -398,7 +398,7 @@
+        <STRONG><A HREF="infocmp.1m.html">infocmp(1m)</A></STRONG>,    <STRONG><A HREF="captoinfo.1m.html">captoinfo(1m)</A></STRONG>,   <STRONG><A HREF="infotocap.1m.html">infotocap(1m)</A></STRONG>,   <STRONG><A HREF="toe.1m.html">toe(1m)</A></STRONG>,
+        <STRONG><A HREF="ncurses.3x.html">curses(3x)</A></STRONG>, <STRONG><A HREF="term.5.html">term(5)</A></STRONG>.  <STRONG><A HREF="terminfo.5.html">terminfo(5)</A></STRONG>.
+ 
+-       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160326).
++       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160402).
+ 
+ 
+ </PRE><H2><a name="h2-AUTHOR">AUTHOR</a></H2><PRE>
+diff --git a/doc/html/man/toe.1m.html b/doc/html/man/toe.1m.html
+index 6662f8c..3c52f4d 100644
+--- a/doc/html/man/toe.1m.html
++++ b/doc/html/man/toe.1m.html
+@@ -117,7 +117,7 @@
+        <STRONG><A HREF="tic.1m.html">tic(1m)</A></STRONG>,   <STRONG><A HREF="infocmp.1m.html">infocmp(1m)</A></STRONG>,   <STRONG><A HREF="captoinfo.1m.html">captoinfo(1m)</A></STRONG>,    <STRONG><A HREF="infotocap.1m.html">infotocap(1m)</A></STRONG>,
+        <STRONG><A HREF="ncurses.3x.html">curses(3x)</A></STRONG>, <STRONG><A HREF="terminfo.5.html">terminfo(5)</A></STRONG>.
+ 
+-       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160326).
++       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160402).
+ 
+ 
+ 
+diff --git a/doc/html/man/tput.1.html b/doc/html/man/tput.1.html
+index a9d26be..3bd8ea6 100644
+--- a/doc/html/man/tput.1.html
++++ b/doc/html/man/tput.1.html
+@@ -1,7 +1,7 @@
+ <!-- 
+   * t
+   ****************************************************************************
+-  * Copyright (c) 1998-2011,2012 Free Software Foundation, Inc.              *
++  * Copyright (c) 1998-2012,2016 Free Software Foundation, Inc.              *
+   *                                                                          *
+   * Permission is hereby granted, free of charge, to any person obtaining a  *
+   * copy of this software and associated documentation files (the            *
+@@ -27,7 +27,7 @@
+   * sale, use or other dealings in this Software without prior written       *
+   * authorization.                                                           *
+   ****************************************************************************
+-  * @Id: tput.1,v 1.32 2012/07/14 21:06:45 tom Exp @
++  * @Id: tput.1,v 1.36 2016/04/02 23:41:08 tom Exp @
+ -->
+ <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN">
+ <HTML>
+@@ -52,7 +52,7 @@
+ 
+ 
+ </PRE><H2><a name="h2-SYNOPSIS">SYNOPSIS</a></H2><PRE>
+-       <STRONG>tput</STRONG> [<STRONG>-T</STRONG><EM>type</EM>] <EM>capname</EM> [<EM>parms</EM> ... ]
++       <STRONG>tput</STRONG> [<STRONG>-T</STRONG><EM>type</EM>] <EM>capname</EM> [<EM>parameters</EM>]
+        <STRONG>tput</STRONG> [<STRONG>-T</STRONG><EM>type</EM>] <STRONG>init</STRONG>
+        <STRONG>tput</STRONG> [<STRONG>-T</STRONG><EM>type</EM>] <STRONG>reset</STRONG>
+        <STRONG>tput</STRONG> [<STRONG>-T</STRONG><EM>type</EM>] <STRONG>longname</STRONG>
+@@ -68,19 +68,19 @@
+        terminal type.  The result depends upon  the  capability's
+        type:
+ 
+-              string
+-                   <STRONG>tput</STRONG> writes the string to the standard output.
+-                   No trailing newline is supplied.
++          string
++               <STRONG>tput</STRONG> writes the string to the standard output.  No
++               trailing newline is supplied.
+ 
+-              integer
+-                   <STRONG>tput</STRONG> writes the decimal value to the  standard
+-                   output, with a trailing newline.
++          integer
++               <STRONG>tput</STRONG> writes the decimal value to the standard out-
++               put, with a trailing newline.
+ 
+-              boolean
+-                   <STRONG>tput</STRONG>  simply sets the exit code (<STRONG>0</STRONG> for TRUE if
+-                   the terminal has the capability, <STRONG>1</STRONG>  for  FALSE
+-                   if  it  does  not),  and writes nothing to the
+-                   standard output.
++          boolean
++               <STRONG>tput</STRONG>  simply sets the exit code (<STRONG>0</STRONG> for TRUE if the
++               terminal has the capability, <STRONG>1</STRONG>  for  FALSE  if  it
++               does not), and writes nothing to the standard out-
++               put.
+ 
+        Before using a value returned on the standard output,  the
+        application  should  test  the  exit  code  (e.g., <STRONG>$?</STRONG>, see
+@@ -88,29 +88,14 @@
+        <STRONG>NOSTICS</STRONG>  sections.)   For  a complete list of capabilities
+        and the <EM>capname</EM> associated with each, see <STRONG><A HREF="terminfo.5.html">terminfo(5)</A></STRONG>.
+ 
++
++</PRE><H3><a name="h3-Options">Options</a></H3><PRE>
+        <STRONG>-T</STRONG><EM>type</EM> indicates the  <EM>type</EM>  of  terminal.   Normally  this
+               option is unnecessary, because the default is taken
+               from the environment variable <STRONG>TERM</STRONG>.  If <STRONG>-T</STRONG> is spec-
+               ified,  then  the shell variables <STRONG>LINES</STRONG> and <STRONG>COLUMNS</STRONG>
+               will also be ignored.
+ 
+-       <EM>capname</EM>
+-              indicates the capability from  the  <STRONG>terminfo</STRONG>  data-
+-              base.   When  <STRONG>termcap</STRONG>  support  is compiled in, the
+-              <STRONG>termcap</STRONG> name for the capability is also accepted.
+-
+-       <EM>parms</EM>  If the capability is a string  that  takes  parame-
+-              ters, the arguments <EM>parms</EM> will be instantiated into
+-              the string.
+-
+-              Most parameters are numbers.  Only a  few  terminfo
+-              capabilities require string parameters; <STRONG>tput</STRONG> uses a
+-              table to decide which to pass as strings.  Normally
+-              <STRONG>tput</STRONG>  uses  <STRONG>tparm</STRONG> (3x) to perform the substitution.
+-              If no parameters are given for the capability, <STRONG>tput</STRONG>
+-              writes  the string without performing the substitu-
+-              tion.
+-
+        <STRONG>-S</STRONG>     allows more than one capability per  invocation  of
+               <STRONG>tput</STRONG>.  The capabilities must be passed to <STRONG>tput</STRONG> from
+               the standard input instead of from the command line
+@@ -120,65 +105,107 @@
+               CODES section).
+ 
+               Again, <STRONG>tput</STRONG> uses a table and the presence of param-
+-              eters  in  its input to decide whether to use <STRONG>tparm</STRONG>
+-              (3x), and how to interpret the parameters.
++              eters  in  its  input  to  decide  whether  to  use
++              <STRONG><A HREF="tparm.3x.html">tparm(3x)</A></STRONG>, and how to interpret the parameters.
+ 
+        <STRONG>-V</STRONG>     reports the version of ncurses which  was  used  in
+               this program, and exits.
+ 
++
++</PRE><H3><a name="h3-Commands">Commands</a></H3><PRE>
++       <EM>capname</EM>
++              indicates  the  capability  from the <STRONG>terminfo</STRONG> data-
++              base.  When <STRONG>termcap</STRONG> support  is  compiled  in,  the
++              <STRONG>termcap</STRONG> name for the capability is also accepted.
++
++              If  the  capability  is a string that takes parame-
++              ters, the arguments following the  capability  will
++              be used as parameters for the string.
++
++              Most  parameters  are numbers.  Only a few terminfo
++              capabilities require string parameters; <STRONG>tput</STRONG> uses a
++              table to decide which to pass as strings.  Normally
++              <STRONG>tput</STRONG> uses <STRONG><A HREF="tparm.3x.html">tparm(3x)</A></STRONG> to  perform  the  substitution.
++              If no parameters are given for the capability, <STRONG>tput</STRONG>
++              writes the string without performing the  substitu-
++              tion.
++
+        <STRONG>init</STRONG>   If  the  <STRONG>terminfo</STRONG>  database is present and an entry
+               for the user's terminal exists (see <STRONG>-T</STRONG><EM>type</EM>, above),
+               the following will occur:
+ 
+-              (1)    if  present,  the  terminal's initialization
+-                     strings will be output as  detailed  in  the
+-                     <STRONG><A HREF="terminfo.5.html">terminfo(5)</A></STRONG>  section on <EM>Tabs</EM> <EM>and</EM> <EM>Initializa-</EM>
+-                     <EM>tion</EM>,
++              (1)  if   present,  the  terminal's  initialization
++                   strings will be output as detailed in the <STRONG>ter-</STRONG>
++                   <STRONG><A HREF="terminfo.5.html">minfo(5)</A></STRONG> section on <EM>Tabs</EM> <EM>and</EM> <EM>Initialization</EM>,
+ 
+-              (2)    any delays (e.g., newline) specified in  the
+-                     entry will be set in the tty driver,
++              (2)  any  delays  (e.g.,  newline) specified in the
++                   entry will be set in the tty driver,
+ 
+-              (3)    tabs  expansion  will  be  turned  on or off
+-                     according to the specification in the entry,
+-                     and
++              (3)  tabs  expansion  will  be  turned  on  or  off
++                   according  to  the specification in the entry,
++                   and
+ 
+-              (4)    if tabs are not expanded, standard tabs will
+-                     be set (every 8 spaces).
++              (4)  if tabs are not expanded, standard  tabs  will
++                   be set (every 8 spaces).
+ 
+               If an entry does not contain the information needed
+-              for any of the four above activities, that activity
+-              will silently be skipped.
+-
+-       <STRONG>reset</STRONG>  Instead of putting out initialization strings,  the
+-              terminal's  reset strings will be output if present
+-              (<STRONG>rs1</STRONG>, <STRONG>rs2</STRONG>, <STRONG>rs3</STRONG>, <STRONG>rf</STRONG>).  If the reset strings are  not
+-              present,  but  initialization strings are, the ini-
+-              tialization strings  will  be  output.   Otherwise,
++              for any of these  activities,  that  activity  will
++              silently be skipped.
++
++       <STRONG>reset</STRONG>  Instead  of putting out initialization strings, the
++              terminal's reset strings will be output if  present
++              (<STRONG>rs1</STRONG>,  <STRONG>rs2</STRONG>, <STRONG>rs3</STRONG>, <STRONG>rf</STRONG>).  If the reset strings are not
++              present, but initialization strings are,  the  ini-
++              tialization  strings  will  be  output.  Otherwise,
+               <STRONG>reset</STRONG> acts identically to <STRONG>init</STRONG>.
+ 
+        <STRONG>longname</STRONG>
+-              If  the  <STRONG>terminfo</STRONG>  database is present and an entry
+-              for the user's terminal exists (see <STRONG>-T</STRONG><EM>type</EM>  above),
++              If the <STRONG>terminfo</STRONG> database is present  and  an  entry
++              for  the user's terminal exists (see <STRONG>-T</STRONG><EM>type</EM> above),
+               then the long name of the terminal will be put out.
+               The long name is the last name in the first line of
+               the terminal's description in the <STRONG>terminfo</STRONG> database
+               [see <STRONG><A HREF="term.5.html">term(5)</A></STRONG>].
+ 
+-       If <STRONG>tput</STRONG> is invoked by a link named  <STRONG>reset</STRONG>,  this  has  the
+-       same effect as <STRONG>tput</STRONG> <STRONG>reset</STRONG>.  See <STRONG>tset</STRONG> for comparison, which
+-       has similar behavior.
++
++</PRE><H3><a name="h3-Aliases">Aliases</a></H3><PRE>
++       <STRONG>tput</STRONG>  handles  the  <STRONG>init</STRONG>  and <STRONG>reset</STRONG> commands specially: it
++       allows for the possibility that it is invoked  by  a  link
++       with those names.
++
++       If  <STRONG>tput</STRONG>  is  invoked  by a link named <STRONG>reset</STRONG>, this has the
++       same effect as  <STRONG>tput</STRONG>  <STRONG>reset</STRONG>.   The  <STRONG><A HREF="tset.1.html">tset(1)</A></STRONG>  utility  also
++       treats a link named <STRONG>reset</STRONG> specially:
++
++       <STRONG>o</STRONG>   That  utility  resets  the  terminal modes and special
++           characters (not done here).
++
++       <STRONG>o</STRONG>   On the other hand, tset's repertoire of terminal capa-
++           bilities  for  resetting the terminal is more limited,
++           i.e., only <STRONG>reset_1string</STRONG>, <STRONG>reset_2string</STRONG> and <STRONG>reset_file</STRONG>
++           in contrast to the tab-stops and margins which are set
++           by this utility.
++
++       <STRONG>o</STRONG>   The <STRONG>reset</STRONG> program is usually an alias for tset, due to
++           the  resetting  of  terminal modes and special charac-
++           ters.
++
++       If <STRONG>tput</STRONG> is invoked by a link named <STRONG>init</STRONG>, this has the same
++       effect  as  <STRONG>tput</STRONG>  <STRONG>init</STRONG>.  Again, you are less likely to use
++       that link because another program named <STRONG>init</STRONG>  has  a  more
++       well-established use.
+ 
+ 
+ </PRE><H2><a name="h2-EXAMPLES">EXAMPLES</a></H2><PRE>
+        <STRONG>tput</STRONG> <STRONG>init</STRONG>
+             Initialize the terminal according to the type of ter-
+-            minal  in the environmental variable <STRONG>TERM</STRONG>.  This com-
+-            mand should be included in everyone's .profile  after
++            minal in the environmental variable <STRONG>TERM</STRONG>.  This  com-
++            mand  should be included in everyone's .profile after
+             the environmental variable <STRONG>TERM</STRONG> has been exported, as
+             illustrated on the <STRONG>profile(5)</STRONG> manual page.
+ 
+        <STRONG>tput</STRONG> <STRONG>-T5620</STRONG> <STRONG>reset</STRONG>
+-            Reset an AT&amp;T 5620 terminal, overriding the  type  of
++            Reset  an  AT&amp;T 5620 terminal, overriding the type of
+             terminal in the environmental variable <STRONG>TERM</STRONG>.
+ 
+        <STRONG>tput</STRONG> <STRONG>cup</STRONG> <STRONG>0</STRONG> <STRONG>0</STRONG>
+@@ -199,16 +226,16 @@
+        <STRONG>bold=`tput</STRONG> <STRONG>smso`</STRONG> <STRONG>offbold=`tput</STRONG> <STRONG>rmso`</STRONG>
+             Set the shell variables <STRONG>bold</STRONG>, to begin stand-out mode
+             sequence, and <STRONG>offbold</STRONG>, to end standout mode sequence,
+-            for the current terminal.  This might be followed  by
+-            a  prompt:  <STRONG>echo</STRONG>  <STRONG>"${bold}Please</STRONG>  <STRONG>type</STRONG>  <STRONG>in</STRONG> <STRONG>your</STRONG> <STRONG>name:</STRONG>
++            for  the current terminal.  This might be followed by
++            a prompt: <STRONG>echo</STRONG>  <STRONG>"${bold}Please</STRONG>  <STRONG>type</STRONG>  <STRONG>in</STRONG>  <STRONG>your</STRONG>  <STRONG>name:</STRONG>
+             <STRONG>${offbold}\c"</STRONG>
+ 
+        <STRONG>tput</STRONG> <STRONG>hc</STRONG>
+-            Set exit code to indicate if the current terminal  is
++            Set  exit code to indicate if the current terminal is
+             a hard copy terminal.
+ 
+        <STRONG>tput</STRONG> <STRONG>cup</STRONG> <STRONG>23</STRONG> <STRONG>4</STRONG>
+-            Send  the sequence to move the cursor to row 23, col-
++            Send the sequence to move the cursor to row 23,  col-
+             umn 4.
+ 
+        <STRONG>tput</STRONG> <STRONG>cup</STRONG>
+@@ -216,8 +243,8 @@
+             parameters substituted.
+ 
+        <STRONG>tput</STRONG> <STRONG>longname</STRONG>
+-            Print  the  long  name from the <STRONG>terminfo</STRONG> database for
+-            the type of terminal specified in  the  environmental
++            Print the long name from the  <STRONG>terminfo</STRONG>  database  for
++            the  type  of terminal specified in the environmental
+             variable <STRONG>TERM</STRONG>.
+ 
+             <STRONG>tput</STRONG> <STRONG>-S</STRONG> <STRONG>&lt;&lt;!</STRONG>
+@@ -226,10 +253,10 @@
+             <STRONG>&gt;</STRONG> <STRONG>bold</STRONG>
+             <STRONG>&gt;</STRONG> <STRONG>!</STRONG>
+ 
+-            This  example shows <STRONG>tput</STRONG> processing several capabili-
+-            ties in one invocation.  It clears the screen,  moves
+-            the  cursor  to  position  10,  10  and turns on bold
+-            (extra bright) mode.  The list is  terminated  by  an
++            This example shows <STRONG>tput</STRONG> processing several  capabili-
++            ties  in one invocation.  It clears the screen, moves
++            the cursor to position  10,  10  and  turns  on  bold
++            (extra  bright)  mode.   The list is terminated by an
+             exclamation mark (<STRONG>!</STRONG>) on a line by itself.
+ 
+ 
+@@ -239,46 +266,44 @@
+ 
+        <STRONG>/usr/share/tabset/*</STRONG>
+               tab settings for some terminals, in a format appro-
+-              priate  to  be  output  to  the  terminal   (escape
+-              sequences  that  set  margins  and  tabs); for more
++              priate   to  be  output  to  the  terminal  (escape
++              sequences that set  margins  and  tabs);  for  more
+               information, see the "Tabs and Initialization" sec-
+               tion of <STRONG><A HREF="terminfo.5.html">terminfo(5)</A></STRONG>
+ 
+ 
+ </PRE><H2><a name="h2-EXIT-CODES">EXIT CODES</a></H2><PRE>
+        If the <STRONG>-S</STRONG> option is used, <STRONG>tput</STRONG> checks for errors from each
+-       line, and if any errors are found, will set the exit  code
+-       to  4  plus the number of lines with errors.  If no errors
+-       are found, the exit code is <STRONG>0</STRONG>.   No  indication  of  which
++       line,  and if any errors are found, will set the exit code
++       to 4 plus the number of lines with errors.  If  no  errors
++       are  found,  the  exit  code is <STRONG>0</STRONG>.  No indication of which
+        line failed can be given so exit code <STRONG>1</STRONG> will never appear.
+-       Exit codes <STRONG>2</STRONG>, <STRONG>3</STRONG>, and <STRONG>4</STRONG> retain their usual  interpretation.
++       Exit  codes <STRONG>2</STRONG>, <STRONG>3</STRONG>, and <STRONG>4</STRONG> retain their usual interpretation.
+        If the <STRONG>-S</STRONG> option is not used, the exit code depends on the
+        type of <EM>capname</EM>:
+ 
+-            <EM>boolean</EM>
+-                   a value of <STRONG>0</STRONG> is set for TRUE and <STRONG>1</STRONG> for FALSE.
+-
+-            <EM>string</EM> a value of <STRONG>0</STRONG> is set if the <EM>capname</EM> is  defined
+-                   for  this  terminal <EM>type</EM> (the value of <EM>capname</EM>
+-                   is returned on standard output); a value of  <STRONG>1</STRONG>
+-                   is set if <EM>capname</EM> is not defined for this ter-
+-                   minal <EM>type</EM> (nothing  is  written  to  standard
+-                   output).
+-
+-            <EM>integer</EM>
+-                   a  value  of  <STRONG>0</STRONG>  is always set, whether or not
+-                   <EM>capname</EM> is defined for this terminal <EM>type</EM>.  To
+-                   determine  if <EM>capname</EM> is defined for this ter-
+-                   minal <EM>type</EM>, the user must test the value writ-
+-                   ten  to  standard output.  A value of <STRONG>-1</STRONG> means
+-                   that <EM>capname</EM> is not defined for this  terminal
+-                   <EM>type</EM>.
+-
+-            <EM>other</EM>  <STRONG>reset</STRONG>  or  <STRONG>init</STRONG> may fail to find their respec-
+-                   tive files.  In that case, the  exit  code  is
+-                   set to 4 + <STRONG>errno</STRONG>.
+-
+-       Any  other  exit code indicates an error; see the DIAGNOS-
++          <EM>boolean</EM>
++                 a value of <STRONG>0</STRONG> is set for TRUE and <STRONG>1</STRONG> for FALSE.
++
++          <EM>string</EM> a  value  of  <STRONG>0</STRONG> is set if the <EM>capname</EM> is defined
++                 for this terminal <EM>type</EM> (the value of <EM>capname</EM>  is
++                 returned  on  standard  output); a value of <STRONG>1</STRONG> is
++                 set if <EM>capname</EM> is not defined for this  terminal
++                 <EM>type</EM> (nothing is written to standard output).
++
++          <EM>integer</EM>
++                 a  value of <STRONG>0</STRONG> is always set, whether or not <EM>cap-</EM>
++                 <EM>name</EM> is defined  for  this  terminal  <EM>type</EM>.   To
++                 determine  if <EM>capname</EM> is defined for this termi-
++                 nal <EM>type</EM>, the user must test the  value  written
++                 to  standard  output.   A value of <STRONG>-1</STRONG> means that
++                 <EM>capname</EM> is not defined for this terminal <EM>type</EM>.
++
++          <EM>other</EM>  <STRONG>reset</STRONG> or <STRONG>init</STRONG> may fail to find their  respective
++                 files.   In that case, the exit code is set to 4
++                 + <STRONG>errno</STRONG>.
++
++       Any other exit code indicates an error; see  the  DIAGNOS-
+        TICS section.
+ 
+ 
+@@ -288,8 +313,8 @@
+ 
+        exit code   error message
+        ---------------------------------------------------------------------
+-       <STRONG>0</STRONG>           (<EM>capname</EM>  is a numeric variable that is not specified in
+-                   the <STRONG><A HREF="terminfo.5.html">terminfo(5)</A></STRONG> database for this  terminal  type,  e.g.
++       <STRONG>0</STRONG>           (<EM>capname</EM> is a numeric variable that is not specified  in
++                   the  <STRONG><A HREF="terminfo.5.html">terminfo(5)</A></STRONG>  database  for this terminal type, e.g.
+                    <STRONG>tput</STRONG> <STRONG>-T450</STRONG> <STRONG>lines</STRONG> and <STRONG>tput</STRONG> <STRONG>-T2621</STRONG> <STRONG>xmc</STRONG>)
+        <STRONG>1</STRONG>           no error message is printed, see the <STRONG>EXIT</STRONG> <STRONG>CODES</STRONG> section.
+        <STRONG>2</STRONG>           usage error
+@@ -300,36 +325,65 @@
+ 
+ 
+ </PRE><H2><a name="h2-PORTABILITY">PORTABILITY</a></H2><PRE>
+-       The  <STRONG>longname</STRONG>  and <STRONG>-S</STRONG> options, and the parameter-substitu-
+-       tion features used in the <STRONG>cup</STRONG> example, are  not  supported
++       The <STRONG>longname</STRONG> and <STRONG>-S</STRONG> options, and  the  parameter-substitu-
++       tion  features  used in the <STRONG>cup</STRONG> example, are not supported
+        in BSD curses or in AT&amp;T/USL curses before SVr4.
+ 
+-       X/Open  documents  only  the  operands for <STRONG>clear</STRONG>, <STRONG>init</STRONG> and
+-       <STRONG>reset</STRONG>.  In this implementation, <STRONG>clear</STRONG> is part of the  <EM>cap-</EM>
+-       <EM>name</EM> support.  Other implementations of <STRONG>tput</STRONG> on SVr4-based
+-       systems such as Solaris, IRIX64 and HPUX as well as others
+-       such  as  AIX  and Tru64 provide support for <EM>capname</EM> oper-
+-       ands.
+-
+-       A few platforms such as FreeBSD and NetBSD recognize term-
+-       cap  names  rather than terminfo capability names in their
+-       respective <STRONG>tput</STRONG> commands.
++       IEEE Std 1003.1/The Open Group  Base Specifications  Issue
++       7  (POSIX.1-2008)  documents  only the operands for <STRONG>clear</STRONG>,
++       <STRONG>init</STRONG> and <STRONG>reset</STRONG>.  There are a few interesting  observations
++       to make regarding that:
++
++       <STRONG>o</STRONG>   In  this  implementation, <STRONG>clear</STRONG> is part of the <EM>capname</EM>
++           support.  The others (<STRONG>init</STRONG> and <STRONG>longname</STRONG>) do not corre-
++           spond to terminal capabilities.
++
++       <STRONG>o</STRONG>   Other  implementations  of  <STRONG>tput</STRONG> on SVr4-based systems
++           such as Solaris, IRIX64 and HPUX  as  well  as  others
++           such  as AIX and Tru64 provide support for <EM>capname</EM> op-
++           erands.
++
++       <STRONG>o</STRONG>   A few platforms  such  as  FreeBSD  recognize  termcap
++           names  rather  than terminfo capability names in their
++           respective <STRONG>tput</STRONG> commands.  Since 2010,  NetBSD's  <STRONG>tput</STRONG>
++           uses  terminfo  names.  Before that, it (like FreeBSD)
++           recognized termcap names.
++
++       Because (apparently) <EM>all</EM> of  the  certified  Unix  systems
++       support  the  full  set of capability names, the reasoning
++       for documenting only a few may not be apparent.
++
++       <STRONG>o</STRONG>   X/Open Curses Issue 7 documents <STRONG>tput</STRONG> differently, with
++           <EM>capname</EM>  and the other features used in this implemen-
++           tation.
++
++       <STRONG>o</STRONG>   That is, there are two standards for  <STRONG>tput</STRONG>:  POSIX  (a
++           subset)  and  X/Open Curses (the full implementation).
++           POSIX documents a subset to avoid the complication  of
++           including  X/Open Curses and the terminal capabilities
++           database.
++
++       <STRONG>o</STRONG>   While it is certainly possible to write a <STRONG>tput</STRONG> program
++           without using curses, none of the systems which have a
++           curses implementation provide  a  <STRONG>tput</STRONG>  utility  which
++           does not provide the <EM>capname</EM> feature.
+ 
+        Most implementations which provide support for <EM>capname</EM> op-
+-       erands  use the <EM>tparm</EM> function to expand parameters in it.
+-       That function expects a  mixture  of  numeric  and  string
+-       parameters,  requiring  <STRONG>tput</STRONG>  to  know  which type to use.
++       erands use the <EM>tparm</EM> function to expand parameters in  it.
++       That  function  expects  a  mixture  of numeric and string
++       parameters, requiring <STRONG>tput</STRONG> to  know  which  type  to  use.
+        This implementation uses a table to determine that for the
+-       standard  <EM>capname</EM>  operands, and an internal library func-
++       standard <EM>capname</EM> operands, and an internal  library  func-
+        tion  to  analyze  nonstandard  <EM>capname</EM>  operands.   Other
+-       implementations  may simply guess that an operand contain-
++       implementations may simply guess that an operand  contain-
+        ing only digits is intended to be a number.
+ 
+ 
+ </PRE><H2><a name="h2-SEE-ALSO">SEE ALSO</a></H2><PRE>
+-       <STRONG><A HREF="clear.1.html">clear(1)</A></STRONG>, <STRONG>stty(1)</STRONG>, <STRONG><A HREF="tabs.1.html">tabs(1)</A></STRONG>, <STRONG><A HREF="terminfo.5.html">terminfo(5)</A></STRONG>, <STRONG><A HREF="curs_termcap.3x.html">curs_termcap(3x)</A></STRONG>.
++       <STRONG><A HREF="clear.1.html">clear(1)</A></STRONG>,    <STRONG>stty(1)</STRONG>,   <STRONG><A HREF="tabs.1.html">tabs(1)</A></STRONG>,   <STRONG><A HREF="tset.1.html">tset(1)</A></STRONG>,   <STRONG><A HREF="terminfo.5.html">terminfo(5)</A></STRONG>,
++       <STRONG><A HREF="curs_termcap.3x.html">curs_termcap(3x)</A></STRONG>.
+ 
+-       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160326).
++       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160402).
+ 
+ 
+ 
+@@ -339,7 +393,13 @@
+ <ul>
+ <li><a href="#h2-NAME">NAME</a></li>
+ <li><a href="#h2-SYNOPSIS">SYNOPSIS</a></li>
+-<li><a href="#h2-DESCRIPTION">DESCRIPTION</a></li>
++<li><a href="#h2-DESCRIPTION">DESCRIPTION</a>
++<ul>
++<li><a href="#h3-Options">Options</a></li>
++<li><a href="#h3-Commands">Commands</a></li>
++<li><a href="#h3-Aliases">Aliases</a></li>
++</ul>
++</li>
+ <li><a href="#h2-EXAMPLES">EXAMPLES</a></li>
+ <li><a href="#h2-FILES">FILES</a></li>
+ <li><a href="#h2-EXIT-CODES">EXIT CODES</a></li>
+diff --git a/doc/html/man/tset.1.html b/doc/html/man/tset.1.html
+index e502519..e68112f 100644
+--- a/doc/html/man/tset.1.html
++++ b/doc/html/man/tset.1.html
+@@ -315,7 +315,7 @@
+        <STRONG>csh(1)</STRONG>,   <STRONG>sh(1)</STRONG>,   <STRONG>stty(1)</STRONG>,   <STRONG><A HREF="curs_terminfo.3x.html">curs_terminfo(3x)</A></STRONG>,   <STRONG>tty(4)</STRONG>,
+        <STRONG><A HREF="terminfo.5.html">terminfo(5)</A></STRONG>, <STRONG>ttys(5)</STRONG>, <STRONG>environ(7)</STRONG>
+ 
+-       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160326).
++       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160402).
+ 
+ 
+ 
+diff --git a/man/tabs.1 b/man/tabs.1
+index f6b797d..ead73e5 100644
+--- a/man/tabs.1
++++ b/man/tabs.1
+@@ -1,5 +1,5 @@
+ .\"***************************************************************************
+-.\" Copyright (c) 2008-2011,2013 Free Software Foundation, Inc.              *
++.\" Copyright (c) 2008-2013,2016 Free Software Foundation, Inc.              *
+ .\"                                                                          *
+ .\" Permission is hereby granted, free of charge, to any person obtaining a  *
+ .\" copy of this software and associated documentation files (the            *
+@@ -26,9 +26,12 @@
+ .\" authorization.                                                           *
+ .\"***************************************************************************
+ .\"
+-.\" $Id: tabs.1,v 1.11 2013/06/22 18:11:57 tom Exp $
++.\" $Id: tabs.1,v 1.12 2016/04/02 23:40:46 tom Exp $
+ .TH @TABS@ 1 ""
+ .ds n 5
++.de bP
++.IP \(bu 4
++..
+ .SH NAME
+ \fB@TABS@\fR \- set tabs on a terminal
+ .SH SYNOPSIS
+@@ -123,8 +126,14 @@ SNOBOL
+ UNIVAC 1100 Assembler
+ .SH PORTABILITY
+ .PP
+-X/Open describes a \fB+m\fP option, to set a terminal's left-margin.
++IEEE Std 1003.1/The Open Group  Base Specifications Issue 7 (POSIX.1-2008) describes
++a \fBtabs\fP utility.  However
++.bP
++This standard describes a \fB+m\fP option, to set a terminal's left-margin.
+ Very few of the entries in the terminal database provide this capability.
++.bP
++There is no counterpart in X/Open Curses Issue 7 for this utility,
++unlike @TPUT@(3X).
+ .PP
+ The \fB\-d\fP (debug) and \fB\-n\fP (no-op) options are extensions not provided
+ by other implementations.
+diff --git a/man/tput.1 b/man/tput.1
+index a1b81bc..750051b 100644
+--- a/man/tput.1
++++ b/man/tput.1
+@@ -1,6 +1,6 @@
+ '\" t
+ .\"***************************************************************************
+-.\" Copyright (c) 1998-2011,2012 Free Software Foundation, Inc.              *
++.\" Copyright (c) 1998-2012,2016 Free Software Foundation, Inc.              *
+ .\"                                                                          *
+ .\" Permission is hereby granted, free of charge, to any person obtaining a  *
+ .\" copy of this software and associated documentation files (the            *
+@@ -27,14 +27,17 @@
+ .\" authorization.                                                           *
+ .\"***************************************************************************
+ .\"
+-.\" $Id: tput.1,v 1.32 2012/07/14 21:06:45 tom Exp $
++.\" $Id: tput.1,v 1.36 2016/04/02 23:41:08 tom Exp $
+ .TH @TPUT@ 1 ""
+ .ds d @TERMINFO@
+ .ds n 1
++.de bP
++.IP \(bu 4
++..
+ .SH NAME
+ \fB@TPUT@\fR, \fBreset\fR \- initialize a terminal or query terminfo database
+ .SH SYNOPSIS
+-\fB@TPUT@\fR [\fB\-T\fR\fItype\fR] \fIcapname\fR [\fIparms\fR ... ]
++\fB@TPUT@\fR [\fB\-T\fR\fItype\fR] \fIcapname\fR [\fIparameters\fR]
+ .br
+ \fB@TPUT@\fR [\fB\-T\fR\fItype\fR] \fBinit\fR
+ .br
+@@ -52,7 +55,7 @@ values of terminal-dependent capabilities and information available to
+ the shell (see \fBsh\fR(1)), to initialize or reset the terminal, or
+ return the long name of the requested terminal type.
+ The result depends upon the capability's type:
+-.RS
++.RS 3
+ .TP 5
+ string
+ \fB@TPUT@\fR writes the string to the standard output.
+@@ -75,6 +78,7 @@ the application should test the exit code
+ (See the \fBEXIT CODES\fR and \fBDIAGNOSTICS\fR sections.)
+ For a complete list of capabilities
+ and the \fIcapname\fR associated with each, see \fBterminfo\fR(5).
++.SS Options
+ .TP
+ \fB\-T\fR\fItype\fR
+ indicates the \fItype\fR of terminal.
+@@ -84,22 +88,6 @@ variable \fBTERM\fR.
+ If \fB\-T\fR is specified, then the shell
+ variables \fBLINES\fR and \fBCOLUMNS\fR will also be ignored.
+ .TP
+-\fIcapname\fR
+-indicates the capability from the \fBterminfo\fR database.  When
+-\fBtermcap\fR support is compiled in, the \fBtermcap\fR name for
+-the capability is also accepted.
+-.TP
+-\fIparms\fR
+-If the capability is a string that takes parameters, the arguments
+-\fIparms\fR will be instantiated into the string.
+-.IP
+-Most parameters are numbers.
+-Only a few terminfo capabilities require string parameters;
+-\fB@TPUT@\fR uses a table to decide which to pass as strings.
+-Normally \fB@TPUT@\fR uses \fBtparm\fR (3X) to perform the substitution.
+-If no parameters are given for the capability,
+-\fB@TPUT@\fR writes the string without performing the substitution.
+-.TP
+ \fB\-S\fR
+ allows more than one capability per invocation of \fB@TPUT@\fR.  The
+ capabilities must be passed to \fB@TPUT@\fR from the standard input
+@@ -110,18 +98,34 @@ meaning of the \fB0\fR and \fB1\fR boolean and string exit codes (see the
+ EXIT CODES section).
+ .IP
+ Again, \fB@TPUT@\fR uses a table and the presence of parameters in its input
+-to decide whether to use \fBtparm\fR (3X),
++to decide whether to use \fBtparm\fR(3X),
+ and how to interpret the parameters.
+ .TP
+ \fB\-V\fR
+ reports the version of ncurses which was used in this program, and exits.
++.SS Commands
++.TP
++\fIcapname\fR
++indicates the capability from the \fBterminfo\fR database.  When
++\fBtermcap\fR support is compiled in, the \fBtermcap\fR name for
++the capability is also accepted.
++.IP
++If the capability is a string that takes parameters, the arguments
++following the capability will be used as parameters for the string.
++.IP
++Most parameters are numbers.
++Only a few terminfo capabilities require string parameters;
++\fB@TPUT@\fR uses a table to decide which to pass as strings.
++Normally \fB@TPUT@\fR uses \fBtparm\fR(3X) to perform the substitution.
++If no parameters are given for the capability,
++\fB@TPUT@\fR writes the string without performing the substitution.
+ .TP
+ \fBinit\fR
+ If the \fBterminfo\fR database is present and an entry for the user's
+ terminal exists (see \fB\-T\fR\fItype\fR, above), the following will
+ occur:
+ .RS
+-.TP
++.TP 5
+ (1)
+ if present, the terminal's initialization strings will be
+ output as detailed in the \fBterminfo\fR(5) section on
+@@ -141,7 +145,7 @@ standard tabs will be set (every 8 spaces).
+ .RE
+ .IP
+ If an entry does not
+-contain the information needed for any of the four above activities,
++contain the information needed for any of these activities,
+ that activity will silently be skipped.
+ .TP
+ \fBreset\fR
+@@ -157,10 +161,27 @@ user's terminal exists (see \fB\-T\fR\fItype\fR above), then the long name
+ of the terminal will be put out.  The long name is the last
+ name in the first line of the terminal's description in the
+ \fBterminfo\fR database [see \fBterm\fR(5)].
++.SS Aliases
++\fB@TPUT@\fR handles the \fBinit\fP and \fBreset\fP commands specially:
++it allows for the possibility that it is invoked by a link with those names.
+ .PP
+ If \fB@TPUT@\fR is invoked by a link named \fBreset\fR, this has the
+ same effect as \fB@TPUT@ reset\fR.
+-See \fB@TSET@\fR for comparison, which has similar behavior.
++The \fB@TSET@\fR(\*n) utility also treats a link named \fBreset\fP specially:
++.bP
++That utility resets the terminal modes and special characters (not done here).
++.bP
++On the other hand, @TSET@'s repertoire of terminal capabilities for
++resetting the terminal is more limited, i.e., only \fBreset_1string\fP, \fBreset_2string\fP and \fBreset_file\fP
++in contrast to the tab-stops and margins which are set by this utility.
++.bP
++The \fBreset\fP program is usually an alias for @TSET@,
++due to the resetting of terminal modes and special characters.
++.PP
++If \fB@TPUT@\fR is invoked by a link named \fBinit\fR, this has the
++same effect as \fB@TPUT@ init\fR.
++Again, you are less likely to use that link because another program
++named \fBinit\fP has a more well-established use.
+ .SH EXAMPLES
+ .TP 5
+ \fB@TPUT@ init\fR
+@@ -248,7 +269,7 @@ exit code \fB1\fR will never appear.  Exit codes \fB2\fR, \fB3\fR, and
+ \fB4\fR retain their usual interpretation.
+ If the \fB\-S\fR option is not used,
+ the exit code depends on the type of \fIcapname\fR:
+-.RS 5
++.RS 3
+ .TP
+ .I boolean
+ a value of \fB0\fR is set for TRUE and \fB1\fR for FALSE.
+@@ -302,15 +323,38 @@ The \fBlongname\fR and \fB\-S\fR options, and the parameter-substitution
+ features used in the \fBcup\fR example, are not supported in BSD curses or in
+ AT&T/USL curses before SVr4.
+ .PP
+-X/Open documents only the operands for \fBclear\fP, \fBinit\fP and \fBreset\fP.
++IEEE Std 1003.1/The Open Group  Base Specifications Issue 7 (POSIX.1-2008) 
++documents only the operands for \fBclear\fP, \fBinit\fP and \fBreset\fP.
++There are a few interesting observations to make regarding that:
++.bP
+ In this implementation, \fBclear\fP is part of the \fIcapname\fR support.
++The others (\fBinit\fP and \fBlongname\fP) do not correspond to terminal
++capabilities.
++.bP
+ Other implementations of \fB@TPUT@\fP on
+ SVr4-based systems such as Solaris, IRIX64 and HPUX
+ as well as others such as AIX and Tru64
+ provide support for \fIcapname\fR operands.
+-.PP
+-A few platforms such as FreeBSD and NetBSD recognize termcap names rather
++.bP
++A few platforms such as FreeBSD recognize termcap names rather
+ than terminfo capability names in their respective \fB@TPUT@\fP commands.
++Since 2010, NetBSD's \fBtput\fP uses terminfo names.
++Before that, it (like FreeBSD) recognized termcap names.
++.PP
++Because (apparently) \fIall\fP of the certified Unix systems
++support the full set of capability names, the reasoning for documenting
++only a few may not be apparent.
++.bP
++X/Open Curses Issue 7 documents \fBtput\fP differently, with \fIcapname\fP
++and the other features used in this implementation.
++.bP
++That is, there are two standards for \fBtput\fP: POSIX (a subset) and X/Open Curses (the full implementation).
++POSIX documents a subset to avoid the complication of including X/Open Curses
++and the terminal capabilities database.
++.bP
++While it is certainly possible to write a \fBtput\fP program without using curses,
++none of the systems which have a curses implementation provide
++a \fBtput\fP utility which does not provide the \fIcapname\fP feature.
+ .PP
+ Most implementations which provide support for \fIcapname\fR operands
+ use the \fItparm\fP function to expand parameters in it.
+@@ -322,9 +366,10 @@ function to analyze nonstandard \fIcapname\fR operands.
+ Other implementations may simply guess that an operand containing only digits
+ is intended to be a number.
+ .SH SEE ALSO
+-\fB@CLEAR@\fR(1),
++\fB@CLEAR@\fR(\*n),
+ \fBstty\fR(1),
+-\fBtabs\fR(\*n),
++\fB@TABS@\fR(\*n),
++\fB@TSET@\fR(\*n),
+ \fBterminfo\fR(5),
+ \fBcurs_termcap\fR(3X).
+ .PP
+diff --git a/package/debian-mingw/changelog b/package/debian-mingw/changelog
+index a02c8ae..6bf76d4 100644
+--- a/package/debian-mingw/changelog
++++ b/package/debian-mingw/changelog
+@@ -1,8 +1,8 @@
+-ncurses6 (6.0+20160326) unstable; urgency=low
++ncurses6 (6.0+20160402) unstable; urgency=low
+ 
+   * latest weekly patch
+ 
+- -- Thomas E. Dickey <dickey@invisible-island.net>  Sat, 26 Mar 2016 08:23:50 -0400
++ -- Thomas E. Dickey <dickey@invisible-island.net>  Sat, 02 Apr 2016 15:01:57 -0400
+ 
+ ncurses6 (5.9-20131005) unstable; urgency=low
+ 
+diff --git a/package/debian-mingw64/changelog b/package/debian-mingw64/changelog
+index a02c8ae..6bf76d4 100644
+--- a/package/debian-mingw64/changelog
++++ b/package/debian-mingw64/changelog
+@@ -1,8 +1,8 @@
+-ncurses6 (6.0+20160326) unstable; urgency=low
++ncurses6 (6.0+20160402) unstable; urgency=low
+ 
+   * latest weekly patch
+ 
+- -- Thomas E. Dickey <dickey@invisible-island.net>  Sat, 26 Mar 2016 08:23:50 -0400
++ -- Thomas E. Dickey <dickey@invisible-island.net>  Sat, 02 Apr 2016 15:01:57 -0400
+ 
+ ncurses6 (5.9-20131005) unstable; urgency=low
+ 
+diff --git a/package/debian/changelog b/package/debian/changelog
+index 3e5b646..25f48ea 100644
+--- a/package/debian/changelog
++++ b/package/debian/changelog
+@@ -1,8 +1,8 @@
+-ncurses6 (6.0+20160326) unstable; urgency=low
++ncurses6 (6.0+20160402) unstable; urgency=low
+ 
+   * latest weekly patch
+ 
+- -- Thomas E. Dickey <dickey@invisible-island.net>  Sat, 26 Mar 2016 08:23:50 -0400
++ -- Thomas E. Dickey <dickey@invisible-island.net>  Sat, 02 Apr 2016 15:01:57 -0400
+ 
+ ncurses6 (5.9-20120608) unstable; urgency=low
+ 
+diff --git a/package/mingw-ncurses.nsi b/package/mingw-ncurses.nsi
+index d19162c..e9b103e 100644
+--- a/package/mingw-ncurses.nsi
++++ b/package/mingw-ncurses.nsi
+@@ -1,4 +1,4 @@
+-; $Id: mingw-ncurses.nsi,v 1.151 2016/03/26 12:23:50 tom Exp $
++; $Id: mingw-ncurses.nsi,v 1.152 2016/04/02 19:01:57 tom Exp $
+ 
+ ; TODO add examples
+ ; TODO bump ABI to 6
+@@ -10,7 +10,7 @@
+ !define VERSION_MAJOR "6"
+ !define VERSION_MINOR "0"
+ !define VERSION_YYYY  "2016"
+-!define VERSION_MMDD  "0326"
++!define VERSION_MMDD  "0402"
+ !define VERSION_PATCH ${VERSION_YYYY}${VERSION_MMDD}
+ 
+ !define MY_ABI   "5"
+diff --git a/package/mingw-ncurses.spec b/package/mingw-ncurses.spec
+index ef044b9..bf6b0a3 100644
+--- a/package/mingw-ncurses.spec
++++ b/package/mingw-ncurses.spec
+@@ -3,7 +3,7 @@
+ Summary: shared libraries for terminal handling
+ Name: mingw32-ncurses6
+ Version: 6.0
+-Release: 20160326
++Release: 20160402
+ License: X11
+ Group: Development/Libraries
+ Source: ncurses-%{version}-%{release}.tgz
+diff --git a/package/ncurses.spec b/package/ncurses.spec
+index f4c6011..cc89399 100644
+--- a/package/ncurses.spec
++++ b/package/ncurses.spec
+@@ -1,7 +1,7 @@
+ Summary: shared libraries for terminal handling
+ Name: ncurses6
+ Version: 6.0
+-Release: 20160326
++Release: 20160402
+ License: X11
+ Group: Development/Libraries
+ Source: ncurses-%{version}-%{release}.tgz
+diff --git a/test/README b/test/README
+index 350c254..7bab08b 100644
+--- a/test/README
++++ b/test/README
+@@ -1,5 +1,5 @@
+ -------------------------------------------------------------------------------
+--- Copyright (c) 1998-2013,2015 Free Software Foundation, Inc.               --
++-- Copyright (c) 1998-2015,2016 Free Software Foundation, Inc.               --
+ --                                                                           --
+ -- Permission is hereby granted, free of charge, to any person obtaining a   --
+ -- copy of this software and associated documentation files (the             --
+@@ -25,7 +25,7 @@
+ -- sale, use or other dealings in this Software without prior written        --
+ -- authorization.                                                            --
+ -------------------------------------------------------------------------------
+--- $Id: README,v 1.53 2015/12/06 00:38:26 tom Exp $
++-- $Id: README,v 1.55 2016/04/02 23:57:07 tom Exp $
+ -------------------------------------------------------------------------------
+ 
+ The programs in this directory are used to test and demonstrate ncurses.
+@@ -233,7 +233,7 @@ BC				test: demo_termcap
+ COLORS				test: dots_curses echochar ncurses savescreen xmas
+ COLOR_PAIR			test: background blue bs cardfile clip_printw demo_forms demo_menus demo_panels dots_curses echochar filter firework gdc hanoi ins_wide insdelln inserts knight ncurses newdemo rain savescreen tclock test_add_wchstr test_addchstr test_addstr test_addwstr testaddch testcurs view worm xmas
+ COLOR_PAIRS			test: dots_curses echochar ncurses newdemo savescreen
+-COLS				test: cardfile demo_altkeys demo_defkey demo_forms demo_keyok demo_menus demo_panels ditto dots_curses echochar edit_field firework foldkeys hashtest inch_wide inchs ins_wide inserts lrtest movewindow ncurses newdemo rain savescreen tclock test_add_wchstr test_addchstr test_addstr test_addwstr test_get_wstr test_getstr test_instr test_inwstr test_opaque testcurs view worm
++COLS				test: cardfile demo_altkeys demo_defkey demo_forms demo_keyok demo_menus demo_panels ditto dots_curses echochar edit_field filter firework foldkeys hashtest inch_wide inchs ins_wide inserts lrtest movewindow ncurses newdemo rain savescreen tclock test_add_wchstr test_addchstr test_addstr test_addwstr test_get_wstr test_getstr test_instr test_inwstr test_opaque testcurs view worm
+ ESCDELAY			test: test_opaque
+ LINES				test: cardfile demo_defkey demo_keyok demo_menus demo_panels ditto dots_curses echochar edit_field firework hanoi hashtest inch_wide inchs ins_wide inserts lrtest movewindow ncurses newdemo rain savescreen tclock test_add_wchstr test_addchstr test_addstr test_addwstr test_get_wstr test_getstr test_instr test_inwstr test_opaque testcurs view worm xmas
+ PAIR_NUMBER			test: ncurses
+@@ -250,7 +250,7 @@ addchnstr			test: test_addchstr
+ addchstr			test: test_addchstr
+ addnstr				test: test_addstr
+ addnwstr			test: ncurses test_addwstr
+-addstr				test: blue bs cardfile gdc hanoi lrtest ncurses test_addstr
++addstr				test: blue bs cardfile filter gdc hanoi lrtest ncurses test_addstr
+ addwstr				test: test_addwstr
+ assume_default_colors		test: background ncurses
+ assume_default_colors_sp	-
+@@ -260,7 +260,7 @@ attr_on				test: ncurses
+ attr_set			test: ncurses
+ attroff				test: dots_curses echochar filter gdc ncurses tclock
+ attron				test: bs dots_curses echochar filter gdc ncurses
+-attrset				test: bs firework gdc hanoi insdelln ncurses rain tclock testaddch testcurs
++attrset				test: bs filter firework gdc hanoi insdelln ncurses rain tclock testaddch testcurs
+ baudrate			lib: ncurses
+ baudrate_sp			lib: ncurses
+ beep				test: blue bs cardfile chgat clip_printw demo_forms demo_menus demo_panels edit_field hanoi inch_wide inchs ins_wide insdelln inserts knight movewindow ncurses savescreen tclock test_add_wchstr test_addchstr test_addstr test_addwstr test_get_wstr test_getstr test_instr test_inwstr test_opaque testcurs view xmas
+@@ -284,7 +284,7 @@ chgat				test: chgat
+ clear				test: blue bs gdc ncurses testcurs xmas
+ clearok				test: bs knight
+ clrtobot			test: demo_menus ncurses
+-clrtoeol			test: blue bs demo_altkeys foldkeys form_driver_w hanoi hashtest movewindow ncurses view
++clrtoeol			test: blue bs demo_altkeys filter foldkeys form_driver_w hanoi hashtest movewindow ncurses view
+ color_content			test: ncurses
+ color_content_sp		-
+ color_set			test: color_set ncurses
+@@ -324,7 +324,7 @@ erasechar_sp			lib: ncurses
+ erasewchar			-
+ filter				test: filter
+ filter_sp			-
+-flash				test: cardfile lrtest movewindow ncurses tclock testcurs
++flash				test: cardfile filter lrtest movewindow ncurses tclock testcurs
+ flash_sp			-
+ flushinp			test: ncurses newdemo testcurs
+ flushinp_sp			lib: ncurses
+@@ -339,11 +339,11 @@ getbkgd				test: ncurses
+ getbkgrnd			test: ncurses
+ getcchar			test: ncurses view
+ getch				test: background blue bs chgat color_set demo_altkeys filter firework firstlast foldkeys hanoi hashtest insdelln lrtest savescreen tclock test_opaque testaddch testcurs view xmas
+-getcurx				test: bs chgat clip_printw demo_altkeys demo_defkey demo_panels firstlast foldkeys insdelln movewindow ncurses redraw savescreen test_get_wstr test_getstr test_opaque testcurs
+-getcury				test: bs chgat clip_printw demo_altkeys demo_defkey demo_panels edit_field firstlast foldkeys insdelln movewindow ncurses redraw savescreen test_opaque testcurs
++getcurx				test: bs chgat clip_printw demo_altkeys demo_defkey demo_panels filter firstlast foldkeys insdelln movewindow ncurses redraw savescreen test_get_wstr test_getstr test_opaque testcurs
++getcury				test: bs chgat clip_printw demo_altkeys demo_defkey demo_panels edit_field filter firstlast foldkeys insdelln movewindow ncurses redraw savescreen test_opaque testcurs
+ getmaxx				test: chgat clip_printw demo_panels inch_wide inchs insdelln movewindow ncurses newdemo redraw test_get_wstr test_getstr test_instr test_inwstr test_opaque testcurs
+ getmaxy				test: chgat clip_printw demo_forms demo_panels inch_wide inchs insdelln movewindow ncurses newdemo redraw test_get_wstr test_getstr test_instr test_inwstr test_opaque testcurs
+-getmouse			test: bs knight movewindow ncurses testcurs
++getmouse			test: bs demo_menus knight movewindow ncurses testcurs
+ getmouse_sp			-
+ getn_wstr			test: test_get_wstr
+ getnstr				test: filter ncurses test_getstr
+@@ -431,12 +431,12 @@ longname_sp			-
+ mcprint				-
+ mcprint_sp			-
+ meta				test: key_names keynames ncurses
+-mouse_trafo			-
++mouse_trafo			lib: form
+ mouseinterval			-
+ mouseinterval_sp		-
+ mousemask			test: bs demo_forms demo_menus knight movewindow ncurses testcurs
+ mousemask_sp			-
+-move				test: blue bs cardfile chgat demo_altkeys demo_menus dots_curses echochar foldkeys gdc hanoi hashtest inch_wide inchs ins_wide inserts knight lrtest movewindow ncurses savescreen test_add_wchstr test_addchstr test_addstr test_addwstr test_get_wstr test_getstr test_instr test_inwstr test_opaque testscanw view xmas
++move				test: blue bs cardfile chgat demo_altkeys demo_menus dots_curses echochar filter foldkeys gdc hanoi hashtest inch_wide inchs ins_wide inserts knight lrtest movewindow ncurses savescreen test_add_wchstr test_addchstr test_addstr test_addwstr test_get_wstr test_getstr test_instr test_inwstr test_opaque testscanw view xmas
+ mvadd_wch			test: ncurses test_add_wchstr test_addwstr
+ mvadd_wchnstr			test: test_add_wchstr
+ mvadd_wchstr			test: test_add_wchstr
+@@ -662,14 +662,14 @@ tgetnum				test: demo_termcap dots_termcap railroad
+ tgetnum_sp			-
+ tgetstr				test: demo_termcap dots_termcap railroad
+ tgetstr_sp			-
+-tgoto				test: dots_termcap railroad
++tgoto				test: dots_termcap railroad progs: tic
+ tigetflag			test: demo_terminfo progs: tic tput
+ tigetflag_sp			-
+ tigetnum			test: demo_terminfo ncurses progs: tput
+ tigetnum_sp			-
+ tigetstr			test: demo_defkey demo_terminfo foldkeys test_sgr testcurs progs: clear tput
+ tigetstr_sp			-
+-timeout				test: rain savescreen
++timeout				test: filter rain savescreen
+ tiparm				-
+ touchline			test: chgat clip_printw insdelln
+ touchwin			test: chgat clip_printw demo_menus edit_field filter firstlast inch_wide inchs ins_wide insdelln inserts movewindow ncurses redraw savescreen test_add_wchstr test_addchstr test_addstr test_addwstr test_get_wstr test_getstr test_instr test_inwstr test_opaque xmas
+@@ -686,7 +686,7 @@ unget_wch			-
+ unget_wch_sp			-
+ ungetch				test: bs knight
+ ungetch_sp			lib: ncurses
+-ungetmouse			-
++ungetmouse			lib: menu
+ ungetmouse_sp			-
+ untouchwin			lib: form
+ use_default_colors		test: background filter firework gdc hanoi knight ncurses rain tclock worm xmas
+@@ -785,7 +785,7 @@ wnoutrefresh			test: demo_menus ditto edit_field inch_wide inchs ins_wide insert
+ wprintw				test: chgat clip_printw demo_defkey demo_forms demo_keyok demo_menus demo_panels edit_field inch_wide inchs ins_wide insdelln inserts knight movewindow ncurses savescreen test_add_wchstr test_addchstr test_addstr test_addwstr test_get_wstr test_getstr test_instr test_inwstr test_opaque testcurs
+ wredrawln			test: redraw
+ wrefresh			test: chgat clip_printw demo_forms demo_keyok demo_menus demo_panels edit_field firstlast ins_wide insdelln inserts knight lrtest movewindow ncurses newdemo redraw savescreen tclock test_add_wchstr test_addchstr test_addstr test_addwstr testcurs view worm xmas
+-wresize				test: cardfile ncurses
++wresize				test: cardfile demo_menus ncurses
+ wscanw				test: testcurs
+ wscrl				test: ncurses testcurs
+ wsetscrreg			test: ncurses testcurs
+-- 
+2.9.1
+

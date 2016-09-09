@@ -1,0 +1,704 @@
+From e3d8d5a5a9425b40e09df86a597c3e971dced9d1 Mon Sep 17 00:00:00 2001
+From: "Thomas E. Dickey" <dickey@invisible-island.net>
+Date: Sun, 24 Jan 2016 02:28:05 +0000
+Subject: [PATCH 21/50] ncurses 6.0 - patch 20160123
+
++ ifdef'd header-file definition of mouse_trafo() with NCURSES_NOMACROS
+  (report by Corey Minyard).
++ fix some strict compiler-warnings in traces.
+---
+ NEWS                             |  7 ++++++-
+ VERSION                          |  2 +-
+ dist.mk                          |  4 ++--
+ form/f_trace.c                   |  6 +++---
+ form/fld_arg.c                   |  6 +++---
+ form/fld_attr.c                  |  6 +++---
+ form/fld_ftchoice.c              |  6 +++---
+ form/fld_newftyp.c               |  6 +++---
+ form/frm_hook.c                  |  6 +++---
+ form/fty_generic.c               | 10 +++++++---
+ include/curses.h.in              | 12 ++++++------
+ include/curses.tail              |  4 +++-
+ menu/m_hook.c                    |  6 +++---
+ menu/m_trace.c                   |  6 +++---
+ ncurses/Makefile.in              |  7 ++++---
+ ncurses/base/lib_getch.c         |  6 +++---
+ ncurses/base/lib_set_term.c      |  6 +++---
+ ncurses/base/use_window.c        |  6 +++---
+ ncurses/curses.priv.h            |  7 +++++--
+ ncurses/tinfo/lib_tputs.c        |  6 +++---
+ ncurses/tinfo/use_screen.c       |  6 +++---
+ package/debian-mingw/changelog   |  4 ++--
+ package/debian-mingw64/changelog |  4 ++--
+ package/debian/changelog         |  4 ++--
+ package/mingw-ncurses.nsi        |  4 ++--
+ package/mingw-ncurses.spec       |  2 +-
+ package/ncurses.spec             |  2 +-
+ 27 files changed, 83 insertions(+), 68 deletions(-)
+
+diff --git a/NEWS b/NEWS
+index 3a37ebd..33dca73 100644
+--- a/NEWS
++++ b/NEWS
+@@ -25,7 +25,7 @@
+ -- sale, use or other dealings in this Software without prior written        --
+ -- authorization.                                                            --
+ -------------------------------------------------------------------------------
+--- $Id: NEWS,v 1.2560 2016/01/17 00:37:27 tom Exp $
++-- $Id: NEWS,v 1.2564 2016/01/24 01:17:56 tom Exp $
+ -------------------------------------------------------------------------------
+ 
+ This is a log of changes that ncurses has gone through since Zeyd started
+@@ -45,6 +45,11 @@ See the AUTHORS file for the corresponding full names.
+ Changes through 1.9.9e did not credit all contributions;
+ it is not possible to add this information.
+ 
++20160123
++	+ ifdef'd header-file definition of mouse_trafo() with NCURSES_NOMACROS
++	  (report by Corey Minyard).
++	+ fix some strict compiler-warnings in traces.
++
+ 20160116
+ 	+ tidy up comments about hardcoded 256color palette (report by
+ 	  Leonardo Brondani Schenkel) -TD
+diff --git a/VERSION b/VERSION
+index 21517a8..455ad1b 100644
+--- a/VERSION
++++ b/VERSION
+@@ -1 +1 @@
+-5:0:9	6.0	20160116
++5:0:9	6.0	20160123
+diff --git a/dist.mk b/dist.mk
+index ff327f6..6024c80 100644
+--- a/dist.mk
++++ b/dist.mk
+@@ -25,7 +25,7 @@
+ # use or other dealings in this Software without prior written               #
+ # authorization.                                                             #
+ ##############################################################################
+-# $Id: dist.mk,v 1.1089 2016/01/16 21:24:23 tom Exp $
++# $Id: dist.mk,v 1.1090 2016/01/23 17:00:00 tom Exp $
+ # Makefile for creating ncurses distributions.
+ #
+ # This only needs to be used directly as a makefile by developers, but
+@@ -37,7 +37,7 @@ SHELL = /bin/sh
+ # These define the major/minor/patch versions of ncurses.
+ NCURSES_MAJOR = 6
+ NCURSES_MINOR = 0
+-NCURSES_PATCH = 20160116
++NCURSES_PATCH = 20160123
+ 
+ # We don't append the patch to the version, since this only applies to releases
+ VERSION = $(NCURSES_MAJOR).$(NCURSES_MINOR)
+diff --git a/form/f_trace.c b/form/f_trace.c
+index 6044e03..ebe14a6 100644
+--- a/form/f_trace.c
++++ b/form/f_trace.c
+@@ -1,5 +1,5 @@
+ /****************************************************************************
+- * Copyright (c) 2004,2010 Free Software Foundation, Inc.                   *
++ * Copyright (c) 2004-2010,2016 Free Software Foundation, Inc.              *
+  *                                                                          *
+  * Permission is hereby granted, free of charge, to any person obtaining a  *
+  * copy of this software and associated documentation files (the            *
+@@ -32,7 +32,7 @@
+ 
+ #include "form.priv.h"
+ 
+-MODULE_ID("$Id: f_trace.c,v 1.2 2010/01/23 21:14:36 tom Exp $")
++MODULE_ID("$Id: f_trace.c,v 1.3 2016/01/23 21:32:00 tom Exp $")
+ 
+ NCURSES_EXPORT(FIELD **)
+ _nc_retrace_field_ptr(FIELD **code)
+@@ -65,6 +65,6 @@ _nc_retrace_form(FORM *code)
+ NCURSES_EXPORT(Form_Hook)
+ _nc_retrace_form_hook(Form_Hook code)
+ {
+-  T((T_RETURN("%p"), code));
++  T((T_RETURN("%p"), TR_FUNC(code)));
+   return code;
+ }
+diff --git a/form/fld_arg.c b/form/fld_arg.c
+index 001c1d1..7326b0a 100644
+--- a/form/fld_arg.c
++++ b/form/fld_arg.c
+@@ -1,5 +1,5 @@
+ /****************************************************************************
+- * Copyright (c) 1998-2010,2012 Free Software Foundation, Inc.              *
++ * Copyright (c) 1998-2012,2016 Free Software Foundation, Inc.              *
+  *                                                                          *
+  * Permission is hereby granted, free of charge, to any person obtaining a  *
+  * copy of this software and associated documentation files (the            *
+@@ -32,7 +32,7 @@
+ 
+ #include "form.priv.h"
+ 
+-MODULE_ID("$Id: fld_arg.c,v 1.13 2012/06/10 00:27:49 tom Exp $")
++MODULE_ID("$Id: fld_arg.c,v 1.14 2016/01/23 21:32:00 tom Exp $")
+ 
+ /*---------------------------------------------------------------------------
+ |   Facility      :  libnform
+@@ -67,7 +67,7 @@ set_fieldtype_arg(FIELDTYPE *typ,
+ 		  void (*const free_arg) (void *))
+ {
+   T((T_CALLED("set_fieldtype_arg(%p,%p,%p,%p)"),
+-     (void *)typ, make_arg, copy_arg, free_arg));
++     (void *)typ, TR_FUNC(make_arg), TR_FUNC(copy_arg), TR_FUNC(free_arg)));
+ 
+   if (typ != 0 && make_arg != (void *)0)
+     {
+diff --git a/form/fld_attr.c b/form/fld_attr.c
+index 0112f00..28001d3 100644
+--- a/form/fld_attr.c
++++ b/form/fld_attr.c
+@@ -1,5 +1,5 @@
+ /****************************************************************************
+- * Copyright (c) 1998-2004,2010 Free Software Foundation, Inc.              *
++ * Copyright (c) 1998-2010,2016 Free Software Foundation, Inc.              *
+  *                                                                          *
+  * Permission is hereby granted, free of charge, to any person obtaining a  *
+  * copy of this software and associated documentation files (the            *
+@@ -32,7 +32,7 @@
+ 
+ #include "form.priv.h"
+ 
+-MODULE_ID("$Id: fld_attr.c,v 1.11 2010/01/23 21:12:08 tom Exp $")
++MODULE_ID("$Id: fld_attr.c,v 1.12 2016/01/23 21:32:00 tom Exp $")
+ 
+ /*----------------------------------------------------------------------------
+   Field-Attribute manipulation routines
+@@ -42,7 +42,7 @@ MODULE_ID("$Id: fld_attr.c,v 1.11 2010/01/23 21:12:08 tom Exp $")
+ NCURSES_IMPEXP int NCURSES_API set_field_ ## name (FIELD * field, chtype attr)\
+ {\
+    int res = E_BAD_ARGUMENT;\
+-   T((T_CALLED("set_field_" #name "(%p,%s)"), field, _traceattr(attr)));\
++   T((T_CALLED("set_field_" #name "(%p,%s)"), (void *)field, _traceattr(attr)));\
+    if ( attr==A_NORMAL || ((attr & A_ATTRIBUTES)==attr) )\
+      {\
+        Normalize_Field( field );\
+diff --git a/form/fld_ftchoice.c b/form/fld_ftchoice.c
+index 0901306..9534d13 100644
+--- a/form/fld_ftchoice.c
++++ b/form/fld_ftchoice.c
+@@ -1,5 +1,5 @@
+ /****************************************************************************
+- * Copyright (c) 1998-2010,2012 Free Software Foundation, Inc.              *
++ * Copyright (c) 1998-2012,2016 Free Software Foundation, Inc.              *
+  *                                                                          *
+  * Permission is hereby granted, free of charge, to any person obtaining a  *
+  * copy of this software and associated documentation files (the            *
+@@ -32,7 +32,7 @@
+ 
+ #include "form.priv.h"
+ 
+-MODULE_ID("$Id: fld_ftchoice.c,v 1.13 2012/06/10 00:27:49 tom Exp $")
++MODULE_ID("$Id: fld_ftchoice.c,v 1.14 2016/01/23 21:32:00 tom Exp $")
+ 
+ /*---------------------------------------------------------------------------
+ |   Facility      :  libnform  
+@@ -51,7 +51,7 @@ set_fieldtype_choice(FIELDTYPE *typ,
+ 		     bool (*const next_choice) (FIELD *, const void *),
+ 		     bool (*const prev_choice) (FIELD *, const void *))
+ {
+-  T((T_CALLED("set_fieldtype_choice(%p,%p,%p)"), (void *)typ, next_choice, prev_choice));
++  T((T_CALLED("set_fieldtype_choice(%p,%p,%p)"), (void *)typ, TR_FUNC(next_choice), TR_FUNC(prev_choice)));
+ 
+   if (!typ || !next_choice || !prev_choice)
+     RETURN(E_BAD_ARGUMENT);
+diff --git a/form/fld_newftyp.c b/form/fld_newftyp.c
+index 4351aed..4e59125 100644
+--- a/form/fld_newftyp.c
++++ b/form/fld_newftyp.c
+@@ -1,5 +1,5 @@
+ /****************************************************************************
+- * Copyright (c) 1998-2009,2010 Free Software Foundation, Inc.              *
++ * Copyright (c) 1998-2010,2016 Free Software Foundation, Inc.              *
+  *                                                                          *
+  * Permission is hereby granted, free of charge, to any person obtaining a  *
+  * copy of this software and associated documentation files (the            *
+@@ -32,7 +32,7 @@
+ 
+ #include "form.priv.h"
+ 
+-MODULE_ID("$Id: fld_newftyp.c,v 1.19 2010/01/23 21:14:36 tom Exp $")
++MODULE_ID("$Id: fld_newftyp.c,v 1.20 2016/01/23 21:32:00 tom Exp $")
+ 
+ static FIELDTYPE default_fieldtype =
+ {
+@@ -76,7 +76,7 @@ new_fieldtype(bool (*const field_check) (FIELD *, const void *),
+ {
+   FIELDTYPE *nftyp = (FIELDTYPE *)0;
+ 
+-  T((T_CALLED("new_fieldtype(%p,%p)"), field_check, char_check));
++  T((T_CALLED("new_fieldtype(%p,%p)"), TR_FUNC(field_check), TR_FUNC(char_check)));
+   if ((field_check) || (char_check))
+     {
+       nftyp = typeMalloc(FIELDTYPE, 1);
+diff --git a/form/frm_hook.c b/form/frm_hook.c
+index 23850bf..8c36cb3 100644
+--- a/form/frm_hook.c
++++ b/form/frm_hook.c
+@@ -1,5 +1,5 @@
+ /****************************************************************************
+- * Copyright (c) 1998-2010,2012 Free Software Foundation, Inc.              *
++ * Copyright (c) 1998-2012,2016 Free Software Foundation, Inc.              *
+  *                                                                          *
+  * Permission is hereby granted, free of charge, to any person obtaining a  *
+  * copy of this software and associated documentation files (the            *
+@@ -32,13 +32,13 @@
+ 
+ #include "form.priv.h"
+ 
+-MODULE_ID("$Id: frm_hook.c,v 1.16 2012/03/11 00:37:16 tom Exp $")
++MODULE_ID("$Id: frm_hook.c,v 1.17 2016/01/23 21:32:00 tom Exp $")
+ 
+ /* "Template" macro to generate function to set application specific hook */
+ #define GEN_HOOK_SET_FUNCTION( typ, name ) \
+ NCURSES_IMPEXP int NCURSES_API set_ ## typ ## _ ## name (FORM *form, Form_Hook func)\
+ {\
+-   T((T_CALLED("set_" #typ"_"#name"(%p,%p)"), (void *) form, func));\
++   T((T_CALLED("set_" #typ"_"#name"(%p,%p)"), (void *) form, TR_FUNC(func)));\
+    (Normalize_Form( form ) -> typ ## name) = func ;\
+    RETURN(E_OK);\
+ }
+diff --git a/form/fty_generic.c b/form/fty_generic.c
+index 429ceac..b9fbfb7 100644
+--- a/form/fty_generic.c
++++ b/form/fty_generic.c
+@@ -1,5 +1,5 @@
+ /****************************************************************************
+- * Copyright (c) 2008-2010,2012 Free Software Foundation, Inc.              *
++ * Copyright (c) 2008-2012,2016 Free Software Foundation, Inc.              *
+  *                                                                          *
+  * Permission is hereby granted, free of charge, to any person obtaining a  *
+  * copy of this software and associated documentation files (the            *
+@@ -34,7 +34,7 @@
+ 
+ #include "form.priv.h"
+ 
+-MODULE_ID("$Id: fty_generic.c,v 1.6 2012/06/10 00:27:49 tom Exp $")
++MODULE_ID("$Id: fty_generic.c,v 1.7 2016/01/23 21:32:00 tom Exp $")
+ 
+ /*
+  * This is not a full implementation of a field type, but adds some
+@@ -110,7 +110,11 @@ _nc_generic_fieldtype(bool (*const field_check) (FORM *, FIELD *, const void *),
+   FIELDTYPE *res = (FIELDTYPE *)0;
+ 
+   T((T_CALLED("_nc_generic_fieldtype(%p,%p,%p,%p,%p)"),
+-     field_check, char_check, next, prev, freecallback));
++     TR_FUNC(field_check),
++     TR_FUNC(char_check),
++     TR_FUNC(next),
++     TR_FUNC(prev),
++     TR_FUNC(freecallback)));
+ 
+   if (field_check || char_check)
+     {
+diff --git a/include/curses.h.in b/include/curses.h.in
+index 02e8d07..9825424 100644
+--- a/include/curses.h.in
++++ b/include/curses.h.in
+@@ -1,5 +1,5 @@
+ /****************************************************************************
+- * Copyright (c) 1998-2014,2015 Free Software Foundation, Inc.              *
++ * Copyright (c) 1998-2015,2016 Free Software Foundation, Inc.              *
+  *                                                                          *
+  * Permission is hereby granted, free of charge, to any person obtaining a  *
+  * copy of this software and associated documentation files (the            *
+@@ -32,7 +32,7 @@
+  *     and: Thomas E. Dickey                        1996-on                 *
+  ****************************************************************************/
+ 
+-/* $Id: curses.h.in,v 1.242 2015/12/19 23:08:31 tom Exp $ */
++/* $Id: curses.h.in,v 1.243 2016/01/23 22:20:31 tom Exp $ */
+ 
+ #ifndef __NCURSES_H
+ #define __NCURSES_H
+@@ -1204,13 +1204,13 @@ extern NCURSES_EXPORT(int) NCURSES_SP_NAME(use_legacy_coding) (SCREEN*, int);	/*
+ #define addchstr(str)		waddchstr(stdscr,(str))
+ #define addnstr(str,n)		waddnstr(stdscr,(str),(n))
+ #define addstr(str)		waddnstr(stdscr,(str),-1)
+-#define attroff(at)		wattroff(stdscr,(at))
+-#define attron(at)		wattron(stdscr,(at))
+-#define attrset(at)		wattrset(stdscr,(at))
+ #define attr_get(ap,cp,o)	wattr_get(stdscr,(ap),(cp),(o))
+ #define attr_off(a,o)		wattr_off(stdscr,(a),(o))
+ #define attr_on(a,o)		wattr_on(stdscr,(a),(o))
+ #define attr_set(a,c,o)		wattr_set(stdscr,(a),(c),(o))
++#define attroff(at)		wattroff(stdscr,(at))
++#define attron(at)		wattron(stdscr,(at))
++#define attrset(at)		wattrset(stdscr,(at))
+ #define bkgd(ch)		wbkgd(stdscr,(ch))
+ #define bkgdset(ch)		wbkgdset(stdscr,(ch))
+ #define chgat(n,a,c,o)		wchgat(stdscr,(n),(a),(c),(o))
+@@ -1253,8 +1253,8 @@ extern NCURSES_EXPORT(int) NCURSES_SP_NAME(use_legacy_coding) (SCREEN*, int);	/*
+ #define mvwaddchstr(win,y,x,str)	(wmove((win),(y),(x)) == ERR ? ERR : waddchnstr((win),(str),-1))
+ #define mvwaddnstr(win,y,x,str,n)	(wmove((win),(y),(x)) == ERR ? ERR : waddnstr((win),(str),(n)))
+ #define mvwaddstr(win,y,x,str)		(wmove((win),(y),(x)) == ERR ? ERR : waddnstr((win),(str),-1))
+-#define mvwdelch(win,y,x)		(wmove((win),(y),(x)) == ERR ? ERR : wdelch(win))
+ #define mvwchgat(win,y,x,n,a,c,o)	(wmove((win),(y),(x)) == ERR ? ERR : wchgat((win),(n),(a),(c),(o)))
++#define mvwdelch(win,y,x)		(wmove((win),(y),(x)) == ERR ? ERR : wdelch(win))
+ #define mvwgetch(win,y,x)		(wmove((win),(y),(x)) == ERR ? ERR : wgetch(win))
+ #define mvwgetnstr(win,y,x,str,n)	(wmove((win),(y),(x)) == ERR ? ERR : wgetnstr((win),(str),(n)))
+ #define mvwgetstr(win,y,x,str)		(wmove((win),(y),(x)) == ERR ? ERR : wgetstr((win),(str)))
+diff --git a/include/curses.tail b/include/curses.tail
+index 5f911ae..d0ca95d 100644
+--- a/include/curses.tail
++++ b/include/curses.tail
+@@ -1,4 +1,4 @@
+-/* $Id: curses.tail,v 1.21 2011/10/29 20:03:22 tom Exp $ */
++/* $Id: curses.tail,v 1.22 2016/01/23 22:03:27 tom Exp $ */
+ /*
+  * vile:cmode:
+  * This file is part of ncurses, designed to be appended after curses.h.in
+@@ -111,7 +111,9 @@ extern NCURSES_EXPORT(mmask_t) NCURSES_SP_NAME(mousemask) (SCREEN*, mmask_t, mma
+ extern NCURSES_EXPORT(int)     NCURSES_SP_NAME(mouseinterval) (SCREEN*, int);
+ #endif
+ 
++#ifndef NCURSES_NOMACROS
+ #define mouse_trafo(y,x,to_screen) wmouse_trafo(stdscr,y,x,to_screen)
++#endif
+ 
+ /* other non-XSI functions */
+ 
+diff --git a/menu/m_hook.c b/menu/m_hook.c
+index 671fab6..f06992d 100644
+--- a/menu/m_hook.c
++++ b/menu/m_hook.c
+@@ -1,5 +1,5 @@
+ /****************************************************************************
+- * Copyright (c) 1998-2010,2012 Free Software Foundation, Inc.              *
++ * Copyright (c) 1998-2012,2016 Free Software Foundation, Inc.              *
+  *                                                                          *
+  * Permission is hereby granted, free of charge, to any person obtaining a  *
+  * copy of this software and associated documentation files (the            *
+@@ -37,13 +37,13 @@
+ 
+ #include "menu.priv.h"
+ 
+-MODULE_ID("$Id: m_hook.c,v 1.16 2012/03/10 23:43:41 tom Exp $")
++MODULE_ID("$Id: m_hook.c,v 1.17 2016/01/23 21:32:00 tom Exp $")
+ 
+ /* "Template" macro to generate function to set application specific hook */
+ #define GEN_HOOK_SET_FUNCTION( typ, name ) \
+ NCURSES_IMPEXP int NCURSES_API set_ ## typ ## _ ## name (MENU *menu, Menu_Hook func )\
+ {\
+-   T((T_CALLED("set_" #typ "_" #name "(%p,%p)"), (void *) menu, func));\
++   T((T_CALLED("set_" #typ "_" #name "(%p,%p)"), (void *) menu, TR_FUNC(func)));\
+    (Normalize_Menu(menu) -> typ ## name = func );\
+    RETURN(E_OK);\
+ }
+diff --git a/menu/m_trace.c b/menu/m_trace.c
+index 094ff86..e832fd8 100644
+--- a/menu/m_trace.c
++++ b/menu/m_trace.c
+@@ -1,5 +1,5 @@
+ /****************************************************************************
+- * Copyright (c) 2004-2005,2010 Free Software Foundation, Inc.              *
++ * Copyright (c) 2004-2010,2016 Free Software Foundation, Inc.              *
+  *                                                                          *
+  * Permission is hereby granted, free of charge, to any person obtaining a  *
+  * copy of this software and associated documentation files (the            *
+@@ -32,7 +32,7 @@
+ 
+ #include "menu.priv.h"
+ 
+-MODULE_ID("$Id: m_trace.c,v 1.4 2010/01/23 21:20:10 tom Exp $")
++MODULE_ID("$Id: m_trace.c,v 1.5 2016/01/23 21:32:00 tom Exp $")
+ 
+ NCURSES_EXPORT(ITEM *)
+ _nc_retrace_item(ITEM * code)
+@@ -65,7 +65,7 @@ _nc_retrace_menu(MENU * code)
+ NCURSES_EXPORT(Menu_Hook)
+ _nc_retrace_menu_hook(Menu_Hook code)
+ {
+-  T((T_RETURN("%p"), code));
++  T((T_RETURN("%p"), TR_FUNC(code)));
+   return code;
+ }
+ 
+diff --git a/ncurses/Makefile.in b/ncurses/Makefile.in
+index f1ae7c0..ac8c2cd 100644
+--- a/ncurses/Makefile.in
++++ b/ncurses/Makefile.in
+@@ -1,6 +1,6 @@
+-# $Id: Makefile.in,v 1.148 2015/10/17 21:48:15 Esa.Peuha Exp $
++# $Id: Makefile.in,v 1.149 2016/01/23 21:32:00 tom Exp $
+ ##############################################################################
+-# Copyright (c) 1998-2014,2015 Free Software Foundation, Inc.                #
++# Copyright (c) 1998-2015,2016 Free Software Foundation, Inc.                #
+ #                                                                            #
+ # Permission is hereby granted, free of charge, to any person obtaining a    #
+ # copy of this software and associated documentation files (the "Software"), #
+@@ -266,7 +266,8 @@ tags:
+ @MAKE_UPPER_TAGS@	$(ETAGS) *.[ch] */*.[ch]
+ 
+ mostlyclean ::
+-	-rm -f core tags TAGS *~ *.bak *.i *.ln *.atac trace
++	-rm -f core tags TAGS *~ *.bak *.i *.ln *.atac
++	-test -f trace || rm -f trace
+ 	-rm -f $(TEST_PROGS)
+ 
+ clean :: mostlyclean
+diff --git a/ncurses/base/lib_getch.c b/ncurses/base/lib_getch.c
+index 4048fde..5cd52ba 100644
+--- a/ncurses/base/lib_getch.c
++++ b/ncurses/base/lib_getch.c
+@@ -1,5 +1,5 @@
+ /****************************************************************************
+- * Copyright (c) 1998-2014,2015 Free Software Foundation, Inc.              *
++ * Copyright (c) 1998-2015,2016 Free Software Foundation, Inc.              *
+  *                                                                          *
+  * Permission is hereby granted, free of charge, to any person obtaining a  *
+  * copy of this software and associated documentation files (the            *
+@@ -42,7 +42,7 @@
+ 
+ #include <curses.priv.h>
+ 
+-MODULE_ID("$Id: lib_getch.c,v 1.133 2015/11/29 01:28:52 tom Exp $")
++MODULE_ID("$Id: lib_getch.c,v 1.134 2016/01/23 21:32:00 tom Exp $")
+ 
+ #include <fifo_defs.h>
+ 
+@@ -651,7 +651,7 @@ wgetch_events(WINDOW *win, _nc_eventlist * evl)
+     int code;
+     int value;
+ 
+-    T((T_CALLED("wgetch_events(%p,%p)"), win, evl));
++    T((T_CALLED("wgetch_events(%p,%p)"), (void *) win, (void *)evl));
+     code = _nc_wgetch(win,
+ 		      &value,
+ 		      _nc_use_meta(win)
+diff --git a/ncurses/base/lib_set_term.c b/ncurses/base/lib_set_term.c
+index f787a88..94c2418 100644
+--- a/ncurses/base/lib_set_term.c
++++ b/ncurses/base/lib_set_term.c
+@@ -1,5 +1,5 @@
+ /****************************************************************************
+- * Copyright (c) 1998-2014,2015 Free Software Foundation, Inc.              *
++ * Copyright (c) 1998-2015,2016 Free Software Foundation, Inc.              *
+  *                                                                          *
+  * Permission is hereby granted, free of charge, to any person obtaining a  *
+  * copy of this software and associated documentation files (the            *
+@@ -47,7 +47,7 @@
+ #define CUR SP_TERMTYPE
+ #endif
+ 
+-MODULE_ID("$Id: lib_set_term.c,v 1.153 2015/08/07 23:57:58 tom Exp $")
++MODULE_ID("$Id: lib_set_term.c,v 1.154 2016/01/23 21:32:00 tom Exp $")
+ 
+ #ifdef USE_TERM_DRIVER
+ #define MaxColors      InfoOf(sp).maxcolors
+@@ -726,7 +726,7 @@ NCURSES_SP_NAME(_nc_ripoffline) (NCURSES_SP_DCLx
+     int code = ERR;
+ 
+     START_TRACE();
+-    T((T_CALLED("ripoffline(%p,%d,%p)"), (void *) SP_PARM, line, init));
++    T((T_CALLED("ripoffline(%p,%d,%p)"), (void *) SP_PARM, line, TR_FUNC(init)));
+ 
+ #if NCURSES_SP_FUNCS
+     if (SP_PARM != 0 && SP_PARM->_prescreen)
+diff --git a/ncurses/base/use_window.c b/ncurses/base/use_window.c
+index 8eb7339..010db96 100644
+--- a/ncurses/base/use_window.c
++++ b/ncurses/base/use_window.c
+@@ -1,5 +1,5 @@
+ /****************************************************************************
+- * Copyright (c) 2007-2008,2009 Free Software Foundation, Inc.              *
++ * Copyright (c) 2007-2009,2016 Free Software Foundation, Inc.              *
+  *                                                                          *
+  * Permission is hereby granted, free of charge, to any person obtaining a  *
+  * copy of this software and associated documentation files (the            *
+@@ -32,14 +32,14 @@
+ 
+ #include <curses.priv.h>
+ 
+-MODULE_ID("$Id: use_window.c,v 1.9 2009/10/24 22:40:24 tom Exp $")
++MODULE_ID("$Id: use_window.c,v 1.10 2016/01/23 21:32:00 tom Exp $")
+ 
+ NCURSES_EXPORT(int)
+ use_window(WINDOW *win, NCURSES_WINDOW_CB func, void *data)
+ {
+     int code = OK;
+ 
+-    T((T_CALLED("use_window(%p,%p,%p)"), (void *) win, func, data));
++    T((T_CALLED("use_window(%p,%p,%p)"), (void *) win, TR_FUNC(func), data));
+     _nc_lock_global(curses);
+     code = func(win, data);
+     _nc_unlock_global(curses);
+diff --git a/ncurses/curses.priv.h b/ncurses/curses.priv.h
+index 7b302cb..b79602d 100644
+--- a/ncurses/curses.priv.h
++++ b/ncurses/curses.priv.h
+@@ -34,7 +34,7 @@
+  ****************************************************************************/
+ 
+ /*
+- * $Id: curses.priv.h,v 1.548 2016/01/10 22:17:19 tom Exp $
++ * $Id: curses.priv.h,v 1.551 2016/01/24 01:39:09 tom Exp $
+  *
+  *	curses.priv.h
+  *
+@@ -1630,7 +1630,10 @@ extern NCURSES_EXPORT(void)	_nc_locked_tracef (const char *, ...) GCC_PRINTFLIKE
+ #define TRACE_RETURN2(value,dst,src) return _nc_retrace_##dst##_##src(value)
+ #define TRACE_RETURN_SP(value,type)  return _nc_retrace_##type(SP_PARM, value)
+ 
+-#define NonNull(s)	((s) != 0 ? s : "<null>")
++typedef void VoidFunc(void);
++
++#define TR_FUNC(value)          ((const char*) &(value))
++#define NonNull(s)	        ((s) != 0 ? s : "<null>")
+ 
+ #define returnAttr(code)	TRACE_RETURN(code,attr_t)
+ #define returnBits(code)	TRACE_RETURN(code,unsigned)
+diff --git a/ncurses/tinfo/lib_tputs.c b/ncurses/tinfo/lib_tputs.c
+index 09cbbc2..a7e4afa 100644
+--- a/ncurses/tinfo/lib_tputs.c
++++ b/ncurses/tinfo/lib_tputs.c
+@@ -1,5 +1,5 @@
+ /****************************************************************************
+- * Copyright (c) 1998-2013,2015 Free Software Foundation, Inc.              *
++ * Copyright (c) 1998-2015,2016 Free Software Foundation, Inc.              *
+  *                                                                          *
+  * Permission is hereby granted, free of charge, to any person obtaining a  *
+  * copy of this software and associated documentation files (the            *
+@@ -51,7 +51,7 @@
+ #include <termcap.h>		/* ospeed */
+ #include <tic.h>
+ 
+-MODULE_ID("$Id: lib_tputs.c,v 1.96 2015/01/03 23:51:23 tom Exp $")
++MODULE_ID("$Id: lib_tputs.c,v 1.97 2016/01/23 21:32:00 tom Exp $")
+ 
+ NCURSES_EXPORT_VAR(char) PC = 0;              /* used by termcap library */
+ NCURSES_EXPORT_VAR(NCURSES_OSPEED) ospeed = 0;        /* used by termcap library */
+@@ -277,7 +277,7 @@ NCURSES_SP_NAME(tputs) (NCURSES_SP_DCLx
+ 	if (outc == NCURSES_SP_NAME(_nc_outch))
+ 	    _nc_STRCPY(addrbuf, "_nc_outch", sizeof(addrbuf));
+ 	else
+-	    _nc_SPRINTF(addrbuf, _nc_SLIMIT(sizeof(addrbuf)) "%p", outc);
++	    _nc_SPRINTF(addrbuf, _nc_SLIMIT(sizeof(addrbuf)) "%p", TR_FUNC(outc));
+ 	if (_nc_tputs_trace) {
+ 	    _tracef("tputs(%s = %s, %d, %s) called", _nc_tputs_trace,
+ 		    _nc_visbuf(string), affcnt, addrbuf);
+diff --git a/ncurses/tinfo/use_screen.c b/ncurses/tinfo/use_screen.c
+index 6a0297c..42e14ee 100644
+--- a/ncurses/tinfo/use_screen.c
++++ b/ncurses/tinfo/use_screen.c
+@@ -1,5 +1,5 @@
+ /****************************************************************************
+- * Copyright (c) 2007-2008,2009 Free Software Foundation, Inc.              *
++ * Copyright (c) 2007-2009,2016 Free Software Foundation, Inc.              *
+  *                                                                          *
+  * Permission is hereby granted, free of charge, to any person obtaining a  *
+  * copy of this software and associated documentation files (the            *
+@@ -32,7 +32,7 @@
+ 
+ #include <curses.priv.h>
+ 
+-MODULE_ID("$Id: use_screen.c,v 1.8 2009/10/24 22:40:20 tom Exp $")
++MODULE_ID("$Id: use_screen.c,v 1.9 2016/01/23 21:32:00 tom Exp $")
+ 
+ NCURSES_EXPORT(int)
+ use_screen(SCREEN *screen, NCURSES_SCREEN_CB func, void *data)
+@@ -40,7 +40,7 @@ use_screen(SCREEN *screen, NCURSES_SCREEN_CB func, void *data)
+     SCREEN *save_SP;
+     int code = OK;
+ 
+-    T((T_CALLED("use_screen(%p,%p,%p)"), (void *) screen, func, (void *) data));
++    T((T_CALLED("use_screen(%p,%p,%p)"), (void *) screen, TR_FUNC(func), (void *) data));
+ 
+     /*
+      * FIXME - add a flag so a given thread can check if _it_ has already
+diff --git a/package/debian-mingw/changelog b/package/debian-mingw/changelog
+index 30432c2..b5e9692 100644
+--- a/package/debian-mingw/changelog
++++ b/package/debian-mingw/changelog
+@@ -1,8 +1,8 @@
+-ncurses6 (6.0+20160116) unstable; urgency=low
++ncurses6 (6.0+20160123) unstable; urgency=low
+ 
+   * latest weekly patch
+ 
+- -- Thomas E. Dickey <dickey@invisible-island.net>  Sat, 16 Jan 2016 16:24:23 -0500
++ -- Thomas E. Dickey <dickey@invisible-island.net>  Sat, 23 Jan 2016 12:00:36 -0500
+ 
+ ncurses6 (5.9-20131005) unstable; urgency=low
+ 
+diff --git a/package/debian-mingw64/changelog b/package/debian-mingw64/changelog
+index 30432c2..b5e9692 100644
+--- a/package/debian-mingw64/changelog
++++ b/package/debian-mingw64/changelog
+@@ -1,8 +1,8 @@
+-ncurses6 (6.0+20160116) unstable; urgency=low
++ncurses6 (6.0+20160123) unstable; urgency=low
+ 
+   * latest weekly patch
+ 
+- -- Thomas E. Dickey <dickey@invisible-island.net>  Sat, 16 Jan 2016 16:24:23 -0500
++ -- Thomas E. Dickey <dickey@invisible-island.net>  Sat, 23 Jan 2016 12:00:36 -0500
+ 
+ ncurses6 (5.9-20131005) unstable; urgency=low
+ 
+diff --git a/package/debian/changelog b/package/debian/changelog
+index c192758..b1736dc 100644
+--- a/package/debian/changelog
++++ b/package/debian/changelog
+@@ -1,8 +1,8 @@
+-ncurses6 (6.0+20160116) unstable; urgency=low
++ncurses6 (6.0+20160123) unstable; urgency=low
+ 
+   * latest weekly patch
+ 
+- -- Thomas E. Dickey <dickey@invisible-island.net>  Sat, 16 Jan 2016 16:24:23 -0500
++ -- Thomas E. Dickey <dickey@invisible-island.net>  Sat, 23 Jan 2016 12:00:36 -0500
+ 
+ ncurses6 (5.9-20120608) unstable; urgency=low
+ 
+diff --git a/package/mingw-ncurses.nsi b/package/mingw-ncurses.nsi
+index 7f7444a..bdd6bf9 100644
+--- a/package/mingw-ncurses.nsi
++++ b/package/mingw-ncurses.nsi
+@@ -1,4 +1,4 @@
+-; $Id: mingw-ncurses.nsi,v 1.141 2016/01/16 21:24:23 tom Exp $
++; $Id: mingw-ncurses.nsi,v 1.142 2016/01/23 17:00:00 tom Exp $
+ 
+ ; TODO add examples
+ ; TODO bump ABI to 6
+@@ -10,7 +10,7 @@
+ !define VERSION_MAJOR "6"
+ !define VERSION_MINOR "0"
+ !define VERSION_YYYY  "2016"
+-!define VERSION_MMDD  "0116"
++!define VERSION_MMDD  "0123"
+ !define VERSION_PATCH ${VERSION_YYYY}${VERSION_MMDD}
+ 
+ !define MY_ABI   "5"
+diff --git a/package/mingw-ncurses.spec b/package/mingw-ncurses.spec
+index 8919ff1..b66ed62 100644
+--- a/package/mingw-ncurses.spec
++++ b/package/mingw-ncurses.spec
+@@ -3,7 +3,7 @@
+ Summary: shared libraries for terminal handling
+ Name: mingw32-ncurses6
+ Version: 6.0
+-Release: 20160116
++Release: 20160123
+ License: X11
+ Group: Development/Libraries
+ Source: ncurses-%{version}-%{release}.tgz
+diff --git a/package/ncurses.spec b/package/ncurses.spec
+index fa140a3..b46053e 100644
+--- a/package/ncurses.spec
++++ b/package/ncurses.spec
+@@ -1,7 +1,7 @@
+ Summary: shared libraries for terminal handling
+ Name: ncurses6
+ Version: 6.0
+-Release: 20160116
++Release: 20160123
+ License: X11
+ Group: Development/Libraries
+ Source: ncurses-%{version}-%{release}.tgz
+-- 
+2.9.1
+

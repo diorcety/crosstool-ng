@@ -1,70 +1,69 @@
-# ncurses 6.0 - patch 20150905 - Thomas E. Dickey
-#
-# ------------------------------------------------------------------------------
-#
-# Ncurses 6.0 is at
-# 	ftp.gnu.org:/pub/gnu
-#
-# Patches for ncurses 6.0 are in the subdirectory
-# 	ftp://invisible-island.net/ncurses/6.0
-#
-# ------------------------------------------------------------------------------
-# ftp://invisible-island.net/ncurses/6.0/ncurses-6.0-20150905.patch.gz
-# patch by Thomas E. Dickey <dickey@invisible-island.net>
-# created  Sun Sep  6 01:23:48 UTC 2015
-# ------------------------------------------------------------------------------
-# NEWS                                |   12 ++
-# VERSION                             |    2 
-# dist.mk                             |    4 
-# doc/html/man/captoinfo.1m.html      |    2 
-# doc/html/man/clear.1.html           |    2 
-# doc/html/man/curs_addch.3x.html     |   50 ++++++++----
-# doc/html/man/curs_attr.3x.html      |    4 
-# doc/html/man/curs_variables.3x.html |   21 ++++-
-# doc/html/man/form.3x.html           |    2 
-# doc/html/man/infocmp.1m.html        |   77 +++++++++++-------
-# doc/html/man/infotocap.1m.html      |    2 
-# doc/html/man/menu.3x.html           |    2 
-# doc/html/man/ncurses.3x.html        |    2 
-# doc/html/man/panel.3x.html          |    2 
-# doc/html/man/tabs.1.html            |    2 
-# doc/html/man/terminfo.5.html        |    2 
-# doc/html/man/tic.1m.html            |  139 ++++++++++++++++++----------------
-# doc/html/man/toe.1m.html            |   39 +++++----
-# doc/html/man/tput.1.html            |    2 
-# doc/html/man/tset.1.html            |    2 
-# include/term_entry.h                |    3 
-# man/curs_addch.3x                   |   19 ++++
-# man/curs_attr.3x                    |    6 -
-# man/curs_threads.3x                 |    4 
-# man/infocmp.1m                      |   26 +++++-
-# man/tic.1m                          |   25 +++++-
-# man/toe.1m                          |    7 +
-# ncurses/tinfo/write_entry.c         |   13 +--
-# package/debian-mingw/changelog      |    4 
-# package/debian-mingw64/changelog    |    4 
-# package/debian/changelog            |    4 
-# package/mingw-ncurses.nsi           |    4 
-# package/mingw-ncurses.spec          |    2 
-# package/ncurses.map                 |    9 +-
-# package/ncurses.spec                |    2 
-# package/ncurses.sym                 |    3 
-# package/ncursest.map                |    9 +-
-# package/ncursest.sym                |    3 
-# package/ncursestw.map               |    9 +-
-# package/ncursestw.sym               |    3 
-# package/ncursesw.map                |    9 +-
-# package/ncursesw.sym                |    3 
-# progs/dump_entry.c                  |   96 +++++++++++++++++++++--
-# progs/dump_entry.h                  |    5 -
-# progs/infocmp.c                     |   21 +++--
-# progs/tic.c                         |   47 ++++++++---
-# 46 files changed, 491 insertions(+), 219 deletions(-)
-# ------------------------------------------------------------------------------
-Index: NEWS
-Prereq:  1.2487 
---- ncurses-6.0-20150822+/NEWS	2015-08-22 23:55:21.000000000 +0000
-+++ ncurses-6.0-20150905/NEWS	2015-09-05 21:14:36.000000000 +0000
+From a3725e39272393790e32a083fd7391aad607828d Mon Sep 17 00:00:00 2001
+From: "Thomas E. Dickey" <dickey@invisible-island.net>
+Date: Sun, 6 Sep 2015 01:23:48 +0000
+Subject: [PATCH 04/50] ncurses 6.0 - patch 20150905
+
++ add note in curs_addch.3x about line-drawing when it depends upon
+  UTF-8.
++ add tic -q option for consistency with infocmp, use it to suppress
+  all comments from the "tic -I" output.
++ modify infocmp -q option to suppress the "Reconstructed from"
+  header.
++ add infocmp/tic -Q option, which allows one to dump the compiled
+  form of the terminal entry, in hexadecimal or base64.
+---
+ NEWS                                |  12 +++-
+ VERSION                             |   2 +-
+ dist.mk                             |   4 +-
+ doc/html/man/captoinfo.1m.html      |   2 +-
+ doc/html/man/clear.1.html           |   2 +-
+ doc/html/man/curs_addch.3x.html     |  50 ++++++++-----
+ doc/html/man/curs_attr.3x.html      |   4 +-
+ doc/html/man/curs_variables.3x.html |  21 +++++-
+ doc/html/man/form.3x.html           |   2 +-
+ doc/html/man/infocmp.1m.html        |  77 ++++++++++++--------
+ doc/html/man/infotocap.1m.html      |   2 +-
+ doc/html/man/menu.3x.html           |   2 +-
+ doc/html/man/ncurses.3x.html        |   2 +-
+ doc/html/man/panel.3x.html          |   2 +-
+ doc/html/man/tabs.1.html            |   2 +-
+ doc/html/man/terminfo.5.html        |   2 +-
+ doc/html/man/tic.1m.html            | 139 ++++++++++++++++++++----------------
+ doc/html/man/toe.1m.html            |  39 +++++-----
+ doc/html/man/tput.1.html            |   2 +-
+ doc/html/man/tset.1.html            |   2 +-
+ include/term_entry.h                |   3 +-
+ man/curs_addch.3x                   |  19 ++++-
+ man/curs_attr.3x                    |   6 +-
+ man/curs_threads.3x                 |   4 +-
+ man/infocmp.1m                      |  26 ++++++-
+ man/tic.1m                          |  25 ++++++-
+ man/toe.1m                          |   7 +-
+ ncurses/tinfo/write_entry.c         |  13 ++--
+ package/debian-mingw/changelog      |   4 +-
+ package/debian-mingw64/changelog    |   4 +-
+ package/debian/changelog            |   4 +-
+ package/mingw-ncurses.nsi           |   4 +-
+ package/mingw-ncurses.spec          |   2 +-
+ package/ncurses.map                 |   9 ++-
+ package/ncurses.spec                |   2 +-
+ package/ncurses.sym                 |   3 +-
+ package/ncursest.map                |   9 ++-
+ package/ncursest.sym                |   3 +-
+ package/ncursestw.map               |   9 ++-
+ package/ncursestw.sym               |   3 +-
+ package/ncursesw.map                |   9 ++-
+ package/ncursesw.sym                |   3 +-
+ progs/dump_entry.c                  |  96 ++++++++++++++++++++++---
+ progs/dump_entry.h                  |   5 +-
+ progs/infocmp.c                     |  21 ++++--
+ progs/tic.c                         |  47 ++++++++----
+ 46 files changed, 491 insertions(+), 219 deletions(-)
+
+diff --git a/NEWS b/NEWS
+index a2193a5..bb5e3ce 100644
+--- a/NEWS
++++ b/NEWS
 @@ -25,7 +25,7 @@
  -- sale, use or other dealings in this Software without prior written        --
  -- authorization.                                                            --
@@ -74,7 +73,7 @@ Prereq:  1.2487
  -------------------------------------------------------------------------------
  
  This is a log of changes that ncurses has gone through since Zeyd started
-@@ -45,6 +45,16 @@
+@@ -45,6 +45,16 @@ See the AUTHORS file for the corresponding full names.
  Changes through 1.9.9e did not credit all contributions;
  it is not possible to add this information.
  
@@ -91,16 +90,17 @@ Prereq:  1.2487
  20150822
  	+ sort options in usage message for infocmp, to make it simpler to
  	  see unused letters.
-Index: VERSION
---- ncurses-6.0-20150822+/VERSION	2015-08-17 08:41:12.000000000 +0000
-+++ ncurses-6.0-20150905/VERSION	2015-09-05 21:14:02.000000000 +0000
+diff --git a/VERSION b/VERSION
+index a2cc573..85c35c5 100644
+--- a/VERSION
++++ b/VERSION
 @@ -1 +1 @@
 -5:0:9	6.0	20150822
 +5:0:9	6.0	20150905
-Index: dist.mk
-Prereq:  1.1067 
---- ncurses-6.0-20150822+/dist.mk	2015-08-17 08:41:12.000000000 +0000
-+++ ncurses-6.0-20150905/dist.mk	2015-09-05 21:14:02.000000000 +0000
+diff --git a/dist.mk b/dist.mk
+index b2cc3ca..094d95d 100644
+--- a/dist.mk
++++ b/dist.mk
 @@ -25,7 +25,7 @@
  # use or other dealings in this Software without prior written               #
  # authorization.                                                             #
@@ -110,7 +110,7 @@ Prereq:  1.1067
  # Makefile for creating ncurses distributions.
  #
  # This only needs to be used directly as a makefile by developers, but
-@@ -37,7 +37,7 @@
+@@ -37,7 +37,7 @@ SHELL = /bin/sh
  # These define the major/minor/patch versions of ncurses.
  NCURSES_MAJOR = 6
  NCURSES_MINOR = 0
@@ -119,9 +119,10 @@ Prereq:  1.1067
  
  # We don't append the patch to the version, since this only applies to releases
  VERSION = $(NCURSES_MAJOR).$(NCURSES_MINOR)
-Index: doc/html/man/captoinfo.1m.html
---- ncurses-6.0-20150822+/doc/html/man/captoinfo.1m.html	2015-08-08 18:45:46.000000000 +0000
-+++ ncurses-6.0-20150905/doc/html/man/captoinfo.1m.html	2015-09-05 21:19:32.000000000 +0000
+diff --git a/doc/html/man/captoinfo.1m.html b/doc/html/man/captoinfo.1m.html
+index c0cdbf9..19d61eb 100644
+--- a/doc/html/man/captoinfo.1m.html
++++ b/doc/html/man/captoinfo.1m.html
 @@ -205,7 +205,7 @@
  <H2><a name="h2-SEE-ALSO">SEE ALSO</a></H2><PRE>
         <STRONG><A HREF="infocmp.1m.html">infocmp(1m)</A></STRONG>, <STRONG><A HREF="ncurses.3x.html">curses(3x)</A></STRONG>, <STRONG><A HREF="terminfo.5.html">terminfo(5)</A></STRONG>
@@ -131,9 +132,10 @@ Index: doc/html/man/captoinfo.1m.html
  
  
  </PRE>
-Index: doc/html/man/clear.1.html
---- ncurses-6.0-20150822+/doc/html/man/clear.1.html	2015-08-08 18:45:46.000000000 +0000
-+++ ncurses-6.0-20150905/doc/html/man/clear.1.html	2015-09-05 21:19:32.000000000 +0000
+diff --git a/doc/html/man/clear.1.html b/doc/html/man/clear.1.html
+index 6215331..21cf34f 100644
+--- a/doc/html/man/clear.1.html
++++ b/doc/html/man/clear.1.html
 @@ -71,7 +71,7 @@
  <H2><a name="h2-SEE-ALSO">SEE ALSO</a></H2><PRE>
         <STRONG><A HREF="tput.1.html">tput(1)</A></STRONG>, <STRONG><A HREF="terminfo.5.html">terminfo(5)</A></STRONG>
@@ -143,9 +145,10 @@ Index: doc/html/man/clear.1.html
  
  
  
-Index: doc/html/man/curs_addch.3x.html
---- ncurses-6.0-20150822+/doc/html/man/curs_addch.3x.html	2015-07-16 09:29:40.000000000 +0000
-+++ ncurses-6.0-20150905/doc/html/man/curs_addch.3x.html	2015-09-05 21:19:33.000000000 +0000
+diff --git a/doc/html/man/curs_addch.3x.html b/doc/html/man/curs_addch.3x.html
+index 04b15af..f848b16 100644
+--- a/doc/html/man/curs_addch.3x.html
++++ b/doc/html/man/curs_addch.3x.html
 @@ -136,8 +136,11 @@
         characters to the screen with routines of the  <STRONG>addch</STRONG>  fam-
         ily.   The  default  character listed below is used if the
@@ -230,9 +233,10 @@ Index: doc/html/man/curs_addch.3x.html
         The <STRONG>TABSIZE</STRONG> variable is implemented in  some  versions  of
         curses, but is not part of X/Open curses.
  
-Index: doc/html/man/curs_attr.3x.html
---- ncurses-6.0-20150822+/doc/html/man/curs_attr.3x.html	2015-07-22 00:49:55.000000000 +0000
-+++ ncurses-6.0-20150905/doc/html/man/curs_attr.3x.html	2015-09-05 23:05:55.000000000 +0000
+diff --git a/doc/html/man/curs_attr.3x.html b/doc/html/man/curs_attr.3x.html
+index 6ea78f9..d76dd9b 100644
+--- a/doc/html/man/curs_attr.3x.html
++++ b/doc/html/man/curs_attr.3x.html
 @@ -173,8 +173,8 @@
  <H3><a name="h3-Attributes">Attributes</a></H3><PRE>
         The following video attributes, defined in <STRONG>&lt;curses.h&gt;</STRONG>, can
@@ -244,9 +248,10 @@ Index: doc/html/man/curs_attr.3x.html
  
                <EM>Name</EM>            <EM>Description</EM>
                ------------------------------------------------------------
-Index: doc/html/man/curs_variables.3x.html
---- ncurses-6.0-20150822+/doc/html/man/curs_variables.3x.html	2015-05-13 19:27:46.000000000 +0000
-+++ ncurses-6.0-20150905/doc/html/man/curs_variables.3x.html	2015-09-05 21:19:36.000000000 +0000
+diff --git a/doc/html/man/curs_variables.3x.html b/doc/html/man/curs_variables.3x.html
+index 019c3e5..596d095 100644
+--- a/doc/html/man/curs_variables.3x.html
++++ b/doc/html/man/curs_variables.3x.html
 @@ -1,6 +1,6 @@
  <!-- 
    ****************************************************************************
@@ -291,9 +296,10 @@ Index: doc/html/man/curs_variables.3x.html
         <STRONG><A HREF="curs_threads.3x.html">curs_threads(3x)</A></STRONG>, <STRONG><A HREF="term_variables.3x.html">term_variables(3x)</A></STRONG>, <STRONG><A HREF="terminfo.5.html">terminfo(5)</A></STRONG>.
  
  
-Index: doc/html/man/form.3x.html
---- ncurses-6.0-20150822+/doc/html/man/form.3x.html	2015-08-08 18:45:50.000000000 +0000
-+++ ncurses-6.0-20150905/doc/html/man/form.3x.html	2015-09-05 21:19:36.000000000 +0000
+diff --git a/doc/html/man/form.3x.html b/doc/html/man/form.3x.html
+index 827d97a..8ab32dc 100644
+--- a/doc/html/man/form.3x.html
++++ b/doc/html/man/form.3x.html
 @@ -245,7 +245,7 @@
         <STRONG><A HREF="ncurses.3x.html">curses(3x)</A></STRONG> and related pages whose names begin "form_" for
         detailed descriptions of the entry points.
@@ -303,9 +309,10 @@ Index: doc/html/man/form.3x.html
  
  
  
-Index: doc/html/man/infocmp.1m.html
---- ncurses-6.0-20150822+/doc/html/man/infocmp.1m.html	2015-08-08 18:45:51.000000000 +0000
-+++ ncurses-6.0-20150905/doc/html/man/infocmp.1m.html	2015-09-05 21:19:38.000000000 +0000
+diff --git a/doc/html/man/infocmp.1m.html b/doc/html/man/infocmp.1m.html
+index 9d18c97..afdfef3 100644
+--- a/doc/html/man/infocmp.1m.html
++++ b/doc/html/man/infocmp.1m.html
 @@ -27,7 +27,7 @@
    * sale, use or other dealings in this Software without prior written       *
    * authorization.                                                           *
@@ -464,9 +471,10 @@ Index: doc/html/man/infocmp.1m.html
  
  
  </PRE>
-Index: doc/html/man/infotocap.1m.html
---- ncurses-6.0-20150822+/doc/html/man/infotocap.1m.html	2015-08-08 18:45:51.000000000 +0000
-+++ ncurses-6.0-20150905/doc/html/man/infotocap.1m.html	2015-09-05 21:19:38.000000000 +0000
+diff --git a/doc/html/man/infotocap.1m.html b/doc/html/man/infotocap.1m.html
+index bd5f05e..01d98d4 100644
+--- a/doc/html/man/infotocap.1m.html
++++ b/doc/html/man/infotocap.1m.html
 @@ -94,7 +94,7 @@
  <H2><a name="h2-SEE-ALSO">SEE ALSO</a></H2><PRE>
         <STRONG><A HREF="ncurses.3x.html">curses(3x)</A></STRONG>, <STRONG><A HREF="tic.1m.html">tic(1m)</A></STRONG>, <STRONG><A HREF="infocmp.1m.html">infocmp(1m)</A></STRONG>, <STRONG><A HREF="terminfo.5.html">terminfo(5)</A></STRONG>
@@ -476,9 +484,10 @@ Index: doc/html/man/infotocap.1m.html
  
  
  </PRE>
-Index: doc/html/man/menu.3x.html
---- ncurses-6.0-20150822+/doc/html/man/menu.3x.html	2015-08-08 18:45:52.000000000 +0000
-+++ ncurses-6.0-20150905/doc/html/man/menu.3x.html	2015-09-05 21:19:38.000000000 +0000
+diff --git a/doc/html/man/menu.3x.html b/doc/html/man/menu.3x.html
+index a05f095..3a71925 100644
+--- a/doc/html/man/menu.3x.html
++++ b/doc/html/man/menu.3x.html
 @@ -227,7 +227,7 @@
         <STRONG><A HREF="ncurses.3x.html">curses(3x)</A></STRONG> and related pages whose names begin "menu_" for
         detailed descriptions of the entry points.
@@ -488,9 +497,10 @@ Index: doc/html/man/menu.3x.html
  
  
  
-Index: doc/html/man/ncurses.3x.html
---- ncurses-6.0-20150822+/doc/html/man/ncurses.3x.html	2015-08-08 18:45:53.000000000 +0000
-+++ ncurses-6.0-20150905/doc/html/man/ncurses.3x.html	2015-09-05 21:19:39.000000000 +0000
+diff --git a/doc/html/man/ncurses.3x.html b/doc/html/man/ncurses.3x.html
+index 0c562ca..e1a8544 100644
+--- a/doc/html/man/ncurses.3x.html
++++ b/doc/html/man/ncurses.3x.html
 @@ -63,7 +63,7 @@
         sonable optimization.  This implementation is "new curses"
         (ncurses) and is the approved replacement for 4.4BSD clas-
@@ -500,9 +510,10 @@ Index: doc/html/man/ncurses.3x.html
  
         The <STRONG>ncurses</STRONG> library emulates the curses library of  System
         V  Release  4  UNIX,  and  XPG4 (X/Open Portability Guide)
-Index: doc/html/man/panel.3x.html
---- ncurses-6.0-20150822+/doc/html/man/panel.3x.html	2015-08-08 18:45:53.000000000 +0000
-+++ ncurses-6.0-20150905/doc/html/man/panel.3x.html	2015-09-05 21:19:39.000000000 +0000
+diff --git a/doc/html/man/panel.3x.html b/doc/html/man/panel.3x.html
+index 52e1f68..b72c49a 100644
+--- a/doc/html/man/panel.3x.html
++++ b/doc/html/man/panel.3x.html
 @@ -218,7 +218,7 @@
  <H2><a name="h2-SEE-ALSO">SEE ALSO</a></H2><PRE>
         <STRONG><A HREF="ncurses.3x.html">curses(3x)</A></STRONG>, <STRONG><A HREF="curs_variables.3x.html">curs_variables(3x)</A></STRONG>,
@@ -512,9 +523,10 @@ Index: doc/html/man/panel.3x.html
  
  
  </PRE>
-Index: doc/html/man/tabs.1.html
---- ncurses-6.0-20150822+/doc/html/man/tabs.1.html	2015-08-08 18:45:53.000000000 +0000
-+++ ncurses-6.0-20150905/doc/html/man/tabs.1.html	2015-09-05 21:19:40.000000000 +0000
+diff --git a/doc/html/man/tabs.1.html b/doc/html/man/tabs.1.html
+index fac8a27..5bdafa5 100644
+--- a/doc/html/man/tabs.1.html
++++ b/doc/html/man/tabs.1.html
 @@ -168,7 +168,7 @@
  <H2><a name="h2-SEE-ALSO">SEE ALSO</a></H2><PRE>
         <STRONG><A HREF="tset.1.html">tset(1)</A></STRONG>, <STRONG><A HREF="infocmp.1m.html">infocmp(1m)</A></STRONG>, <STRONG><A HREF="ncurses.3x.html">curses(3x)</A></STRONG>, <STRONG><A HREF="terminfo.5.html">terminfo(5)</A></STRONG>.
@@ -524,9 +536,10 @@ Index: doc/html/man/tabs.1.html
  
  
  
-Index: doc/html/man/terminfo.5.html
---- ncurses-6.0-20150822+/doc/html/man/terminfo.5.html	2015-08-08 18:45:54.000000000 +0000
-+++ ncurses-6.0-20150905/doc/html/man/terminfo.5.html	2015-09-05 21:19:40.000000000 +0000
+diff --git a/doc/html/man/terminfo.5.html b/doc/html/man/terminfo.5.html
+index cf70f7f..140cde5 100644
+--- a/doc/html/man/terminfo.5.html
++++ b/doc/html/man/terminfo.5.html
 @@ -78,7 +78,7 @@
         nals by giving a set of capabilities which they  have,  by
         specifying how to perform screen operations, and by speci-
@@ -536,9 +549,10 @@ Index: doc/html/man/terminfo.5.html
  
         Entries in <EM>terminfo</EM> consist of a sequence of `,' separated
         fields (embedded commas may be escaped with a backslash or
-Index: doc/html/man/tic.1m.html
---- ncurses-6.0-20150822+/doc/html/man/tic.1m.html	2015-08-08 18:45:54.000000000 +0000
-+++ ncurses-6.0-20150905/doc/html/man/tic.1m.html	2015-09-05 21:19:40.000000000 +0000
+diff --git a/doc/html/man/tic.1m.html b/doc/html/man/tic.1m.html
+index f287c1e..d28609f 100644
+--- a/doc/html/man/tic.1m.html
++++ b/doc/html/man/tic.1m.html
 @@ -1,6 +1,6 @@
  <!-- 
    ****************************************************************************
@@ -798,9 +812,10 @@ Index: doc/html/man/tic.1m.html
  
  
  </PRE>
-Index: doc/html/man/toe.1m.html
---- ncurses-6.0-20150822+/doc/html/man/toe.1m.html	2015-08-08 18:45:54.000000000 +0000
-+++ ncurses-6.0-20150905/doc/html/man/toe.1m.html	2015-09-05 21:19:40.000000000 +0000
+diff --git a/doc/html/man/toe.1m.html b/doc/html/man/toe.1m.html
+index 98799b7..859e046 100644
+--- a/doc/html/man/toe.1m.html
++++ b/doc/html/man/toe.1m.html
 @@ -1,6 +1,6 @@
  <!-- 
    ****************************************************************************
@@ -883,9 +898,10 @@ Index: doc/html/man/toe.1m.html
  
  
  
-Index: doc/html/man/tput.1.html
---- ncurses-6.0-20150822+/doc/html/man/tput.1.html	2015-08-08 18:45:54.000000000 +0000
-+++ ncurses-6.0-20150905/doc/html/man/tput.1.html	2015-09-05 21:19:40.000000000 +0000
+diff --git a/doc/html/man/tput.1.html b/doc/html/man/tput.1.html
+index c04f53d..4613a10 100644
+--- a/doc/html/man/tput.1.html
++++ b/doc/html/man/tput.1.html
 @@ -338,7 +338,7 @@
  <H2><a name="h2-SEE-ALSO">SEE ALSO</a></H2><PRE>
         <STRONG><A HREF="clear.1.html">clear(1)</A></STRONG>, <STRONG>stty(1)</STRONG>, <STRONG><A HREF="tabs.1.html">tabs(1)</A></STRONG>, <STRONG><A HREF="terminfo.5.html">terminfo(5)</A></STRONG>, <STRONG><A HREF="curs_termcap.3x.html">curs_termcap(3x)</A></STRONG>.
@@ -895,9 +911,10 @@ Index: doc/html/man/tput.1.html
  
  
  
-Index: doc/html/man/tset.1.html
---- ncurses-6.0-20150822+/doc/html/man/tset.1.html	2015-08-08 18:45:54.000000000 +0000
-+++ ncurses-6.0-20150905/doc/html/man/tset.1.html	2015-09-05 21:19:40.000000000 +0000
+diff --git a/doc/html/man/tset.1.html b/doc/html/man/tset.1.html
+index 73192cd..7ed8088 100644
+--- a/doc/html/man/tset.1.html
++++ b/doc/html/man/tset.1.html
 @@ -319,7 +319,7 @@
         <STRONG>csh(1)</STRONG>,   <STRONG>sh(1)</STRONG>,   <STRONG>stty(1)</STRONG>,   <STRONG><A HREF="curs_terminfo.3x.html">curs_terminfo(3x)</A></STRONG>,   <STRONG>tty(4)</STRONG>,
         <STRONG><A HREF="terminfo.5.html">terminfo(5)</A></STRONG>, <STRONG>ttys(5)</STRONG>, <STRONG>environ(7)</STRONG>
@@ -907,10 +924,10 @@ Index: doc/html/man/tset.1.html
  
  
  
-Index: include/term_entry.h
-Prereq:  1.46 
---- ncurses-6.0-20150822+/include/term_entry.h	2015-08-22 23:04:25.000000000 +0000
-+++ ncurses-6.0-20150905/include/term_entry.h	2015-08-30 00:41:20.000000000 +0000
+diff --git a/include/term_entry.h b/include/term_entry.h
+index 5d1d54f..0223f40 100644
+--- a/include/term_entry.h
++++ b/include/term_entry.h
 @@ -32,7 +32,7 @@
   *     and: Thomas E. Dickey                        1998-on                 *
   ****************************************************************************/
@@ -920,7 +937,7 @@ Prereq:  1.46
  
  /*
   *	term_entry.h -- interface to entry-manipulation code
-@@ -172,6 +172,7 @@
+@@ -172,6 +172,7 @@ extern NCURSES_EXPORT(int) _nc_capcmp (const char *, const char *);
  /* write_entry.c: writing an entry to the file system */
  extern NCURSES_EXPORT(void) _nc_set_writedir (const char *);
  extern NCURSES_EXPORT(void) _nc_write_entry (TERMTYPE *const);
@@ -928,10 +945,10 @@ Prereq:  1.46
  
  /* comp_parse.c: entry list handling */
  extern NCURSES_EXPORT(void) _nc_read_entry_source (FILE*, char*, int, bool, bool (*)(ENTRY*));
-Index: man/curs_addch.3x
-Prereq:  1.36 
---- ncurses-6.0-20150822+/man/curs_addch.3x	2015-07-16 09:14:44.000000000 +0000
-+++ ncurses-6.0-20150905/man/curs_addch.3x	2015-09-05 21:13:25.000000000 +0000
+diff --git a/man/curs_addch.3x b/man/curs_addch.3x
+index 15d859b..3ca42c9 100644
+--- a/man/curs_addch.3x
++++ b/man/curs_addch.3x
 @@ -27,7 +27,7 @@
  .\" authorization.                                                           *
  .\"***************************************************************************
@@ -941,7 +958,7 @@ Prereq:  1.36
  .TH curs_addch 3X ""
  .de bP
  .IP \(bu 4
-@@ -110,7 +110,10 @@
+@@ -110,7 +110,10 @@ their equivalents.
  The following variables may be used to add line drawing characters to the
  screen with routines of the \fBaddch\fR family.  The default character listed
  below is used if the \fBacsc\fR capability does not define a terminal-specific
@@ -953,7 +970,7 @@ Prereq:  1.36
  The names are taken from VT100 nomenclature.
  .PP
  .TS
-@@ -185,6 +188,18 @@
+@@ -185,6 +188,18 @@ include \fBacsc\fR strings in which their key characters (pryz{|}) are
  embedded, and a second-hand list of their character descriptions has come
  to light.  The ACS-prefixed names for them were invented for \fBncurses\fR(3X).
  .LP
@@ -972,10 +989,10 @@ Prereq:  1.36
  The \fBTABSIZE\fR variable is implemented in some versions of curses,
  but is not part of X/Open curses.
  .LP
-Index: man/curs_attr.3x
-Prereq:  1.40 
---- ncurses-6.0-20150822+/man/curs_attr.3x	2015-07-20 23:35:38.000000000 +0000
-+++ ncurses-6.0-20150905/man/curs_attr.3x	2015-09-05 21:13:25.000000000 +0000
+diff --git a/man/curs_attr.3x b/man/curs_attr.3x
+index 718417f..5c40d76 100644
+--- a/man/curs_attr.3x
++++ b/man/curs_attr.3x
 @@ -27,7 +27,7 @@
  .\" authorization.                                                           *
  .\"***************************************************************************
@@ -985,7 +1002,7 @@ Prereq:  1.40
  .TH curs_attr 3X ""
  .na
  .hy 0
-@@ -168,7 +168,7 @@
+@@ -168,7 +168,7 @@ the given window; \fBattr_get\fR returns the current attribute and color pair
  for \fBstdscr\fR.
  .PP
  There is no corresponding \fBattrget\fP function as such in X/Open Curses,
@@ -994,7 +1011,7 @@ Prereq:  1.40
  .SS chgat
  .PP
  The routine \fBchgat\fR changes the attributes of a given number of characters
-@@ -188,7 +188,7 @@
+@@ -188,7 +188,7 @@ presently used, but is reserved for the future (leave it \fBNULL\fR).
  .SS Attributes
  The following video attributes, defined in \fB<curses.h>\fR, can be passed to
  the routines \fBattron\fR, \fBattroff\fR, and \fBattrset\fR, or OR'd with the
@@ -1003,10 +1020,10 @@ Prereq:  1.40
  .PP
  .RS
  .TS
-Index: man/curs_threads.3x
-Prereq:  1.21 
---- ncurses-6.0-20150822+/man/curs_threads.3x	2015-04-11 10:23:49.000000000 +0000
-+++ ncurses-6.0-20150905/man/curs_threads.3x	2015-09-05 21:13:25.000000000 +0000
+diff --git a/man/curs_threads.3x b/man/curs_threads.3x
+index 7776459..1579116 100644
+--- a/man/curs_threads.3x
++++ b/man/curs_threads.3x
 @@ -26,7 +26,7 @@
  .\" authorization.                                                           *
  .\"***************************************************************************
@@ -1016,7 +1033,7 @@ Prereq:  1.21
  .TH curs_threads 3X ""
  .de bP
  .IP \(bu 4
-@@ -67,7 +67,7 @@
+@@ -67,7 +67,7 @@ configuration which hide the mutex's needed to prevent concurrent
  use of the global variables when configured for threading.
  .PP
  In addition to forcing access to members of the \fBWINDOW\fP structure
@@ -1025,10 +1042,10 @@ Prereq:  1.21
  it makes functions of the common global variables,
  e.g.,
  COLORS,
-Index: man/infocmp.1m
-Prereq:  1.56 
---- ncurses-6.0-20150822+/man/infocmp.1m	2015-05-23 20:50:00.000000000 +0000
-+++ ncurses-6.0-20150905/man/infocmp.1m	2015-09-05 20:50:22.000000000 +0000
+diff --git a/man/infocmp.1m b/man/infocmp.1m
+index 8a3fef2..af92bb9 100644
+--- a/man/infocmp.1m
++++ b/man/infocmp.1m
 @@ -27,7 +27,7 @@
  .\" authorization.                                                           *
  .\"***************************************************************************
@@ -1038,7 +1055,7 @@ Prereq:  1.56
  .TH @INFOCMP@ 1M ""
  .ds n 5
  .de bP
-@@ -65,7 +65,7 @@
+@@ -65,7 +65,7 @@ u\
  x\
  \fR]
  .br
@@ -1047,7 +1064,7 @@ Prereq:  1.56
  .br
        [\fB\-w\fR\ \fIwidth\fR] [\fB\-A\fR\ \fIdirectory\fR] [\fB\-B\fR\ \fIdirectory\fR]
  .br
-@@ -390,9 +390,31 @@
+@@ -390,9 +390,31 @@ Set output format to terminfo.
  \fB\-p\fR
  Ignore padding specifications when comparing strings.
  .TP 5
@@ -1079,10 +1096,10 @@ Prereq:  1.56
  .TP 5
  \fB\-R\fR\fIsubset\fR
  Restrict output to a given subset.
-Index: man/tic.1m
-Prereq:  1.60 
---- ncurses-6.0-20150822+/man/tic.1m	2014-05-24 22:00:11.000000000 +0000
-+++ ncurses-6.0-20150905/man/tic.1m	2015-09-05 20:45:49.000000000 +0000
+diff --git a/man/tic.1m b/man/tic.1m
+index 878e213..1a69bf9 100644
+--- a/man/tic.1m
++++ b/man/tic.1m
 @@ -1,5 +1,5 @@
  .\"***************************************************************************
 -.\" Copyright (c) 1998-2013,2014 Free Software Foundation, Inc.              *
@@ -1099,7 +1116,7 @@ Prereq:  1.60
  .TH @TIC@ 1M ""
  .ie \n(.g .ds `` \(lq
  .el       .ds `` ``
-@@ -58,6 +58,7 @@
+@@ -58,6 +58,7 @@ a\
  c\
  f\
  g\
@@ -1107,7 +1124,7 @@ Prereq:  1.60
  r\
  s\
  t\
-@@ -65,6 +66,7 @@
+@@ -65,6 +66,7 @@ x\
  \fR]
  [\fB\-e\fR \fInames\fR]
  [\fB\-o\fR \fIdir\fR]
@@ -1115,7 +1132,7 @@ Prereq:  1.60
  [\fB\-R\fR \fIsubset\fR]
  [\fB\-v\fR[\fIn\fR]]
  [\fB\-w\fR[\fIn\fR]]
-@@ -243,6 +245,25 @@
+@@ -243,6 +245,25 @@ obsolete capabilities.
  Write compiled entries to given database location.
  Overrides the TERMINFO environment variable.
  .TP
@@ -1141,10 +1158,10 @@ Prereq:  1.60
  \fB\-R\fR\fIsubset\fR
  Restrict output to a given subset.
  This option is for use with archaic
-Index: man/toe.1m
-Prereq:  1.26 
---- ncurses-6.0-20150822+/man/toe.1m	2012-01-01 00:40:51.000000000 +0000
-+++ ncurses-6.0-20150905/man/toe.1m	2015-08-29 22:04:48.000000000 +0000
+diff --git a/man/toe.1m b/man/toe.1m
+index 26af319..74b712c 100644
+--- a/man/toe.1m
++++ b/man/toe.1m
 @@ -1,5 +1,5 @@
  .\"***************************************************************************
 -.\" Copyright (c) 1998-2010,2011 Free Software Foundation, Inc.              *
@@ -1161,7 +1178,7 @@ Prereq:  1.26
  .TH @TOE@ 1M ""
  .ds n 5
  .ds d @TERMINFO@
-@@ -58,6 +58,9 @@
+@@ -58,6 +58,9 @@ adds a column to the report,
  showing (like \fBconflict\fP(1)) which entries which 
  belong to a given terminal database.
  An "*" marks entries which differ, and "+" marks equivalent entries.
@@ -1171,10 +1188,10 @@ Prereq:  1.26
  .TP
  \fB\-s\fR
  sort the output by the entry names.
-Index: ncurses/tinfo/write_entry.c
-Prereq:  1.92 
---- ncurses-6.0-20150822+/ncurses/tinfo/write_entry.c	2014-11-01 14:47:00.000000000 +0000
-+++ ncurses-6.0-20150905/ncurses/tinfo/write_entry.c	2015-09-05 21:24:29.000000000 +0000
+diff --git a/ncurses/tinfo/write_entry.c b/ncurses/tinfo/write_entry.c
+index b2edd5d..a5f8604 100644
+--- a/ncurses/tinfo/write_entry.c
++++ b/ncurses/tinfo/write_entry.c
 @@ -1,5 +1,5 @@
  /****************************************************************************
 - * Copyright (c) 1998-2013,2014 Free Software Foundation, Inc.              *
@@ -1196,7 +1213,7 @@ Prereq:  1.92
  
  #if !USE_HASHED_DB
  static void
-@@ -69,7 +68,7 @@
+@@ -69,7 +68,7 @@ write_file(char *filename, TERMTYPE *tp)
      }
      DEBUG(1, ("Created %s", filename));
  
@@ -1205,7 +1222,7 @@ Prereq:  1.92
  	|| fwrite(buffer, sizeof(char), (size_t) offset, fp) != offset) {
  	_nc_syserr_abort("error writing %s/%s", _nc_tic_dir(0), filename);
      }
-@@ -316,7 +315,7 @@
+@@ -316,7 +315,7 @@ _nc_write_entry(TERMTYPE *const tp)
      _nc_set_type(first_name);
  
  #if USE_HASHED_DB
@@ -1214,7 +1231,7 @@ Prereq:  1.92
  	DB *capdb = _nc_db_open(_nc_tic_dir(0), TRUE);
  	DBT key, data;
  
-@@ -620,8 +619,8 @@
+@@ -620,8 +619,8 @@ extended_object(TERMTYPE *tp)
  }
  #endif
  
@@ -1225,9 +1242,10 @@ Prereq:  1.92
  {
      char *namelist;
      size_t namelen, boolmax, nummax, strmax;
-Index: package/debian-mingw/changelog
---- ncurses-6.0-20150822+/package/debian-mingw/changelog	2015-08-17 08:41:12.000000000 +0000
-+++ ncurses-6.0-20150905/package/debian-mingw/changelog	2015-09-05 21:14:03.000000000 +0000
+diff --git a/package/debian-mingw/changelog b/package/debian-mingw/changelog
+index 4c4eb68..9f85c8b 100644
+--- a/package/debian-mingw/changelog
++++ b/package/debian-mingw/changelog
 @@ -1,8 +1,8 @@
 -ncurses6 (6.0+20150822) unstable; urgency=low
 +ncurses6 (6.0+20150905) unstable; urgency=low
@@ -1239,9 +1257,10 @@ Index: package/debian-mingw/changelog
  
  ncurses6 (5.9-20131005) unstable; urgency=low
  
-Index: package/debian-mingw64/changelog
---- ncurses-6.0-20150822+/package/debian-mingw64/changelog	2015-08-17 08:41:12.000000000 +0000
-+++ ncurses-6.0-20150905/package/debian-mingw64/changelog	2015-09-05 21:14:03.000000000 +0000
+diff --git a/package/debian-mingw64/changelog b/package/debian-mingw64/changelog
+index 4c4eb68..9f85c8b 100644
+--- a/package/debian-mingw64/changelog
++++ b/package/debian-mingw64/changelog
 @@ -1,8 +1,8 @@
 -ncurses6 (6.0+20150822) unstable; urgency=low
 +ncurses6 (6.0+20150905) unstable; urgency=low
@@ -1253,9 +1272,10 @@ Index: package/debian-mingw64/changelog
  
  ncurses6 (5.9-20131005) unstable; urgency=low
  
-Index: package/debian/changelog
---- ncurses-6.0-20150822+/package/debian/changelog	2015-08-17 08:41:12.000000000 +0000
-+++ ncurses-6.0-20150905/package/debian/changelog	2015-09-05 21:14:03.000000000 +0000
+diff --git a/package/debian/changelog b/package/debian/changelog
+index 77fb962..0a2d240 100644
+--- a/package/debian/changelog
++++ b/package/debian/changelog
 @@ -1,8 +1,8 @@
 -ncurses6 (6.0+20150822) unstable; urgency=low
 +ncurses6 (6.0+20150905) unstable; urgency=low
@@ -1267,10 +1287,10 @@ Index: package/debian/changelog
  
  ncurses6 (5.9-20120608) unstable; urgency=low
  
-Index: package/mingw-ncurses.nsi
-Prereq:  1.120 
---- ncurses-6.0-20150822+/package/mingw-ncurses.nsi	2015-08-17 08:41:12.000000000 +0000
-+++ ncurses-6.0-20150905/package/mingw-ncurses.nsi	2015-09-05 21:14:03.000000000 +0000
+diff --git a/package/mingw-ncurses.nsi b/package/mingw-ncurses.nsi
+index 2226411..f6b2375 100644
+--- a/package/mingw-ncurses.nsi
++++ b/package/mingw-ncurses.nsi
 @@ -1,4 +1,4 @@
 -; $Id: mingw-ncurses.nsi,v 1.120 2015/08/17 08:41:12 tom Exp $
 +; $Id: mingw-ncurses.nsi,v 1.122 2015/09/05 21:14:03 tom Exp $
@@ -1286,9 +1306,10 @@ Prereq:  1.120
  !define VERSION_PATCH ${VERSION_YYYY}${VERSION_MMDD}
  
  !define MY_ABI   "5"
-Index: package/mingw-ncurses.spec
---- ncurses-6.0-20150822+/package/mingw-ncurses.spec	2015-08-17 08:41:12.000000000 +0000
-+++ ncurses-6.0-20150905/package/mingw-ncurses.spec	2015-09-05 21:14:03.000000000 +0000
+diff --git a/package/mingw-ncurses.spec b/package/mingw-ncurses.spec
+index 1d8b58e..ee0e97e 100644
+--- a/package/mingw-ncurses.spec
++++ b/package/mingw-ncurses.spec
 @@ -3,7 +3,7 @@
  Summary: shared libraries for terminal handling
  Name: mingw32-ncurses6
@@ -1298,17 +1319,17 @@ Index: package/mingw-ncurses.spec
  License: X11
  Group: Development/Libraries
  Source: ncurses-%{version}-%{release}.tgz
-Index: package/ncurses.map
-Prereq:  1.34 
---- ncurses-6.0-20150822+/package/ncurses.map	2015-06-27 22:28:50.000000000 +0000
-+++ ncurses-6.0-20150905/package/ncurses.map	2015-09-05 19:27:16.000000000 +0000
+diff --git a/package/ncurses.map b/package/ncurses.map
+index a59484f..f18ed71 100644
+--- a/package/ncurses.map
++++ b/package/ncurses.map
 @@ -1,4 +1,4 @@
 -# $Id: ncurses.map,v 1.34 2015/06/27 22:28:50 tom Exp $
 +# $Id: ncurses.map,v 1.35 2015/09/05 19:27:16 tom Exp $
  # script for shared library symbol-versioning using ld
  #
  # This file was generated by ncu-mapsyms
-@@ -806,6 +806,13 @@
+@@ -806,6 +806,13 @@ NCURSES_TIC_5.9.20150530 {
  		_nc_strict_bsd;
  } NCURSES_TIC_5.7.20081102;
  
@@ -1322,9 +1343,10 @@ Prereq:  1.34
  NCURSES_TINFO_5.0.19991023 {
  	global:
  		BC;
-Index: package/ncurses.spec
---- ncurses-6.0-20150822+/package/ncurses.spec	2015-08-17 08:41:12.000000000 +0000
-+++ ncurses-6.0-20150905/package/ncurses.spec	2015-09-05 21:14:03.000000000 +0000
+diff --git a/package/ncurses.spec b/package/ncurses.spec
+index b5bd243..03e9565 100644
+--- a/package/ncurses.spec
++++ b/package/ncurses.spec
 @@ -1,7 +1,7 @@
  Summary: shared libraries for terminal handling
  Name: ncurses6
@@ -1334,17 +1356,17 @@ Index: package/ncurses.spec
  License: X11
  Group: Development/Libraries
  Source: ncurses-%{version}-%{release}.tgz
-Index: package/ncurses.sym
-Prereq:  1.23 
---- ncurses-6.0-20150822+/package/ncurses.sym	2015-06-27 22:30:44.000000000 +0000
-+++ ncurses-6.0-20150905/package/ncurses.sym	2015-09-05 19:36:49.000000000 +0000
+diff --git a/package/ncurses.sym b/package/ncurses.sym
+index 1e2cbf8..ac68509 100644
+--- a/package/ncurses.sym
++++ b/package/ncurses.sym
 @@ -1,4 +1,4 @@
 -# $Id: ncurses.sym,v 1.23 2015/06/27 22:30:44 tom Exp $
 +# $Id: ncurses.sym,v 1.24 2015/09/05 19:36:49 tom Exp $
  # script for shared library symbol-visibility using libtool
  #
  # This file was generated by ncu-mapsyms
-@@ -231,6 +231,7 @@
+@@ -231,6 +231,7 @@ _nc_visbufn
  _nc_viscbuf
  _nc_warning
  _nc_write_entry
@@ -1352,17 +1374,17 @@ Prereq:  1.23
  _traceattr
  _traceattr2
  _tracechar
-Index: package/ncursest.map
-Prereq:  1.30 
---- ncurses-6.0-20150822+/package/ncursest.map	2015-07-11 13:01:10.000000000 +0000
-+++ ncurses-6.0-20150905/package/ncursest.map	2015-09-05 19:35:45.000000000 +0000
+diff --git a/package/ncursest.map b/package/ncursest.map
+index 766b80d..7925a63 100644
+--- a/package/ncursest.map
++++ b/package/ncursest.map
 @@ -1,4 +1,4 @@
 -# $Id: ncursest.map,v 1.30 2015/07/11 13:01:10 tom Exp $
 +# $Id: ncursest.map,v 1.31 2015/09/05 19:35:45 tom Exp $
  # script for shared library symbol-versioning using ld
  #
  # This file was generated by ncu-mapsyms
-@@ -105,6 +105,13 @@
+@@ -105,6 +105,13 @@ NCURSES_TIC_5.9.20150530 {
  		_nc_strict_bsd;
  } NCURSES_TIC_5.7.20081102;
  
@@ -1376,17 +1398,17 @@ Prereq:  1.30
  NCURSES_TINFO_5.0.19991023 {
  	global:
  		BC;
-Index: package/ncursest.sym
-Prereq:  1.25 
---- ncurses-6.0-20150822+/package/ncursest.sym	2015-07-11 23:33:50.000000000 +0000
-+++ ncurses-6.0-20150905/package/ncursest.sym	2015-09-05 19:36:49.000000000 +0000
+diff --git a/package/ncursest.sym b/package/ncursest.sym
+index 4c2f209..4ffc67b 100644
+--- a/package/ncursest.sym
++++ b/package/ncursest.sym
 @@ -1,4 +1,4 @@
 -# $Id: ncursest.sym,v 1.25 2015/07/11 23:33:50 tom Exp $
 +# $Id: ncursest.sym,v 1.26 2015/09/05 19:36:49 tom Exp $
  # script for shared library symbol-visibility using libtool
  #
  # This file was generated by ncu-mapsyms
-@@ -233,6 +233,7 @@
+@@ -233,6 +233,7 @@ _nc_visbufn
  _nc_viscbuf
  _nc_warning
  _nc_write_entry
@@ -1394,17 +1416,17 @@ Prereq:  1.25
  _traceattr
  _traceattr2
  _tracechtype
-Index: package/ncursestw.map
-Prereq:  1.31 
---- ncurses-6.0-20150822+/package/ncursestw.map	2015-07-11 13:02:44.000000000 +0000
-+++ ncurses-6.0-20150905/package/ncursestw.map	2015-09-05 19:35:05.000000000 +0000
+diff --git a/package/ncursestw.map b/package/ncursestw.map
+index 7e6789b..6672df1 100644
+--- a/package/ncursestw.map
++++ b/package/ncursestw.map
 @@ -1,4 +1,4 @@
 -# $Id: ncursestw.map,v 1.31 2015/07/11 13:02:44 tom Exp $
 +# $Id: ncursestw.map,v 1.32 2015/09/05 19:35:05 tom Exp $
  # script for shared library symbol-versioning using ld
  #
  # This file was generated by ncu-mapsyms
-@@ -105,6 +105,13 @@
+@@ -105,6 +105,13 @@ NCURSES_TIC_5.9.20150530 {
  		_nc_strict_bsd;
  } NCURSES_TIC_5.7.20081102;
  
@@ -1418,17 +1440,17 @@ Prereq:  1.31
  NCURSES_TINFO_5.0.19991023 {
  	global:
  		BC;
-Index: package/ncursestw.sym
-Prereq:  1.23 
---- ncurses-6.0-20150822+/package/ncursestw.sym	2015-07-11 23:33:35.000000000 +0000
-+++ ncurses-6.0-20150905/package/ncursestw.sym	2015-09-05 19:36:49.000000000 +0000
+diff --git a/package/ncursestw.sym b/package/ncursestw.sym
+index a175653..4e27605 100644
+--- a/package/ncursestw.sym
++++ b/package/ncursestw.sym
 @@ -1,4 +1,4 @@
 -# $Id: ncursestw.sym,v 1.23 2015/07/11 23:33:35 tom Exp $
 +# $Id: ncursestw.sym,v 1.24 2015/09/05 19:36:49 tom Exp $
  # script for shared library symbol-visibility using libtool
  #
  # This file was generated by ncu-mapsyms
-@@ -238,6 +238,7 @@
+@@ -238,6 +238,7 @@ _nc_wacs
  _nc_warning
  _nc_wcrtomb
  _nc_write_entry
@@ -1436,17 +1458,17 @@ Prereq:  1.23
  _traceattr
  _traceattr2
  _tracecchar_t
-Index: package/ncursesw.map
-Prereq:  1.36 
---- ncurses-6.0-20150822+/package/ncursesw.map	2015-06-27 22:26:52.000000000 +0000
-+++ ncurses-6.0-20150905/package/ncursesw.map	2015-09-05 19:33:48.000000000 +0000
+diff --git a/package/ncursesw.map b/package/ncursesw.map
+index d18776e..f0402db 100644
+--- a/package/ncursesw.map
++++ b/package/ncursesw.map
 @@ -1,4 +1,4 @@
 -# $Id: ncursesw.map,v 1.36 2015/06/27 22:26:52 tom Exp $
 +# $Id: ncursesw.map,v 1.37 2015/09/05 19:33:48 tom Exp $
  # script for shared library symbol-versioning using ld
  #
  # This file was generated by ncu-mapsyms
-@@ -114,6 +114,13 @@
+@@ -114,6 +114,13 @@ NCURSES_TIC_5.9.20150530 {
  		_nc_strict_bsd;
  } NCURSES_TIC_5.7.20081102;
  
@@ -1460,17 +1482,17 @@ Prereq:  1.36
  NCURSES_TINFO_5.0.19991023 {
  	global:
  		BC;
-Index: package/ncursesw.sym
-Prereq:  1.24 
---- ncurses-6.0-20150822+/package/ncursesw.sym	2015-06-27 22:30:29.000000000 +0000
-+++ ncurses-6.0-20150905/package/ncursesw.sym	2015-09-05 19:36:49.000000000 +0000
+diff --git a/package/ncursesw.sym b/package/ncursesw.sym
+index dfeba4f..4e6950e 100644
+--- a/package/ncursesw.sym
++++ b/package/ncursesw.sym
 @@ -1,4 +1,4 @@
 -# $Id: ncursesw.sym,v 1.24 2015/06/27 22:30:29 tom Exp $
 +# $Id: ncursesw.sym,v 1.25 2015/09/05 19:36:49 tom Exp $
  # script for shared library symbol-visibility using libtool
  #
  # This file was generated by ncu-mapsyms
-@@ -233,6 +233,7 @@
+@@ -233,6 +233,7 @@ _nc_warning
  _nc_wchstrlen
  _nc_wcrtomb
  _nc_write_entry
@@ -1478,10 +1500,10 @@ Prereq:  1.24
  _traceattr
  _traceattr2
  _tracecchar_t
-Index: progs/dump_entry.c
-Prereq:  1.118 
---- ncurses-6.0-20150822+/progs/dump_entry.c	2015-07-07 08:06:39.000000000 +0000
-+++ ncurses-6.0-20150905/progs/dump_entry.c	2015-09-05 23:31:12.000000000 +0000
+diff --git a/progs/dump_entry.c b/progs/dump_entry.c
+index d59a925..19d6cde 100644
+--- a/progs/dump_entry.c
++++ b/progs/dump_entry.c
 @@ -39,9 +39,8 @@
  #include "termsort.c"		/* this C file is generated */
  #include <parametrized.h>	/* so is this */
@@ -1493,7 +1515,7 @@ Prereq:  1.118
  #define DISCARD(string) string = ABSENT_STRING
  #define PRINTF (void) printf
  
-@@ -62,6 +61,7 @@
+@@ -62,6 +61,7 @@ static int column;		/* current column, limited by 'width' */
  static int oldcol;		/* last value of column before wrap */
  static bool pretty;		/* true if we format if-then-else strings */
  static bool checking;		/* true if we are checking for tic */
@@ -1501,7 +1523,7 @@ Prereq:  1.118
  
  static char *save_sgr;
  
-@@ -75,6 +75,7 @@
+@@ -75,6 +75,7 @@ static NCURSES_CONST char *const *num_names;
  static NCURSES_CONST char *const *str_names;
  
  static const char *separator = "", *trailer = "";
@@ -1509,7 +1531,7 @@ Prereq:  1.118
  
  /* cover various ports and variants of terminfo */
  #define V_ALLCAPS	0	/* all capabilities (SVr4, XSI, ncurses) */
-@@ -193,13 +194,15 @@
+@@ -193,13 +194,15 @@ dump_init(const char *version,
  	  int theight,
  	  unsigned traceval,
  	  bool formatted,
@@ -1526,7 +1548,7 @@ Prereq:  1.118
  
      /* versions */
      if (version == 0)
-@@ -244,6 +247,7 @@
+@@ -244,6 +247,7 @@ dump_init(const char *version,
  	trailer = "\\\n\t:";
  	break;
      }
@@ -1534,7 +1556,7 @@ Prereq:  1.118
  
      /* implement sort modes */
      switch (sortmode = sort) {
-@@ -413,7 +417,7 @@
+@@ -413,7 +417,7 @@ force_wrap(void)
      oldcol = column;
      trim_trailing();
      strcpy_DYN(&outbuf, trailer);
@@ -1543,7 +1565,7 @@ Prereq:  1.118
  }
  
  static void
-@@ -422,7 +426,7 @@
+@@ -422,7 +426,7 @@ wrap_concat(const char *src)
      size_t need = strlen(src);
      size_t want = strlen(separator) + need;
  
@@ -1552,7 +1574,7 @@ Prereq:  1.118
  	&& column + (int) want > width) {
  	force_wrap();
      }
-@@ -628,7 +632,7 @@
+@@ -628,7 +632,7 @@ fmt_entry(TERMTYPE *tterm,
  
      strcpy_DYN(&outbuf, 0);
      if (content_only) {
@@ -1561,7 +1583,7 @@ Prereq:  1.118
      } else {
  	strcpy_DYN(&outbuf, tterm->term_names);
  
-@@ -671,7 +675,7 @@
+@@ -671,7 +675,7 @@ fmt_entry(TERMTYPE *tterm,
  	}
      }
  
@@ -1570,7 +1592,7 @@ Prereq:  1.118
  	force_wrap();
  
      for_each_number(j, tterm) {
-@@ -699,7 +703,7 @@
+@@ -699,7 +703,7 @@ fmt_entry(TERMTYPE *tterm,
  	}
      }
  
@@ -1579,7 +1601,7 @@ Prereq:  1.118
  	force_wrap();
  
      len += (int) (num_bools
-@@ -1112,6 +1116,34 @@
+@@ -1112,6 +1116,34 @@ purged_acs(TERMTYPE *tterm)
      return result;
  }
  
@@ -1614,7 +1636,7 @@ Prereq:  1.118
  /*
   * Dump a single entry.
   */
-@@ -1127,6 +1159,48 @@
+@@ -1127,6 +1159,48 @@ dump_entry(TERMTYPE *tterm,
      const char *legend;
      bool infodump;
  
@@ -1663,7 +1685,7 @@ Prereq:  1.118
      if (outform == F_TERMCAP || outform == F_TCONVERR) {
  	critlen = MAX_TERMCAP_LENGTH;
  	legend = "older termcap";
-@@ -1276,8 +1350,10 @@
+@@ -1276,8 +1350,10 @@ show_entry(void)
  	}
  	outbuf.text[outbuf.used] = '\0';
      }
@@ -1676,10 +1698,10 @@ Prereq:  1.118
      return (int) outbuf.used;
  }
  
-Index: progs/dump_entry.h
-Prereq:  1.35 
---- ncurses-6.0-20150822+/progs/dump_entry.h	2015-05-27 00:56:54.000000000 +0000
-+++ ncurses-6.0-20150905/progs/dump_entry.h	2015-09-05 15:49:58.000000000 +0000
+diff --git a/progs/dump_entry.h b/progs/dump_entry.h
+index 8b1ebd2..798fa80 100644
+--- a/progs/dump_entry.h
++++ b/progs/dump_entry.h
 @@ -33,7 +33,7 @@
   ****************************************************************************/
  
@@ -1689,7 +1711,7 @@ Prereq:  1.35
   *
   * Dump control definitions and variables
   */
-@@ -72,7 +72,8 @@
+@@ -72,7 +72,8 @@ extern int fmt_entry(TERMTYPE *, PredFunc, int, int, int, int);
  extern int show_entry(void);
  extern void compare_entry(PredHook, TERMTYPE *, bool);
  extern void dump_entry(TERMTYPE *, int, int, int, PredFunc);
@@ -1699,10 +1721,10 @@ Prereq:  1.35
  extern void dump_uses(const char *, bool);
  extern void repair_acsc(TERMTYPE *tp);
  
-Index: progs/infocmp.c
-Prereq:  1.134 
---- ncurses-6.0-20150822+/progs/infocmp.c	2015-08-22 23:54:25.000000000 +0000
-+++ ncurses-6.0-20150905/progs/infocmp.c	2015-09-05 15:49:57.000000000 +0000
+diff --git a/progs/infocmp.c b/progs/infocmp.c
+index 1c02ba1..62773d6 100644
+--- a/progs/infocmp.c
++++ b/progs/infocmp.c
 @@ -42,7 +42,7 @@
  
  #include <dump_entry.h>
@@ -1712,7 +1734,7 @@ Prereq:  1.134
  
  #define L_CURL "{"
  #define R_CURL "}"
-@@ -989,7 +989,8 @@
+@@ -989,7 +989,8 @@ file_comparison(int argc, char *argv[])
      int i, n;
  
      memset(heads, 0, sizeof(heads));
@@ -1722,7 +1744,7 @@ Prereq:  1.134
  
      for (n = 0; n < argc && n < MAXCOMPARE; n++) {
  	if (freopen(argv[n], "r", stdin) == 0)
-@@ -1197,6 +1198,7 @@
+@@ -1197,6 +1198,7 @@ usage(void)
  	,"  -l    output terminfo names"
  	,"  -n    list capabilities in neither"
  	,"  -p    ignore padding specifiers"
@@ -1730,7 +1752,7 @@ Prereq:  1.134
  	,"  -q    brief listing, removes headers"
  	,"  -r    with -C, output in termcap form"
  	,"  -r    with -F, resolve use-references"
-@@ -1506,6 +1508,7 @@
+@@ -1506,6 +1508,7 @@ main(int argc, char *argv[])
      int initdump = 0;
      bool init_analyze = FALSE;
      bool suppress_untranslatable = FALSE;
@@ -1738,7 +1760,7 @@ Prereq:  1.134
  
      /* where is the terminfo database location going to default to? */
      restdir = firstdir = 0;
-@@ -1527,7 +1530,7 @@
+@@ -1527,7 +1530,7 @@ main(int argc, char *argv[])
  
      while ((c = getopt(argc,
  		       argv,
@@ -1747,7 +1769,7 @@ Prereq:  1.134
  	switch (c) {
  	case '0':
  	    mwidth = 65535;
-@@ -1628,6 +1631,10 @@
+@@ -1628,6 +1631,10 @@ main(int argc, char *argv[])
  	    ignorepads = TRUE;
  	    break;
  
@@ -1758,7 +1780,7 @@ Prereq:  1.134
  	case 'q':
  	    quiet = TRUE;
  	    s_absent = "-";
-@@ -1751,7 +1758,7 @@
+@@ -1751,7 +1758,7 @@ main(int argc, char *argv[])
  
      /* set up for display */
      dump_init(tversion, outform, sortmode, mwidth, mheight, itrace,
@@ -1767,7 +1789,7 @@ Prereq:  1.134
  
      if (!filecompare) {
  	/* grab the entries */
-@@ -1852,8 +1859,10 @@
+@@ -1852,8 +1859,10 @@ main(int argc, char *argv[])
  				   "%s: about to dump %s\n",
  				   _nc_progname,
  				   tname[0]);
@@ -1780,10 +1802,10 @@ Prereq:  1.134
  		dump_entry(&entries[0].tterm,
  			   suppress_untranslatable,
  			   limited,
-Index: progs/tic.c
-Prereq:  1.213 
---- ncurses-6.0-20150822+/progs/tic.c	2015-08-22 23:49:57.000000000 +0000
-+++ ncurses-6.0-20150905/progs/tic.c	2015-09-05 19:22:49.000000000 +0000
+diff --git a/progs/tic.c b/progs/tic.c
+index 1175d9a..cd1efb2 100644
+--- a/progs/tic.c
++++ b/progs/tic.c
 @@ -48,7 +48,7 @@
  #include <parametrized.h>
  #include <transform.h>
@@ -1793,7 +1815,7 @@ Prereq:  1.213
  
  #define STDIN_NAME "<stdin>"
  
-@@ -159,6 +159,8 @@
+@@ -159,6 +159,8 @@ usage(void)
  	DATA("  -L         translate entries to full terminfo source form")
  	DATA("  -N         disable smart defaults for source translation")
  	DATA("  -o<dir>    set output directory for compiled entry writes")
@@ -1802,7 +1824,7 @@ Prereq:  1.213
  	DATA("  -R<name>   restrict translation to given terminfo/termcap version")
  	DATA("  -r         force resolution of all use entries in source translation")
  	DATA("  -s         print summary statistics")
-@@ -660,6 +662,12 @@
+@@ -660,6 +662,12 @@ show_databases(const char *outdir)
      }
  }
  
@@ -1815,7 +1837,7 @@ Prereq:  1.213
  #define VtoTrace(opt) (unsigned) ((opt > 0) ? opt : (opt == 0))
  
  int
-@@ -690,6 +698,8 @@
+@@ -690,6 +698,8 @@ main(int argc, char *argv[])
      char *outdir = (char *) NULL;
      bool check_only = FALSE;
      bool suppress_untranslatable = FALSE;
@@ -1824,7 +1846,7 @@ Prereq:  1.213
  
      log_fp = stderr;
  
-@@ -715,14 +725,17 @@
+@@ -715,14 +725,17 @@ main(int argc, char *argv[])
       * be optional.
       */
      while ((this_opt = getopt(argc, argv,
@@ -1845,7 +1867,7 @@ Prereq:  1.213
  		break;
  	    default:
  		switch (this_opt) {
-@@ -773,6 +786,9 @@
+@@ -773,6 +786,9 @@ main(int argc, char *argv[])
  	    smart_defaults = FALSE;
  	    literal = TRUE;
  	    break;
@@ -1855,7 +1877,7 @@ Prereq:  1.213
  	case 'R':
  	    tversion = optarg;
  	    break;
-@@ -803,6 +819,9 @@
+@@ -803,6 +819,9 @@ main(int argc, char *argv[])
  	case 'o':
  	    outdir = optarg;
  	    break;
@@ -1865,7 +1887,7 @@ Prereq:  1.213
  	case 'r':
  	    forceresolve = TRUE;
  	    break;
-@@ -914,11 +933,11 @@
+@@ -914,11 +933,11 @@ main(int argc, char *argv[])
  		  ? outform
  		  : F_LITERAL,
  		  sortmode, width, height, debug_level, formatted ||
@@ -1879,7 +1901,7 @@ Prereq:  1.213
      }
  
      /* parse entries out of the source file */
-@@ -989,12 +1008,14 @@
+@@ -989,12 +1008,14 @@ main(int argc, char *argv[])
  		    /* this is in case infotocap() generates warnings */
  		    _nc_set_type(_nc_first_name(qp->tterm.term_names));
  
@@ -1900,7 +1922,7 @@ Prereq:  1.213
  		    }
  
  		    repair_acsc(&qp->tterm);
-@@ -1007,7 +1028,7 @@
+@@ -1007,7 +1028,7 @@ main(int argc, char *argv[])
  			printf("# length=%d\n", len);
  		}
  	    }
@@ -1909,3 +1931,6 @@ Prereq:  1.213
  		int c, oldc = '\0';
  		bool in_comment = FALSE;
  		bool trailing_comment = FALSE;
+-- 
+2.9.1
+

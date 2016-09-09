@@ -1,0 +1,485 @@
+From efd717f13effbf1d0fd743a214aebc0c97c8b66c Mon Sep 17 00:00:00 2001
+From: "Thomas E. Dickey" <dickey@invisible-island.net>
+Date: Sun, 17 Jan 2016 02:21:18 +0000
+Subject: [PATCH 20/50] ncurses 6.0 - patch 20160116
+
++ tidy up comments about hardcoded 256color palette (report by
+  Leonardo Brondani Schenkel) -TD
++ add putty-noapp entry, and amend putty entry to use application mode
+  for better consistency with xterm (report by Leonardo Brondani
+  Schenkel) -TD
++ modify _nc_viscbuf2() and _tracecchar_t2() to trace wide-characters
+  as a whole rather than their multibyte equivalents.
++ minor fix in wadd_wchnstr() to ensure that each cell has nonzero
+  width.
++ move PUTC_INIT calls next to wcrtomb calls, to avoid carry-over of
+  error status when processing Unicode values which are not mapped.
+---
+ NEWS                             | 15 ++++++++++++++-
+ VERSION                          |  2 +-
+ dist.mk                          |  4 ++--
+ misc/terminfo.src                | 37 +++++++++++++++++++++++--------------
+ ncurses/base/lib_addstr.c        |  6 ++++--
+ ncurses/curses.priv.h            |  6 +++---
+ ncurses/trace/lib_traceatr.c     | 13 ++++++++++---
+ ncurses/trace/visbuf.c           | 15 ++++++++++-----
+ package/debian-mingw/changelog   |  4 ++--
+ package/debian-mingw64/changelog |  4 ++--
+ package/debian/changelog         |  4 ++--
+ package/mingw-ncurses.nsi        |  4 ++--
+ package/mingw-ncurses.spec       |  2 +-
+ package/ncurses.spec             |  2 +-
+ test/test_sgr.c                  |  8 ++++----
+ 15 files changed, 81 insertions(+), 45 deletions(-)
+
+diff --git a/NEWS b/NEWS
+index f407576..3a37ebd 100644
+--- a/NEWS
++++ b/NEWS
+@@ -25,7 +25,7 @@
+ -- sale, use or other dealings in this Software without prior written        --
+ -- authorization.                                                            --
+ -------------------------------------------------------------------------------
+--- $Id: NEWS,v 1.2554 2016/01/03 01:17:55 tom Exp $
++-- $Id: NEWS,v 1.2560 2016/01/17 00:37:27 tom Exp $
+ -------------------------------------------------------------------------------
+ 
+ This is a log of changes that ncurses has gone through since Zeyd started
+@@ -45,6 +45,19 @@ See the AUTHORS file for the corresponding full names.
+ Changes through 1.9.9e did not credit all contributions;
+ it is not possible to add this information.
+ 
++20160116
++	+ tidy up comments about hardcoded 256color palette (report by
++	  Leonardo Brondani Schenkel) -TD
++	+ add putty-noapp entry, and amend putty entry to use application mode
++	  for better consistency with xterm (report by Leonardo Brondani
++	  Schenkel) -TD
++	+ modify _nc_viscbuf2() and _tracecchar_t2() to trace wide-characters
++	  as a whole rather than their multibyte equivalents.
++	+ minor fix in wadd_wchnstr() to ensure that each cell has nonzero
++	  width.
++	+ move PUTC_INIT calls next to wcrtomb calls, to avoid carry-over of
++	  error status when processing Unicode values which are not mapped.
++
+ 20160102
+ 	+ modify ncurses c/C color test-screens to take advantage of wide
+ 	  screens, reducing the number of lines used for 88- and 256-colors.
+diff --git a/VERSION b/VERSION
+index ccb1b41..21517a8 100644
+--- a/VERSION
++++ b/VERSION
+@@ -1 +1 @@
+-5:0:9	6.0	20160102
++5:0:9	6.0	20160116
+diff --git a/dist.mk b/dist.mk
+index abac3ac..ff327f6 100644
+--- a/dist.mk
++++ b/dist.mk
+@@ -25,7 +25,7 @@
+ # use or other dealings in this Software without prior written               #
+ # authorization.                                                             #
+ ##############################################################################
+-# $Id: dist.mk,v 1.1087 2016/01/02 20:24:37 tom Exp $
++# $Id: dist.mk,v 1.1089 2016/01/16 21:24:23 tom Exp $
+ # Makefile for creating ncurses distributions.
+ #
+ # This only needs to be used directly as a makefile by developers, but
+@@ -37,7 +37,7 @@ SHELL = /bin/sh
+ # These define the major/minor/patch versions of ncurses.
+ NCURSES_MAJOR = 6
+ NCURSES_MINOR = 0
+-NCURSES_PATCH = 20160102
++NCURSES_PATCH = 20160116
+ 
+ # We don't append the patch to the version, since this only applies to releases
+ VERSION = $(NCURSES_MAJOR).$(NCURSES_MINOR)
+diff --git a/misc/terminfo.src b/misc/terminfo.src
+index 612b47a..13cc1f9 100644
+--- a/misc/terminfo.src
++++ b/misc/terminfo.src
+@@ -6,8 +6,8 @@
+ # Report bugs and new terminal descriptions to
+ #	bug-ncurses@gnu.org
+ #
+-#	$Revision: 1.559 $
+-#	$Date: 2015/11/28 21:35:00 $
++#	$Revision: 1.561 $
++#	$Date: 2016/01/17 00:25:26 $
+ #
+ # The original header is preserved below for reference.  It is noted that there
+ # is a "newer" version which differs in some cosmetic details (but actually
+@@ -3580,28 +3580,31 @@ putty|PuTTY terminal emulator,
+ 	ind=^J, indn=\E[%p1%dS,
+ 	initc=\E]P%p1%x%p2%{255}%*%{1000}%/%02x%p3%{255}%*%{1000}%/%02x%p4%{255}%*%{1000}%/%02x,
+ 	is2=\E7\E[r\E[m\E[?7h\E[?1;4;6l\E[4l\E8\E>\E]R,
+-	kLFT=\EOD, kRIT=\EOC, kb2=\E[G, kbs=\177, kcbt=\E[Z,
+-	kcub1=\E[D, kcud1=\E[B, kcuf1=\E[C, kcuu1=\E[A,
++	kLFT=\E[D, kRIT=\E[C, kb2=\E[G, kbs=\177, kcbt=\E[Z,
++	kcub1=\EOD, kcud1=\EOB, kcuf1=\EOC, kcuu1=\EOA,
+ 	kdch1=\E[3~, kend=\E[4~, khome=\E[1~, kich1=\E[2~,
+-	kind=\EOB, kmous=\E[M, knp=\E[6~, kpp=\E[5~, kri=\EOA,
++	kind=\E[B, kmous=\E[M, knp=\E[6~, kpp=\E[5~, kri=\E[A,
+ 	kspd=^Z, nel=^M^J, oc=\E]R, op=\E[39;49m, rc=\E8, rev=\E[7m,
+ 	ri=\EM, rin=\E[%p1%dT, rmacs=^O, rmam=\E[?7l,
+-	rmcup=\E[2J\E[?47l, rmir=\E[4l, rmpch=\E[10m,
+-	rmso=\E[27m, rmul=\E[24m,
++	rmcup=\E[2J\E[?47l, rmir=\E[4l, rmkx=\E[?1l\E>,
++	rmpch=\E[10m, rmso=\E[27m, rmul=\E[24m,
+ 	rs2=\E<\E["p\E[50;6"p\Ec\E[?3l\E]R\E[?1000l,
+ 	s0ds=\E[10m, s1ds=\E[11m, s2ds=\E[12m, sc=\E7,
+ 	setab=\E[4%p1%dm, setaf=\E[3%p1%dm,
+ 	sgr=\E[0%?%p1%p6%|%t;1%;%?%p2%t;4%;%?%p1%p3%|%t;7%;%?%p4%t;5%;m%?%p9%t\016%e\017%;,
+ 	sgr0=\E[m\017, smacs=^N, smam=\E[?7h, smcup=\E[?47h,
+-	smir=\E[4h, smpch=\E[11m, smso=\E[7m, smul=\E[4m,
+-	tbc=\E[3g, vpa=\E[%i%p1%dd, E3=\E[3J, use=putty+fnkeys,
+-	use=vt102+enq, use=xterm+sl,
++	smir=\E[4h, smkx=\E[?1h\E=, smpch=\E[11m, smso=\E[7m,
++	smul=\E[4m, tbc=\E[3g, vpa=\E[%i%p1%dd, E3=\E[3J,
++	use=putty+fnkeys, use=vt102+enq, use=xterm+sl,
+ vt100-putty|Reset PuTTY to pure vt100,
+ 	rs2=\E<\E["p\Ec\E[?3l\E]R\E[40"p\E[61"p\E[50;1;2"p,
+ 	use=vt100,
+-# palette is hardcoded...
+ putty-256color|PuTTY 0.58 with xterm 256-colors,
+ 	use=xterm+256setaf, use=putty,
++putty-noapp|putty with cursor keys in normal mode,
++	kLFT=\EOD, kRIT=\EOC, kcub1=\E[D, kcud1=\E[B, kcuf1=\E[C,
++	kcuu1=\E[A, kind=\EOB, kri=\EOA, rmkx=\E>, smkx=\E=,
++	use=putty,
+ 
+ # One of the keyboard selections is "VT100+".
+ # pterm (the X11 port) uses shifted F1-F10 as F11-F20
+@@ -4235,6 +4238,7 @@ xterm+256color|xterm 256-color feature,
+ 	setaf=\E[%?%p1%{8}%<%t3%p1%d%e%p1%{16}%<%t9%p1%{8}%-%d%e38;5;%p1%d%;m,
+ 	setb@, setf@,
+ 
++# palette is hardcoded...
+ xterm+256setaf|xterm 256-color (set-only),
+ 	ccc@,
+ 	colors#256, pairs#32767,
+@@ -4876,7 +4880,6 @@ vte-2014|VTE 0.35.1,
+ vte|VTE aka GNOME Terminal,
+ 	use=vte-2014,
+ 
+-# palette is hardcoded...
+ vte-256color|VTE with xterm 256-colors,
+ 	use=xterm+256color, use=vte,
+ gnome-256color|GNOME Terminal with xterm 256-colors,
+@@ -4996,7 +4999,6 @@ konsole-16color|klone of xterm-16color,
+ konsole|KDE console window,
+ 	use=konsole-xf4x,
+ 
+-# palette is hardcoded...
+ konsole-256color|KDE console window with xterm 256-colors,
+ 	use=xterm+256setaf, use=konsole,
+ 
+@@ -23812,6 +23814,13 @@ v3220|LANPAR Vision II model 3220/3221/3222,
+ #	+ fix some inconsistencies in the pccon* entries -TD
+ #
+ # 2015-11-28
+-#	  add viewdata (Alexandre Montaron).
++#	+ add viewdata (Alexandre Montaron).
++#
++# 2016-01-16
++#	+ tidy up comments about hardcoded 256color palette (report by
++#	  Leonardo Brondani Schenkel) -TD
++#	+ add putty-noapp entry, and amend putty entry to use application mode
++#	  for better consistency with xterm (report by Leonardo Brondani
++#	  Schenkel) -TD
+ #
+ ######## SHANTIH!  SHANTIH!  SHANTIH!
+diff --git a/ncurses/base/lib_addstr.c b/ncurses/base/lib_addstr.c
+index a1a55cb..6779f3f 100644
+--- a/ncurses/base/lib_addstr.c
++++ b/ncurses/base/lib_addstr.c
+@@ -1,5 +1,5 @@
+ /****************************************************************************
+- * Copyright (c) 1998-2010,2011 Free Software Foundation, Inc.              *
++ * Copyright (c) 1998-2011,2016 Free Software Foundation, Inc.              *
+  *                                                                          *
+  * Permission is hereby granted, free of charge, to any person obtaining a  *
+  * copy of this software and associated documentation files (the            *
+@@ -44,7 +44,7 @@
+ 
+ #include <curses.priv.h>
+ 
+-MODULE_ID("$Id: lib_addstr.c,v 1.52 2011/05/28 23:02:09 tom Exp $")
++MODULE_ID("$Id: lib_addstr.c,v 1.53 2016/01/16 21:00:53 tom Exp $")
+ 
+ NCURSES_EXPORT(int)
+ waddnstr(WINDOW *win, const char *astr, int n)
+@@ -194,6 +194,8 @@ wadd_wchnstr(WINDOW *win, const cchar_t *astr, int n)
+ 		    }
+ 		    SetWidecExt(line->text[x + j], j);
+ 		}
++	    } else {
++		len = 1;
+ 	    }
+ 	    x = (NCURSES_SIZE_T) (x + len);
+ 	    end += len - 1;
+diff --git a/ncurses/curses.priv.h b/ncurses/curses.priv.h
+index ec17d88..7b302cb 100644
+--- a/ncurses/curses.priv.h
++++ b/ncurses/curses.priv.h
+@@ -1,5 +1,5 @@
+ /****************************************************************************
+- * Copyright (c) 1998-2014,2015 Free Software Foundation, Inc.              *
++ * Copyright (c) 1998-2015,2016 Free Software Foundation, Inc.              *
+  *                                                                          *
+  * Permission is hereby granted, free of charge, to any person obtaining a  *
+  * copy of this software and associated documentation files (the            *
+@@ -34,7 +34,7 @@
+  ****************************************************************************/
+ 
+ /*
+- * $Id: curses.priv.h,v 1.547 2015/06/27 01:22:16 tom Exp $
++ * $Id: curses.priv.h,v 1.548 2016/01/10 22:17:19 tom Exp $
+  *
+  *	curses.priv.h
+  *
+@@ -1428,11 +1428,11 @@ extern NCURSES_EXPORT_VAR(SIG_ATOMIC_T) _nc_have_sigwinch;
+ 			    NCURSES_OUTC_FUNC (NCURSES_SP_ARGx CharOf(ch)); \
+ 			    COUNT_OUTCHARS(1);					    \
+ 			} else {						    \
+-			    PUTC_INIT;						    \
+ 			    for (PUTC_i = 0; PUTC_i < CCHARW_MAX; ++PUTC_i) {	    \
+ 				PUTC_ch = (ch).chars[PUTC_i];			    \
+ 				if (PUTC_ch == L'\0')				    \
+ 				    break;					    \
++				PUTC_INIT;						    \
+ 				PUTC_n = (int) wcrtomb(PUTC_buf,		    \
+ 						       (ch).chars[PUTC_i], &PUT_st); \
+ 				if (PUTC_n <= 0) {				    \
+diff --git a/ncurses/trace/lib_traceatr.c b/ncurses/trace/lib_traceatr.c
+index 24772d8..8b00995 100644
+--- a/ncurses/trace/lib_traceatr.c
++++ b/ncurses/trace/lib_traceatr.c
+@@ -1,5 +1,5 @@
+ /****************************************************************************
+- * Copyright (c) 1998-2013,2014 Free Software Foundation, Inc.              *
++ * Copyright (c) 1998-2014,2016 Free Software Foundation, Inc.              *
+  *                                                                          *
+  * Permission is hereby granted, free of charge, to any person obtaining a  *
+  * copy of this software and associated documentation files (the            *
+@@ -43,7 +43,7 @@
+ #define CUR SP_TERMTYPE
+ #endif
+ 
+-MODULE_ID("$Id: lib_traceatr.c,v 1.83 2015/04/04 13:41:37 tom Exp $")
++MODULE_ID("$Id: lib_traceatr.c,v 1.85 2016/01/16 21:23:43 tom Exp $")
+ 
+ #define COLOR_OF(c) ((c < 0) ? "default" : (c > 7 ? color_of(c) : colors[c].name))
+ 
+@@ -338,7 +338,6 @@ _tracecchar_t2(int bufnum, const cchar_t *ch)
+ 		PUTC_DATA;
+ 		int n;
+ 
+-		PUTC_INIT;
+ 		(void) _nc_trace_bufcat(bufnum, "{ ");
+ 		for (PUTC_i = 0; PUTC_i < CCHARW_MAX; ++PUTC_i) {
+ 		    PUTC_ch = ch->chars[PUTC_i];
+@@ -347,6 +346,7 @@ _tracecchar_t2(int bufnum, const cchar_t *ch)
+ 			    (void) _nc_trace_bufcat(bufnum, "\\000");
+ 			break;
+ 		    }
++		    PUTC_INIT;
+ 		    PUTC_n = (int) wcrtomb(PUTC_buf, ch->chars[PUTC_i], &PUT_st);
+ 		    if (PUTC_n <= 0) {
+ 			if (PUTC_ch != L'\0') {
+@@ -356,6 +356,13 @@ _tracecchar_t2(int bufnum, const cchar_t *ch)
+ 								  UChar(ch->chars[PUTC_i])));
+ 			}
+ 			break;
++		    } else if (ch->chars[PUTC_i] > 255) {
++			char temp[80];
++			sprintf(temp, "{%d:\\u%x}",
++				wcwidth(ch->chars[PUTC_i]),
++				ch->chars[PUTC_i]);
++			(void) _nc_trace_bufcat(bufnum, temp);
++			break;
+ 		    }
+ 		    for (n = 0; n < PUTC_n; n++) {
+ 			if (n)
+diff --git a/ncurses/trace/visbuf.c b/ncurses/trace/visbuf.c
+index fec0643..ff9337f 100644
+--- a/ncurses/trace/visbuf.c
++++ b/ncurses/trace/visbuf.c
+@@ -1,5 +1,5 @@
+ /****************************************************************************
+- * Copyright (c) 2001-2012,2014 Free Software Foundation, Inc.              *
++ * Copyright (c) 2001-2014,2016 Free Software Foundation, Inc.              *
+  *                                                                          *
+  * Permission is hereby granted, free of charge, to any person obtaining a  *
+  * copy of this software and associated documentation files (the            *
+@@ -42,7 +42,7 @@
+ #include <tic.h>
+ #include <ctype.h>
+ 
+-MODULE_ID("$Id: visbuf.c,v 1.44 2014/09/25 08:51:13 tom Exp $")
++MODULE_ID("$Id: visbuf.c,v 1.46 2016/01/10 23:51:56 tom Exp $")
+ 
+ #define NUM_VISBUFS 4
+ 
+@@ -315,9 +315,9 @@ _nc_viscbuf2(int bufnum, const NCURSES_CH_T * buf, int len)
+ 		if (!isWidecExt(buf[j])) {
+ 		    PUTC_DATA;
+ 
+-		    PUTC_INIT;
+ 		    for (PUTC_i = 0; PUTC_i < CCHARW_MAX; ++PUTC_i) {
+ 			int k;
++			char temp[80];
+ 
+ 			PUTC_ch = buf[j].chars[PUTC_i];
+ 			if (PUTC_ch == L'\0') {
+@@ -325,12 +325,17 @@ _nc_viscbuf2(int bufnum, const NCURSES_CH_T * buf, int len)
+ 				(void) _nc_trace_bufcat(bufnum, "\\000");
+ 			    break;
+ 			}
++			PUTC_INIT;
+ 			PUTC_n = (int) wcrtomb(PUTC_buf,
+ 					       buf[j].chars[PUTC_i], &PUT_st);
+-			if (PUTC_n <= 0)
++			if (PUTC_n <= 0 || buf[j].chars[PUTC_i] > 255) {
++			    sprintf(temp, "{%d:\\u%x}",
++				    wcwidth(buf[j].chars[PUTC_i]),
++				    buf[j].chars[PUTC_i]);
++			    (void) _nc_trace_bufcat(bufnum, temp);
+ 			    break;
++			}
+ 			for (k = 0; k < PUTC_n; k++) {
+-			    char temp[80];
+ 			    VisChar(temp, UChar(PUTC_buf[k]), sizeof(temp));
+ 			    (void) _nc_trace_bufcat(bufnum, temp);
+ 			}
+diff --git a/package/debian-mingw/changelog b/package/debian-mingw/changelog
+index a33889c..30432c2 100644
+--- a/package/debian-mingw/changelog
++++ b/package/debian-mingw/changelog
+@@ -1,8 +1,8 @@
+-ncurses6 (6.0+20160102) unstable; urgency=low
++ncurses6 (6.0+20160116) unstable; urgency=low
+ 
+   * latest weekly patch
+ 
+- -- Thomas E. Dickey <dickey@invisible-island.net>  Sat, 02 Jan 2016 13:42:09 -0500
++ -- Thomas E. Dickey <dickey@invisible-island.net>  Sat, 16 Jan 2016 16:24:23 -0500
+ 
+ ncurses6 (5.9-20131005) unstable; urgency=low
+ 
+diff --git a/package/debian-mingw64/changelog b/package/debian-mingw64/changelog
+index a33889c..30432c2 100644
+--- a/package/debian-mingw64/changelog
++++ b/package/debian-mingw64/changelog
+@@ -1,8 +1,8 @@
+-ncurses6 (6.0+20160102) unstable; urgency=low
++ncurses6 (6.0+20160116) unstable; urgency=low
+ 
+   * latest weekly patch
+ 
+- -- Thomas E. Dickey <dickey@invisible-island.net>  Sat, 02 Jan 2016 13:42:09 -0500
++ -- Thomas E. Dickey <dickey@invisible-island.net>  Sat, 16 Jan 2016 16:24:23 -0500
+ 
+ ncurses6 (5.9-20131005) unstable; urgency=low
+ 
+diff --git a/package/debian/changelog b/package/debian/changelog
+index 76982f3..c192758 100644
+--- a/package/debian/changelog
++++ b/package/debian/changelog
+@@ -1,8 +1,8 @@
+-ncurses6 (6.0+20160102) unstable; urgency=low
++ncurses6 (6.0+20160116) unstable; urgency=low
+ 
+   * latest weekly patch
+ 
+- -- Thomas E. Dickey <dickey@invisible-island.net>  Sat, 02 Jan 2016 13:42:09 -0500
++ -- Thomas E. Dickey <dickey@invisible-island.net>  Sat, 16 Jan 2016 16:24:23 -0500
+ 
+ ncurses6 (5.9-20120608) unstable; urgency=low
+ 
+diff --git a/package/mingw-ncurses.nsi b/package/mingw-ncurses.nsi
+index a33117a..7f7444a 100644
+--- a/package/mingw-ncurses.nsi
++++ b/package/mingw-ncurses.nsi
+@@ -1,4 +1,4 @@
+-; $Id: mingw-ncurses.nsi,v 1.139 2016/01/02 18:42:09 tom Exp $
++; $Id: mingw-ncurses.nsi,v 1.141 2016/01/16 21:24:23 tom Exp $
+ 
+ ; TODO add examples
+ ; TODO bump ABI to 6
+@@ -10,7 +10,7 @@
+ !define VERSION_MAJOR "6"
+ !define VERSION_MINOR "0"
+ !define VERSION_YYYY  "2016"
+-!define VERSION_MMDD  "0102"
++!define VERSION_MMDD  "0116"
+ !define VERSION_PATCH ${VERSION_YYYY}${VERSION_MMDD}
+ 
+ !define MY_ABI   "5"
+diff --git a/package/mingw-ncurses.spec b/package/mingw-ncurses.spec
+index e36094f..8919ff1 100644
+--- a/package/mingw-ncurses.spec
++++ b/package/mingw-ncurses.spec
+@@ -3,7 +3,7 @@
+ Summary: shared libraries for terminal handling
+ Name: mingw32-ncurses6
+ Version: 6.0
+-Release: 20160102
++Release: 20160116
+ License: X11
+ Group: Development/Libraries
+ Source: ncurses-%{version}-%{release}.tgz
+diff --git a/package/ncurses.spec b/package/ncurses.spec
+index d8d87c7..fa140a3 100644
+--- a/package/ncurses.spec
++++ b/package/ncurses.spec
+@@ -1,7 +1,7 @@
+ Summary: shared libraries for terminal handling
+ Name: ncurses6
+ Version: 6.0
+-Release: 20160102
++Release: 20160116
+ License: X11
+ Group: Development/Libraries
+ Source: ncurses-%{version}-%{release}.tgz
+diff --git a/test/test_sgr.c b/test/test_sgr.c
+index cff9d0d..f924026 100644
+--- a/test/test_sgr.c
++++ b/test/test_sgr.c
+@@ -1,5 +1,5 @@
+ /****************************************************************************
+- * Copyright (c) 2015 Free Software Foundation, Inc.                        *
++ * Copyright (c) 2015,2016 Free Software Foundation, Inc.                   *
+  *                                                                          *
+  * Permission is hereby granted, free of charge, to any person obtaining a  *
+  * copy of this software and associated documentation files (the            *
+@@ -29,7 +29,7 @@
+ /*
+  * Author: Thomas E. Dickey
+  *
+- * $Id: test_sgr.c,v 1.4 2015/11/21 22:43:50 tom Exp $
++ * $Id: test_sgr.c,v 1.5 2016/01/09 18:15:53 tom Exp $
+  *
+  * A simple demo of the sgr/sgr0 terminal capabilities.
+  */
+@@ -146,7 +146,7 @@ dumpit(unsigned bits, unsigned ignore, const char *sgr, const char *sgr0)
+     printf("%4d ", bits);
+     bits &= ~ignore;
+     for (n = 0; n < MAXPAR; ++n) {
+-	putchar((bits & (1 << n)) ? params[n] : '-');
++	putchar((int) ((bits & (unsigned) (1 << n)) ? params[n] : '-'));
+     }
+     putchar(' ');
+     putp(sgr);
+@@ -236,7 +236,7 @@ brute_force(const char *name)
+ 	    }
+ 	}
+ 	for (j = 0; j < MAXPAR; ++j) {
+-	    unsigned mask = (1 << j);
++	    unsigned mask = (unsigned) (1 << j);
+ 	    for (count = 0; count < MAXSGR; ++count) {
+ 		if ((count & mask) != 0)
+ 		    continue;
+-- 
+2.9.1
+

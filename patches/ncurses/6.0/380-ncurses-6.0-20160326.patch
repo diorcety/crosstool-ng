@@ -1,0 +1,869 @@
+From 2a32bee362db64f5a06b2124976b928ac3faa578 Mon Sep 17 00:00:00 2001
+From: "Thomas E. Dickey" <dickey@invisible-island.net>
+Date: Sun, 27 Mar 2016 01:05:59 +0000
+Subject: [PATCH 29/50] ncurses 6.0 - patch 20160326
+
++ regenerate HTML manpages.
++ improve test/demo_menus.c, allowing mouse-click on the menu-headers
+  to switch the active menu.  This requires a new extension option
+  O_MOUSE_MENU to tell the menu driver to put mouse events which do not
+  apply to the active menu back into the queue so that the application
+  can handle the event.
+---
+ NEWS                              |  10 +++-
+ VERSION                           |   2 +-
+ dist.mk                           |   4 +-
+ doc/html/man/captoinfo.1m.html    |   2 +-
+ doc/html/man/clear.1.html         |   2 +-
+ doc/html/man/curs_termcap.3x.html | 113 ++++++++++++++++++++++----------------
+ doc/html/man/form.3x.html         |   2 +-
+ doc/html/man/infocmp.1m.html      |   2 +-
+ doc/html/man/infotocap.1m.html    |   2 +-
+ doc/html/man/menu.3x.html         |   2 +-
+ doc/html/man/menu_opts.3x.html    |  14 +++--
+ doc/html/man/ncurses.3x.html      |   2 +-
+ doc/html/man/panel.3x.html        |   2 +-
+ doc/html/man/tabs.1.html          |   2 +-
+ doc/html/man/terminfo.5.html      |   2 +-
+ doc/html/man/tic.1m.html          |   2 +-
+ doc/html/man/toe.1m.html          |   2 +-
+ doc/html/man/tput.1.html          |   2 +-
+ doc/html/man/tset.1.html          |   2 +-
+ man/menu_opts.3x                  |  10 +++-
+ menu/m_driver.c                   |  10 +++-
+ menu/menu.h                       |   5 +-
+ menu/menu.priv.h                  |   7 ++-
+ package/debian-mingw/changelog    |   4 +-
+ package/debian-mingw64/changelog  |   4 +-
+ package/debian/changelog          |   4 +-
+ package/mingw-ncurses.nsi         |   4 +-
+ package/mingw-ncurses.spec        |   2 +-
+ package/ncurses.spec              |   2 +-
+ test/demo_menus.c                 |  68 +++++++++++++++++++----
+ 30 files changed, 191 insertions(+), 100 deletions(-)
+
+diff --git a/NEWS b/NEWS
+index 6a983ca..b348f7e 100644
+--- a/NEWS
++++ b/NEWS
+@@ -25,7 +25,7 @@
+ -- sale, use or other dealings in this Software without prior written        --
+ -- authorization.                                                            --
+ -------------------------------------------------------------------------------
+--- $Id: NEWS,v 1.2583 2016/03/19 23:00:31 tom Exp $
++-- $Id: NEWS,v 1.2586 2016/03/27 00:19:02 tom Exp $
+ -------------------------------------------------------------------------------
+ 
+ This is a log of changes that ncurses has gone through since Zeyd started
+@@ -45,6 +45,14 @@ See the AUTHORS file for the corresponding full names.
+ Changes through 1.9.9e did not credit all contributions;
+ it is not possible to add this information.
+ 
++20160326
++	+ regenerate HTML manpages.
++	+ improve test/demo_menus.c, allowing mouse-click on the menu-headers
++	  to switch the active menu.  This requires a new extension option
++	  O_MOUSE_MENU to tell the menu driver to put mouse events which do not
++	  apply to the active menu back into the queue so that the application
++	  can handle the event.
++
+ 20160319
+ 	+ improve description of tgoto parameters (report by Steffen Nurpmeso).
+ 	+ amend workaround for Solaris line-drawing to restore a special case
+diff --git a/VERSION b/VERSION
+index 9d0ab42..1886014 100644
+--- a/VERSION
++++ b/VERSION
+@@ -1 +1 @@
+-5:0:9	6.0	20160319
++5:0:9	6.0	20160326
+diff --git a/dist.mk b/dist.mk
+index b489497..2d2eb3c 100644
+--- a/dist.mk
++++ b/dist.mk
+@@ -25,7 +25,7 @@
+ # use or other dealings in this Software without prior written               #
+ # authorization.                                                             #
+ ##############################################################################
+-# $Id: dist.mk,v 1.1098 2016/03/19 14:38:08 tom Exp $
++# $Id: dist.mk,v 1.1099 2016/03/26 12:23:50 tom Exp $
+ # Makefile for creating ncurses distributions.
+ #
+ # This only needs to be used directly as a makefile by developers, but
+@@ -37,7 +37,7 @@ SHELL = /bin/sh
+ # These define the major/minor/patch versions of ncurses.
+ NCURSES_MAJOR = 6
+ NCURSES_MINOR = 0
+-NCURSES_PATCH = 20160319
++NCURSES_PATCH = 20160326
+ 
+ # We don't append the patch to the version, since this only applies to releases
+ VERSION = $(NCURSES_MAJOR).$(NCURSES_MINOR)
+diff --git a/doc/html/man/captoinfo.1m.html b/doc/html/man/captoinfo.1m.html
+index 939c85e..0bc7f7e 100644
+--- a/doc/html/man/captoinfo.1m.html
++++ b/doc/html/man/captoinfo.1m.html
+@@ -198,7 +198,7 @@
+ </PRE><H2><a name="h2-SEE-ALSO">SEE ALSO</a></H2><PRE>
+        <STRONG><A HREF="infocmp.1m.html">infocmp(1m)</A></STRONG>, <STRONG><A HREF="ncurses.3x.html">curses(3x)</A></STRONG>, <STRONG><A HREF="terminfo.5.html">terminfo(5)</A></STRONG>
+ 
+-       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160130).
++       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160326).
+ 
+ 
+ </PRE><H2><a name="h2-AUTHOR">AUTHOR</a></H2><PRE>
+diff --git a/doc/html/man/clear.1.html b/doc/html/man/clear.1.html
+index 7365860..aa31f12 100644
+--- a/doc/html/man/clear.1.html
++++ b/doc/html/man/clear.1.html
+@@ -67,7 +67,7 @@
+ </PRE><H2><a name="h2-SEE-ALSO">SEE ALSO</a></H2><PRE>
+        <STRONG><A HREF="tput.1.html">tput(1)</A></STRONG>, <STRONG><A HREF="terminfo.5.html">terminfo(5)</A></STRONG>
+ 
+-       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160130).
++       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160326).
+ 
+ 
+ 
+diff --git a/doc/html/man/curs_termcap.3x.html b/doc/html/man/curs_termcap.3x.html
+index 02077a1..80c555e 100644
+--- a/doc/html/man/curs_termcap.3x.html
++++ b/doc/html/man/curs_termcap.3x.html
+@@ -1,6 +1,6 @@
+ <!-- 
+   ****************************************************************************
+-  * Copyright (c) 1998-2013,2015 Free Software Foundation, Inc.              *
++  * Copyright (c) 1998-2015,2016 Free Software Foundation, Inc.              *
+   *                                                                          *
+   * Permission is hereby granted, free of charge, to any person obtaining a  *
+   * copy of this software and associated documentation files (the            *
+@@ -26,7 +26,7 @@
+   * sale, use or other dealings in this Software without prior written       *
+   * authorization.                                                           *
+   ****************************************************************************
+-  * @Id: curs_termcap.3x,v 1.31 2015/04/26 00:49:10 tom Exp @
++  * @Id: curs_termcap.3x,v 1.32 2016/03/19 22:52:25 tom Exp @
+ -->
+ <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN">
+ <HTML>
+@@ -135,11 +135,30 @@
+ 
+ 
+ </PRE><H3><a name="h3-FORMATTING-CAPABILITIES">FORMATTING CAPABILITIES</a></H3><PRE>
+-       The  <STRONG>tgoto</STRONG>  routine  instantiates  the parameters into the
+-       given capability.  The output from this routine is  to  be
+-       passed to <STRONG>tputs</STRONG>.
+-
+-       The  <STRONG>tputs</STRONG>  routine  is described on the <STRONG><A HREF="curs_terminfo.3x.html">curs_terminfo(3x)</A></STRONG>
++       The  <STRONG>tgoto</STRONG>  routine expands the given capability using the
++       parameters.
++
++       <STRONG>o</STRONG>   Because the capability may  have  padding  characters,
++           the  output  of <STRONG>tgoto</STRONG> should be passed to <STRONG>tputs</STRONG> rather
++           than some other output function such as <STRONG>printf</STRONG>.
++
++       <STRONG>o</STRONG>   While <STRONG>tgoto</STRONG> is assumed to be used for the  two-parame-
++           ter  cursor  positioning  capability, termcap applica-
++           tions also use it for single-parameter capabilities.
++
++           Doing this shows a quirk in <STRONG>tgoto</STRONG>: most hardware  ter-
++           minals  use  cursor addressing with <EM>row</EM> first, but the
++           original developers of the termcap interface chose  to
++           put  the  <EM>column</EM>  parameter first.  The <STRONG>tgoto</STRONG> function
++           swaps the order of parameters.  It does this also  for
++           calls  requiring  only  a  single  parameter.  In that
++           case, the first parameter is merely a placeholder.
++
++       <STRONG>o</STRONG>   Normally the ncurses library is compiled with terminfo
++           support.  In that case, <STRONG>tgoto</STRONG> uses <STRONG>tparm</STRONG> (a more capa-
++           ble formatter).
++
++       The <STRONG>tputs</STRONG> routine is described  on  the  <STRONG><A HREF="curs_terminfo.3x.html">curs_terminfo(3x)</A></STRONG>
+        manual page.  It can retrieve capabilities by either term-
+        cap or terminfo name.
+ 
+@@ -147,16 +166,16 @@
+ </PRE><H3><a name="h3-GLOBAL-VARIABLES">GLOBAL VARIABLES</a></H3><PRE>
+        The variables <STRONG>PC</STRONG>, <STRONG>UP</STRONG> and <STRONG>BC</STRONG> are set by <STRONG>tgetent</STRONG> to the ter-
+        minfo   entry's   data   for   <STRONG>pad_char</STRONG>,   <STRONG>cursor_up</STRONG>   and
+-       <STRONG>backspace_if_not_bs</STRONG>,  respectively.   <STRONG>UP</STRONG>  is  not  used by
++       <STRONG>backspace_if_not_bs</STRONG>, respectively.   <STRONG>UP</STRONG>  is  not  used  by
+        ncurses.  <STRONG>PC</STRONG> is used in the <STRONG>tdelay_output</STRONG> function.  <STRONG>BC</STRONG> is
+-       used  in  the <STRONG>tgoto</STRONG> emulation.  The variable <STRONG>ospeed</STRONG> is set
++       used in the <STRONG>tgoto</STRONG> emulation.  The variable <STRONG>ospeed</STRONG>  is  set
+        by ncurses in a system-specific coding to reflect the ter-
+        minal speed.
+ 
+ 
+ </PRE><H2><a name="h2-RETURN-VALUE">RETURN VALUE</a></H2><PRE>
+        Except where explicitly noted, routines that return an in-
+-       teger return <STRONG>ERR</STRONG> upon failure and <STRONG>OK</STRONG> (SVr4 only  specifies
++       teger  return <STRONG>ERR</STRONG> upon failure and <STRONG>OK</STRONG> (SVr4 only specifies
+        "an integer value other than <STRONG>ERR</STRONG>") upon successful comple-
+        tion.
+ 
+@@ -165,67 +184,67 @@
+ 
+ </PRE><H2><a name="h2-BUGS">BUGS</a></H2><PRE>
+        If you call <STRONG>tgetstr</STRONG> to fetch <STRONG>ca</STRONG> or any other parameterized
+-       string,  be aware that it will be returned in terminfo no-
++       string, be aware that it will be returned in terminfo  no-
+        tation, not the older and not-quite-compatible termcap no-
+-       tation.   This  will not cause problems if all you do with
+-       it is call <STRONG>tgoto</STRONG> or <STRONG>tparm</STRONG>,  which  both  expand  terminfo-
+-       style  strings  as terminfo.  (The <STRONG>tgoto</STRONG> function, if con-
+-       figured to support termcap, will check if  the  string  is
+-       indeed  terminfo-style  by  looking for "%p" parameters or
+-       "$&lt;..&gt;" delays, and invoke a termcap-style parser  if  the
++       tation.  This will not cause problems if all you  do  with
++       it  is  call  <STRONG>tgoto</STRONG>  or <STRONG>tparm</STRONG>, which both expand terminfo-
++       style strings as terminfo.  (The <STRONG>tgoto</STRONG> function,  if  con-
++       figured  to  support  termcap, will check if the string is
++       indeed terminfo-style by looking for  "%p"  parameters  or
++       "$&lt;..&gt;"  delays,  and invoke a termcap-style parser if the
+        string does not appear to be terminfo).
+ 
+-       Because  terminfo  conventions for representing padding in
+-       string capabilities differ  from  termcap's,  <STRONG>tputs("50");</STRONG>
+-       will  put  out a literal "50" rather than busy-waiting for
++       Because terminfo conventions for representing  padding  in
++       string  capabilities  differ  from termcap's, <STRONG>tputs("50");</STRONG>
++       will put out a literal "50" rather than  busy-waiting  for
+        50 milliseconds.  Cope with it.
+ 
+-       Note that termcap has nothing analogous to terminfo's  <STRONG>sgr</STRONG>
+-       string.   One consequence of this is that termcap applica-
+-       tions assume me (terminfo <STRONG>sgr0</STRONG>) does not reset the  alter-
+-       nate  character  set.  This implementation checks for, and
++       Note  that termcap has nothing analogous to terminfo's <STRONG>sgr</STRONG>
++       string.  One consequence of this is that termcap  applica-
++       tions  assume me (terminfo <STRONG>sgr0</STRONG>) does not reset the alter-
++       nate character set.  This implementation checks  for,  and
+        modifies the data shown to the termcap interface to accom-
+        modate termcap's limitation in this respect.
+ 
+ 
+ </PRE><H2><a name="h2-PORTABILITY">PORTABILITY</a></H2><PRE>
+-       The  XSI  Curses  standard,  Issue 4 describes these func-
+-       tions.  However, they are marked TO BE WITHDRAWN  and  may
++       The XSI Curses standard, Issue  4  describes  these  func-
++       tions.   However,  they are marked TO BE WITHDRAWN and may
+        be removed in future versions.
+ 
+-       Neither  the  XSI  Curses  standard nor the SVr4 man pages
+-       documented the return values of <STRONG>tgetent</STRONG> correctly,  though
+-       all  three were in fact returned ever since SVr1.  In par-
+-       ticular, an omission in the XSI Curses  documentation  has
+-       been  misinterpreted  to  mean  that <STRONG>tgetent</STRONG> returns <STRONG>OK</STRONG> or
++       Neither the XSI Curses standard nor  the  SVr4  man  pages
++       documented  the return values of <STRONG>tgetent</STRONG> correctly, though
++       all three were in fact returned ever since SVr1.  In  par-
++       ticular,  an  omission in the XSI Curses documentation has
++       been misinterpreted to mean that  <STRONG>tgetent</STRONG>  returns  <STRONG>OK</STRONG>  or
+        <STRONG>ERR</STRONG>.  Because the purpose of these functions is to provide
+-       compatibility  with  the <EM>termcap</EM> library, that is a defect
++       compatibility with the <EM>termcap</EM> library, that is  a  defect
+        in XCurses, Issue 4, Version 2 rather than in ncurses.
+ 
+-       External variables are provided  for  support  of  certain
+-       termcap  applications.  However, termcap applications' use
++       External  variables  are  provided  for support of certain
++       termcap applications.  However, termcap applications'  use
+        of those variables is poorly documented, e.g., not distin-
+-       guishing  between  input  and output.  In particular, some
++       guishing between input and output.   In  particular,  some
+        applications are reported to declare and/or modify <STRONG>ospeed</STRONG>.
+ 
+-       The comment that only the first two characters of  the  <STRONG>id</STRONG>
+-       parameter  are  used  escapes many application developers.
+-       The original  BSD  4.2  termcap  library  (and  historical
++       The  comment  that only the first two characters of the <STRONG>id</STRONG>
++       parameter are used escapes  many  application  developers.
++       The  original  BSD  4.2  termcap  library  (and historical
+        relics thereof) did not require a trailing null NUL on the
+-       parameter name passed to <STRONG>tgetstr</STRONG>,  <STRONG>tgetnum</STRONG>  and  <STRONG>tgetflag</STRONG>.
+-       Some  applications  assume that the termcap interface does
++       parameter  name  passed  to <STRONG>tgetstr</STRONG>, <STRONG>tgetnum</STRONG> and <STRONG>tgetflag</STRONG>.
++       Some applications assume that the termcap  interface  does
+        not require the trailing NUL for the parameter name.  Tak-
+        ing into account these issues:
+ 
+-       <STRONG>o</STRONG>   As  a special case, <STRONG>tgetflag</STRONG> matched against a single-
+-           character identifier provided that was at the  end  of
+-           the  terminal  description.   You should not rely upon
+-           this behavior in portable programs.  This  implementa-
+-           tion  disallows matches against single-character capa-
++       <STRONG>o</STRONG>   As a special case, <STRONG>tgetflag</STRONG> matched against a  single-
++           character  identifier  provided that was at the end of
++           the terminal description.  You should  not  rely  upon
++           this  behavior in portable programs.  This implementa-
++           tion disallows matches against single-character  capa-
+            bility names.
+ 
+-       <STRONG>o</STRONG>   This implementation disallows matches by  the  termcap
+-           interface  against extended capability names which are
++       <STRONG>o</STRONG>   This  implementation  disallows matches by the termcap
++           interface against extended capability names which  are
+            longer than two characters.
+ 
+ 
+diff --git a/doc/html/man/form.3x.html b/doc/html/man/form.3x.html
+index 81d04f8..32a724a 100644
+--- a/doc/html/man/form.3x.html
++++ b/doc/html/man/form.3x.html
+@@ -235,7 +235,7 @@
+        <STRONG><A HREF="ncurses.3x.html">curses(3x)</A></STRONG> and related pages whose names begin "form_" for
+        detailed descriptions of the entry points.
+ 
+-       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160130).
++       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160326).
+ 
+ 
+ 
+diff --git a/doc/html/man/infocmp.1m.html b/doc/html/man/infocmp.1m.html
+index e7e4325..bd0619a 100644
+--- a/doc/html/man/infocmp.1m.html
++++ b/doc/html/man/infocmp.1m.html
+@@ -475,7 +475,7 @@
+ 
+        http://invisible-island.net/ncurses/tctest.html
+ 
+-       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160130).
++       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160326).
+ 
+ 
+ </PRE><H2><a name="h2-AUTHOR">AUTHOR</a></H2><PRE>
+diff --git a/doc/html/man/infotocap.1m.html b/doc/html/man/infotocap.1m.html
+index 2bdd6fc..5ca1010 100644
+--- a/doc/html/man/infotocap.1m.html
++++ b/doc/html/man/infotocap.1m.html
+@@ -88,7 +88,7 @@
+ </PRE><H2><a name="h2-SEE-ALSO">SEE ALSO</a></H2><PRE>
+        <STRONG><A HREF="ncurses.3x.html">curses(3x)</A></STRONG>, <STRONG><A HREF="tic.1m.html">tic(1m)</A></STRONG>, <STRONG><A HREF="infocmp.1m.html">infocmp(1m)</A></STRONG>, <STRONG><A HREF="terminfo.5.html">terminfo(5)</A></STRONG>
+ 
+-       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160130).
++       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160326).
+ 
+ 
+ </PRE><H2><a name="h2-AUTHOR">AUTHOR</a></H2><PRE>
+diff --git a/doc/html/man/menu.3x.html b/doc/html/man/menu.3x.html
+index 0f75fe3..bf1fabb 100644
+--- a/doc/html/man/menu.3x.html
++++ b/doc/html/man/menu.3x.html
+@@ -217,7 +217,7 @@
+        <STRONG><A HREF="ncurses.3x.html">curses(3x)</A></STRONG> and related pages whose names begin "menu_" for
+        detailed descriptions of the entry points.
+ 
+-       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160130).
++       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160326).
+ 
+ 
+ 
+diff --git a/doc/html/man/menu_opts.3x.html b/doc/html/man/menu_opts.3x.html
+index 7ee1424..091e223 100644
+--- a/doc/html/man/menu_opts.3x.html
++++ b/doc/html/man/menu_opts.3x.html
+@@ -1,7 +1,7 @@
+ <!-- 
+   * t
+   ****************************************************************************
+-  * Copyright (c) 1998-2010,2015 Free Software Foundation, Inc.              *
++  * Copyright (c) 1998-2015,2016 Free Software Foundation, Inc.              *
+   *                                                                          *
+   * Permission is hereby granted, free of charge, to any person obtaining a  *
+   * copy of this software and associated documentation files (the            *
+@@ -27,7 +27,7 @@
+   * sale, use or other dealings in this Software without prior written       *
+   * authorization.                                                           *
+   ****************************************************************************
+-  * @Id: menu_opts.3x,v 1.13 2015/12/05 23:42:45 tom Exp @
++  * @Id: menu_opts.3x,v 1.14 2016/03/26 22:42:41 tom Exp @
+ -->
+ <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN">
+ <HTML>
+@@ -96,6 +96,12 @@
+             Don't   wrap   around  next-item  and  previous-item,
+             requests to the other end of the menu.
+ 
++       O_MOUSE_MENU
++            If user clicks with the mouse and it does not fall on
++            the  currently  active  menu,  push <STRONG>KEY_MOUSE</STRONG> and the
++            <STRONG>MEVENT</STRONG> data back on the queue to allow processing  in
++            another part of the calling program.
++
+ 
+ </PRE><H2><a name="h2-RETURN-VALUE">RETURN VALUE</a></H2><PRE>
+        Except for <STRONG>menu_opts</STRONG>, each routine returns one of the fol-
+@@ -120,12 +126,12 @@
+ 
+ 
+ </PRE><H2><a name="h2-PORTABILITY">PORTABILITY</a></H2><PRE>
+-       These routines emulate the System V  menu  library.   They
++       These  routines  emulate  the System V menu library.  They
+        were not supported on Version 7 or BSD versions.
+ 
+ 
+ </PRE><H2><a name="h2-AUTHORS">AUTHORS</a></H2><PRE>
+-       Juergen  Pfeifer.   Manual  pages  and  adaptation for new
++       Juergen Pfeifer.  Manual  pages  and  adaptation  for  new
+        curses by Eric S. Raymond.
+ 
+ 
+diff --git a/doc/html/man/ncurses.3x.html b/doc/html/man/ncurses.3x.html
+index 25bac76..7ebff4c 100644
+--- a/doc/html/man/ncurses.3x.html
++++ b/doc/html/man/ncurses.3x.html
+@@ -60,7 +60,7 @@
+        sonable optimization.  This implementation is "new curses"
+        (ncurses) and is the approved replacement for 4.4BSD clas-
+        sic  curses,  which has been discontinued.  This describes
+-       <STRONG>ncurses</STRONG> version 6.0 (patch 20160130).
++       <STRONG>ncurses</STRONG> version 6.0 (patch 20160326).
+ 
+        The <STRONG>ncurses</STRONG> library emulates the curses library of  System
+        V  Release  4  UNIX,  and  XPG4 (X/Open Portability Guide)
+diff --git a/doc/html/man/panel.3x.html b/doc/html/man/panel.3x.html
+index 3057e74..dc31c7a 100644
+--- a/doc/html/man/panel.3x.html
++++ b/doc/html/man/panel.3x.html
+@@ -209,7 +209,7 @@
+ </PRE><H2><a name="h2-SEE-ALSO">SEE ALSO</a></H2><PRE>
+        <STRONG><A HREF="ncurses.3x.html">curses(3x)</A></STRONG>, <STRONG><A HREF="curs_variables.3x.html">curs_variables(3x)</A></STRONG>,
+ 
+-       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160130).
++       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160326).
+ 
+ 
+ </PRE><H2><a name="h2-AUTHOR">AUTHOR</a></H2><PRE>
+diff --git a/doc/html/man/tabs.1.html b/doc/html/man/tabs.1.html
+index ab5201a..866c4df 100644
+--- a/doc/html/man/tabs.1.html
++++ b/doc/html/man/tabs.1.html
+@@ -158,7 +158,7 @@
+ </PRE><H2><a name="h2-SEE-ALSO">SEE ALSO</a></H2><PRE>
+        <STRONG><A HREF="tset.1.html">tset(1)</A></STRONG>, <STRONG><A HREF="infocmp.1m.html">infocmp(1m)</A></STRONG>, <STRONG><A HREF="ncurses.3x.html">curses(3x)</A></STRONG>, <STRONG><A HREF="terminfo.5.html">terminfo(5)</A></STRONG>.
+ 
+-       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160130).
++       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160326).
+ 
+ 
+ 
+diff --git a/doc/html/man/terminfo.5.html b/doc/html/man/terminfo.5.html
+index 4ab7625..a769f91 100644
+--- a/doc/html/man/terminfo.5.html
++++ b/doc/html/man/terminfo.5.html
+@@ -75,7 +75,7 @@
+        nals by giving a set of capabilities which they  have,  by
+        specifying how to perform screen operations, and by speci-
+        fying padding requirements and  initialization  sequences.
+-       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160130).
++       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160326).
+ 
+        Entries in <EM>terminfo</EM> consist of a sequence of `,' separated
+        fields (embedded commas may be escaped with a backslash or
+diff --git a/doc/html/man/tic.1m.html b/doc/html/man/tic.1m.html
+index 02cc3b7..0eca59d 100644
+--- a/doc/html/man/tic.1m.html
++++ b/doc/html/man/tic.1m.html
+@@ -398,7 +398,7 @@
+        <STRONG><A HREF="infocmp.1m.html">infocmp(1m)</A></STRONG>,    <STRONG><A HREF="captoinfo.1m.html">captoinfo(1m)</A></STRONG>,   <STRONG><A HREF="infotocap.1m.html">infotocap(1m)</A></STRONG>,   <STRONG><A HREF="toe.1m.html">toe(1m)</A></STRONG>,
+        <STRONG><A HREF="ncurses.3x.html">curses(3x)</A></STRONG>, <STRONG><A HREF="term.5.html">term(5)</A></STRONG>.  <STRONG><A HREF="terminfo.5.html">terminfo(5)</A></STRONG>.
+ 
+-       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160130).
++       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160326).
+ 
+ 
+ </PRE><H2><a name="h2-AUTHOR">AUTHOR</a></H2><PRE>
+diff --git a/doc/html/man/toe.1m.html b/doc/html/man/toe.1m.html
+index da43ec5..6662f8c 100644
+--- a/doc/html/man/toe.1m.html
++++ b/doc/html/man/toe.1m.html
+@@ -117,7 +117,7 @@
+        <STRONG><A HREF="tic.1m.html">tic(1m)</A></STRONG>,   <STRONG><A HREF="infocmp.1m.html">infocmp(1m)</A></STRONG>,   <STRONG><A HREF="captoinfo.1m.html">captoinfo(1m)</A></STRONG>,    <STRONG><A HREF="infotocap.1m.html">infotocap(1m)</A></STRONG>,
+        <STRONG><A HREF="ncurses.3x.html">curses(3x)</A></STRONG>, <STRONG><A HREF="terminfo.5.html">terminfo(5)</A></STRONG>.
+ 
+-       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160130).
++       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160326).
+ 
+ 
+ 
+diff --git a/doc/html/man/tput.1.html b/doc/html/man/tput.1.html
+index 11941e4..a9d26be 100644
+--- a/doc/html/man/tput.1.html
++++ b/doc/html/man/tput.1.html
+@@ -329,7 +329,7 @@
+ </PRE><H2><a name="h2-SEE-ALSO">SEE ALSO</a></H2><PRE>
+        <STRONG><A HREF="clear.1.html">clear(1)</A></STRONG>, <STRONG>stty(1)</STRONG>, <STRONG><A HREF="tabs.1.html">tabs(1)</A></STRONG>, <STRONG><A HREF="terminfo.5.html">terminfo(5)</A></STRONG>, <STRONG><A HREF="curs_termcap.3x.html">curs_termcap(3x)</A></STRONG>.
+ 
+-       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160130).
++       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160326).
+ 
+ 
+ 
+diff --git a/doc/html/man/tset.1.html b/doc/html/man/tset.1.html
+index 25da9be..e502519 100644
+--- a/doc/html/man/tset.1.html
++++ b/doc/html/man/tset.1.html
+@@ -315,7 +315,7 @@
+        <STRONG>csh(1)</STRONG>,   <STRONG>sh(1)</STRONG>,   <STRONG>stty(1)</STRONG>,   <STRONG><A HREF="curs_terminfo.3x.html">curs_terminfo(3x)</A></STRONG>,   <STRONG>tty(4)</STRONG>,
+        <STRONG><A HREF="terminfo.5.html">terminfo(5)</A></STRONG>, <STRONG>ttys(5)</STRONG>, <STRONG>environ(7)</STRONG>
+ 
+-       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160130).
++       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160326).
+ 
+ 
+ 
+diff --git a/man/menu_opts.3x b/man/menu_opts.3x
+index 7285f2f..8c33c0d 100644
+--- a/man/menu_opts.3x
++++ b/man/menu_opts.3x
+@@ -1,6 +1,6 @@
+ '\" t
+ .\"***************************************************************************
+-.\" Copyright (c) 1998-2010,2015 Free Software Foundation, Inc.              *
++.\" Copyright (c) 1998-2015,2016 Free Software Foundation, Inc.              *
+ .\"                                                                          *
+ .\" Permission is hereby granted, free of charge, to any person obtaining a  *
+ .\" copy of this software and associated documentation files (the            *
+@@ -27,7 +27,7 @@
+ .\" authorization.                                                           *
+ .\"***************************************************************************
+ .\"
+-.\" $Id: menu_opts.3x,v 1.13 2015/12/05 23:42:45 tom Exp $
++.\" $Id: menu_opts.3x,v 1.14 2016/03/26 22:42:41 tom Exp $
+ .TH menu_opts 3X ""
+ .SH NAME
+ \fBset_menu_opts\fP,
+@@ -77,6 +77,12 @@ Move the cursor to within the item name while pattern-matching.
+ O_NONCYCLIC
+ Don't wrap around next-item and previous-item,
+ requests to the other end of the menu.
++.TP 5
++O_MOUSE_MENU
++If user clicks with the mouse
++and it does not fall on the currently active menu,
++push \fBKEY_MOUSE\fP and the \fBMEVENT\fP data
++back on the queue to allow processing in another part of the calling program.
+ .SH RETURN VALUE
+ Except for \fBmenu_opts\fR, each routine returns one of the following:
+ .TP 5
+diff --git a/menu/m_driver.c b/menu/m_driver.c
+index 1a7a391..8e72999 100644
+--- a/menu/m_driver.c
++++ b/menu/m_driver.c
+@@ -1,5 +1,5 @@
+ /****************************************************************************
+- * Copyright (c) 1998-2011,2012 Free Software Foundation, Inc.              *
++ * Copyright (c) 1998-2012,2016 Free Software Foundation, Inc.              *
+  *                                                                          *
+  * Permission is hereby granted, free of charge, to any person obtaining a  *
+  * copy of this software and associated documentation files (the            *
+@@ -37,7 +37,7 @@
+ 
+ #include "menu.priv.h"
+ 
+-MODULE_ID("$Id: m_driver.c,v 1.31 2012/03/10 23:43:41 tom Exp $")
++MODULE_ID("$Id: m_driver.c,v 1.32 2016/03/26 21:51:52 tom Exp $")
+ 
+ /* Macros */
+ 
+@@ -530,7 +530,11 @@ menu_driver(MENU * menu, int c)
+ 		}
+ 	    }
+ 	  else
+-	    result = E_REQUEST_DENIED;
++	    {
++	      if (menu->opt & O_MOUSE_MENU)
++		ungetmouse(&event);	/* let someone else handle this */
++	      result = E_REQUEST_DENIED;
++	    }
+ 	}
+ #endif /* NCURSES_MOUSE_VERSION */
+       else
+diff --git a/menu/menu.h b/menu/menu.h
+index 4eeac01..1128183 100644
+--- a/menu/menu.h
++++ b/menu/menu.h
+@@ -1,5 +1,5 @@
+ /****************************************************************************
+- * Copyright (c) 1998-2007,2009 Free Software Foundation, Inc.              *
++ * Copyright (c) 1998-2009,2016 Free Software Foundation, Inc.              *
+  *                                                                          *
+  * Permission is hereby granted, free of charge, to any person obtaining a  *
+  * copy of this software and associated documentation files (the            *
+@@ -30,7 +30,7 @@
+  *   Author:  Juergen Pfeifer, 1995,1997                                    *
+  ****************************************************************************/
+ 
+-/* $Id: menu.h,v 1.20 2009/04/05 00:28:07 tom Exp $ */
++/* $Id: menu.h,v 1.21 2016/03/26 21:52:08 tom Exp $ */
+ 
+ #ifndef ETI_MENU
+ #define ETI_MENU
+@@ -56,6 +56,7 @@ typedef int Item_Options;
+ #define O_IGNORECASE    (0x08)
+ #define O_SHOWMATCH     (0x10)
+ #define O_NONCYCLIC     (0x20)
++#define O_MOUSE_MENU    (0x40)
+ 
+ /* Item options: */
+ #define O_SELECTABLE    (0x01)
+diff --git a/menu/menu.priv.h b/menu/menu.priv.h
+index b54b195..cb1ebc4 100644
+--- a/menu/menu.priv.h
++++ b/menu/menu.priv.h
+@@ -1,5 +1,5 @@
+ /****************************************************************************
+- * Copyright (c) 1998-2012,2014 Free Software Foundation, Inc.              *
++ * Copyright (c) 1998-2014,2016 Free Software Foundation, Inc.              *
+  *                                                                          *
+  * Permission is hereby granted, free of charge, to any person obtaining a  *
+  * copy of this software and associated documentation files (the            *
+@@ -30,7 +30,7 @@
+  *   Author:  Juergen Pfeifer, 1995,1997                                    *
+  ****************************************************************************/
+ 
+-/* $Id: menu.priv.h,v 1.25 2014/11/01 14:47:00 tom Exp $ */
++/* $Id: menu.priv.h,v 1.26 2016/03/26 21:50:56 tom Exp $ */
+ 
+ /***************************************************************************
+ * Module menu.priv.h                                                       *
+@@ -78,7 +78,8 @@ extern NCURSES_EXPORT_VAR(MENU) _nc_Default_Menu;
+ 		       O_ROWMAJOR     | \
+ 		       O_IGNORECASE   | \
+ 		       O_SHOWMATCH    | \
+-		       O_NONCYCLIC    )
++		       O_NONCYCLIC    | \
++		       O_MOUSE_MENU   )
+ 
+ #define ALL_ITEM_OPTS (O_SELECTABLE)
+ 
+diff --git a/package/debian-mingw/changelog b/package/debian-mingw/changelog
+index da6da78..a02c8ae 100644
+--- a/package/debian-mingw/changelog
++++ b/package/debian-mingw/changelog
+@@ -1,8 +1,8 @@
+-ncurses6 (6.0+20160319) unstable; urgency=low
++ncurses6 (6.0+20160326) unstable; urgency=low
+ 
+   * latest weekly patch
+ 
+- -- Thomas E. Dickey <dickey@invisible-island.net>  Sat, 19 Mar 2016 10:38:08 -0400
++ -- Thomas E. Dickey <dickey@invisible-island.net>  Sat, 26 Mar 2016 08:23:50 -0400
+ 
+ ncurses6 (5.9-20131005) unstable; urgency=low
+ 
+diff --git a/package/debian-mingw64/changelog b/package/debian-mingw64/changelog
+index da6da78..a02c8ae 100644
+--- a/package/debian-mingw64/changelog
++++ b/package/debian-mingw64/changelog
+@@ -1,8 +1,8 @@
+-ncurses6 (6.0+20160319) unstable; urgency=low
++ncurses6 (6.0+20160326) unstable; urgency=low
+ 
+   * latest weekly patch
+ 
+- -- Thomas E. Dickey <dickey@invisible-island.net>  Sat, 19 Mar 2016 10:38:08 -0400
++ -- Thomas E. Dickey <dickey@invisible-island.net>  Sat, 26 Mar 2016 08:23:50 -0400
+ 
+ ncurses6 (5.9-20131005) unstable; urgency=low
+ 
+diff --git a/package/debian/changelog b/package/debian/changelog
+index 0e22cf6..3e5b646 100644
+--- a/package/debian/changelog
++++ b/package/debian/changelog
+@@ -1,8 +1,8 @@
+-ncurses6 (6.0+20160319) unstable; urgency=low
++ncurses6 (6.0+20160326) unstable; urgency=low
+ 
+   * latest weekly patch
+ 
+- -- Thomas E. Dickey <dickey@invisible-island.net>  Sat, 19 Mar 2016 10:38:08 -0400
++ -- Thomas E. Dickey <dickey@invisible-island.net>  Sat, 26 Mar 2016 08:23:50 -0400
+ 
+ ncurses6 (5.9-20120608) unstable; urgency=low
+ 
+diff --git a/package/mingw-ncurses.nsi b/package/mingw-ncurses.nsi
+index cd71566..d19162c 100644
+--- a/package/mingw-ncurses.nsi
++++ b/package/mingw-ncurses.nsi
+@@ -1,4 +1,4 @@
+-; $Id: mingw-ncurses.nsi,v 1.150 2016/03/19 14:38:08 tom Exp $
++; $Id: mingw-ncurses.nsi,v 1.151 2016/03/26 12:23:50 tom Exp $
+ 
+ ; TODO add examples
+ ; TODO bump ABI to 6
+@@ -10,7 +10,7 @@
+ !define VERSION_MAJOR "6"
+ !define VERSION_MINOR "0"
+ !define VERSION_YYYY  "2016"
+-!define VERSION_MMDD  "0319"
++!define VERSION_MMDD  "0326"
+ !define VERSION_PATCH ${VERSION_YYYY}${VERSION_MMDD}
+ 
+ !define MY_ABI   "5"
+diff --git a/package/mingw-ncurses.spec b/package/mingw-ncurses.spec
+index 0ccebb8..ef044b9 100644
+--- a/package/mingw-ncurses.spec
++++ b/package/mingw-ncurses.spec
+@@ -3,7 +3,7 @@
+ Summary: shared libraries for terminal handling
+ Name: mingw32-ncurses6
+ Version: 6.0
+-Release: 20160319
++Release: 20160326
+ License: X11
+ Group: Development/Libraries
+ Source: ncurses-%{version}-%{release}.tgz
+diff --git a/package/ncurses.spec b/package/ncurses.spec
+index 5ae2085..f4c6011 100644
+--- a/package/ncurses.spec
++++ b/package/ncurses.spec
+@@ -1,7 +1,7 @@
+ Summary: shared libraries for terminal handling
+ Name: ncurses6
+ Version: 6.0
+-Release: 20160319
++Release: 20160326
+ License: X11
+ Group: Development/Libraries
+ Source: ncurses-%{version}-%{release}.tgz
+diff --git a/test/demo_menus.c b/test/demo_menus.c
+index 0fe0f92..7fe0ea3 100644
+--- a/test/demo_menus.c
++++ b/test/demo_menus.c
+@@ -1,5 +1,5 @@
+ /****************************************************************************
+- * Copyright (c) 2005-2014,2015 Free Software Foundation, Inc.              *
++ * Copyright (c) 2005-2015,2016 Free Software Foundation, Inc.              *
+  *                                                                          *
+  * Permission is hereby granted, free of charge, to any person obtaining a  *
+  * copy of this software and associated documentation files (the            *
+@@ -26,7 +26,7 @@
+  * authorization.                                                           *
+  ****************************************************************************/
+ /*
+- * $Id: demo_menus.c,v 1.55 2015/08/22 22:59:56 tom Exp $
++ * $Id: demo_menus.c,v 1.59 2016/03/27 00:02:01 tom Exp $
+  *
+  * Demonstrate a variety of functions from the menu library.
+  * Thomas Dickey - 2005/4/9
+@@ -270,13 +270,6 @@ menu_create(ITEM ** items, int count, int ncols, MenuNo number)
+     if (mcols + (2 * margin + x) >= COLS)
+ 	mcols = COLS - (2 * margin + x);
+ 
+-#ifdef TRACE
+-    if (number == eTrace)
+-	menu_opts_off(result, O_ONEVALUE);
+-    else
+-	menu_opts_on(result, O_ONEVALUE);
+-#endif
+-
+     menuwin = newwin(mrows + (2 * margin), mcols + (2 * margin), y, x);
+     set_menu_win(result, menuwin);
+     keypad(menuwin, TRUE);
+@@ -285,6 +278,16 @@ menu_create(ITEM ** items, int count, int ncols, MenuNo number)
+ 
+     set_menu_sub(result, derwin(menuwin, mrows, mcols, margin, margin));
+ 
++#ifdef TRACE
++    if (number == eTrace)
++	menu_opts_off(result, O_ONEVALUE);
++    else
++	menu_opts_on(result, O_ONEVALUE);
++#endif
++#if defined(NCURSES_MOUSE_VERSION) && defined(O_MOUSE_MENU)
++    menu_opts_on(result, O_MOUSE_MENU);
++#endif
++
+     post_menu(result);
+ 
+     set_menu_init(result, my_menu_init);
+@@ -751,6 +754,36 @@ move_menus(MENU * current, int by_y, int by_x)
+     }
+ }
+ 
++#ifdef KEY_RESIZE
++static void
++resize_menu(MENU ** menu)
++{
++#if 0
++    WINDOW *win = menu_win(*menu);
++    WINDOW *sub = menu_sub(*menu);
++#endif
++    (void) menu;
++}
++
++static void
++resize_menus(MENU * current)
++{
++    (void) current;
++
++    werase(status);
++    wnoutrefresh(status);
++    wresize(status, 1, COLS);
++    mvwin(status, LINES - 1, 0);
++
++    resize_menu(&mpBanner);
++    resize_menu(&mpFile);
++    resize_menu(&mpSelect);
++#ifdef TRACE
++    resize_menu(&mpTrace);
++#endif
++}
++#endif
++
+ static void
+ show_status(int ch, MENU * menu)
+ {
+@@ -774,7 +807,7 @@ perform_menus(void)
+     int ch = ERR;
+ 
+ #ifdef NCURSES_MOUSE_VERSION
+-    mousemask(ALL_MOUSE_EVENTS, (mmask_t *) 0);
++    mousemask(BUTTON1_CLICKED, (mmask_t *) 0);
+ #endif
+ 
+     menu_display(last_menu);
+@@ -803,6 +836,11 @@ perform_menus(void)
+ 	case KEY_SRIGHT:
+ 	    move_menus(last_menu, 0, 1);
+ 	    continue;
++#ifdef KEY_RESIZE
++	case KEY_RESIZE:
++	    resize_menus(last_menu);
++	    continue;
++#endif
+ 	}
+ 	cmd = menu_virtualize(ch);
+ 
+@@ -836,9 +874,17 @@ perform_menus(void)
+ #endif
+ 	    }
+ 
++#if defined(NCURSES_MOUSE_VERSION) && defined(O_MOUSE_MENU)
+ 	    if ((code == E_REQUEST_DENIED) && (cmd == KEY_MOUSE)) {
++		(void) menu_getc(mpBanner);
+ 		code = menu_driver(mpBanner, cmd);
++		if (code == E_REQUEST_DENIED) {
++		    MEVENT event;
++		    if (menu_getc(mpBanner) == KEY_MOUSE)
++			getmouse(&event);	/* give up */
++		}
+ 	    }
++#endif
+ 
+ 	    break;
+ 	}
+@@ -946,7 +992,7 @@ main(int argc, char *argv[])
+ 
+     setlocale(LC_ALL, "");
+ 
+-    while ((c = getopt(argc, argv, "a:de:fhmp:s:t:")) != -1) {
++    while ((c = getopt(argc, argv, "fht:")) != -1) {
+ 	switch (c) {
+ #if HAVE_RIPOFFLINE
+ 	case 'f':
+-- 
+2.9.1
+

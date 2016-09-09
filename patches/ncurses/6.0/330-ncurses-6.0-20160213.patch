@@ -1,0 +1,347 @@
+From 89ca7974b018d46049b6eaf1b7f17784e3a001d1 Mon Sep 17 00:00:00 2001
+From: "Thomas E. Dickey" <dickey@invisible-island.net>
+Date: Sun, 14 Feb 2016 00:43:22 +0000
+Subject: [PATCH 24/50] ncurses 6.0 - patch 20160213
+
++ amend fix for _nc_ripoffline from 20091031 to make test/ditto.c work
+  in threaded configuration.
++ move _nc_tracebits, _tracedump and _tracemouse to curses.priv.h,
+  since they are not part of the suggested ABI6.
+---
+ Ada95/gen/gen.c                  |  6 +++---
+ NEWS                             |  8 +++++++-
+ VERSION                          |  2 +-
+ dist.mk                          |  4 ++--
+ include/curses.tail              |  5 +----
+ ncurses/curses.priv.h            |  6 +++++-
+ ncurses/tinfo/lib_setup.c        | 32 +++++++++++++++-----------------
+ package/debian-mingw/changelog   |  4 ++--
+ package/debian-mingw64/changelog |  4 ++--
+ package/debian/changelog         |  4 ++--
+ package/mingw-ncurses.nsi        |  4 ++--
+ package/mingw-ncurses.spec       |  2 +-
+ package/ncurses.spec             |  2 +-
+ test/test_sgr.c                  |  4 +++-
+ 14 files changed, 47 insertions(+), 40 deletions(-)
+
+diff --git a/Ada95/gen/gen.c b/Ada95/gen/gen.c
+index 4e986a4..fd759ba 100644
+--- a/Ada95/gen/gen.c
++++ b/Ada95/gen/gen.c
+@@ -1,5 +1,5 @@
+ /****************************************************************************
+- * Copyright (c) 1998-2013,2014 Free Software Foundation, Inc.              *
++ * Copyright (c) 1998-2014,2016 Free Software Foundation, Inc.              *
+  *                                                                          *
+  * Permission is hereby granted, free of charge, to any person obtaining a  *
+  * copy of this software and associated documentation files (the            *
+@@ -32,7 +32,7 @@
+ 
+ /*
+     Version Control
+-    $Id: gen.c,v 1.69 2014/05/31 21:00:08 tom Exp $
++    $Id: gen.c,v 1.70 2016/02/13 22:00:22 tom Exp $
+   --------------------------------------------------------------------------*/
+ /*
+   This program prints on its standard output the source for the
+@@ -108,7 +108,7 @@ bit_is_set(const UCHAR * const data,
+   else				/* or */
+     bit = ~offset;		/* 7 - offset */
+   bit &= 7;			/* modulo 8 */
+-  return byte & (UCHAR) (1 << bit);
++  return (UCHAR) (byte & (1 << bit));
+ }
+ 
+ /* Find lowest and highest used offset in a byte array. */
+diff --git a/NEWS b/NEWS
+index 16beb21..98ef29f 100644
+--- a/NEWS
++++ b/NEWS
+@@ -25,7 +25,7 @@
+ -- sale, use or other dealings in this Software without prior written        --
+ -- authorization.                                                            --
+ -------------------------------------------------------------------------------
+--- $Id: NEWS,v 1.2568 2016/02/06 22:10:53 tom Exp $
++-- $Id: NEWS,v 1.2571 2016/02/13 21:16:08 tom Exp $
+ -------------------------------------------------------------------------------
+ 
+ This is a log of changes that ncurses has gone through since Zeyd started
+@@ -45,6 +45,12 @@ See the AUTHORS file for the corresponding full names.
+ Changes through 1.9.9e did not credit all contributions;
+ it is not possible to add this information.
+ 
++20160213
++	+ amend fix for _nc_ripoffline from 20091031 to make test/ditto.c work
++	  in threaded configuration.
++	+ move _nc_tracebits, _tracedump and _tracemouse to curses.priv.h,
++	  since they are not part of the suggested ABI6.
++
+ 20160206
+ 	+ define WIN32_LEAN_AND_MEAN for MinGW port, making builds faster.
+ 	+ modify test/ditto.c to allow $XTERM_PROG environment variable to
+diff --git a/VERSION b/VERSION
+index 62dd440..168f864 100644
+--- a/VERSION
++++ b/VERSION
+@@ -1 +1 @@
+-5:0:9	6.0	20160206
++5:0:9	6.0	20160213
+diff --git a/dist.mk b/dist.mk
+index f210844..34a423b 100644
+--- a/dist.mk
++++ b/dist.mk
+@@ -25,7 +25,7 @@
+ # use or other dealings in this Software without prior written               #
+ # authorization.                                                             #
+ ##############################################################################
+-# $Id: dist.mk,v 1.1092 2016/02/06 17:26:30 tom Exp $
++# $Id: dist.mk,v 1.1093 2016/02/13 15:02:20 tom Exp $
+ # Makefile for creating ncurses distributions.
+ #
+ # This only needs to be used directly as a makefile by developers, but
+@@ -37,7 +37,7 @@ SHELL = /bin/sh
+ # These define the major/minor/patch versions of ncurses.
+ NCURSES_MAJOR = 6
+ NCURSES_MINOR = 0
+-NCURSES_PATCH = 20160206
++NCURSES_PATCH = 20160213
+ 
+ # We don't append the patch to the version, since this only applies to releases
+ VERSION = $(NCURSES_MAJOR).$(NCURSES_MINOR)
+diff --git a/include/curses.tail b/include/curses.tail
+index d0ca95d..831a8f4 100644
+--- a/include/curses.tail
++++ b/include/curses.tail
+@@ -1,4 +1,4 @@
+-/* $Id: curses.tail,v 1.22 2016/01/23 22:03:27 tom Exp $ */
++/* $Id: curses.tail,v 1.23 2016/02/13 16:37:45 tom Exp $ */
+ /*
+  * vile:cmode:
+  * This file is part of ncurses, designed to be appended after curses.h.in
+@@ -128,10 +128,8 @@ extern NCURSES_EXPORT(int) NCURSES_SP_NAME(mcprint) (SCREEN*, char *, int);	/* d
+ /* Debugging : use with libncurses_g.a */
+ 
+ extern NCURSES_EXPORT(void) _tracef (const char *, ...) GCC_PRINTFLIKE(1,2);
+-extern NCURSES_EXPORT(void) _tracedump (const char *, WINDOW *);
+ extern NCURSES_EXPORT(char *) _traceattr (attr_t);
+ extern NCURSES_EXPORT(char *) _traceattr2 (int, chtype);
+-extern NCURSES_EXPORT(char *) _nc_tracebits (void);
+ extern NCURSES_EXPORT(char *) _tracechar (int);
+ extern NCURSES_EXPORT(char *) _tracechtype (chtype);
+ extern NCURSES_EXPORT(char *) _tracechtype2 (int, chtype);
+@@ -144,7 +142,6 @@ extern NCURSES_EXPORT(char *) _tracecchar_t2 (int, const cchar_t *);
+ #define _tracech_t		_tracechtype
+ #define _tracech_t2		_tracechtype2
+ #endif
+-extern NCURSES_EXPORT(char *) _tracemouse (const MEVENT *);
+ extern NCURSES_EXPORT(void) trace (const unsigned int);
+ 
+ /* trace masks */
+diff --git a/ncurses/curses.priv.h b/ncurses/curses.priv.h
+index b79602d..d2b5b1b 100644
+--- a/ncurses/curses.priv.h
++++ b/ncurses/curses.priv.h
+@@ -34,7 +34,7 @@
+  ****************************************************************************/
+ 
+ /*
+- * $Id: curses.priv.h,v 1.551 2016/01/24 01:39:09 tom Exp $
++ * $Id: curses.priv.h,v 1.552 2016/02/13 16:37:24 tom Exp $
+  *
+  *	curses.priv.h
+  *
+@@ -1684,6 +1684,10 @@ extern NCURSES_EXPORT_VAR(long)         _nc_outchars;
+ 
+ extern NCURSES_EXPORT_VAR(unsigned)     _nc_tracing;
+ 
++extern NCURSES_EXPORT(char *) _nc_tracebits (void);
++extern NCURSES_EXPORT(char *) _tracemouse (const MEVENT *);
++extern NCURSES_EXPORT(void) _tracedump (const char *, WINDOW *);
++
+ #if USE_WIDEC_SUPPORT
+ extern NCURSES_EXPORT(const char *) _nc_viswbuf2 (int, const wchar_t *);
+ extern NCURSES_EXPORT(const char *) _nc_viswbufn (const wchar_t *, int);
+diff --git a/ncurses/tinfo/lib_setup.c b/ncurses/tinfo/lib_setup.c
+index 0a0a1f5..17ec403 100644
+--- a/ncurses/tinfo/lib_setup.c
++++ b/ncurses/tinfo/lib_setup.c
+@@ -1,5 +1,5 @@
+ /****************************************************************************
+- * Copyright (c) 1998-2014,2015 Free Software Foundation, Inc.              *
++ * Copyright (c) 1998-2015,2016 Free Software Foundation, Inc.              *
+  *                                                                          *
+  * Permission is hereby granted, free of charge, to any person obtaining a  *
+  * copy of this software and associated documentation files (the            *
+@@ -48,7 +48,7 @@
+ #include <locale.h>
+ #endif
+ 
+-MODULE_ID("$Id: lib_setup.c,v 1.164 2015/06/27 18:10:55 tom Exp $")
++MODULE_ID("$Id: lib_setup.c,v 1.165 2016/02/13 21:20:05 tom Exp $")
+ 
+ /****************************************************************************
+  *
+@@ -808,29 +808,27 @@ TINFO_SETUP_TERM(TERMINAL ** tp,
+ NCURSES_EXPORT(SCREEN *)
+ new_prescr(void)
+ {
+-    static SCREEN *sp;
++    SCREEN *sp;
+ 
+     START_TRACE();
+     T((T_CALLED("new_prescr()")));
+ 
+-    if (sp == 0) {
+-	sp = _nc_alloc_screen_sp();
+-	if (sp != 0) {
+-	    sp->rsp = sp->rippedoff;
+-	    sp->_filtered = _nc_prescreen.filter_mode;
+-	    sp->_use_env = _nc_prescreen.use_env;
++    sp = _nc_alloc_screen_sp();
++    if (sp != 0) {
++	sp->rsp = sp->rippedoff;
++	sp->_filtered = _nc_prescreen.filter_mode;
++	sp->_use_env = _nc_prescreen.use_env;
+ #if NCURSES_NO_PADDING
+-	    sp->_no_padding = _nc_prescreen._no_padding;
++	sp->_no_padding = _nc_prescreen._no_padding;
+ #endif
+-	    sp->slk_format = 0;
+-	    sp->_slk = 0;
+-	    sp->_prescreen = TRUE;
+-	    SP_PRE_INIT(sp);
++	sp->slk_format = 0;
++	sp->_slk = 0;
++	sp->_prescreen = TRUE;
++	SP_PRE_INIT(sp);
+ #if USE_REENTRANT
+-	    sp->_TABSIZE = _nc_prescreen._TABSIZE;
+-	    sp->_ESCDELAY = _nc_prescreen._ESCDELAY;
++	sp->_TABSIZE = _nc_prescreen._TABSIZE;
++	sp->_ESCDELAY = _nc_prescreen._ESCDELAY;
+ #endif
+-	}
+     }
+     returnSP(sp);
+ }
+diff --git a/package/debian-mingw/changelog b/package/debian-mingw/changelog
+index cfb2101..564bd72 100644
+--- a/package/debian-mingw/changelog
++++ b/package/debian-mingw/changelog
+@@ -1,8 +1,8 @@
+-ncurses6 (6.0+20160206) unstable; urgency=low
++ncurses6 (6.0+20160213) unstable; urgency=low
+ 
+   * latest weekly patch
+ 
+- -- Thomas E. Dickey <dickey@invisible-island.net>  Sat, 06 Feb 2016 12:26:30 -0500
++ -- Thomas E. Dickey <dickey@invisible-island.net>  Sat, 13 Feb 2016 10:02:21 -0500
+ 
+ ncurses6 (5.9-20131005) unstable; urgency=low
+ 
+diff --git a/package/debian-mingw64/changelog b/package/debian-mingw64/changelog
+index cfb2101..564bd72 100644
+--- a/package/debian-mingw64/changelog
++++ b/package/debian-mingw64/changelog
+@@ -1,8 +1,8 @@
+-ncurses6 (6.0+20160206) unstable; urgency=low
++ncurses6 (6.0+20160213) unstable; urgency=low
+ 
+   * latest weekly patch
+ 
+- -- Thomas E. Dickey <dickey@invisible-island.net>  Sat, 06 Feb 2016 12:26:30 -0500
++ -- Thomas E. Dickey <dickey@invisible-island.net>  Sat, 13 Feb 2016 10:02:21 -0500
+ 
+ ncurses6 (5.9-20131005) unstable; urgency=low
+ 
+diff --git a/package/debian/changelog b/package/debian/changelog
+index a7cfa0e..c43df02 100644
+--- a/package/debian/changelog
++++ b/package/debian/changelog
+@@ -1,8 +1,8 @@
+-ncurses6 (6.0+20160206) unstable; urgency=low
++ncurses6 (6.0+20160213) unstable; urgency=low
+ 
+   * latest weekly patch
+ 
+- -- Thomas E. Dickey <dickey@invisible-island.net>  Sat, 06 Feb 2016 12:26:30 -0500
++ -- Thomas E. Dickey <dickey@invisible-island.net>  Sat, 13 Feb 2016 10:02:21 -0500
+ 
+ ncurses6 (5.9-20120608) unstable; urgency=low
+ 
+diff --git a/package/mingw-ncurses.nsi b/package/mingw-ncurses.nsi
+index 716fc2b..50a9c96 100644
+--- a/package/mingw-ncurses.nsi
++++ b/package/mingw-ncurses.nsi
+@@ -1,4 +1,4 @@
+-; $Id: mingw-ncurses.nsi,v 1.144 2016/02/06 17:26:30 tom Exp $
++; $Id: mingw-ncurses.nsi,v 1.145 2016/02/13 15:02:20 tom Exp $
+ 
+ ; TODO add examples
+ ; TODO bump ABI to 6
+@@ -10,7 +10,7 @@
+ !define VERSION_MAJOR "6"
+ !define VERSION_MINOR "0"
+ !define VERSION_YYYY  "2016"
+-!define VERSION_MMDD  "0206"
++!define VERSION_MMDD  "0213"
+ !define VERSION_PATCH ${VERSION_YYYY}${VERSION_MMDD}
+ 
+ !define MY_ABI   "5"
+diff --git a/package/mingw-ncurses.spec b/package/mingw-ncurses.spec
+index 09127a1..50e82fc 100644
+--- a/package/mingw-ncurses.spec
++++ b/package/mingw-ncurses.spec
+@@ -3,7 +3,7 @@
+ Summary: shared libraries for terminal handling
+ Name: mingw32-ncurses6
+ Version: 6.0
+-Release: 20160206
++Release: 20160213
+ License: X11
+ Group: Development/Libraries
+ Source: ncurses-%{version}-%{release}.tgz
+diff --git a/package/ncurses.spec b/package/ncurses.spec
+index 2e1cddc..66b7057 100644
+--- a/package/ncurses.spec
++++ b/package/ncurses.spec
+@@ -1,7 +1,7 @@
+ Summary: shared libraries for terminal handling
+ Name: ncurses6
+ Version: 6.0
+-Release: 20160206
++Release: 20160213
+ License: X11
+ Group: Development/Libraries
+ Source: ncurses-%{version}-%{release}.tgz
+diff --git a/test/test_sgr.c b/test/test_sgr.c
+index f924026..b113e63 100644
+--- a/test/test_sgr.c
++++ b/test/test_sgr.c
+@@ -29,13 +29,14 @@
+ /*
+  * Author: Thomas E. Dickey
+  *
+- * $Id: test_sgr.c,v 1.5 2016/01/09 18:15:53 tom Exp $
++ * $Id: test_sgr.c,v 1.6 2016/02/13 22:08:16 tom Exp $
+  *
+  * A simple demo of the sgr/sgr0 terminal capabilities.
+  */
+ #define USE_TINFO
+ #include <test.priv.h>
+ 
++#if !HAVE_TIGETSTR
+ static void failed(const char *) GCC_NORETURN;
+ 
+ static void
+@@ -44,6 +45,7 @@ failed(const char *msg)
+     fprintf(stderr, "%s\n", msg);
+     ExitProgram(EXIT_FAILURE);
+ }
++#endif
+ 
+ #if HAVE_TIGETSTR
+ 
+-- 
+2.9.1
+

@@ -1,0 +1,1437 @@
+From 59c1a9740d123db3cecafe76e18f7848081a670b Mon Sep 17 00:00:00 2001
+From: "Thomas E. Dickey" <dickey@invisible-island.net>
+Date: Sun, 24 Jul 2016 00:45:26 +0000
+Subject: [PATCH 44/50] ncurses 6.0 - patch 20160723
+
++ improve error message from tset/reset when both stderr/stdout are
+  redirected to a file or pipe.
++ improve organization of curs_attr.3x, curs_color.3x
+---
+ NEWS                             |   7 +-
+ VERSION                          |   2 +-
+ dist.mk                          |   4 +-
+ doc/html/man/captoinfo.1m.html   |   2 +-
+ doc/html/man/clear.1.html        |   2 +-
+ doc/html/man/curs_attr.3x.html   | 276 +++++++++++++++++++++------------------
+ doc/html/man/curs_color.3x.html  | 102 +++++++++------
+ doc/html/man/form.3x.html        |   2 +-
+ doc/html/man/infocmp.1m.html     |   2 +-
+ doc/html/man/infotocap.1m.html   |   2 +-
+ doc/html/man/menu.3x.html        |   2 +-
+ doc/html/man/ncurses.3x.html     |   2 +-
+ doc/html/man/panel.3x.html       |   2 +-
+ doc/html/man/tabs.1.html         |   2 +-
+ doc/html/man/terminfo.5.html     |   2 +-
+ doc/html/man/tic.1m.html         |   2 +-
+ doc/html/man/toe.1m.html         |   2 +-
+ doc/html/man/tput.1.html         |   2 +-
+ doc/html/man/tset.1.html         |   2 +-
+ man/curs_attr.3x                 | 240 ++++++++++++++++++----------------
+ man/curs_color.3x                |  35 +++--
+ package/debian-mingw/changelog   |   4 +-
+ package/debian-mingw64/changelog |   4 +-
+ package/debian/changelog         |   4 +-
+ package/mingw-ncurses.nsi        |   4 +-
+ package/mingw-ncurses.spec       |   2 +-
+ package/ncurses.spec             |   2 +-
+ progs/tset.c                     |  11 +-
+ test/doit                        |   3 -
+ 29 files changed, 404 insertions(+), 324 deletions(-)
+ delete mode 100644 test/doit
+
+diff --git a/NEWS b/NEWS
+index 23eedaa..b5c9c73 100644
+--- a/NEWS
++++ b/NEWS
+@@ -25,7 +25,7 @@
+ -- sale, use or other dealings in this Software without prior written        --
+ -- authorization.                                                            --
+ -------------------------------------------------------------------------------
+--- $Id: NEWS,v 1.2629 2016/07/09 21:46:47 tom Exp $
++-- $Id: NEWS,v 1.2633 2016/07/24 00:08:45 tom Exp $
+ -------------------------------------------------------------------------------
+ 
+ This is a log of changes that ncurses has gone through since Zeyd started
+@@ -45,6 +45,11 @@ See the AUTHORS file for the corresponding full names.
+ Changes through 1.9.9e did not credit all contributions;
+ it is not possible to add this information.
+ 
++20160723
++	+ improve error message from tset/reset when both stderr/stdout are
++	  redirected to a file or pipe.
++	+ improve organization of curs_attr.3x, curs_color.3x
++
+ 20160709
+ 	+ work around Debian's antique/unmaintained version of mawk when
+ 	  building link_test.
+diff --git a/VERSION b/VERSION
+index 8d6960b..a396894 100644
+--- a/VERSION
++++ b/VERSION
+@@ -1 +1 @@
+-5:0:9	6.0	20160709
++5:0:9	6.0	20160723
+diff --git a/dist.mk b/dist.mk
+index 641790a..1aebb5b 100644
+--- a/dist.mk
++++ b/dist.mk
+@@ -25,7 +25,7 @@
+ # use or other dealings in this Software without prior written               #
+ # authorization.                                                             #
+ ##############################################################################
+-# $Id: dist.mk,v 1.1114 2016/07/09 13:09:04 tom Exp $
++# $Id: dist.mk,v 1.1116 2016/07/23 11:56:24 tom Exp $
+ # Makefile for creating ncurses distributions.
+ #
+ # This only needs to be used directly as a makefile by developers, but
+@@ -37,7 +37,7 @@ SHELL = /bin/sh
+ # These define the major/minor/patch versions of ncurses.
+ NCURSES_MAJOR = 6
+ NCURSES_MINOR = 0
+-NCURSES_PATCH = 20160709
++NCURSES_PATCH = 20160723
+ 
+ # We don't append the patch to the version, since this only applies to releases
+ VERSION = $(NCURSES_MAJOR).$(NCURSES_MINOR)
+diff --git a/doc/html/man/captoinfo.1m.html b/doc/html/man/captoinfo.1m.html
+index 4b474c2..3131459 100644
+--- a/doc/html/man/captoinfo.1m.html
++++ b/doc/html/man/captoinfo.1m.html
+@@ -198,7 +198,7 @@
+ </PRE><H2><a name="h2-SEE-ALSO">SEE ALSO</a></H2><PRE>
+        <STRONG><A HREF="infocmp.1m.html">infocmp(1m)</A></STRONG>, <STRONG><A HREF="ncurses.3x.html">curses(3x)</A></STRONG>, <STRONG><A HREF="terminfo.5.html">terminfo(5)</A></STRONG>
+ 
+-       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160611).
++       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160723).
+ 
+ 
+ </PRE><H2><a name="h2-AUTHOR">AUTHOR</a></H2><PRE>
+diff --git a/doc/html/man/clear.1.html b/doc/html/man/clear.1.html
+index 4774016..c0608ff 100644
+--- a/doc/html/man/clear.1.html
++++ b/doc/html/man/clear.1.html
+@@ -67,7 +67,7 @@
+ </PRE><H2><a name="h2-SEE-ALSO">SEE ALSO</a></H2><PRE>
+        <STRONG><A HREF="tput.1.html">tput(1)</A></STRONG>, <STRONG><A HREF="terminfo.5.html">terminfo(5)</A></STRONG>
+ 
+-       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160611).
++       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160723).
+ 
+ 
+ 
+diff --git a/doc/html/man/curs_attr.3x.html b/doc/html/man/curs_attr.3x.html
+index 2cad020..31852c4 100644
+--- a/doc/html/man/curs_attr.3x.html
++++ b/doc/html/man/curs_attr.3x.html
+@@ -1,7 +1,7 @@
+ <!-- 
+   * t
+   ****************************************************************************
+-  * Copyright (c) 1998-2013,2015 Free Software Foundation, Inc.              *
++  * Copyright (c) 1998-2015,2016 Free Software Foundation, Inc.              *
+   *                                                                          *
+   * Permission is hereby granted, free of charge, to any person obtaining a  *
+   * copy of this software and associated documentation files (the            *
+@@ -27,7 +27,19 @@
+   * sale, use or other dealings in this Software without prior written       *
+   * authorization.                                                           *
+   ****************************************************************************
+-  * @Id: curs_attr.3x,v 1.44 2015/12/13 21:54:05 tom Exp @
++  * @Id: curs_attr.3x,v 1.47 2016/07/23 23:48:49 tom Exp @
++  * attr_get
++  * .br
++  * .br
++  * .br
++  * .br
++  * .br
++  * ---------------------------------------------------------------------------
++  * ---------------------------------------------------------------------------
++  * ---------------------------------------------------------------------------
++  * ---------------------------------------------------------------------------
++  * ---------------------------------------------------------------------------
++  * ---------------------------------------------------------------------------
+ -->
+ <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN">
+ <HTML>
+@@ -47,107 +59,109 @@
+ 
+ 
+ </PRE><H2><a name="h2-NAME">NAME</a></H2><PRE>
+-       <STRONG>attroff</STRONG>, <STRONG>wattroff</STRONG>, <STRONG>attron</STRONG>, <STRONG>wattron</STRONG>, <STRONG>attrset</STRONG>, <STRONG>wattrset</STRONG>,
+-       <STRONG>color_set</STRONG>, <STRONG>wcolor_set</STRONG>, <STRONG>standend</STRONG>, <STRONG>wstandend</STRONG>, <STRONG>standout</STRONG>,
+-       <STRONG>wstandout</STRONG>, <STRONG>attr_get</STRONG>, <STRONG>wattr_get</STRONG>, <STRONG>attr_off</STRONG>, <STRONG>wattr_off</STRONG>,
+-       <STRONG>attr_on</STRONG>, <STRONG>wattr_on</STRONG>, <STRONG>attr_set</STRONG>, <STRONG>wattr_set</STRONG>, <STRONG>chgat</STRONG>, <STRONG>wchgat</STRONG>,
+-       <STRONG>mvchgat</STRONG>, <STRONG>mvwchgat</STRONG>, <STRONG>PAIR_NUMBER</STRONG> - <STRONG>curses</STRONG> character and
+-       window attribute control routines
++       <STRONG>attr_get</STRONG>, <STRONG>wattr_get</STRONG>, <STRONG>attr_set</STRONG>, <STRONG>wattr_set</STRONG>, <STRONG>attr_off</STRONG>,
++       <STRONG>wattr_off</STRONG>, <STRONG>attr_on</STRONG>, <STRONG>wattr_on</STRONG>, <STRONG>attroff</STRONG>, <STRONG>wattroff</STRONG>, <STRONG>attron</STRONG>,
++       <STRONG>wattron</STRONG>, <STRONG>attrset</STRONG>, <STRONG>wattrset</STRONG>, <STRONG>chgat</STRONG>, <STRONG>wchgat</STRONG>, <STRONG>mvchgat</STRONG>,
++       <STRONG>mvwchgat</STRONG>, <STRONG>color_set</STRONG>, <STRONG>wcolor_set</STRONG>, <STRONG>standend</STRONG>, <STRONG>wstandend</STRONG>,
++       <STRONG>standout</STRONG>, <STRONG>wstandout</STRONG> - <STRONG>curses</STRONG> character and window
++       attribute control routines
+ 
+ 
+ </PRE><H2><a name="h2-SYNOPSIS">SYNOPSIS</a></H2><PRE>
+        <STRONG>#include</STRONG> <STRONG>&lt;curses.h&gt;</STRONG>
++
++       <STRONG>int</STRONG> <STRONG>attr_get(attr_t</STRONG> <STRONG>*</STRONG><EM>attrs</EM><STRONG>,</STRONG> <STRONG>short</STRONG> <STRONG>*</STRONG><EM>pair</EM><STRONG>,</STRONG> <STRONG>void</STRONG> <STRONG>*</STRONG><EM>opts</EM><STRONG>);</STRONG>
++       <STRONG>int</STRONG> <STRONG>wattr_get(WINDOW</STRONG> <STRONG>*</STRONG><EM>win</EM><STRONG>,</STRONG>  <STRONG>attr_t</STRONG>  <STRONG>*</STRONG><EM>attrs</EM><STRONG>,</STRONG>  <STRONG>short</STRONG>  <STRONG>*</STRONG><EM>pair</EM><STRONG>,</STRONG>
++       <STRONG>void</STRONG> <STRONG>*</STRONG><EM>opts</EM><STRONG>);</STRONG>
++       <STRONG>int</STRONG> <STRONG>attr_set(attr_t</STRONG> <EM>attrs</EM><STRONG>,</STRONG> <STRONG>short</STRONG> <EM>pair</EM><STRONG>,</STRONG> <STRONG>void</STRONG> <STRONG>*</STRONG><EM>opts</EM><STRONG>);</STRONG>
++       <STRONG>int</STRONG>  <STRONG>wattr_set(WINDOW</STRONG> <STRONG>*</STRONG><EM>win</EM><STRONG>,</STRONG> <STRONG>attr_t</STRONG> <EM>attrs</EM><STRONG>,</STRONG> <STRONG>short</STRONG> <EM>pair</EM><STRONG>,</STRONG> <STRONG>void</STRONG>
++       <STRONG>*</STRONG><EM>opts</EM><STRONG>);</STRONG>
++
++       <STRONG>int</STRONG> <STRONG>attr_off(attr_t</STRONG> <EM>attrs</EM><STRONG>,</STRONG> <STRONG>void</STRONG> <STRONG>*</STRONG><EM>opts</EM><STRONG>);</STRONG>
++       <STRONG>int</STRONG> <STRONG>wattr_off(WINDOW</STRONG> <STRONG>*</STRONG><EM>win</EM><STRONG>,</STRONG> <STRONG>attr_t</STRONG> <EM>attrs</EM><STRONG>,</STRONG> <STRONG>void</STRONG> <STRONG>*</STRONG><EM>opts</EM><STRONG>);</STRONG>
++       <STRONG>int</STRONG> <STRONG>attr_on(attr_t</STRONG> <EM>attrs</EM><STRONG>,</STRONG> <STRONG>void</STRONG> <STRONG>*</STRONG><EM>opts</EM><STRONG>);</STRONG>
++       <STRONG>int</STRONG> <STRONG>wattr_on(WINDOW</STRONG> <STRONG>*</STRONG><EM>win</EM><STRONG>,</STRONG> <STRONG>attr_t</STRONG> <EM>attrs</EM><STRONG>,</STRONG> <STRONG>void</STRONG> <STRONG>*</STRONG><EM>opts</EM><STRONG>);</STRONG>
++
+        <STRONG>int</STRONG> <STRONG>attroff(int</STRONG> <EM>attrs);</EM>
+        <STRONG>int</STRONG> <STRONG>wattroff(WINDOW</STRONG> <STRONG>*</STRONG><EM>win</EM><STRONG>,</STRONG> <STRONG>int</STRONG> <EM>attrs</EM><STRONG>);</STRONG>
+        <STRONG>int</STRONG> <STRONG>attron(int</STRONG> <EM>attrs</EM><STRONG>);</STRONG>
+        <STRONG>int</STRONG> <STRONG>wattron(WINDOW</STRONG> <STRONG>*</STRONG><EM>win</EM><STRONG>,</STRONG> <STRONG>int</STRONG> <EM>attrs</EM><STRONG>);</STRONG>
+        <STRONG>int</STRONG> <STRONG>attrset(int</STRONG> <EM>attrs</EM><STRONG>);</STRONG>
+        <STRONG>int</STRONG> <STRONG>wattrset(WINDOW</STRONG> <STRONG>*</STRONG><EM>win</EM><STRONG>,</STRONG> <STRONG>int</STRONG> <EM>attrs</EM><STRONG>);</STRONG>
+-       <STRONG>int</STRONG> <STRONG>color_set(short</STRONG> <EM>color</EM><STRONG>_</STRONG><EM>pair</EM><STRONG>_</STRONG><EM>number</EM><STRONG>,</STRONG> <STRONG>void*</STRONG> <EM>opts</EM><STRONG>);</STRONG>
+-       <STRONG>int</STRONG> <STRONG>wcolor_set(WINDOW</STRONG> <STRONG>*</STRONG><EM>win</EM><STRONG>,</STRONG> <STRONG>short</STRONG> <EM>color</EM><STRONG>_</STRONG><EM>pair</EM><STRONG>_</STRONG><EM>number</EM><STRONG>,</STRONG>
+-             <STRONG>void*</STRONG> <EM>opts);</EM>
++
++       <STRONG>int</STRONG> <STRONG>chgat(int</STRONG> <EM>n</EM><STRONG>,</STRONG>  <STRONG>attr_t</STRONG>  <EM>attr</EM><STRONG>,</STRONG>  <STRONG>short</STRONG>  <EM>pair</EM><STRONG>,</STRONG>  <STRONG>const</STRONG>  <STRONG>void</STRONG>
++       <STRONG>*</STRONG><EM>opts</EM><STRONG>);</STRONG>
++       <STRONG>int</STRONG> <STRONG>wchgat(WINDOW</STRONG> <STRONG>*</STRONG><EM>win</EM><STRONG>,</STRONG>
++             <STRONG>int</STRONG> <EM>n</EM><STRONG>,</STRONG> <STRONG>attr_t</STRONG> <EM>attr</EM><STRONG>,</STRONG> <STRONG>short</STRONG> <EM>pair</EM><STRONG>,</STRONG> <STRONG>const</STRONG> <STRONG>void</STRONG> <STRONG>*</STRONG><EM>opts</EM><STRONG>);</STRONG>
++       <STRONG>int</STRONG> <STRONG>mvchgat(int</STRONG> <EM>y</EM><STRONG>,</STRONG> <STRONG>int</STRONG> <EM>x</EM><STRONG>,</STRONG>
++             <STRONG>int</STRONG> <EM>n</EM><STRONG>,</STRONG> <STRONG>attr_t</STRONG> <EM>attr</EM><STRONG>,</STRONG> <STRONG>short</STRONG> <EM>pair</EM><STRONG>,</STRONG> <STRONG>const</STRONG> <STRONG>void</STRONG> <STRONG>*</STRONG><EM>opts</EM><STRONG>);</STRONG>
++       <STRONG>int</STRONG> <STRONG>mvwchgat(WINDOW</STRONG> <STRONG>*</STRONG><EM>win,</EM> <EM>int</EM> <EM>y,</EM> <EM>int</EM> <EM>x</EM><STRONG>,</STRONG>
++             <STRONG>int</STRONG> <EM>n,</EM> <STRONG>attr_t</STRONG> <EM>attr</EM><STRONG>,</STRONG> <STRONG>short</STRONG> <EM>pair</EM><STRONG>,</STRONG> <STRONG>const</STRONG> <STRONG>void</STRONG> <STRONG>*</STRONG><EM>opts</EM><STRONG>);</STRONG>
++
++       <STRONG>int</STRONG> <STRONG>color_set(short</STRONG> <EM>pair</EM><STRONG>,</STRONG> <STRONG>void*</STRONG> <EM>opts</EM><STRONG>);</STRONG>
++       <STRONG>int</STRONG> <STRONG>wcolor_set(WINDOW</STRONG> <STRONG>*</STRONG><EM>win</EM><STRONG>,</STRONG> <STRONG>short</STRONG> <EM>pair</EM><STRONG>,</STRONG> <STRONG>void*</STRONG> <EM>opts);</EM>
++
+        <STRONG>int</STRONG> <STRONG>standend(void);</STRONG>
+        <STRONG>int</STRONG> <STRONG>wstandend(WINDOW</STRONG> <STRONG>*</STRONG><EM>win</EM><STRONG>);</STRONG>
+        <STRONG>int</STRONG> <STRONG>standout(void);</STRONG>
+        <STRONG>int</STRONG> <STRONG>wstandout(WINDOW</STRONG> <STRONG>*</STRONG><EM>win</EM><STRONG>);</STRONG>
+-       <STRONG>int</STRONG> <STRONG>attr_get(attr_t</STRONG> <STRONG>*</STRONG><EM>attrs</EM><STRONG>,</STRONG> <STRONG>short</STRONG> <STRONG>*</STRONG><EM>pair</EM><STRONG>,</STRONG> <STRONG>void</STRONG> <STRONG>*</STRONG><EM>opts</EM><STRONG>);</STRONG>
+-       <STRONG>int</STRONG> <STRONG>wattr_get(WINDOW</STRONG> <STRONG>*</STRONG><EM>win</EM><STRONG>,</STRONG> <STRONG>attr_t</STRONG> <STRONG>*</STRONG><EM>attrs</EM><STRONG>,</STRONG> <STRONG>short</STRONG> <STRONG>*</STRONG><EM>pair</EM><STRONG>,</STRONG>
+-              <STRONG>void</STRONG> <STRONG>*</STRONG><EM>opts</EM><STRONG>);</STRONG>
+-       <STRONG>int</STRONG> <STRONG>attr_off(attr_t</STRONG> <EM>attrs</EM><STRONG>,</STRONG> <STRONG>void</STRONG> <STRONG>*</STRONG><EM>opts</EM><STRONG>);</STRONG>
+-       <STRONG>int</STRONG> <STRONG>wattr_off(WINDOW</STRONG> <STRONG>*</STRONG><EM>win</EM><STRONG>,</STRONG> <STRONG>attr_t</STRONG> <EM>attrs</EM><STRONG>,</STRONG> <STRONG>void</STRONG> <STRONG>*</STRONG><EM>opts</EM><STRONG>);</STRONG>
+-       <STRONG>int</STRONG> <STRONG>attr_on(attr_t</STRONG> <EM>attrs</EM><STRONG>,</STRONG> <STRONG>void</STRONG> <STRONG>*</STRONG><EM>opts</EM><STRONG>);</STRONG>
+-       <STRONG>int</STRONG> <STRONG>wattr_on(WINDOW</STRONG> <STRONG>*</STRONG><EM>win</EM><STRONG>,</STRONG> <STRONG>attr_t</STRONG> <EM>attrs</EM><STRONG>,</STRONG> <STRONG>void</STRONG> <STRONG>*</STRONG><EM>opts</EM><STRONG>);</STRONG>
+-       <STRONG>int</STRONG> <STRONG>attr_set(attr_t</STRONG> <EM>attrs</EM><STRONG>,</STRONG> <STRONG>short</STRONG> <EM>pair</EM><STRONG>,</STRONG> <STRONG>void</STRONG> <STRONG>*</STRONG><EM>opts</EM><STRONG>);</STRONG>
+-       <STRONG>int</STRONG> <STRONG>wattr_set(WINDOW</STRONG> <STRONG>*</STRONG><EM>win</EM><STRONG>,</STRONG> <STRONG>attr_t</STRONG> <EM>attrs</EM><STRONG>,</STRONG> <STRONG>short</STRONG> <EM>pair</EM><STRONG>,</STRONG>  <STRONG>void</STRONG>
+-       <STRONG>*</STRONG><EM>opts</EM><STRONG>);</STRONG>
+-       <STRONG>int</STRONG> <STRONG>chgat(int</STRONG> <EM>n</EM><STRONG>,</STRONG> <STRONG>attr_t</STRONG> <EM>attr</EM><STRONG>,</STRONG> <STRONG>short</STRONG> <EM>color</EM><STRONG>,</STRONG>
+-             <STRONG>const</STRONG> <STRONG>void</STRONG> <STRONG>*</STRONG><EM>opts</EM><STRONG>);</STRONG>
+-       <STRONG>int</STRONG> <STRONG>wchgat(WINDOW</STRONG> <STRONG>*</STRONG><EM>win</EM><STRONG>,</STRONG> <STRONG>int</STRONG> <EM>n</EM><STRONG>,</STRONG> <STRONG>attr_t</STRONG> <EM>attr</EM><STRONG>,</STRONG>
+-             <STRONG>short</STRONG> <EM>color</EM><STRONG>,</STRONG> <STRONG>const</STRONG> <STRONG>void</STRONG> <STRONG>*</STRONG><EM>opts</EM><STRONG>);</STRONG>
+-       <STRONG>int</STRONG> <STRONG>mvchgat(int</STRONG> <EM>y</EM><STRONG>,</STRONG> <STRONG>int</STRONG> <EM>x</EM><STRONG>,</STRONG> <STRONG>int</STRONG> <EM>n</EM><STRONG>,</STRONG> <STRONG>attr_t</STRONG> <EM>attr</EM><STRONG>,</STRONG>
+-             <STRONG>short</STRONG> <EM>color</EM><STRONG>,</STRONG> <STRONG>const</STRONG> <STRONG>void</STRONG> <STRONG>*</STRONG><EM>opts</EM><STRONG>);</STRONG>
+-       <STRONG>int</STRONG> <STRONG>mvwchgat(WINDOW</STRONG> <STRONG>*</STRONG><EM>win,</EM> <EM>int</EM> <EM>y,</EM> <EM>int</EM> <EM>x,</EM> <EM>int</EM> <EM>n,</EM>
+-             <STRONG>attr_t</STRONG> <EM>attr</EM><STRONG>,</STRONG> <STRONG>short</STRONG> <EM>color</EM><STRONG>,</STRONG> <STRONG>const</STRONG> <STRONG>void</STRONG> <STRONG>*</STRONG><EM>opts</EM><STRONG>);</STRONG>
+-       <STRONG>PAIR_NUMBER(</STRONG><EM>attrs</EM><STRONG>);</STRONG>
+ 
+ 
+ </PRE><H2><a name="h2-DESCRIPTION">DESCRIPTION</a></H2><PRE>
+        These  routines  manipulate  the current attributes of the
+-       named window.  The current attributes of a window apply to
+-       all characters that are written into the window with <STRONG>wadd-</STRONG>
+-       <STRONG>ch</STRONG>, <STRONG>waddstr</STRONG> and <STRONG>wprintw</STRONG>.  Attributes are a property of the
+-       character,   and  move  with  the  character  through  any
+-       scrolling and insert/delete line/character operations.  To
+-       the  extent  possible,  they  are displayed as appropriate
+-       modifications to the graphic rendition of  characters  put
+-       on the screen.
+-
+-
+-</PRE><H3><a name="h3-attrset">attrset</a></H3><PRE>
+-       The  routine  <STRONG>attrset</STRONG>  sets  the current attributes of the
+-       given window to <EM>attrs</EM>.  The routine <STRONG>attroff</STRONG> turns off  the
+-       named  attributes  without turning any other attributes on
+-       or off.  The routine <STRONG>attron</STRONG> turns on the named  attributes
+-       without affecting any others.  The routine <STRONG>standout</STRONG> is the
+-       same as <STRONG>attron(A_STANDOUT)</STRONG>.  The routine <STRONG>standend</STRONG>  is  the
+-       same as <STRONG>attrset(A_NORMAL)</STRONG> or <STRONG>attrset(0)</STRONG>, that is, it turns
+-       off all attributes.
+-
+-       The <STRONG>attrset</STRONG> and related routines do  not  affect  the  at-
+-       tributes  used  when  erasing portions of the window.  See
+-       <STRONG><A HREF="curs_bkgd.3x.html">curs_bkgd(3x)</A></STRONG> for functions which  modify  the  attributes
+-       used for erasing and clearing.
+-
+-
+-</PRE><H3><a name="h3-attr_set">attr_set</a></H3><PRE>
+-       The <STRONG>attrset</STRONG> routine is actually a legacy feature predating
+-       SVr4 curses but kept in X/Open Curses for the same  reason
+-       that  SVr4 curses kept it: compatibility.  The routine <STRONG>at-</STRONG>
+-       <STRONG>tr_set</STRONG> provides for passing a color-pair parameter.
+-
+-       The remaining <STRONG>attr_</STRONG>* functions operate  exactly  like  the
+-       corresponding <STRONG>attr</STRONG>* functions, except that they take argu-
+-       ments of type <STRONG>attr_t</STRONG> rather than <STRONG>int</STRONG>.
+-
+-
+-</PRE><H3><a name="h3-color_set">color_set</a></H3><PRE>
+-       The routine <STRONG>color_set</STRONG> sets the current color of the  given
+-       window  to the foreground/background combination described
+-       by the color_pair_number.  The parameter opts is  reserved
+-       for future use, applications must supply a null pointer.
+-
+-
+-</PRE><H3><a name="h3-attr_get">attr_get</a></H3><PRE>
+-       The  routine  <STRONG>wattr_get</STRONG>  returns the current attribute and
+-       color pair for the given window; <STRONG>attr_get</STRONG> returns the cur-
+-       rent attribute and color pair for <STRONG>stdscr</STRONG>.
++       named window, which then apply to all characters that  are
++       written  into the window with <STRONG>waddch</STRONG>, <STRONG>waddstr</STRONG> and <STRONG>wprintw</STRONG>.
++       Attributes are a property of the character, and move  with
++       the  character  through  any  scrolling  and insert/delete
++       line/character operations.  To the extent  possible,  they
++       are  displayed as appropriate modifications to the graphic
++       rendition of characters put on the screen.
++
++       These routines do not  affect  the  attributes  used  when
++       erasing  portions  of  the  window.  See <STRONG><A HREF="curs_bkgd.3x.html">curs_bkgd(3x)</A></STRONG> for
++       functions which modify the attributes used for erasing and
++       clearing.
++
++       Routines  which  do  not have a <STRONG>WINDOW*</STRONG> parameter apply to
++       <STRONG>stdscr</STRONG>.
++
++
++</PRE><H3><a name="h3-Window-attributes">Window attributes</a></H3><PRE>
++       The <STRONG>attr_set</STRONG> and <STRONG>wattr_set</STRONG> functions set the  current  at-
++       tributes  of  the given window to <EM>attrs</EM>, with color speci-
++       fied by <EM>pair</EM>.  X/Open specified  an  additional  parameter
++       <EM>opts</EM> which is unused in all implementations.
++
++       Use  <STRONG>attr_get</STRONG> and <STRONG>wattr_get</STRONG> to retrieve attributes for the
++       given window.
++
++       Use <STRONG>attr_on</STRONG> and <STRONG>wattr_on</STRONG> to  turn  on  window  attributes,
++       i.e., values OR'd together in <EM>attr</EM>, without affecting oth-
++       er attributes.  Use <STRONG>attr_off</STRONG> and  <STRONG>wattr_off</STRONG>  to  turn  off
++       window  attributes,  again  values  OR'd together in <EM>attr</EM>,
++       without affecting other attributes.
++
++
++</PRE><H3><a name="h3-Legacy-window-attributes">Legacy window attributes</a></H3><PRE>
++       Most of the window attribute routines  are  extensions  of
++       older routines which assume that color pairs are OR'd into
++       the attribute parameter.  These  older  routines  use  the
++       same name, omitting an underscore (<STRONG>_</STRONG>).
++
++       The  <STRONG>attrset</STRONG>  routine  is  a legacy feature predating SVr4
++       curses but kept in X/Open Curses for the same reason  that
++       SVr4 curses kept it: compatibility.
++
++       The  remaining  <STRONG>attr</STRONG>*  functions  operate exactly like the
++       corresponding <STRONG>attr_</STRONG>* functions, except that they take  ar-
++       guments of type <STRONG>int</STRONG> rather than <STRONG>attr_t</STRONG>.
+ 
+        There  is  no  corresponding  <STRONG>attrget</STRONG>  function as such in
+        X/Open Curses, although  ncurses  provides  <STRONG>getattrs</STRONG>  (see
+        <STRONG><A HREF="curs_legacy.3x.html">curs_legacy(3x)</A></STRONG>).
+ 
+ 
+-</PRE><H3><a name="h3-chgat">chgat</a></H3><PRE>
++</PRE><H3><a name="h3-Change-character-rendition">Change character rendition</a></H3><PRE>
+        The routine <STRONG>chgat</STRONG> changes the attributes of a given number
+        of characters starting at the current cursor  location  of
+        <STRONG>stdscr</STRONG>.   It  does not update the cursor and does not per-
+@@ -155,35 +169,55 @@
+        the  remaining window width means to change attributes all
+        the way to the end of the current line.  The <STRONG>wchgat</STRONG>  func-
+        tion generalizes this to any window; the <STRONG>mvwchgat</STRONG> function
+-       does a cursor move before acting.  In these functions, the
+-       color  argument is a color-pair index (as in the first ar-
+-       gument of <EM>init</EM><STRONG>_</STRONG><EM>pair</EM>, see <STRONG><A HREF="curs_color.3x.html">curs_color(3x)</A></STRONG>).  The <STRONG>opts</STRONG>  argu-
+-       ment is not presently used, but is reserved for the future
+-       (leave it <STRONG>NULL</STRONG>).
++       does a cursor move before acting.
++
++       In these functions, the color <EM>pair</EM> argument  is  a  color-
++       pair  index  (as  in  the first argument of <EM>init</EM><STRONG>_</STRONG><EM>pair</EM>, see
++       <STRONG><A HREF="curs_color.3x.html">curs_color(3x)</A></STRONG>).  The <STRONG>opts</STRONG> argument is not presently used,
++       but is reserved for the future (leave it <STRONG>NULL</STRONG>).
++
++
++</PRE><H3><a name="h3-Change-window-color">Change window color</a></H3><PRE>
++       The  routine <STRONG>color_set</STRONG> sets the current color of the given
++       window to the foreground/background combination  described
++       by  the  color  <EM>pair</EM> parameter.  The parameter <EM>opts</EM> is re-
++       served for future use; applications  must  supply  a  null
++       pointer.
++
+ 
++</PRE><H3><a name="h3-Standout">Standout</a></H3><PRE>
++       The  routine  <STRONG>standout</STRONG>  is the same as <STRONG>attron(A_STANDOUT)</STRONG>.
++       The routine <STRONG>standend</STRONG> is the same as  <STRONG>attrset(A_NORMAL)</STRONG>  or
++       <STRONG>attrset(0)</STRONG>, that is, it turns off all attributes.
+ 
+-</PRE><H3><a name="h3-Attributes">Attributes</a></H3><PRE>
++       X/Open does not mark these "restricted", because
++
++       <STRONG>o</STRONG>   they have well established legacy use, and
++
++       <STRONG>o</STRONG>   there  is  no  ambiguity  about the way the attributes
++           might be combined with a color pair.
++
++
++</PRE><H2><a name="h2-VIDEO-ATTRIBUTES">VIDEO ATTRIBUTES</a></H2><PRE>
+        The following video attributes, defined in <STRONG>&lt;curses.h&gt;</STRONG>, can
+        be passed to the routines <STRONG>attron</STRONG>, <STRONG>attroff</STRONG>, and <STRONG>attrset</STRONG>, or
+        OR'd with the characters passed to  <STRONG>addch</STRONG>  (see  <STRONG>curs_add-</STRONG>
+        <STRONG><A HREF="curs_addch.3x.html">ch(3x)</A></STRONG>).
+ 
+-              <EM>Name</EM>            <EM>Description</EM>
+-              ------------------------------------------------------------
+-              <STRONG>A_NORMAL</STRONG>        Normal display (no highlight)
+-              <STRONG>A_STANDOUT</STRONG>      Best highlighting mode of the terminal.
+-              <STRONG>A_UNDERLINE</STRONG>     Underlining
+-              <STRONG>A_REVERSE</STRONG>       Reverse video
+-              <STRONG>A_BLINK</STRONG>         Blinking
+-              <STRONG>A_DIM</STRONG>           Half bright
+-              <STRONG>A_BOLD</STRONG>          Extra bright or bold
+-              <STRONG>A_PROTECT</STRONG>       Protected mode
+-              <STRONG>A_INVIS</STRONG>         Invisible or blank mode
+-              <STRONG>A_ALTCHARSET</STRONG>    Alternate character set
+-              <STRONG>A_ITALIC</STRONG>        Italics (non-X/Open extension)
+-
+-              <STRONG>A_CHARTEXT</STRONG>      Bit-mask to extract a character
+-              <STRONG>COLOR_PAIR(</STRONG><EM>n</EM><STRONG>)</STRONG>   Color-pair number <EM>n</EM>
++              <EM>Name</EM>           <EM>Description</EM>
++              -----------------------------------------------------------
++              <STRONG>A_NORMAL</STRONG>       Normal display (no highlight)
++              <STRONG>A_STANDOUT</STRONG>     Best highlighting mode of the terminal.
++              <STRONG>A_UNDERLINE</STRONG>    Underlining
++              <STRONG>A_REVERSE</STRONG>      Reverse video
++              <STRONG>A_BLINK</STRONG>        Blinking
++              <STRONG>A_DIM</STRONG>          Half bright
++              <STRONG>A_BOLD</STRONG>         Extra bright or bold
++              <STRONG>A_PROTECT</STRONG>      Protected mode
++              <STRONG>A_INVIS</STRONG>        Invisible or blank mode
++              <STRONG>A_ALTCHARSET</STRONG>   Alternate character set
++              <STRONG>A_ITALIC</STRONG>       Italics (non-X/Open extension)
++              <STRONG>A_CHARTEXT</STRONG>     Bit-mask to extract a character
+ 
+        These video attributes are supported by <STRONG>attr_on</STRONG> and relat-
+        ed functions (which also support the attributes recognized
+@@ -198,13 +232,6 @@
+               <STRONG>WA_TOP</STRONG>          Top highlight
+               <STRONG>WA_VERTICAL</STRONG>     Vertical highlight
+ 
+-       For consistency
+-
+-       The following macro is the reverse of <STRONG>COLOR_PAIR(</STRONG><EM>n</EM><STRONG>)</STRONG>:
+-
+-       <STRONG>PAIR_NUMBER(</STRONG><EM>attrs</EM>) Returns the pair number associated
+-                          with the <STRONG>COLOR_PAIR(</STRONG><EM>n</EM><STRONG>)</STRONG> attribute.
+-
+        The  return values of many of these routines are not mean-
+        ingful (they are implemented as macro-expanded assignments
+        and  simply  return their argument).  The SVr4 manual page
+@@ -212,10 +239,10 @@
+ 
+ 
+ </PRE><H2><a name="h2-NOTES">NOTES</a></H2><PRE>
+-       Note that <STRONG>attroff</STRONG>,  <STRONG>wattroff</STRONG>,  <STRONG>attron</STRONG>,  <STRONG>wattron</STRONG>,  <STRONG>attrset</STRONG>,
+-       <STRONG>wattrset</STRONG>, <STRONG>standend</STRONG> and <STRONG>standout</STRONG> may be macros.
++       These functions may be macros: <STRONG>attroff</STRONG>, <STRONG>wattroff</STRONG>,  <STRONG>attron</STRONG>,
++       <STRONG>wattron</STRONG>, <STRONG>attrset</STRONG>, <STRONG>wattrset</STRONG>, <STRONG>standend</STRONG> and <STRONG>standout</STRONG>.
+ 
+-       <STRONG>COLOR_PAIR</STRONG>  values can only be OR'd with attributes if the
++       Color  pair values can only be OR'd with attributes if the
+        pair number is less than  256.   The  alternate  functions
+        such  as  <STRONG>color_set</STRONG>  can pass a color pair value directly.
+        However, ncurses ABI 4 and 5 simply OR this  value  within
+@@ -284,14 +311,15 @@
+ 
+        X/Open does not define any error conditions.
+ 
+-       This implementation returns an error if the window pointer
+-       is null.  The <STRONG>wcolor_set</STRONG> function returns an error if  the
+-       color   pair   parameter  is  outside  the  range  0..COL-
+-       OR_PAIRS-1.  This implementation  also  provides  <STRONG>getattrs</STRONG>
+-       for compatibility with older versions of curses.
++       This implementation
++
++       <STRONG>o</STRONG>   returns an error if the window pointer is null.
++
++       <STRONG>o</STRONG>   returns an error if the color pair parameter for <STRONG>wcol-</STRONG>
++           <STRONG>or_set</STRONG> is outside the range 0..COLOR_PAIRS-1.
+ 
+-       Functions  with a "mv" prefix first perform a cursor move-
+-       ment using <STRONG>wmove</STRONG>, and return an error if the  position  is
++       Functions with a "mv" prefix first perform a cursor  move-
++       ment  using  <STRONG>wmove</STRONG>, and return an error if the position is
+        outside the window, or if the window pointer is null.
+ 
+ 
+@@ -309,14 +337,14 @@
+ <li><a href="#h2-SYNOPSIS">SYNOPSIS</a></li>
+ <li><a href="#h2-DESCRIPTION">DESCRIPTION</a>
+ <ul>
+-<li><a href="#h3-attrset">attrset</a></li>
+-<li><a href="#h3-attr_set">attr_set</a></li>
+-<li><a href="#h3-color_set">color_set</a></li>
+-<li><a href="#h3-attr_get">attr_get</a></li>
+-<li><a href="#h3-chgat">chgat</a></li>
+-<li><a href="#h3-Attributes">Attributes</a></li>
++<li><a href="#h3-Window-attributes">Window attributes</a></li>
++<li><a href="#h3-Legacy-window-attributes">Legacy window attributes</a></li>
++<li><a href="#h3-Change-character-rendition">Change character rendition</a></li>
++<li><a href="#h3-Change-window-color">Change window color</a></li>
++<li><a href="#h3-Standout">Standout</a></li>
+ </ul>
+ </li>
++<li><a href="#h2-VIDEO-ATTRIBUTES">VIDEO ATTRIBUTES</a></li>
+ <li><a href="#h2-NOTES">NOTES</a></li>
+ <li><a href="#h2-PORTABILITY">PORTABILITY</a></li>
+ <li><a href="#h2-RETURN-VALUE">RETURN VALUE</a></li>
+diff --git a/doc/html/man/curs_color.3x.html b/doc/html/man/curs_color.3x.html
+index 9cf3791..db6bfc2 100644
+--- a/doc/html/man/curs_color.3x.html
++++ b/doc/html/man/curs_color.3x.html
+@@ -1,6 +1,6 @@
+ <!-- 
+   ****************************************************************************
+-  * Copyright (c) 1998-2010,2015 Free Software Foundation, Inc.              *
++  * Copyright (c) 1998-2015,2016 Free Software Foundation, Inc.              *
+   *                                                                          *
+   * Permission is hereby granted, free of charge, to any person obtaining a  *
+   * copy of this software and associated documentation files (the            *
+@@ -26,7 +26,10 @@
+   * sale, use or other dealings in this Software without prior written       *
+   * authorization.                                                           *
+   ****************************************************************************
+-  * @Id: curs_color.3x,v 1.40 2015/12/05 20:09:42 tom Exp @
++  * @Id: curs_color.3x,v 1.42 2016/07/24 00:02:15 tom Exp @
++  * .br
++  * .br
++  * .br
+ -->
+ <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN">
+ <HTML>
+@@ -47,22 +50,26 @@
+ 
+ </PRE><H2><a name="h2-NAME">NAME</a></H2><PRE>
+        <STRONG>start_color</STRONG>, <STRONG>init_pair</STRONG>, <STRONG>init_color</STRONG>, <STRONG>has_colors</STRONG>,
+-       <STRONG>can_change_color</STRONG>, <STRONG>color_content</STRONG>, <STRONG>pair_content</STRONG>, <STRONG>COLOR_PAIR</STRONG>
+-       - <STRONG>curses</STRONG> color manipulation routines
++       <STRONG>can_change_color</STRONG>, <STRONG>color_content</STRONG>, <STRONG>pair_content</STRONG>, <STRONG>COLOR_PAIR</STRONG>,
++       <STRONG>PAIR_NUMBER</STRONG> - <STRONG>curses</STRONG> color manipulation routines
+ 
+ 
+ </PRE><H2><a name="h2-SYNOPSIS">SYNOPSIS</a></H2><PRE>
+-       <STRONG>#</STRONG> <STRONG>include</STRONG> <STRONG>&lt;curses.h&gt;</STRONG>
++       <STRONG>#include</STRONG> <STRONG>&lt;curses.h&gt;</STRONG>
+ 
+        <STRONG>int</STRONG> <STRONG>start_color(void);</STRONG>
+        <STRONG>int</STRONG> <STRONG>init_pair(short</STRONG> <STRONG>pair,</STRONG> <STRONG>short</STRONG> <STRONG>f,</STRONG> <STRONG>short</STRONG> <STRONG>b);</STRONG>
+        <STRONG>int</STRONG> <STRONG>init_color(short</STRONG> <STRONG>color,</STRONG> <STRONG>short</STRONG> <STRONG>r,</STRONG> <STRONG>short</STRONG> <STRONG>g,</STRONG> <STRONG>short</STRONG> <STRONG>b);</STRONG>
++
+        <STRONG>bool</STRONG> <STRONG>has_colors(void);</STRONG>
+        <STRONG>bool</STRONG> <STRONG>can_change_color(void);</STRONG>
++
+        <STRONG>int</STRONG>  <STRONG>color_content(short</STRONG>  <STRONG>color,</STRONG> <STRONG>short</STRONG> <STRONG>*r,</STRONG> <STRONG>short</STRONG> <STRONG>*g,</STRONG> <STRONG>short</STRONG>
+        <STRONG>*b);</STRONG>
+        <STRONG>int</STRONG> <STRONG>pair_content(short</STRONG> <STRONG>pair,</STRONG> <STRONG>short</STRONG> <STRONG>*f,</STRONG> <STRONG>short</STRONG> <STRONG>*b);</STRONG>
++
+        <STRONG>int</STRONG> <STRONG>COLOR_PAIR(int</STRONG> <STRONG>n);</STRONG>
++       <STRONG>PAIR_NUMBER(</STRONG><EM>attrs</EM><STRONG>);</STRONG>
+ 
+ 
+ </PRE><H2><a name="h2-DESCRIPTION">DESCRIPTION</a></H2><PRE>
+@@ -76,8 +83,8 @@
+        background color (for the blank field on which the charac-
+        ters are displayed).  A programmer  initializes  a  color-
+        pair  with  the routine <STRONG>init_pair</STRONG>.  After it has been ini-
+-       tialized, <STRONG>COLOR_PAIR</STRONG>(<EM>n</EM>), a macro  defined  in  <STRONG>&lt;curses.h&gt;</STRONG>,
+-       can be used as a new video attribute.
++       tialized, <STRONG>COLOR_PAIR</STRONG>(<EM>n</EM>) can be used to convert the pair to
++       a video attribute.
+ 
+        If  a  terminal  is capable of redefining colors, the pro-
+        grammer can use the routine <STRONG>init_color</STRONG> to change the defi-
+@@ -103,9 +110,9 @@
+        <STRONG>o</STRONG>   the background character (e.g., <STRONG>wbkgdset</STRONG>).
+ 
+        Per-character and window attributes are usually set  by  a
+-       parameter  containing  video  attributes  including a <STRONG>COL-</STRONG>
+-       <STRONG>OR_PAIR</STRONG> value.  Some functions such  as  <STRONG>wattr_set</STRONG>  use  a
+-       separate parameter which is the color pair number.
++       parameter  containing  video  attributes including a color
++       pair value.  Some functions such as <STRONG>wattr_set</STRONG> use a  sepa-
++       rate parameter which is the color pair number.
+ 
+        The  background character is a special case: it includes a
+        character value, just as if it were passed to <STRONG>waddch</STRONG>.
+@@ -268,10 +275,19 @@
+        to  by  the  second and third arguments are in the range <STRONG>0</STRONG>
+        through <STRONG>COLORS</STRONG>, inclusive.
+ 
++       <STRONG>PAIR_NUMBER(</STRONG><EM>attrs</EM>) extracts the color value from its <EM>attrs</EM>
++       parameter  and returns it as a color pair number.  Its in-
++       verse <STRONG>COLOR_PAIR(</STRONG><EM>n</EM><STRONG>)</STRONG> converts a color pair number to an at-
++       tribute.   Attributes  can hold color pairs in the range 0
++       to 255.  If you need a color pair larger  than  that,  you
++       must  use functions such as <STRONG>attr_set</STRONG> (which pass the color
++       pair as a separate parameter) rather than the legacy func-
++       tions such as <STRONG>attrset</STRONG>.
++
+ 
+ </PRE><H3><a name="h3-Colors">Colors</a></H3><PRE>
+        In <STRONG>&lt;curses.h&gt;</STRONG> the following macros are defined.  These are
+-       the  standard colors (ISO-6429).  <STRONG>curses</STRONG> also assumes that
++       the standard colors (ISO-6429).  <STRONG>curses</STRONG> also assumes  that
+        <STRONG>COLOR_BLACK</STRONG> is the default background color for all termi-
+        nals.
+ 
+@@ -286,79 +302,79 @@
+ 
+ 
+ </PRE><H2><a name="h2-RETURN-VALUE">RETURN VALUE</a></H2><PRE>
+-       The  routines  <STRONG>can_change_color()</STRONG>  and <STRONG>has_colors()</STRONG> return
++       The routines <STRONG>can_change_color()</STRONG>  and  <STRONG>has_colors()</STRONG>  return
+        <STRONG>TRUE</STRONG> or <STRONG>FALSE</STRONG>.
+ 
+        All other routines return the integer <STRONG>ERR</STRONG> upon failure and
+-       an  <STRONG>OK</STRONG>  (SVr4  specifies only "an integer value other than
++       an <STRONG>OK</STRONG> (SVr4 specifies only "an integer  value  other  than
+        <STRONG>ERR</STRONG>") upon successful completion.
+ 
+-       X/Open defines no error conditions.   This  implementation
+-       will  return  <STRONG>ERR</STRONG>  on attempts to use color values outside
++       X/Open  defines  no error conditions.  This implementation
++       will return <STRONG>ERR</STRONG> on attempts to use  color  values  outside
+        the range <STRONG>0</STRONG> to COLORS-1 (except for the default colors ex-
+-       tension),  or  use color pairs outside the range <STRONG>0</STRONG> to <STRONG>COL-</STRONG>
+-       <STRONG>OR_PAIRS-1</STRONG>.  Color values used in <STRONG>init_color</STRONG>  must  be  in
+-       the  range <STRONG>0</STRONG> to <STRONG>1000</STRONG>.  An error is returned from all func-
+-       tions if the terminal has not been initialized.  An  error
+-       is  returned from secondary functions such as <STRONG>init_pair</STRONG> if
++       tension), or use color pairs outside the range <STRONG>0</STRONG>  to  <STRONG>COL-</STRONG>
++       <STRONG>OR_PAIRS-1</STRONG>.   Color  values  used in <STRONG>init_color</STRONG> must be in
++       the range <STRONG>0</STRONG> to <STRONG>1000</STRONG>.  An error is returned from all  func-
++       tions  if the terminal has not been initialized.  An error
++       is returned from secondary functions such as <STRONG>init_pair</STRONG>  if
+        <STRONG>start_color</STRONG> was not called.
+ 
+           <STRONG>init_color</STRONG>
+-               returns an error if the terminal does not  support
+-               this  feature, e.g., if the <EM>initialize</EM><STRONG>_</STRONG><EM>color</EM> capa-
++               returns  an error if the terminal does not support
++               this feature, e.g., if the <EM>initialize</EM><STRONG>_</STRONG><EM>color</EM>  capa-
+                bility is absent from the terminal description.
+ 
+           <STRONG>start_color</STRONG>
+-               returns an error if the color table cannot be  al-
++               returns  an error if the color table cannot be al-
+                located.
+ 
+ 
+ </PRE><H2><a name="h2-NOTES">NOTES</a></H2><PRE>
+-       In  the  <EM>ncurses</EM> implementation, there is a separate color
++       In the <EM>ncurses</EM> implementation, there is a  separate  color
+        activation flag, color palette, color pairs table, and as-
+-       sociated  COLORS  and  COLOR_PAIRS counts for each screen;
+-       the <STRONG>start_color</STRONG> function only affects the current  screen.
++       sociated COLORS and COLOR_PAIRS counts  for  each  screen;
++       the  <STRONG>start_color</STRONG> function only affects the current screen.
+        The SVr4/XSI interface is not really designed with this in
+-       mind, and historical  implementations  may  use  a  single
++       mind,  and  historical  implementations  may  use a single
+        shared color palette.
+ 
+        Note that setting an implicit background color via a color
+-       pair affects only character cells that a  character  write
+-       operation  explicitly  touches.   To change the background
+-       color used when parts of a window are blanked  by  erasing
++       pair  affects  only character cells that a character write
++       operation explicitly touches.  To  change  the  background
++       color  used  when parts of a window are blanked by erasing
+        or scrolling operations, see <STRONG><A HREF="curs_bkgd.3x.html">curs_bkgd(3x)</A></STRONG>.
+ 
+-       Several  caveats  apply  on 386 and 486 machines with VGA-
++       Several caveats apply on 386 and 486  machines  with  VGA-
+        compatible graphics:
+ 
+-       <STRONG>o</STRONG>   COLOR_YELLOW is actually brown.  To  get  yellow,  use
++       <STRONG>o</STRONG>   COLOR_YELLOW  is  actually  brown.  To get yellow, use
+            COLOR_YELLOW combined with the <STRONG>A_BOLD</STRONG> attribute.
+ 
+        <STRONG>o</STRONG>   The A_BLINK attribute should in theory cause the back-
+-           ground to go bright.  This often fails  to  work,  and
++           ground  to  go  bright.  This often fails to work, and
+            even some cards for which it mostly works (such as the
+-           Paradise and compatibles) do the wrong thing when  you
+-           try  to  set  a  bright "yellow" background (you get a
++           Paradise  and compatibles) do the wrong thing when you
++           try to set a bright "yellow"  background  (you  get  a
+            blinking yellow foreground instead).
+ 
+        <STRONG>o</STRONG>   Color RGB values are not settable.
+ 
+ 
+ </PRE><H2><a name="h2-PORTABILITY">PORTABILITY</a></H2><PRE>
+-       This implementation satisfies XSI Curses's  minimum  maxi-
++       This  implementation  satisfies XSI Curses's minimum maxi-
+        mums for <STRONG>COLORS</STRONG> and <STRONG>COLOR_PAIRS</STRONG>.
+ 
+-       The  <STRONG>init_pair</STRONG>  routine  accepts  negative values of fore-
+-       ground  and  background  color  to  support  the   <STRONG>use_de-</STRONG>
+-       <STRONG>fault_colors</STRONG>  extension, but only if that routine has been
++       The <STRONG>init_pair</STRONG> routine accepts  negative  values  of  fore-
++       ground   and  background  color  to  support  the  <STRONG>use_de-</STRONG>
++       <STRONG>fault_colors</STRONG> extension, but only if that routine has  been
+        first invoked.
+ 
+-       The assumption that <STRONG>COLOR_BLACK</STRONG> is the default  background
+-       color  for  all  terminals  can  be modified using the <STRONG>as-</STRONG>
++       The  assumption that <STRONG>COLOR_BLACK</STRONG> is the default background
++       color for all terminals can  be  modified  using  the  <STRONG>as-</STRONG>
+        <STRONG>sume_default_colors</STRONG> extension.
+ 
+-       This implementation checks the  pointers,  e.g.,  for  the
+-       values  returned  by  <STRONG>color_content</STRONG>  and <STRONG>pair_content</STRONG>, and
++       This  implementation  checks  the  pointers, e.g., for the
++       values returned by  <STRONG>color_content</STRONG>  and  <STRONG>pair_content</STRONG>,  and
+        will treat those as optional parameters when null.
+ 
+ 
+diff --git a/doc/html/man/form.3x.html b/doc/html/man/form.3x.html
+index baecf91..76da891 100644
+--- a/doc/html/man/form.3x.html
++++ b/doc/html/man/form.3x.html
+@@ -235,7 +235,7 @@
+        <STRONG><A HREF="ncurses.3x.html">curses(3x)</A></STRONG> and related pages whose names begin "form_" for
+        detailed descriptions of the entry points.
+ 
+-       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160611).
++       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160723).
+ 
+ 
+ 
+diff --git a/doc/html/man/infocmp.1m.html b/doc/html/man/infocmp.1m.html
+index cf34637..dccf241 100644
+--- a/doc/html/man/infocmp.1m.html
++++ b/doc/html/man/infocmp.1m.html
+@@ -475,7 +475,7 @@
+ 
+        http://invisible-island.net/ncurses/tctest.html
+ 
+-       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160611).
++       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160723).
+ 
+ 
+ </PRE><H2><a name="h2-AUTHOR">AUTHOR</a></H2><PRE>
+diff --git a/doc/html/man/infotocap.1m.html b/doc/html/man/infotocap.1m.html
+index 1e64c4e..93498d1 100644
+--- a/doc/html/man/infotocap.1m.html
++++ b/doc/html/man/infotocap.1m.html
+@@ -88,7 +88,7 @@
+ </PRE><H2><a name="h2-SEE-ALSO">SEE ALSO</a></H2><PRE>
+        <STRONG><A HREF="ncurses.3x.html">curses(3x)</A></STRONG>, <STRONG><A HREF="tic.1m.html">tic(1m)</A></STRONG>, <STRONG><A HREF="infocmp.1m.html">infocmp(1m)</A></STRONG>, <STRONG><A HREF="terminfo.5.html">terminfo(5)</A></STRONG>
+ 
+-       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160611).
++       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160723).
+ 
+ 
+ </PRE><H2><a name="h2-AUTHOR">AUTHOR</a></H2><PRE>
+diff --git a/doc/html/man/menu.3x.html b/doc/html/man/menu.3x.html
+index 1f78eb9..0967b57 100644
+--- a/doc/html/man/menu.3x.html
++++ b/doc/html/man/menu.3x.html
+@@ -217,7 +217,7 @@
+        <STRONG><A HREF="ncurses.3x.html">curses(3x)</A></STRONG> and related pages whose names begin "menu_" for
+        detailed descriptions of the entry points.
+ 
+-       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160611).
++       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160723).
+ 
+ 
+ 
+diff --git a/doc/html/man/ncurses.3x.html b/doc/html/man/ncurses.3x.html
+index c237364..d9d9331 100644
+--- a/doc/html/man/ncurses.3x.html
++++ b/doc/html/man/ncurses.3x.html
+@@ -60,7 +60,7 @@
+        sonable optimization.  This implementation is "new curses"
+        (ncurses) and is the approved replacement for 4.4BSD clas-
+        sic  curses,  which has been discontinued.  This describes
+-       <STRONG>ncurses</STRONG> version 6.0 (patch 20160611).
++       <STRONG>ncurses</STRONG> version 6.0 (patch 20160723).
+ 
+        The <STRONG>ncurses</STRONG> library emulates the curses library of  System
+        V  Release  4  UNIX,  and  XPG4 (X/Open Portability Guide)
+diff --git a/doc/html/man/panel.3x.html b/doc/html/man/panel.3x.html
+index 250c413..a291d21 100644
+--- a/doc/html/man/panel.3x.html
++++ b/doc/html/man/panel.3x.html
+@@ -209,7 +209,7 @@
+ </PRE><H2><a name="h2-SEE-ALSO">SEE ALSO</a></H2><PRE>
+        <STRONG><A HREF="ncurses.3x.html">curses(3x)</A></STRONG>, <STRONG><A HREF="curs_variables.3x.html">curs_variables(3x)</A></STRONG>,
+ 
+-       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160611).
++       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160723).
+ 
+ 
+ </PRE><H2><a name="h2-AUTHOR">AUTHOR</a></H2><PRE>
+diff --git a/doc/html/man/tabs.1.html b/doc/html/man/tabs.1.html
+index 27db64b..cc155ff 100644
+--- a/doc/html/man/tabs.1.html
++++ b/doc/html/man/tabs.1.html
+@@ -164,7 +164,7 @@
+ </PRE><H2><a name="h2-SEE-ALSO">SEE ALSO</a></H2><PRE>
+        <STRONG><A HREF="tset.1.html">tset(1)</A></STRONG>, <STRONG><A HREF="infocmp.1m.html">infocmp(1m)</A></STRONG>, <STRONG><A HREF="ncurses.3x.html">curses(3x)</A></STRONG>, <STRONG><A HREF="terminfo.5.html">terminfo(5)</A></STRONG>.
+ 
+-       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160611).
++       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160723).
+ 
+ 
+ 
+diff --git a/doc/html/man/terminfo.5.html b/doc/html/man/terminfo.5.html
+index d0ceccf..cace703 100644
+--- a/doc/html/man/terminfo.5.html
++++ b/doc/html/man/terminfo.5.html
+@@ -75,7 +75,7 @@
+        nals by giving a set of capabilities which they  have,  by
+        specifying how to perform screen operations, and by speci-
+        fying padding requirements and  initialization  sequences.
+-       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160611).
++       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160723).
+ 
+        Entries in <EM>terminfo</EM> consist of a sequence of `,' separated
+        fields (embedded commas may be escaped with a backslash or
+diff --git a/doc/html/man/tic.1m.html b/doc/html/man/tic.1m.html
+index 2cce15c..83ff6ae 100644
+--- a/doc/html/man/tic.1m.html
++++ b/doc/html/man/tic.1m.html
+@@ -398,7 +398,7 @@
+        <STRONG><A HREF="infocmp.1m.html">infocmp(1m)</A></STRONG>,    <STRONG><A HREF="captoinfo.1m.html">captoinfo(1m)</A></STRONG>,   <STRONG><A HREF="infotocap.1m.html">infotocap(1m)</A></STRONG>,   <STRONG><A HREF="toe.1m.html">toe(1m)</A></STRONG>,
+        <STRONG><A HREF="ncurses.3x.html">curses(3x)</A></STRONG>, <STRONG><A HREF="term.5.html">term(5)</A></STRONG>.  <STRONG><A HREF="terminfo.5.html">terminfo(5)</A></STRONG>.
+ 
+-       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160611).
++       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160723).
+ 
+ 
+ </PRE><H2><a name="h2-AUTHOR">AUTHOR</a></H2><PRE>
+diff --git a/doc/html/man/toe.1m.html b/doc/html/man/toe.1m.html
+index d2442ac..4d8a7ea 100644
+--- a/doc/html/man/toe.1m.html
++++ b/doc/html/man/toe.1m.html
+@@ -117,7 +117,7 @@
+        <STRONG><A HREF="tic.1m.html">tic(1m)</A></STRONG>,   <STRONG><A HREF="infocmp.1m.html">infocmp(1m)</A></STRONG>,   <STRONG><A HREF="captoinfo.1m.html">captoinfo(1m)</A></STRONG>,    <STRONG><A HREF="infotocap.1m.html">infotocap(1m)</A></STRONG>,
+        <STRONG><A HREF="ncurses.3x.html">curses(3x)</A></STRONG>, <STRONG><A HREF="terminfo.5.html">terminfo(5)</A></STRONG>.
+ 
+-       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160611).
++       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160723).
+ 
+ 
+ 
+diff --git a/doc/html/man/tput.1.html b/doc/html/man/tput.1.html
+index 6809ec9..b151c13 100644
+--- a/doc/html/man/tput.1.html
++++ b/doc/html/man/tput.1.html
+@@ -383,7 +383,7 @@
+        <STRONG><A HREF="clear.1.html">clear(1)</A></STRONG>,    <STRONG>stty(1)</STRONG>,   <STRONG><A HREF="tabs.1.html">tabs(1)</A></STRONG>,   <STRONG><A HREF="tset.1.html">tset(1)</A></STRONG>,   <STRONG><A HREF="terminfo.5.html">terminfo(5)</A></STRONG>,
+        <STRONG><A HREF="curs_termcap.3x.html">curs_termcap(3x)</A></STRONG>.
+ 
+-       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160611).
++       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160723).
+ 
+ 
+ 
+diff --git a/doc/html/man/tset.1.html b/doc/html/man/tset.1.html
+index 9970e0a..7eae63c 100644
+--- a/doc/html/man/tset.1.html
++++ b/doc/html/man/tset.1.html
+@@ -350,7 +350,7 @@
+        <STRONG>csh(1)</STRONG>,   <STRONG>sh(1)</STRONG>,   <STRONG>stty(1)</STRONG>,   <STRONG><A HREF="curs_terminfo.3x.html">curs_terminfo(3x)</A></STRONG>,   <STRONG>tty(4)</STRONG>,
+        <STRONG><A HREF="terminfo.5.html">terminfo(5)</A></STRONG>, <STRONG>ttys(5)</STRONG>, <STRONG>environ(7)</STRONG>
+ 
+-       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160611).
++       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160723).
+ 
+ 
+ 
+diff --git a/man/curs_attr.3x b/man/curs_attr.3x
+index a5dec79..204f6c3 100644
+--- a/man/curs_attr.3x
++++ b/man/curs_attr.3x
+@@ -1,6 +1,6 @@
+ '\" t
+ .\"***************************************************************************
+-.\" Copyright (c) 1998-2013,2015 Free Software Foundation, Inc.              *
++.\" Copyright (c) 1998-2015,2016 Free Software Foundation, Inc.              *
+ .\"                                                                          *
+ .\" Permission is hereby granted, free of charge, to any person obtaining a  *
+ .\" copy of this software and associated documentation files (the            *
+@@ -27,41 +27,65 @@
+ .\" authorization.                                                           *
+ .\"***************************************************************************
+ .\"
+-.\" $Id: curs_attr.3x,v 1.44 2015/12/13 21:54:05 tom Exp $
++.\" $Id: curs_attr.3x,v 1.47 2016/07/23 23:48:49 tom Exp $
+ .TH curs_attr 3X ""
++.de bP
++.IP \(bu 4
++..
+ .na
+ .hy 0
+ .SH NAME
++.\" attr_get
++\fBattr_get\fR,
++\fBwattr_get\fR,
++\fBattr_set\fR,
++\fBwattr_set\fR,
++.\" .br
++\fBattr_off\fR,
++\fBwattr_off\fR,
++\fBattr_on\fR,
++\fBwattr_on\fR,
++.\" .br
+ \fBattroff\fR,
+ \fBwattroff\fR,
+ \fBattron\fR,
+ \fBwattron\fR,
+ \fBattrset\fR,
+ \fBwattrset\fR,
++.\" .br
++\fBchgat\fR,
++\fBwchgat\fR,
++\fBmvchgat\fR,
++\fBmvwchgat\fR,
++.\" .br
+ \fBcolor_set\fR,
+ \fBwcolor_set\fR,
++.\" .br
+ \fBstandend\fR,
+ \fBwstandend\fR,
+ \fBstandout\fR,
+-\fBwstandout\fR,
+-\fBattr_get\fR,
+-\fBwattr_get\fR,
+-\fBattr_off\fR,
+-\fBwattr_off\fR,
+-\fBattr_on\fR,
+-\fBwattr_on\fR,
+-\fBattr_set\fR,
+-\fBwattr_set\fR,
+-\fBchgat\fR,
+-\fBwchgat\fR,
+-\fBmvchgat\fR,
+-\fBmvwchgat\fR,
+-\fBPAIR_NUMBER\fR \- \fBcurses\fR character and window attribute control routines
++\fBwstandout\fR \- \fBcurses\fR character and window attribute control routines
+ .ad
+ .hy
+ .SH SYNOPSIS
+ \fB#include <curses.h>\fR
++.sp
++\fBint attr_get(attr_t *\fP\fIattrs\fP\fB, short *\fP\fIpair\fP\fB, void *\fP\fIopts\fP\fB);\fR
++.br
++\fBint wattr_get(WINDOW *\fP\fIwin\fP\fB, attr_t *\fP\fIattrs\fP\fB, short *\fP\fIpair\fP\fB,\fR \fBvoid *\fP\fIopts\fP\fB);\fR
++.br
++\fBint attr_set(attr_t \fP\fIattrs\fP\fB, short \fP\fIpair\fP\fB, void *\fP\fIopts\fP\fB);\fR
++.br
++\fBint wattr_set(WINDOW *\fP\fIwin\fP\fB, attr_t \fP\fIattrs\fP\fB, short \fP\fIpair\fP\fB, void *\fP\fIopts\fP\fB);\fR
++.sp
++\fBint attr_off(attr_t \fP\fIattrs\fP\fB, void *\fP\fIopts\fP\fB);\fR
++.br
++\fBint wattr_off(WINDOW *\fP\fIwin\fP\fB, attr_t \fP\fIattrs\fP\fB, void *\fP\fIopts\fP\fB);\fR
+ .br
++\fBint attr_on(attr_t \fP\fIattrs\fP\fB, void *\fP\fIopts\fP\fB);\fR
++.br
++\fBint wattr_on(WINDOW *\fP\fIwin\fP\fB, attr_t \fP\fIattrs\fP\fB, void *\fP\fIopts\fP\fB);\fR
++.sp
+ \fBint attroff(int \fP\fIattrs);\fR
+ .br
+ \fBint wattroff(WINDOW *\fP\fIwin\fP\fB, int \fP\fIattrs\fP\fB);\fR
+@@ -73,12 +97,22 @@
+ \fBint attrset(int \fP\fIattrs\fP\fB);\fR
+ .br
+ \fBint wattrset(WINDOW *\fP\fIwin\fP\fB, int \fP\fIattrs\fP\fB);\fR
++.sp
++\fBint chgat(int \fP\fIn\fP\fB, attr_t \fP\fIattr\fP\fB, short \fP\fIpair\fP\fB,\fR \fBconst void *\fP\fIopts\fP\fB);\fR
+ .br
+-\fBint color_set(short \fP\fIcolor_pair_number\fP\fB, void* \fP\fIopts\fP\fB);\fR
++\fBint wchgat(WINDOW *\fP\fIwin\fP\fB,\fP
++      \fBint \fP\fIn\fP\fB, attr_t \fP\fIattr\fP\fB,\fR \fBshort \fP\fIpair\fP\fB, const void *\fP\fIopts\fP\fB);\fR
+ .br
+-\fBint wcolor_set(WINDOW *\fP\fIwin\fP\fB, short \fP\fIcolor_pair_number\fP\fB,\fR
+-      \fBvoid* \fP\fIopts);\fR
++\fBint mvchgat(int \fP\fIy\fP\fB, int \fP\fIx\fP\fB,\fP
++      \fBint \fP\fIn\fP\fB, attr_t \fP\fIattr\fP\fB,\fR \fBshort \fP\fIpair\fP\fB, const void *\fP\fIopts\fP\fB);\fR
+ .br
++\fBint mvwchgat(WINDOW *\fP\fIwin, int \fP\fIy, int \fP\fIx\fP\fB,\fP
++      \fBint \fP\fIn,\fR \fBattr_t \fP\fIattr\fP\fB, short \fP\fIpair\fP\fB, const void *\fP\fIopts\fP\fB);\fR
++.sp
++\fBint color_set(short \fP\fIpair\fP\fB, void* \fP\fIopts\fP\fB);\fR
++.br
++\fBint wcolor_set(WINDOW *\fP\fIwin\fP\fB, short \fP\fIpair\fP\fB,\fR \fBvoid* \fP\fIopts);\fR
++.sp
+ \fBint standend(void);\fR
+ .br
+ \fBint wstandend(WINDOW *\fP\fIwin\fP\fB);\fR
+@@ -86,42 +120,10 @@
+ \fBint standout(void);\fR
+ .br
+ \fBint wstandout(WINDOW *\fP\fIwin\fP\fB);\fR
+-.br
+-\fBint attr_get(attr_t *\fP\fIattrs\fP\fB, short *\fP\fIpair\fP\fB, void *\fP\fIopts\fP\fB);\fR
+-.br
+-\fBint wattr_get(WINDOW *\fP\fIwin\fP\fB, attr_t *\fP\fIattrs\fP\fB, short *\fP\fIpair\fP\fB,\fR
+-       \fBvoid *\fP\fIopts\fP\fB);\fR
+-.br
+-\fBint attr_off(attr_t \fP\fIattrs\fP\fB, void *\fP\fIopts\fP\fB);\fR
+-.br
+-\fBint wattr_off(WINDOW *\fP\fIwin\fP\fB, attr_t \fP\fIattrs\fP\fB, void *\fP\fIopts\fP\fB);\fR
+-.br
+-\fBint attr_on(attr_t \fP\fIattrs\fP\fB, void *\fP\fIopts\fP\fB);\fR
+-.br
+-\fBint wattr_on(WINDOW *\fP\fIwin\fP\fB, attr_t \fP\fIattrs\fP\fB, void *\fP\fIopts\fP\fB);\fR
+-.br
+-\fBint attr_set(attr_t \fP\fIattrs\fP\fB, short \fP\fIpair\fP\fB, void *\fP\fIopts\fP\fB);\fR
+-.br
+-\fBint wattr_set(WINDOW *\fP\fIwin\fP\fB, attr_t \fP\fIattrs\fP\fB, short \fP\fIpair\fP\fB, void *\fP\fIopts\fP\fB);\fR
+-.br
+-\fBint chgat(int \fP\fIn\fP\fB, attr_t \fP\fIattr\fP\fB, short \fP\fIcolor\fP\fB,\fR
+-      \fBconst void *\fP\fIopts\fP\fB);\fR
+-.br
+-\fBint wchgat(WINDOW *\fP\fIwin\fP\fB, int \fP\fIn\fP\fB, attr_t \fP\fIattr\fP\fB,\fR
+-      \fBshort \fP\fIcolor\fP\fB, const void *\fP\fIopts\fP\fB);\fR
+-.br
+-\fBint mvchgat(int \fP\fIy\fP\fB, int \fP\fIx\fP\fB, int \fP\fIn\fP\fB, attr_t \fP\fIattr\fP\fB,\fR
+-      \fBshort \fP\fIcolor\fP\fB, const void *\fP\fIopts\fP\fB);\fR
+-.br
+-\fBint mvwchgat(WINDOW *\fP\fIwin, int \fP\fIy, int \fP\fIx, int \fP\fIn,\fR
+-      \fBattr_t \fP\fIattr\fP\fB, short \fP\fIcolor\fP\fB, const void *\fP\fIopts\fP\fB);\fR
+-.br
+-\fBPAIR_NUMBER(\fR\fIattrs\fR\fB);\fP
+-.br
+ .SH DESCRIPTION
+-These routines manipulate the current attributes of the named window.
+-The
+-current attributes of a window apply to all characters that are written into
++.PP
++These routines manipulate the current attributes of the named window,
++which then apply to all characters that are written into
+ the window with \fBwaddch\fR, \fBwaddstr\fR and \fBwprintw\fR.
+ Attributes are
+ a property of the character, and move with the character through any scrolling
+@@ -129,49 +131,48 @@ and insert/delete line/character operations.
+ To the extent possible, they are
+ displayed as appropriate modifications to the graphic rendition of characters
+ put on the screen.
+-.SS attrset
+-.PP
+-The routine \fBattrset\fR sets the current attributes of the given window to
+-\fIattrs\fR.
+-The routine \fBattroff\fR turns off the named attributes without
+-turning any other attributes on or off.
+-The routine \fBattron\fR turns on the
+-named attributes without affecting any others.
+-The routine \fBstandout\fR is
+-the same as \fBattron(A_STANDOUT)\fR.
+-The routine \fBstandend\fR is the same
+-as \fBattrset(A_NORMAL)\fR or \fBattrset(0)\fR, that is, it turns off all
+-attributes.
+ .PP
+-The \fBattrset\fR and related routines do not affect the attributes used
++These routines do not affect the attributes used
+ when erasing portions of the window.
+ See \fBcurs_bkgd\fR(3X) for functions which modify the attributes used for
+ erasing and clearing.
+-.SS attr_set
+-The \fBattrset\fP routine is actually a legacy feature predating SVr4 curses
+-but kept in X/Open Curses for the same reason that SVr4 curses kept it:
+-compatibility.
+-The routine \fBattr_set\fP provides for passing a color-pair parameter.
+ .PP
+-The remaining \fBattr_\fR* functions operate exactly like the corresponding
+-\fBattr\fR* functions, except that they take arguments of type \fBattr_t\fR
+-rather than \fBint\fR.
+-.SS color_set
++Routines which do not have a \fBWINDOW*\fP parameter apply to \fBstdscr\fP.
++.\" ---------------------------------------------------------------------------
++.SS Window attributes
+ .PP
+-The routine \fBcolor_set\fR sets the current color of the given window to the
+-foreground/background combination described by the color_pair_number.
+-The
+-parameter opts is reserved for future use, applications must supply a null
+-pointer.
+-.SS attr_get
++The \fBattr_set\fP and \fBwattr_set\fP functions set the current attributes
++of the given window to \fIattrs\fP, with color specified by \fIpair\fP.
++X/Open specified an additional parameter \fIopts\fP which is unused in
++all implementations.
+ .PP
+-The routine \fBwattr_get\fR returns the current attribute and color pair for
+-the given window; \fBattr_get\fR returns the current attribute and color pair
+-for \fBstdscr\fR.
++Use \fBattr_get\fP and \fBwattr_get\fP to retrieve attributes for
++the given window.
++.PP
++Use \fBattr_on\fP and \fBwattr_on\fP to turn on window attributes, i.e.,
++values OR'd together in \fIattr\fP,
++without affecting other attributes.
++Use \fBattr_off\fP and \fBwattr_off\fP to turn off window attributes,
++again values OR'd together in \fIattr\fP,
++without affecting other attributes.
++.\" ---------------------------------------------------------------------------
++.SS Legacy window attributes
++Most of the window attribute routines are extensions of older routines
++which assume that color pairs are OR'd into the attribute parameter.
++These older routines use the same name, omitting an underscore (\fB_\fP).
++
++The \fBattrset\fP routine is a legacy feature predating SVr4 curses
++but kept in X/Open Curses for the same reason that SVr4 curses kept it:
++compatibility.
++.PP
++The remaining \fBattr\fR* functions operate exactly like the corresponding
++\fBattr_\fR* functions, except that they take arguments of type \fBint\fR
++rather than \fBattr_t\fR.
+ .PP
+ There is no corresponding \fBattrget\fP function as such in X/Open Curses,
+ although ncurses provides \fBgetattrs\fP (see curs_legacy(3X)).
+-.SS chgat
++.\" ---------------------------------------------------------------------------
++.SS Change character rendition
+ .PP
+ The routine \fBchgat\fR changes the attributes of a given number of characters
+ starting at the current cursor location of \fBstdscr\fR.
+@@ -180,14 +181,37 @@ the cursor and does not perform wrapping.
+ A character count of \-1 or greater
+ than the remaining window width means to change attributes all the way to the
+ end of the current line.
+-The \fBwchgat\fR function generalizes this to any
+-window; the \fBmvwchgat\fR function does a cursor move before acting.
+-In these
+-functions, the color argument is a color-pair index (as in the first argument
+-of \fIinit_pair\fR, see \fBcurs_color\fR(3X)).
++The \fBwchgat\fR function generalizes this to any window;
++the \fBmvwchgat\fR function does a cursor move before acting.
++.PP
++In these functions,
++the color \fIpair\fP argument is a color-pair index
++(as in the first argument of \fIinit_pair\fR, see \fBcurs_color\fR(3X)).
+ The \fBopts\fR argument is not
+ presently used, but is reserved for the future (leave it \fBNULL\fR).
+-.SS Attributes
++.\" ---------------------------------------------------------------------------
++.SS Change window color
++The routine \fBcolor_set\fR sets the current color of the given window to the
++foreground/background combination described by the color \fIpair\fP parameter.
++The parameter \fIopts\fP is reserved for future use;
++applications must supply a null pointer.
++.\" ---------------------------------------------------------------------------
++.SS Standout
++.PP
++The routine \fBstandout\fR is
++the same as \fBattron(A_STANDOUT)\fR.
++The routine \fBstandend\fR is the same
++as \fBattrset(A_NORMAL)\fR or \fBattrset(0)\fR, that is, it turns off all
++attributes.
++.PP
++X/Open does not mark these "restricted", because
++.bP
++they have well established legacy use, and
++.bP
++there is no ambiguity about the way the attributes
++might be combined with a color pair.
++.\" ---------------------------------------------------------------------------
++.SH VIDEO ATTRIBUTES
+ The following video attributes, defined in \fB<curses.h>\fR, can be passed to
+ the routines \fBattron\fR, \fBattroff\fR, and \fBattrset\fR, or OR'd with the
+ characters passed to \fBaddch\fR (see \fBcurs_addch\fR(3X)).
+@@ -210,7 +234,6 @@ l l .
+ \fBA_ALTCHARSET\fR	Alternate character set
+ \fBA_ITALIC\fR	Italics (non-X/Open extension)
+ \fBA_CHARTEXT\fR	Bit-mask to extract a character
+-\fBCOLOR_PAIR(\fR\fIn\fR\fB)\fR	Color-pair number \fIn\fR
+ .TE
+ .RE
+ .PP
+@@ -231,23 +254,15 @@ l l .
+ .TE
+ .RE
+ .PP
+-For consistency
+-.PP
+-The following macro is the reverse of \fBCOLOR_PAIR(\fR\fIn\fR\fB)\fR:
+-.PP
+-.br
+-\fBPAIR_NUMBER(\fR\fIattrs\fR) Returns the pair number associated
+-                   with the \fBCOLOR_PAIR(\fR\fIn\fR\fB)\fR attribute.
+-.br
+-.PP
+ The return values of many of these routines are not meaningful (they are
+ implemented as macro-expanded assignments and simply return their argument).
+ The SVr4 manual page claims (falsely) that these routines always return \fB1\fR.
+ .SH NOTES
+-Note that \fBattroff\fR, \fBwattroff\fR, \fBattron\fR, \fBwattron\fR,
+-\fBattrset\fR, \fBwattrset\fR, \fBstandend\fR and \fBstandout\fR may be macros.
++These functions may be macros:
++\fBattroff\fR, \fBwattroff\fR, \fBattron\fR, \fBwattron\fR,
++\fBattrset\fR, \fBwattrset\fR, \fBstandend\fR and \fBstandout\fR.
+ .PP
+-\fBCOLOR_PAIR\fP values can only be OR'd with attributes if the pair
++Color pair values can only be OR'd with attributes if the pair
+ number is less than 256.
+ The alternate functions such as \fBcolor_set\fP can pass a color pair
+ value directly.
+@@ -321,13 +336,12 @@ All routines return the integer \fBOK\fR on success, or \fBERR\fP on failure.
+ .PP
+ X/Open does not define any error conditions.
+ .PP
+-This implementation returns an error
+-if the window pointer is null.
+-The \fBwcolor_set\fP function returns an error if the color pair parameter
+-is outside the range 0..COLOR_PAIRS\-1.
+-This implementation also provides
+-\fBgetattrs\fR
+-for compatibility with older versions of curses.
++This implementation
++.bP
++returns an error if the window pointer is null.
++.bP
++returns an error if the color pair parameter
++for \fBwcolor_set\fP is outside the range 0..COLOR_PAIRS\-1.
+ .PP
+ Functions with a "mv" prefix first perform a cursor movement using
+ \fBwmove\fP, and return an error if the position is outside the window,
+diff --git a/man/curs_color.3x b/man/curs_color.3x
+index 21cdd13..bb0a14c 100644
+--- a/man/curs_color.3x
++++ b/man/curs_color.3x
+@@ -1,5 +1,5 @@
+ .\"***************************************************************************
+-.\" Copyright (c) 1998-2010,2015 Free Software Foundation, Inc.              *
++.\" Copyright (c) 1998-2015,2016 Free Software Foundation, Inc.              *
+ .\"                                                                          *
+ .\" Permission is hereby granted, free of charge, to any person obtaining a  *
+ .\" copy of this software and associated documentation files (the            *
+@@ -26,7 +26,7 @@
+ .\" authorization.                                                           *
+ .\"***************************************************************************
+ .\"
+-.\" $Id: curs_color.3x,v 1.40 2015/12/05 20:09:42 tom Exp $
++.\" $Id: curs_color.3x,v 1.42 2016/07/24 00:02:15 tom Exp $
+ .TH curs_color 3X ""
+ .ie \n(.g .ds `` \(lq
+ .el       .ds `` ``
+@@ -42,32 +42,38 @@
+ \fBstart_color\fR,
+ \fBinit_pair\fR,
+ \fBinit_color\fR,
++.\" .br
+ \fBhas_colors\fR,
+ \fBcan_change_color\fR,
++.\" .br
+ \fBcolor_content\fR,
+ \fBpair_content\fR,
+-\fBCOLOR_PAIR\fR \- \fBcurses\fR color manipulation routines
++.\" .br
++\fBCOLOR_PAIR\fR,
++\fBPAIR_NUMBER\fR \- \fBcurses\fR color manipulation routines
+ .ad
+ .hy
+ .SH SYNOPSIS
+-\fB# include <curses.h>\fR
++\fB#include <curses.h>\fR
+ .sp
+ \fBint start_color(void);\fR
+ .br
+ \fBint init_pair(short pair, short f, short b);\fR
+ .br
+ \fBint init_color(short color, short r, short g, short b);\fR
+-.br
++.sp
+ \fBbool has_colors(void);\fR
+ .br
+ \fBbool can_change_color(void);\fR
+-.br
++.sp
+ \fBint color_content(short color, short *r, short *g, short *b);\fR
+ .br
+ \fBint pair_content(short pair, short *f, short *b);\fR
+-.br
++.sp
+ \fBint COLOR_PAIR(int n);\fR
+ .br
++\fBPAIR_NUMBER(\fR\fIattrs\fR\fB);\fP
++.br
+ .SH DESCRIPTION
+ .SS Overview
+ \fBcurses\fR supports color attributes on terminals with that capability.
+@@ -77,8 +83,8 @@ Colors are always used in pairs (referred to as color-pairs).
+ A color-pair consists of a foreground color (for characters) and a background
+ color (for the blank field on which the characters are displayed).
+ A programmer initializes a color-pair with the routine \fBinit_pair\fR.
+-After it has been initialized, \fBCOLOR_PAIR\fR(\fIn\fR), a macro defined in
+-\fB<curses.h>\fR, can be used as a new video attribute.
++After it has been initialized, \fBCOLOR_PAIR\fR(\fIn\fR)
++can be used to convert the pair to a video attribute.
+ .PP
+ If a terminal is capable of redefining colors, the programmer can use the
+ routine \fBinit_color\fR to change the definition of a color.
+@@ -102,7 +108,7 @@ the window attribute (e.g., by \fBwattrset\fP), and
+ the background character (e.g., \fBwbkgdset\fP).
+ .PP
+ Per-character and window attributes are usually set by a parameter containing
+-video attributes including a \fBCOLOR_PAIR\fP value.
++video attributes including a color pair value.
+ Some functions such as \fBwattr_set\fP use a separate parameter which
+ is the color pair number.
+ .PP
+@@ -263,6 +269,15 @@ i.e., in the range \fB1\fP through \fBCOLOR_PAIRS\-1\fR, inclusive.
+ The values that are stored at the addresses pointed
+ to by the second and third arguments are in the
+ range \fB0\fP through \fBCOLORS\fR, inclusive.
++.PP
++\fBPAIR_NUMBER(\fR\fIattrs\fR) extracts the color
++value from its \fIattrs\fP parameter and returns it as a color pair number.
++Its inverse \fBCOLOR_PAIR(\fR\fIn\fR\fB)\fR converts a color pair number
++to an attribute.
++Attributes can hold color pairs in the range 0 to 255.
++If you need a color pair larger than that, you must use functions
++such as \fBattr_set\fP (which pass the color pair as a separate parameter)
++rather than the legacy functions such as \fBattrset\fP.
+ .SS Colors
+ In \fB<curses.h>\fR the following macros are defined.
+ These are the standard colors (ISO-6429).
+diff --git a/package/debian-mingw/changelog b/package/debian-mingw/changelog
+index 46e9c35..1dd0ce7 100644
+--- a/package/debian-mingw/changelog
++++ b/package/debian-mingw/changelog
+@@ -1,8 +1,8 @@
+-ncurses6 (6.0+20160709) unstable; urgency=low
++ncurses6 (6.0+20160723) unstable; urgency=low
+ 
+   * latest weekly patch
+ 
+- -- Thomas E. Dickey <dickey@invisible-island.net>  Sat, 09 Jul 2016 09:09:04 -0400
++ -- Thomas E. Dickey <dickey@invisible-island.net>  Sat, 23 Jul 2016 07:56:24 -0400
+ 
+ ncurses6 (5.9-20131005) unstable; urgency=low
+ 
+diff --git a/package/debian-mingw64/changelog b/package/debian-mingw64/changelog
+index 46e9c35..1dd0ce7 100644
+--- a/package/debian-mingw64/changelog
++++ b/package/debian-mingw64/changelog
+@@ -1,8 +1,8 @@
+-ncurses6 (6.0+20160709) unstable; urgency=low
++ncurses6 (6.0+20160723) unstable; urgency=low
+ 
+   * latest weekly patch
+ 
+- -- Thomas E. Dickey <dickey@invisible-island.net>  Sat, 09 Jul 2016 09:09:04 -0400
++ -- Thomas E. Dickey <dickey@invisible-island.net>  Sat, 23 Jul 2016 07:56:24 -0400
+ 
+ ncurses6 (5.9-20131005) unstable; urgency=low
+ 
+diff --git a/package/debian/changelog b/package/debian/changelog
+index 258d979..7945774 100644
+--- a/package/debian/changelog
++++ b/package/debian/changelog
+@@ -1,8 +1,8 @@
+-ncurses6 (6.0+20160709) unstable; urgency=low
++ncurses6 (6.0+20160723) unstable; urgency=low
+ 
+   * latest weekly patch
+ 
+- -- Thomas E. Dickey <dickey@invisible-island.net>  Sat, 09 Jul 2016 09:09:04 -0400
++ -- Thomas E. Dickey <dickey@invisible-island.net>  Sat, 23 Jul 2016 07:56:24 -0400
+ 
+ ncurses6 (5.9-20120608) unstable; urgency=low
+ 
+diff --git a/package/mingw-ncurses.nsi b/package/mingw-ncurses.nsi
+index 88f1be9..88d2117 100644
+--- a/package/mingw-ncurses.nsi
++++ b/package/mingw-ncurses.nsi
+@@ -1,4 +1,4 @@
+-; $Id: mingw-ncurses.nsi,v 1.166 2016/07/09 13:09:04 tom Exp $
++; $Id: mingw-ncurses.nsi,v 1.168 2016/07/23 11:56:24 tom Exp $
+ 
+ ; TODO add examples
+ ; TODO bump ABI to 6
+@@ -10,7 +10,7 @@
+ !define VERSION_MAJOR "6"
+ !define VERSION_MINOR "0"
+ !define VERSION_YYYY  "2016"
+-!define VERSION_MMDD  "0709"
++!define VERSION_MMDD  "0723"
+ !define VERSION_PATCH ${VERSION_YYYY}${VERSION_MMDD}
+ 
+ !define MY_ABI   "5"
+diff --git a/package/mingw-ncurses.spec b/package/mingw-ncurses.spec
+index c14db4f..2b74420 100644
+--- a/package/mingw-ncurses.spec
++++ b/package/mingw-ncurses.spec
+@@ -3,7 +3,7 @@
+ Summary: shared libraries for terminal handling
+ Name: mingw32-ncurses6
+ Version: 6.0
+-Release: 20160709
++Release: 20160723
+ License: X11
+ Group: Development/Libraries
+ Source: ncurses-%{version}-%{release}.tgz
+diff --git a/package/ncurses.spec b/package/ncurses.spec
+index f2f1694..83b6ae5 100644
+--- a/package/ncurses.spec
++++ b/package/ncurses.spec
+@@ -1,7 +1,7 @@
+ Summary: shared libraries for terminal handling
+ Name: ncurses6
+ Version: 6.0
+-Release: 20160709
++Release: 20160723
+ License: X11
+ Group: Development/Libraries
+ Source: ncurses-%{version}-%{release}.tgz
+diff --git a/progs/tset.c b/progs/tset.c
+index 915951b..777fc6f 100644
+--- a/progs/tset.c
++++ b/progs/tset.c
+@@ -119,7 +119,7 @@ char *ttyname(int fd);
+ #include <dump_entry.h>
+ #include <transform.h>
+ 
+-MODULE_ID("$Id: tset.c,v 1.98 2016/04/16 18:15:35 tom Exp $")
++MODULE_ID("$Id: tset.c,v 1.99 2016/07/24 00:07:16 tom Exp $")
+ 
+ /*
+  * SCO defines TIOCGSIZE and the corresponding struct.  Other systems (SunOS,
+@@ -1276,8 +1276,13 @@ main(int argc, char **argv)
+     if (!opt_c && !opt_w)
+ 	opt_c = opt_w = TRUE;
+ 
+-    if (GET_TTY(STDERR_FILENO, &mode) < 0)
+-	failed("standard error");
++    /*
++     * stderr is less likely to be redirected than stdout; try that first.
++     */
++    if (GET_TTY(STDERR_FILENO, &mode) < 0 &&
++	GET_TTY(STDOUT_FILENO, &mode) < 0) {
++	failed("terminal attributes");
++    }
+     can_restore = TRUE;
+     original = oldmode = mode;
+ #ifdef TERMIOS
+diff --git a/test/doit b/test/doit
+deleted file mode 100644
+index eff60d3..0000000
+--- a/test/doit
++++ /dev/null
+@@ -1,3 +0,0 @@
+-#!/bin/sh
+-make||exit
+-./list_keys -m -x xterm rxvt
+-- 
+2.9.1
+

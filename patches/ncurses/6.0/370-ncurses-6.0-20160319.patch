@@ -1,0 +1,257 @@
+From c72b2c2c48ade76b5b4090b0f54b619a4fd483d9 Mon Sep 17 00:00:00 2001
+From: "Thomas E. Dickey" <dickey@invisible-island.net>
+Date: Sun, 20 Mar 2016 01:23:38 +0000
+Subject: [PATCH 28/50] ncurses 6.0 - patch 20160319
+
++ improve description of tgoto parameters (report by Steffen Nurpmeso).
++ amend workaround for Solaris line-drawing to restore a special case
+  that maps Unicode line-drawing characters into the acsc string for
+  non-Unicode locales (Debian #816888).
+---
+ NEWS                             |  8 +++++++-
+ VERSION                          |  2 +-
+ dist.mk                          |  4 ++--
+ man/curs_termcap.3x              | 26 ++++++++++++++++++++++----
+ ncurses/widechar/lib_wacs.c      | 14 +++++++++-----
+ package/debian-mingw/changelog   |  4 ++--
+ package/debian-mingw64/changelog |  4 ++--
+ package/debian/changelog         |  4 ++--
+ package/mingw-ncurses.nsi        |  4 ++--
+ package/mingw-ncurses.spec       |  2 +-
+ package/ncurses.spec             |  2 +-
+ 11 files changed, 51 insertions(+), 23 deletions(-)
+
+diff --git a/NEWS b/NEWS
+index fd6dde3..6a983ca 100644
+--- a/NEWS
++++ b/NEWS
+@@ -25,7 +25,7 @@
+ -- sale, use or other dealings in this Software without prior written        --
+ -- authorization.                                                            --
+ -------------------------------------------------------------------------------
+--- $Id: NEWS,v 1.2580 2016/03/12 18:59:41 tom Exp $
++-- $Id: NEWS,v 1.2583 2016/03/19 23:00:31 tom Exp $
+ -------------------------------------------------------------------------------
+ 
+ This is a log of changes that ncurses has gone through since Zeyd started
+@@ -45,6 +45,12 @@ See the AUTHORS file for the corresponding full names.
+ Changes through 1.9.9e did not credit all contributions;
+ it is not possible to add this information.
+ 
++20160319
++	+ improve description of tgoto parameters (report by Steffen Nurpmeso).
++	+ amend workaround for Solaris line-drawing to restore a special case
++	  that maps Unicode line-drawing characters into the acsc string for
++	  non-Unicode locales (Debian #816888).
++
+ 20160312
+ 	+ modified test/filter.c to illustrate an alternative to getnstr, that
+ 	  polls for input while updating a clock on the right margin as well
+diff --git a/VERSION b/VERSION
+index 1ce32c8..9d0ab42 100644
+--- a/VERSION
++++ b/VERSION
+@@ -1 +1 @@
+-5:0:9	6.0	20160312
++5:0:9	6.0	20160319
+diff --git a/dist.mk b/dist.mk
+index 37dabd8..b489497 100644
+--- a/dist.mk
++++ b/dist.mk
+@@ -25,7 +25,7 @@
+ # use or other dealings in this Software without prior written               #
+ # authorization.                                                             #
+ ##############################################################################
+-# $Id: dist.mk,v 1.1097 2016/03/12 14:38:16 tom Exp $
++# $Id: dist.mk,v 1.1098 2016/03/19 14:38:08 tom Exp $
+ # Makefile for creating ncurses distributions.
+ #
+ # This only needs to be used directly as a makefile by developers, but
+@@ -37,7 +37,7 @@ SHELL = /bin/sh
+ # These define the major/minor/patch versions of ncurses.
+ NCURSES_MAJOR = 6
+ NCURSES_MINOR = 0
+-NCURSES_PATCH = 20160312
++NCURSES_PATCH = 20160319
+ 
+ # We don't append the patch to the version, since this only applies to releases
+ VERSION = $(NCURSES_MAJOR).$(NCURSES_MINOR)
+diff --git a/man/curs_termcap.3x b/man/curs_termcap.3x
+index 2f0eea8..9b21505 100644
+--- a/man/curs_termcap.3x
++++ b/man/curs_termcap.3x
+@@ -1,5 +1,5 @@
+ .\"***************************************************************************
+-.\" Copyright (c) 1998-2013,2015 Free Software Foundation, Inc.              *
++.\" Copyright (c) 1998-2015,2016 Free Software Foundation, Inc.              *
+ .\"                                                                          *
+ .\" Permission is hereby granted, free of charge, to any person obtaining a  *
+ .\" copy of this software and associated documentation files (the            *
+@@ -26,7 +26,7 @@
+ .\" authorization.                                                           *
+ .\"***************************************************************************
+ .\"
+-.\" $Id: curs_termcap.3x,v 1.31 2015/04/26 00:49:10 tom Exp $
++.\" $Id: curs_termcap.3x,v 1.32 2016/03/19 22:52:25 tom Exp $
+ .TH curs_termcap 3X ""
+ .de bP
+ .IP \(bu 4
+@@ -146,8 +146,26 @@ Only the first two characters of the \fBid\fR parameter of
+ \fBtgetstr\fR are compared in lookups.
+ .SS FORMATTING CAPABILITIES
+ .PP
+-The \fBtgoto\fR routine instantiates the parameters into the given capability.
+-The output from this routine is to be passed to \fBtputs\fR.
++The \fBtgoto\fR routine expands the given capability using the parameters.
++.bP
++Because the capability may have padding characters,
++the output of \fBtgoto\fP should be passed to \fBtputs\fR
++rather than some other output function such as \fBprintf\fP.
++.bP
++While \fBtgoto\fP is assumed to be used for the two-parameter
++cursor positioning capability,
++termcap applications also use it for single-parameter capabilities.
++.IP
++Doing this shows a quirk in \fBtgoto\fP: most hardware
++terminals use cursor addressing with \fIrow\fP first,
++but the original developers of the termcap interface chose to
++put the \fIcolumn\fP parameter first.
++The \fBtgoto\fP function swaps the order of parameters.
++It does this also for calls requiring only a single parameter.
++In that case, the first parameter is merely a placeholder.
++.bP
++Normally the ncurses library is compiled with terminfo support.
++In that case, \fBtgoto\fP uses \fBtparm\fP (a more capable formatter).
+ .PP
+ The \fBtputs\fR routine is described on the \fBcurs_terminfo\fR(3X) manual
+ page.  It can retrieve capabilities by either termcap or terminfo name.
+diff --git a/ncurses/widechar/lib_wacs.c b/ncurses/widechar/lib_wacs.c
+index 455f4a1..716ce72 100644
+--- a/ncurses/widechar/lib_wacs.c
++++ b/ncurses/widechar/lib_wacs.c
+@@ -1,5 +1,5 @@
+ /****************************************************************************
+- * Copyright (c) 2002-2014,2015 Free Software Foundation, Inc.              *
++ * Copyright (c) 2002-2015,2016 Free Software Foundation, Inc.              *
+  *                                                                          *
+  * Permission is hereby granted, free of charge, to any person obtaining a  *
+  * copy of this software and associated documentation files (the            *
+@@ -32,7 +32,7 @@
+ 
+ #include <curses.priv.h>
+ 
+-MODULE_ID("$Id: lib_wacs.c,v 1.16 2015/12/19 23:29:03 tom Exp $")
++MODULE_ID("$Id: lib_wacs.c,v 1.17 2016/03/19 19:00:09 tom Exp $")
+ 
+ NCURSES_EXPORT_VAR(cchar_t) * _nc_wacs = 0;
+ 
+@@ -129,9 +129,13 @@ _nc_init_wacs(void)
+ #endif
+ 
+ 	    m = table[n].map;
+-	    SetChar(_nc_wacs[m],
+-		    table[n].value[(active && (wide == 1)) ? 1 : 0],
+-		    A_NORMAL);
++	    if (active && (wide == 1)) {
++		SetChar(_nc_wacs[m], table[n].value[1], A_NORMAL);
++	    } else if (acs_map[m] & A_ALTCHARSET) {
++		SetChar(_nc_wacs[m], m, A_ALTCHARSET);
++	    } else {
++		SetChar(_nc_wacs[m], table[n].value[0], A_NORMAL);
++	    }
+ 
+ 	    T(("#%d, wide:%d SetChar(%c, %#04x) = %s",
+ 	       n, wide, m,
+diff --git a/package/debian-mingw/changelog b/package/debian-mingw/changelog
+index fac6726..da6da78 100644
+--- a/package/debian-mingw/changelog
++++ b/package/debian-mingw/changelog
+@@ -1,8 +1,8 @@
+-ncurses6 (6.0+20160312) unstable; urgency=low
++ncurses6 (6.0+20160319) unstable; urgency=low
+ 
+   * latest weekly patch
+ 
+- -- Thomas E. Dickey <dickey@invisible-island.net>  Sat, 12 Mar 2016 09:38:16 -0500
++ -- Thomas E. Dickey <dickey@invisible-island.net>  Sat, 19 Mar 2016 10:38:08 -0400
+ 
+ ncurses6 (5.9-20131005) unstable; urgency=low
+ 
+diff --git a/package/debian-mingw64/changelog b/package/debian-mingw64/changelog
+index fac6726..da6da78 100644
+--- a/package/debian-mingw64/changelog
++++ b/package/debian-mingw64/changelog
+@@ -1,8 +1,8 @@
+-ncurses6 (6.0+20160312) unstable; urgency=low
++ncurses6 (6.0+20160319) unstable; urgency=low
+ 
+   * latest weekly patch
+ 
+- -- Thomas E. Dickey <dickey@invisible-island.net>  Sat, 12 Mar 2016 09:38:16 -0500
++ -- Thomas E. Dickey <dickey@invisible-island.net>  Sat, 19 Mar 2016 10:38:08 -0400
+ 
+ ncurses6 (5.9-20131005) unstable; urgency=low
+ 
+diff --git a/package/debian/changelog b/package/debian/changelog
+index 1c3223c..0e22cf6 100644
+--- a/package/debian/changelog
++++ b/package/debian/changelog
+@@ -1,8 +1,8 @@
+-ncurses6 (6.0+20160312) unstable; urgency=low
++ncurses6 (6.0+20160319) unstable; urgency=low
+ 
+   * latest weekly patch
+ 
+- -- Thomas E. Dickey <dickey@invisible-island.net>  Sat, 12 Mar 2016 09:38:16 -0500
++ -- Thomas E. Dickey <dickey@invisible-island.net>  Sat, 19 Mar 2016 10:38:08 -0400
+ 
+ ncurses6 (5.9-20120608) unstable; urgency=low
+ 
+diff --git a/package/mingw-ncurses.nsi b/package/mingw-ncurses.nsi
+index c129521..cd71566 100644
+--- a/package/mingw-ncurses.nsi
++++ b/package/mingw-ncurses.nsi
+@@ -1,4 +1,4 @@
+-; $Id: mingw-ncurses.nsi,v 1.149 2016/03/12 14:38:16 tom Exp $
++; $Id: mingw-ncurses.nsi,v 1.150 2016/03/19 14:38:08 tom Exp $
+ 
+ ; TODO add examples
+ ; TODO bump ABI to 6
+@@ -10,7 +10,7 @@
+ !define VERSION_MAJOR "6"
+ !define VERSION_MINOR "0"
+ !define VERSION_YYYY  "2016"
+-!define VERSION_MMDD  "0312"
++!define VERSION_MMDD  "0319"
+ !define VERSION_PATCH ${VERSION_YYYY}${VERSION_MMDD}
+ 
+ !define MY_ABI   "5"
+diff --git a/package/mingw-ncurses.spec b/package/mingw-ncurses.spec
+index 3d971e6..0ccebb8 100644
+--- a/package/mingw-ncurses.spec
++++ b/package/mingw-ncurses.spec
+@@ -3,7 +3,7 @@
+ Summary: shared libraries for terminal handling
+ Name: mingw32-ncurses6
+ Version: 6.0
+-Release: 20160312
++Release: 20160319
+ License: X11
+ Group: Development/Libraries
+ Source: ncurses-%{version}-%{release}.tgz
+diff --git a/package/ncurses.spec b/package/ncurses.spec
+index 91ae153..5ae2085 100644
+--- a/package/ncurses.spec
++++ b/package/ncurses.spec
+@@ -1,7 +1,7 @@
+ Summary: shared libraries for terminal handling
+ Name: ncurses6
+ Version: 6.0
+-Release: 20160312
++Release: 20160319
+ License: X11
+ Group: Development/Libraries
+ Source: ncurses-%{version}-%{release}.tgz
+-- 
+2.9.1
+

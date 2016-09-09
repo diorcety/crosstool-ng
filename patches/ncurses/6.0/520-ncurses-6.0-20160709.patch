@@ -1,0 +1,422 @@
+From 53ea71aa108570a4a070e004484642a75f3492df Mon Sep 17 00:00:00 2001
+From: "Thomas E. Dickey" <dickey@invisible-island.net>
+Date: Sat, 9 Jul 2016 22:50:56 +0000
+Subject: [PATCH 43/50] ncurses 6.0 - patch 20160709
+
++ work around Debian's antique/unmaintained version of mawk when
+  building link_test.
++ improve test/list_keys.c, showing ncurses's convention of modifiers
+  for special keys, based on xterm.
+---
+ NEWS                             |  8 +++-
+ VERSION                          |  2 +-
+ dist.mk                          |  4 +-
+ ncurses/base/MKlib_gen.sh        | 12 ++---
+ package/debian-mingw/changelog   |  4 +-
+ package/debian-mingw64/changelog |  4 +-
+ package/debian/changelog         |  4 +-
+ package/mingw-ncurses.nsi        |  4 +-
+ package/mingw-ncurses.spec       |  2 +-
+ package/ncurses.spec             |  2 +-
+ test/doit                        |  3 ++
+ test/list_keys.c                 | 99 ++++++++++++++++++++++++++++++++++++----
+ 12 files changed, 118 insertions(+), 30 deletions(-)
+ create mode 100644 test/doit
+
+diff --git a/NEWS b/NEWS
+index 6af578b..23eedaa 100644
+--- a/NEWS
++++ b/NEWS
+@@ -25,7 +25,7 @@
+ -- sale, use or other dealings in this Software without prior written        --
+ -- authorization.                                                            --
+ -------------------------------------------------------------------------------
+--- $Id: NEWS,v 1.2626 2016/07/02 18:29:57 tom Exp $
++-- $Id: NEWS,v 1.2629 2016/07/09 21:46:47 tom Exp $
+ -------------------------------------------------------------------------------
+ 
+ This is a log of changes that ncurses has gone through since Zeyd started
+@@ -45,6 +45,12 @@ See the AUTHORS file for the corresponding full names.
+ Changes through 1.9.9e did not credit all contributions;
+ it is not possible to add this information.
+ 
++20160709
++	+ work around Debian's antique/unmaintained version of mawk when
++	  building link_test.
++	+ improve test/list_keys.c, showing ncurses's convention of modifiers
++	  for special keys, based on xterm.
++
+ 20160702
+ 	+ improve test/list_keys.c, using $TERM if no parameters areg given.
+ 
+diff --git a/VERSION b/VERSION
+index 8f874c4..8d6960b 100644
+--- a/VERSION
++++ b/VERSION
+@@ -1 +1 @@
+-5:0:9	6.0	20160702
++5:0:9	6.0	20160709
+diff --git a/dist.mk b/dist.mk
+index 21e935b..641790a 100644
+--- a/dist.mk
++++ b/dist.mk
+@@ -25,7 +25,7 @@
+ # use or other dealings in this Software without prior written               #
+ # authorization.                                                             #
+ ##############################################################################
+-# $Id: dist.mk,v 1.1113 2016/07/02 17:00:31 tom Exp $
++# $Id: dist.mk,v 1.1114 2016/07/09 13:09:04 tom Exp $
+ # Makefile for creating ncurses distributions.
+ #
+ # This only needs to be used directly as a makefile by developers, but
+@@ -37,7 +37,7 @@ SHELL = /bin/sh
+ # These define the major/minor/patch versions of ncurses.
+ NCURSES_MAJOR = 6
+ NCURSES_MINOR = 0
+-NCURSES_PATCH = 20160702
++NCURSES_PATCH = 20160709
+ 
+ # We don't append the patch to the version, since this only applies to releases
+ VERSION = $(NCURSES_MAJOR).$(NCURSES_MINOR)
+diff --git a/ncurses/base/MKlib_gen.sh b/ncurses/base/MKlib_gen.sh
+index 4c35b73..a25176f 100755
+--- a/ncurses/base/MKlib_gen.sh
++++ b/ncurses/base/MKlib_gen.sh
+@@ -2,7 +2,7 @@
+ #
+ # MKlib_gen.sh -- generate sources from curses.h macro definitions
+ #
+-# ($Id: MKlib_gen.sh,v 1.53 2016/06/25 22:08:12 tom Exp $)
++# ($Id: MKlib_gen.sh,v 1.54 2016/07/09 21:43:05 tom Exp $)
+ #
+ ##############################################################################
+ # Copyright (c) 1998-2015,2016 Free Software Foundation, Inc.                #
+@@ -450,16 +450,16 @@ END		{
+ 			for (n = 1; n < start; ++n) {
+ 				value = calls[n];
+ 				if ( value !~ /P_POUNDC/ ) {
+-					gsub(/[[:blank:]]+/," ",value);
+-					sub(/^[[:alnum:]_]+ /,"",value);
++					gsub(/[ \t]+/," ",value);
++					sub(/^[0-9a-zA-Z_]+ /,"",value);
+ 					sub(/^\* /,"",value);
+-					gsub(/[[:alnum:]_]+ \* /,"",value);
++					gsub(/[0-9a-zA-Z_]+ \* /,"",value);
+ 					gsub(/ (const) /," ",value);
+ 					gsub(/ (int|short|attr_t|chtype|wchar_t|NCURSES_BOOL|NCURSES_OUTC|NCURSES_OUTC_sp|va_list) /," ",value);
+ 					gsub(/ void /,"",value);
+ 					sub(/^/,"call_",value);
+-					gsub(/ (a[[:digit:]]|z) /, " 0 ", value);
+-					gsub(/ int[[:blank:]]*[(][^)]+[)][(][^)]+[)]/, "0", value);
++					gsub(/ (a[0-9]|z) /, " 0 ", value);
++					gsub(/ int[ \t]*[(][^)]+[)][(][^)]+[)]/, "0", value);
+ 					printf "\t%s;\n", value;
+ 				} else {
+ 					print value;
+diff --git a/package/debian-mingw/changelog b/package/debian-mingw/changelog
+index 304c088..46e9c35 100644
+--- a/package/debian-mingw/changelog
++++ b/package/debian-mingw/changelog
+@@ -1,8 +1,8 @@
+-ncurses6 (6.0+20160702) unstable; urgency=low
++ncurses6 (6.0+20160709) unstable; urgency=low
+ 
+   * latest weekly patch
+ 
+- -- Thomas E. Dickey <dickey@invisible-island.net>  Sat, 02 Jul 2016 13:00:31 -0400
++ -- Thomas E. Dickey <dickey@invisible-island.net>  Sat, 09 Jul 2016 09:09:04 -0400
+ 
+ ncurses6 (5.9-20131005) unstable; urgency=low
+ 
+diff --git a/package/debian-mingw64/changelog b/package/debian-mingw64/changelog
+index 304c088..46e9c35 100644
+--- a/package/debian-mingw64/changelog
++++ b/package/debian-mingw64/changelog
+@@ -1,8 +1,8 @@
+-ncurses6 (6.0+20160702) unstable; urgency=low
++ncurses6 (6.0+20160709) unstable; urgency=low
+ 
+   * latest weekly patch
+ 
+- -- Thomas E. Dickey <dickey@invisible-island.net>  Sat, 02 Jul 2016 13:00:31 -0400
++ -- Thomas E. Dickey <dickey@invisible-island.net>  Sat, 09 Jul 2016 09:09:04 -0400
+ 
+ ncurses6 (5.9-20131005) unstable; urgency=low
+ 
+diff --git a/package/debian/changelog b/package/debian/changelog
+index bdbf2b4..258d979 100644
+--- a/package/debian/changelog
++++ b/package/debian/changelog
+@@ -1,8 +1,8 @@
+-ncurses6 (6.0+20160702) unstable; urgency=low
++ncurses6 (6.0+20160709) unstable; urgency=low
+ 
+   * latest weekly patch
+ 
+- -- Thomas E. Dickey <dickey@invisible-island.net>  Sat, 02 Jul 2016 13:00:31 -0400
++ -- Thomas E. Dickey <dickey@invisible-island.net>  Sat, 09 Jul 2016 09:09:04 -0400
+ 
+ ncurses6 (5.9-20120608) unstable; urgency=low
+ 
+diff --git a/package/mingw-ncurses.nsi b/package/mingw-ncurses.nsi
+index 9abdaee..88f1be9 100644
+--- a/package/mingw-ncurses.nsi
++++ b/package/mingw-ncurses.nsi
+@@ -1,4 +1,4 @@
+-; $Id: mingw-ncurses.nsi,v 1.165 2016/07/02 17:00:31 tom Exp $
++; $Id: mingw-ncurses.nsi,v 1.166 2016/07/09 13:09:04 tom Exp $
+ 
+ ; TODO add examples
+ ; TODO bump ABI to 6
+@@ -10,7 +10,7 @@
+ !define VERSION_MAJOR "6"
+ !define VERSION_MINOR "0"
+ !define VERSION_YYYY  "2016"
+-!define VERSION_MMDD  "0702"
++!define VERSION_MMDD  "0709"
+ !define VERSION_PATCH ${VERSION_YYYY}${VERSION_MMDD}
+ 
+ !define MY_ABI   "5"
+diff --git a/package/mingw-ncurses.spec b/package/mingw-ncurses.spec
+index a24081b..c14db4f 100644
+--- a/package/mingw-ncurses.spec
++++ b/package/mingw-ncurses.spec
+@@ -3,7 +3,7 @@
+ Summary: shared libraries for terminal handling
+ Name: mingw32-ncurses6
+ Version: 6.0
+-Release: 20160702
++Release: 20160709
+ License: X11
+ Group: Development/Libraries
+ Source: ncurses-%{version}-%{release}.tgz
+diff --git a/package/ncurses.spec b/package/ncurses.spec
+index 06d7af4..f2f1694 100644
+--- a/package/ncurses.spec
++++ b/package/ncurses.spec
+@@ -1,7 +1,7 @@
+ Summary: shared libraries for terminal handling
+ Name: ncurses6
+ Version: 6.0
+-Release: 20160702
++Release: 20160709
+ License: X11
+ Group: Development/Libraries
+ Source: ncurses-%{version}-%{release}.tgz
+diff --git a/test/doit b/test/doit
+new file mode 100644
+index 0000000..eff60d3
+--- /dev/null
++++ b/test/doit
+@@ -0,0 +1,3 @@
++#!/bin/sh
++make||exit
++./list_keys -m -x xterm rxvt
+diff --git a/test/list_keys.c b/test/list_keys.c
+index 87c04c9..5f9fbaf 100644
+--- a/test/list_keys.c
++++ b/test/list_keys.c
+@@ -26,7 +26,7 @@
+  * authorization.                                                           *
+  ****************************************************************************/
+ /*
+- * $Id: list_keys.c,v 1.12 2016/07/02 23:45:53 tom Exp $
++ * $Id: list_keys.c,v 1.15 2016/07/09 18:21:24 tom Exp $
+  *
+  * Author: Thomas E Dickey
+  *
+@@ -49,6 +49,7 @@
+ #if defined(HAVE_CURSES_DATA_BOOLNAMES) || defined(DECL_CURSES_DATA_BOOLNAMES)
+ 
+ static bool f_opt = FALSE;
++static bool m_opt = FALSE;
+ static bool t_opt = FALSE;
+ static bool x_opt = FALSE;
+ 
+@@ -202,17 +203,75 @@ draw_line(int width)
+     }
+ }
+ 
++static const char *
++modified_key(const char *name)
++{
++    static char result[80];
++    char buffer[sizeof(result)];
++    int value;
++    char chr;
++    static const char *modifiers[][2] =
++    {
++	{"", ""},
++	{"s-", "shift-"},
++	{"a-", "alt-"},
++	{"as-", "alt-shift-"},
++	{"c-", "ctrl-"},
++	{"sc-", "ctrl-shift-"},
++	{"ac-", "alt-ctrl-"},
++	{"acs-" "alt-ctrl-shift-"},
++    };
++
++    if (strlen(name) > (sizeof(result) - 3)) {
++	*result = '\0';
++    } else if (sscanf(name, "kf%d%c", &value, &chr) == 1 &&
++	       value >= 1 &&
++	       value <= 63) {
++	/* map 1,2,3,4,5,6,7 to 1,2,5,... */
++	int map = ((value - 1) / 12);
++	int key = ((value - 1) % 12);
++	int bit1 = (map & 2);
++	int bit2 = (map & 4);
++	map &= ~6;
++	map |= (bit1 << 1) | (bit2 >> 1);
++	sprintf(result, "%sF%d", modifiers[map][f_opt], 1 + key);
++    } else if (sscanf(name, "k%[A-Z]%d%c", buffer, &value, &chr) == 2 &&
++	       (value > 1 &&
++		value <= 8) &&
++	       (!strcmp(buffer, "UP") ||
++		!strcmp(buffer, "DN") ||
++		!strcmp(buffer, "LFT") ||
++		!strcmp(buffer, "RIT") ||
++		!strcmp(buffer, "IC") ||
++		!strcmp(buffer, "DC") ||
++		!strcmp(buffer, "HOM") ||
++		!strcmp(buffer, "END") ||
++		!strcmp(buffer, "NXT") ||
++		!strcmp(buffer, "PRV"))) {
++	sprintf(result, "%sk%s", modifiers[value - 1][f_opt], buffer);
++    } else if (sscanf(name, "k%[A-Z]%c", buffer, &chr) == 1 &&
++	       (!strcmp(buffer, "UP") ||
++		!strcmp(buffer, "DN"))) {
++	sprintf(result, "%sk%s", modifiers[1][f_opt], buffer);
++    } else {
++	*result = '\0';
++    }
++    return result;
++}
++
+ static void
+ list_keys(TERMINAL ** terms, int count)
+ {
+     int j, k;
+     int widths0 = 0;
+     int widths1 = 0;
++    int widths2 = 0;
+     int widthsx;
+     int check;
+     size_t total = 0;
+     size_t actual = 0;
+     const char *name = f_opt ? "strfname" : "strname";
++    const char *modifier = "extended";
+     KEYNAMES *list;
+ 
+     for (total = 0; strnames[total]; ++total) {
+@@ -266,11 +325,14 @@ list_keys(TERMINAL ** terms, int count)
+     qsort(list, actual, sizeof(KEYNAMES), compare_keys);
+ 
+     widths0 = (int) strlen(name);
++    if (m_opt)
++	widths1 = (int) strlen(modifier);
++
+     for (k = 0; k < count; ++k) {
+ 	set_curterm(terms[k]);
+ 	check = (int) strlen(termname());
+-	if (widths1 < check)
+-	    widths1 = check;
++	if (widths2 < check)
++	    widths2 = check;
+     }
+     for (j = 0; Name(j) != 0; ++j) {
+ 	if (valid_key(Name(j), terms, count)) {
+@@ -280,17 +342,26 @@ list_keys(TERMINAL ** terms, int count)
+ 		widths0 = check;
+ 	    for (k = 0; k < count; ++k) {
+ 		set_curterm(terms[k]);
+-		check = show_key(Name(j), FALSE);
+-		if (widths1 < check)
+-		    widths1 = check;
++		check = show_key(Name(j), FALSE) + 1;
++		if (widths2 < check)
++		    widths2 = check;
++		if (m_opt) {
++		    check = (int) strlen(modified_key(Name(j)));
++		    if (widths1 < check)
++			widths1 = check;
++		}
+ 	    }
+ 	}
+     }
+ 
+     if (t_opt) {
+ 	printf("\"%s\"", name);
++	if (m_opt)
++	    printf(",\"%s\"", modifier);
+     } else {
+ 	printf("%-*s", widths0, name);
++	if (m_opt)
++	    printf(" %-*s", widths1, modifier);
+     }
+     for (k = 0; k < count; ++k) {
+ 	set_curterm(terms[k]);
+@@ -299,12 +370,12 @@ list_keys(TERMINAL ** terms, int count)
+ 	} else if (k + 1 >= count) {
+ 	    printf(" %s", termname());
+ 	} else {
+-	    printf(" %-*s", widths1, termname());
++	    printf(" %-*s", widths2, termname());
+ 	}
+     }
+     printf("\n");
+ 
+-    widthsx = widths0 + ((count + 1) * widths1);
++    widthsx = widths0 + ((count + 1) * widths2);
+ 
+     for (j = 0; Name(j) != 0; ++j) {
+ 	if (j == 0 || (Type(j) != Type(j - 1)))
+@@ -313,8 +384,12 @@ list_keys(TERMINAL ** terms, int count)
+ 	    const char *label = f_opt ? full_name(Name(j)) : Name(j);
+ 	    if (t_opt) {
+ 		printf("\"%s\"", label);
++		if (m_opt)
++		    printf(",\"%s\"", modified_key(Name(j)));
+ 	    } else {
+ 		printf("%-*s", widths0, label);
++		if (m_opt)
++		    printf(" %-*s", widths1, modified_key(Name(j)));
+ 	    }
+ 	    for (k = 0; k < count; ++k) {
+ 		printf(t_opt ? "," : " ");
+@@ -322,7 +397,7 @@ list_keys(TERMINAL ** terms, int count)
+ 		check = show_key(Name(j), TRUE);
+ 		if (!t_opt) {
+ 		    if (k + 1 < count) {
+-			printf("%*s", widths1 - check, " ");
++			printf("%*s", widths2 - check, " ");
+ 		    }
+ 		}
+ 	    }
+@@ -343,6 +418,7 @@ usage(void)
+ 	"",
+ 	"Options:",
+ 	" -f       print full names",
++	" -m       print modifier-column for shift/control keys",
+ 	" -t       print result as CSV table",
+ #ifdef NCURSES_VERSION
+ 	" -x       print extended capabilities",
+@@ -361,11 +437,14 @@ main(int argc, char *argv[])
+     int n;
+     TERMINAL **terms = typeCalloc(TERMINAL *, argc + 1);
+ 
+-    while ((n = getopt(argc, argv, "ftx")) != -1) {
++    while ((n = getopt(argc, argv, "fmtx")) != -1) {
+ 	switch (n) {
+ 	case 'f':
+ 	    f_opt = TRUE;
+ 	    break;
++	case 'm':
++	    m_opt = TRUE;
++	    break;
+ 	case 't':
+ 	    t_opt = TRUE;
+ 	    break;
+-- 
+2.9.1
+
