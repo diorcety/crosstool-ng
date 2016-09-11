@@ -913,6 +913,7 @@ CT_GetGit() {
         local cset=${cset_or_ref}
         CT_DoLog INFO "cset ${cset}"
     fi
+    cset=6172d2
 
     if [ -n "${_out_cset}" ]; then
         eval ${_out_cset}=\${cset}
