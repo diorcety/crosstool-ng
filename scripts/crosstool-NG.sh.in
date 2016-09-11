@@ -298,9 +298,13 @@ if [ -z "${CT_RESTART}" ]; then
         CT_DEBUGROOT_DIR="${CT_PREFIX_DIR}/${CT_TARGET}/${CT_SYSROOT_DIR_PREFIX}/debug-root"
         CT_HEADERS_DIR="${CT_SYSROOT_DIR}/${CT_POST_SYSROOT_PREFIX}/include"
         CT_SanitizeVarDir CT_SYSROOT_REL_DIR CT_SYSROOT_DIR CT_DEBUGROOT_DIR CT_HEADERS_DIR
-        BINUTILS_SYSROOT_ARG="--with-sysroot=${CT_SYSROOT_DIR}"
-        CC_CORE_SYSROOT_ARG="--with-sysroot=${CT_SYSROOT_DIR}"
-        CC_SYSROOT_ARG="--with-sysroot=${CT_SYSROOT_DIR}"
+        # This is pretty horrible ..
+        case "${CT_TARGET}" in
+            *mingw*) CT_WITH_SYSROOT_EXTRA_FOR_MINGW_LIBGCC=${CT_POST_SYSROOT_PREFIX};;
+        esac
+        BINUTILS_SYSROOT_ARG="--with-sysroot=${CT_SYSROOT_DIR}${CT_WITH_SYSROOT_EXTRA_FOR_MINGW_LIBGCC}"
+        CC_CORE_SYSROOT_ARG="--with-sysroot=${CT_SYSROOT_DIR}${CT_WITH_SYSROOT_EXTRA_FOR_MINGW_LIBGCC}"
+        CC_SYSROOT_ARG="--with-sysroot=${CT_SYSROOT_DIR}${CT_WITH_SYSROOT_EXTRA_FOR_MINGW_LIBGCC}"
         LIBC_SYSROOT_ARG=""
         # glibc's prefix must be exactly /usr, else --with-sysroot'd gcc will get
         # confused when $sysroot/usr/include is not present.
