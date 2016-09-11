@@ -99,6 +99,13 @@ do_debug_gdb_build() {
             LD_for_gdb+=" -static"
         fi
 
+        # Clang, when run as a preprocessor emits warnings to stderr when there
+        # are unused flags. -L<path> is always unused when preprocessing.
+        # ac_fn_c_try_cpp fails when anything is written to stderr.
+        if ${CC_for_gdb} --version 2>&1 | grep clang; then
+            CC_for_gdb+=" -Qunused-arguments"
+        fi
+
         # Fix up whitespace. Some older GDB releases (e.g. 6.8a) get confused if there
         # are multiple consecutive spaces: sub-configure scripts replace them with a
         # single space and then complain that $CC value changed from that in
@@ -198,6 +205,13 @@ do_debug_gdb_build() {
         else
             CC_for_gdb="${CT_TARGET}-gcc"
             LD_for_gdb="${CT_TARGET}-ld"
+        fi
+
+        # Clang, when run as a preprocessor emits warnings to stderr when there
+        # are unused flags. -L<path> is always unused when preprocessing.
+        # ac_fn_c_try_cpp fails when anything is written to stderr.
+        if ${CC_for_gdb} --version 2>&1 | grep clang; then
+            CC_for_gdb+=" -Qunused-arguments"
         fi
 
         export ac_cv_func_strncmp_works=yes
