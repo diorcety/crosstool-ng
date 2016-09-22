@@ -7,7 +7,12 @@ CLANG_GET_FN="CT_GetFile"
 CLANG_SUFFIX=""
 CLANG_NAME="clang"
 CLANG_BRANCH=""
-CLANG_URL=http://llvm.org/releases/${CT_CC_CLANG_VERSION}
+CLANG_URL=http://llvm.org/releases
+CLANG_GIT_URL=http://llvm.org/git/
+CT_CLANG_FULLNAME=
+# Comment this out to fetch from the internet.
+CT_LOCAL_LLVM_GIT_PATH=file:///f/upstreams/llvm
+
 if [ "${CT_CC_CLANG_V_3_1}" = "y" ]; then
     CLANG_SUFFIX=".src"
     CLANG_NAME="clang"
@@ -23,36 +28,100 @@ elif [ "${CT_CC_CLANG_V_3_4}" = "y" ]; then
 elif [ "${CT_CC_CLANG_V_3_4_2}" = "y" ]; then
     CLANG_SUFFIX=".src"
     CLANG_NAME="cfe"
-elif [ "${CT_CC_CLANG_V_3_5_0}" = "y" ]; then
+elif [ "${CT_CC_CLANG_V_3_5_2}" = "y" ]; then
     CLANG_SUFFIX=".src"
     CLANG_NAME="cfe"
-elif [ "${CT_CC_CLANG_V_3_6_0}" = "y" ]; then
-    CLANG_SUFFIX=".git"
+elif [ "${CT_CC_CLANG_V_3_6_2}" = "y" ]; then
+    CLANG_SUFFIX=".src"
+    CLANG_NAME="cfe"
+elif [ "${CT_CC_CLANG_V_3_8_1}" = "y" ]; then
+    CLANG_SUFFIX=".src"
+    CLANG_NAME="cfe"
+    elif [ "${CT_CC_CLANG_V_3_9_0}" = "y" ]; then
     CLANG_NAME="clang"
     CLANG_GET_FN="CT_GetGit"
-    CLANG_URL=http://llvm.org/git/clang.git
-    CLANG_BRANCH="master" #will be release_35 when it is branched
-elif [ "${CT_CC_CLANG_V_HEAD}" = "y" ]; then
-    CLANG_SUFFIX=".git"
+    if [ -z "${CT_LOCAL_LLVM_GIT_PATH}" ]; then
+        CLANG_URL=http://llvm.org/git
+        CLANG_SUFFIX=".git"
+    else
+        CLANG_URL=${CT_LOCAL_LLVM_GIT_PATH}
+        CLANG_SUFFIX=""
+    fi
+    CLANG_BRANCH="release_39"
+elif [ "${CT_CC_CLANG_V_DEVEL}" = "y" ]; then
     CLANG_NAME="clang"
-    CLANG_GET_FN="CT_GetGit"
-    CLANG_URL=http://llvm.org/git/clang.git
-    CLANG_BRANCH="master" # just to make git clone quicker
+    CLANG_GET_FN="CT_GitGet"
+    if [ -z "${CT_LOCAL_LLVM_GIT_PATH}" ]; then
+        CLANG_URL=http://llvm.org/git
+        CLANG_SUFFIX=".git"
+    else
+        CLANG_URL=${CT_LOCAL_LLVM_GIT_PATH}
+        CLANG_SUFFIX=""
+    fi
+    CLANG_BRANCH="master"
 fi
 
-CT_CLANG_FULLNAME="${CLANG_NAME}-${CT_CC_CLANG_VERSION}${CLANG_SUFFIX}"
+# Fetch source code from a clang or llvm project
+# Usage: do_clang_llvm_get param=value [...]
+#   Parameter     : Definition                          : Type      : Default
+#   getfn         : the function to do fetching         : string    : "CT_GetFile"
+#   name          : the (proper) project name           : string    : (none)
+#   archive_name  : the old archive name (cfe vs clang) : string    : ${name}
+#   out_fname_var : final fname eval'ed into this       : var       : (none)
+#   version       : version                             : string    : (none)
+#   git_ref       : git reference                       : string    : (none)
+#   base_url      : base URL                            : string    : (none)
+#   url_suffix    : url suffix (e.g. .src)              : string    : (none)
+do_clang_llvm_get() {
+    local getfn=CT_GetFile
+    local name
+    local archive_name
+    local out_fname_var
+    local version
+    local git_ref
+    local base_url
+    local url_suffix
+
+    for arg in "$@"; do
+        eval "${arg// /\\ }"
+    done
+    if [[ -z ${archive_name} ]]; then
+        archive_name=${name}
+    fi
+    local _fullname
+
+    CT_DoStep INFO "Fetching ${name}-${version} source from ${base_url}, out_fname_var is ${out_fname_var}"
+    if [[ ${getfn} == CT_GetFile ]]; then
+        _fullname=${archive_name}-${version}${url_suffix}
+        CT_GetFile "${_fullname}" "${base_url}/${version}"
+    else
+        local -a _version_downloaded
+        CT_GetGit ${name} "ref=${git_ref}" "${base_url}/${name}${url_suffix}" _version_downloaded
+        _fullname="${name}-${_version_downloaded}"
+    fi
+    if [ -n "${out_fname_var}" ]; then
+        eval ${out_fname_var}=\${_fullname}
+    fi
+    CT_EndStep
+}
 
 # Download clang
 do_clang_get() {
-    if [ -z "${CLANG_BRANCH}" ]; then
-        $CLANG_GET_FN "${CT_CLANG_FULLNAME}" "${CLANG_URL}"
-    else
-        $CLANG_GET_FN "${CT_CLANG_FULLNAME}" "branch" "${CLANG_BRANCH}" "${CLANG_URL}"
-    fi
+    local -a opts
+    opts+=( "getfn=${CLANG_GET_FN}" )
+    opts+=( "name=clang" )
+    opts+=( "out_fname_var=CT_CLANG_FULLNAME" )
+    opts+=( "version=${CT_CC_CLANG_VERSION}" )
+    opts+=( "git_ref=${CLANG_BRANCH}" )
+    opts+=( "base_url=${CLANG_URL}" )
+    opts+=( "url_suffix=${CLANG_SUFFIX}" )
+    do_clang_llvm_get "${opts[@]}"
+    CT_DoLog INFO "CT_CLANG_FULLNAME ${CT_CLANG_FULLNAME}"
 }
 
 # Extract clang
 do_clang_extract() {
+    CT_DoLog INFO "do_clang_extract CT_CLANG_FULLNAME ${CT_CLANG_FULLNAME}"
     CT_Extract "${CT_CLANG_FULLNAME}"
 
     CT_Pushd "${CT_SRC_DIR}/${CT_CLANG_FULLNAME}"

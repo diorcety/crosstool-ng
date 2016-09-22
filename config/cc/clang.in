@@ -21,23 +21,35 @@ choice
 # Don't remove next line
 # CT_INSERT_VERSION_BELOW
 
-config CC_CLANG_V_HEAD
+config CC_CLANG_V_DEVEL
     bool
-    depends on LLVM_V_HEAD
+    depends on LLVM_V_DEVEL
     select CC_CLANG_NEED_COMPILER_RT
-    prompt "head (git)"
+    prompt "devel"
 
-config CC_CLANG_V_3_6_0
+config CC_CLANG_V_3_9_0
     bool
-    depends on LLVM_V_3_6_0
+    depends on LLVM_V_3_9_0
     select CC_CLANG_NEED_COMPILER_RT
-    prompt "3.6.0"
+    prompt "3.9.0"
 
-config CC_CLANG_V_3_5_0
+config CC_CLANG_V_3_8_1
     bool
-    depends on LLVM_V_3_5_0
+    depends on LLVM_V_3_8_1
     select CC_CLANG_NEED_COMPILER_RT
-    prompt "3.5.0"
+    prompt "3.8.1"
+
+config CC_CLANG_V_3_6_2
+    bool
+    depends on LLVM_V_3_6_2
+    select CC_CLANG_NEED_COMPILER_RT
+    prompt "3.6.2"
+
+config CC_CLANG_V_3_5_2
+    bool
+    depends on LLVM_V_3_5_2
+    select CC_CLANG_NEED_COMPILER_RT
+    prompt "3.5.2"
 
 config CC_CLANG_V_3_4_2
     bool
@@ -98,9 +110,11 @@ config CC_CLANG_VERSION
     string
 # Don't remove next line
 # CT_INSERT_VERSION_STRING_BELOW
-    default "head" if CC_CLANG_V_HEAD
-    default "3.6.0" if CC_CLANG_V_3_6_0
-    default "3.5.0" if CC_CLANG_V_3_5_0
+    default "devel" if CC_CLANG_V_DEVEL
+    default "3.9.0" if CC_CLANG_V_3_9_0
+    default "3.8.1" if CC_CLANG_V_3_8_1
+    default "3.6.2" if CC_CLANG_V_3_6_2
+    default "3.5.2" if CC_CLANG_V_3_5_2
     default "3.4.2" if CC_CLANG_V_3_4_2
     default "3.4" if CC_CLANG_V_3_4
     default "3.3" if CC_CLANG_V_3_3

@@ -11,67 +11,132 @@ do_llvm_for_host() { :; }
 if [ "${CT_LLVM}" = "y" ]; then
 
 # Override variable depending on configuration
-CT_LLVM_SUFFIX=""
 LLVM_GET_FN="CT_GetFile"
-LLVM_URL=http://llvm.org/releases/${CT_LLVM_VERSION}
-LLVM_CRT_URL=http://llvm.org/releases/${CT_LLVM_VERSION}
-
+LLVM_SUFFIX=""
 LLVM_BRANCH=""
-LLVM_CRT_BRANCH=""
+LLVM_URL=http://llvm.org/releases
+CT_LLVM_FULLNAME=
+CT_COMPILER_RT_FULLNAME=
+# Comment this out to fetch from the internet.
+CT_LOCAL_LLVM_GIT_PATH=file:///f/upstreams/llvm
+
 if [ "${CT_LLVM_V_3_1}" = "y" ]; then
-    CT_LLVM_SUFFIX=".src"
+    LLVM_SUFFIX=".src"
 elif [ "${CT_LLVM_V_3_2}" = "y" ]; then
-    CT_LLVM_SUFFIX=".src"
+    LLVM_SUFFIX=".src"
 elif [ "${CT_LLVM_V_3_3}" = "y" ]; then
-    CT_LLVM_SUFFIX=".src"
+    LLVM_SUFFIX=".src"
 elif [ "${CT_LLVM_V_3_4}" = "y" ]; then
-    CT_LLVM_SUFFIX=".src"
+    LLVM_SUFFIX=".src"
 elif [ "${CT_LLVM_V_3_4_2}" = "y" ]; then
-    CT_LLVM_SUFFIX=".src"
-elif [ "${CT_LLVM_V_3_5_0}" = "y" ]; then
-    CT_LLVM_SUFFIX=".src"
-elif [ "${CT_LLVM_V_3_6_0}" = "y" ]; then
-    # This will be changed to release_36 when it's branched
-    # at that time, add CT_LLVM_V_3_7 on master.
-    LLVM_BRANCH="master"
-elif [ "${CT_LLVM_V_HEAD}" = "y" ]; then
+    LLVM_SUFFIX=".src"
+elif [ "${CT_LLVM_V_3_5_2}" = "y" ]; then
+    LLVM_SUFFIX=".src"
+elif [ "${CT_LLVM_V_3_6_2}" = "y" ]; then
+    LLVM_SUFFIX=".src"
+elif [ "${CT_LLVM_V_3_8_1}" = "y" ]; then
+    LLVM_SUFFIX=".src"
+elif [ "${CT_LLVM_V_3_9_0}" = "y" ]; then
+    LLVM_GET_FN="CT_GitGet"
+    if [ -z "${CT_LOCAL_LLVM_GIT_PATH}" ]; then
+        LLVM_URL=http://llvm.org/git
+        LLVM_SUFFIX=".git"
+    else
+        LLVM_URL=${CT_LOCAL_LLVM_GIT_PATH}
+        LLVM_SUFFIX=""
+    fi
+    LLVM_BRANCH="release_39"
+elif [ "${CT_LLVM_V_DEVEL}" = "y" ]; then
+    LLVM_GET_FN="CT_GitGet"
+    if [ -z "${CT_LOCAL_LLVM_GIT_PATH}" ]; then
+        LLVM_URL=http://llvm.org/git
+        LLVM_SUFFIX=".git"
+    else
+        LLVM_URL=${CT_LOCAL_LLVM_GIT_PATH}
+        LLVM_SUFFIX=""
+    fi
     LLVM_BRANCH="master"
 fi
 
-if [ -n "$LLVM_BRANCH" ]; then
-    CT_LLVM_SUFFIX=".git"
-    LLVM_GET_FN="CT_GetGit"
-    LLVM_URL=http://llvm.org/git/llvm.git
-    LLVM_BRANCH="master" # will be changed to release_35 when it's branched
-    LLVM_CRT_URL=http://llvm.org/git/compiler-rt.git
-    LLVM_CRT_BRANCH=${LLVM_BRANCH}
-fi
+# Fetch source code from a clang or llvm project
+# Usage: do_clang_llvm_get param=value [...]
+#   Parameter     : Definition                          : Type      : Default
+#   getfn         : the function to do fetching         : string    : "CT_GetFile"
+#   name          : the (proper) project name           : string    : (none)
+#   archive_name  : the old archive name (cfe vs clang) : string    : ${name}
+#   out_fname_var : final fname eval'ed into this       : var       : (none)
+#   version       : version                             : string    : (none)
+#   git_ref       : git reference                       : string    : (none)
+#   base_url      : base URL                            : string    : (none)
+#   url_suffix    : url suffix (e.g. .src)              : string    : (none)
+do_clang_llvm_get() {
+    local getfn=CT_GetFile
+    local name
+    local archive_name
+    local out_fname_var
+    local version
+    local git_ref
+    local base_url
+    local url_suffix
 
-CT_LLVM_FULLNAME="llvm-${CT_LLVM_VERSION}${CT_LLVM_SUFFIX}"
-echo CT_LLVM_FULLNAME = $CT_LLVM_FULLNAME
+    for arg in "$@"; do
+        eval "${arg// /\\ }"
+    done
+    if [[ -z ${archive_name} ]]; then
+        archive_name=${name}
+    fi
+    local _fullname
 
-# Download LLVM
+    CT_DoStep INFO "Fetching ${name}-${version} source from ${base_url}, out_fname_var is ${out_fname_var}"
+    if [[ ${getfn} == CT_GetFile ]]; then
+        _fullname=${archive_name}-${version}${url_suffix}
+        CT_GetFile "${_fullname}" "${base_url}/${version}"
+    else
+        local -a _version_downloaded
+        CT_GetGit ${name} "ref=${git_ref}" "${base_url}/${name}${url_suffix}" _version_downloaded
+        _fullname="${name}-${_version_downloaded}"
+    fi
+    if [ -n "${out_fname_var}" ]; then
+        eval ${out_fname_var}=\${_fullname}
+    fi
+    CT_EndStep
+}
+
+# Download llvm + possibly compiler_rt
 do_llvm_get() {
-    $LLVM_GET_FN "${CT_LLVM_FULLNAME}" "${LLVM_URL}"
+    local -a opts
+    opts+=( "getfn=${LLVM_GET_FN}" )
+    opts+=( "name=llvm" )
+    opts+=( "out_fname_var=CT_LLVM_FULLNAME" )
+    opts+=( "version=${CT_LLVM_VERSION}" )
+    opts+=( "git_ref=${LLVM_BRANCH}" )
+    opts+=( "base_url=${LLVM_URL}" )
+    opts+=( "url_suffix=${LLVM_SUFFIX}" )
+    do_clang_llvm_get "${opts[@]}"
+    CT_DoLog INFO "CT_LLVM_FULLNAME ${CT_LLVM_FULLNAME}"
 
     if [ "${CT_LLVM_COMPILER_RT}" = "y" ]; then
-        $LLVM_GET_FN "compiler-rt-${CT_LLVM_VERSION}${CT_LLVM_SUFFIX}" \
-               "${LLVM_CRT_BRANCH}" "${LLVM_CRT_URL}"
+        opts+=( "name=compiler-rt" )
+        opts+=( "out_fname_var=CT_COMPILER_RT_FULLNAME" )
+        do_clang_llvm_get "${opts[@]}"
+        CT_DoLog INFO "CT_COMPILER_RT_FULLNAME ${CT_COMPILER_RT_FULLNAME}"
     fi
 }
 
-# Extract LLVM
+# Extract llvm + possibly compiler_rt
 do_llvm_extract() {
+    CT_DoLog INFO "do_llvm_extract CT_LLVM_FULLNAME ${CT_LLVM_FULLNAME}"
     CT_Extract "${CT_LLVM_FULLNAME}"
-    
+
     CT_Pushd "${CT_SRC_DIR}/${CT_LLVM_FULLNAME}"
     CT_Patch nochdir "llvm" "${CT_LLVM_VERSION}"
     CT_Popd
-    
+
     if [ "${CT_LLVM_COMPILER_RT}" = "y" ]; then
-        CT_Extract "compiler-rt-${CT_LLVM_VERSION}${CT_LLVM_SUFFIX}"
-        
-        CT_Pushd "${CT_SRC_DIR}/compiler-rt-${CT_LLVM_VERSION}${CT_LLVM_SUFFIX}"
+        CT_DoLog INFO "do_llvm_extract CT_COMPILER_RT_FULLNAME ${CT_COMPILER_RT_FULLNAME}"
+        CT_Extract "${CT_COMPILER_RT_FULLNAME}"
+
+        CT_Pushd "${CT_SRC_DIR}/${CT_COMPILER_RT_FULLNAME}"
         CT_Patch nochdir "llvm-compiler-rt" "${CT_LLVM_VERSION}"
         CT_Popd
     fi
@@ -138,7 +203,7 @@ do_llvm_backend() {
     cp -r "${CT_SRC_DIR}/${CT_LLVM_FULLNAME}/"* "."
     if [ "${CT_LLVM_COMPILER_RT}" = "y" ]; then
 	mkdir "projects/compiler-rt"
-	cp -r "${CT_SRC_DIR}/compiler-rt-${CT_LLVM_VERSION}${CT_LLVM_SUFFIX}/"* "projects/compiler-rt/"
+        cp -r "${CT_SRC_DIR}/${CT_COMPILER_RT_FULLNAME}/"* "projects/compiler-rt/"
     fi
 
     if [ "${CT_DEBUGGABLE_TOOLCHAIN}" = "y" ]; then
