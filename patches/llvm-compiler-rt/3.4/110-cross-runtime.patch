@@ -116,8 +116,8 @@ index 5f8801c..5d5f3ad 100644
 -LDFLAGS.asan_osx_dynamic := -lstdc++ -undefined dynamic_lookup
 +LDFLAGS.asan_osx_dynamic :=  -B${prefix}/bin/$(TARGET_TRIPLE)- --sysroot=$(prefix)/$(TARGET_TRIPLE)/sysroot -framework Foundation -L$(prefix)/$(TARGET_TRIPLE)/sysroot/usr/lib/$(TARGET_TRIPLE)/4.2.1/ -lstdc++ -undefined dynamic_lookup
  
- FUNCTIONS.eprintf := eprintf
- FUNCTIONS.10.4 := eprintf floatundidf floatundisf floatundixf
+ # Configure the asan_iossim_dynamic library to be built shared.
+ SHARED_LIBRARY.asan_iossim_dynamic := 1
 diff --git a/make/platform/darwin_bni.mk b/make/platform/darwin_bni.mk
 index 03e8d29..f86b474 100644
 --- a/make/platform/darwin_bni.mk
