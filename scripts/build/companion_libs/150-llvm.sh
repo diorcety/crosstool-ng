@@ -219,6 +219,7 @@ do_llvm_backend() {
     CT_DoExecLog CFG                  \
     CFLAGS="${cflags}"                \
     CXXFLAGS="${cflags}"              \
+    CPPFLAGS="${cflags}"              \
     LDFLAGS="${ldflags}"              \
     ./configure                       \
         --build=${CT_BUILD}           \
@@ -232,6 +233,7 @@ do_llvm_backend() {
     make ${JOBSFLAGS}                 \
     CFLAGS="${cflags}"                \
     CXXFLAGS="${cflags}"              \
+    CPPFLAGS="${cflags}"              \
     LDFLAGS="${ldflags}"              \
     ${OPTIM_MAKE_FLAG}                \
 
