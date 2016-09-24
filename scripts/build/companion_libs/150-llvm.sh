@@ -234,6 +234,10 @@ do_llvm_backend() {
 
     CT_DoLog EXTRA "Configuring LLVM"
 
+    # sparc target cannot be built (on 3.4.2 at least):
+    # SparcTargetInfo.cpp:10:19: error: Sparc.h: No such file or directory
+    # LLVM_TARGET_LIST=aarch64,arm,arm64,cpp,hexagon,mips,mipsel,mips64,mips64el,msp430,powerpc,nvptx,r600,sparc,systemz,x86,x86_64,xcore
+    LLVM_TARGET_LIST=aarch64,arm,cpp,hexagon,mips,mipsel,mips64,mips64el,msp430,powerpc,x86,x86_64
     CT_DoExecLog CFG                  \
     CFLAGS="${cflags}"                \
     CXXFLAGS="${cflags}"              \
@@ -244,6 +248,7 @@ do_llvm_backend() {
         --host=${host}                \
         --prefix="${prefix}"          \
         --target=${CT_TARGET}         \
+        --enable-targets=${LLVM_TARGET_LIST} \
         ${OPTIM_CONFIG_FLAG}          \
 
     CT_DoLog EXTRA "Building LLVM"
