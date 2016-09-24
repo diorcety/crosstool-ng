@@ -29,9 +29,27 @@ elif [ "${CT_LLVM_V_3_3}" = "y" ]; then
 elif [ "${CT_LLVM_V_3_4}" = "y" ]; then
     LLVM_SUFFIX=".src"
 elif [ "${CT_LLVM_V_3_4_2}" = "y" ]; then
-    LLVM_SUFFIX=".src"
+# LLVM_SUFFIX=".src"
+  LLVM_GET_FN="CT_GitGet"
+  if [ -z "${CT_LOCAL_LLVM_GIT_PATH}" ]; then
+      LLVM_URL=http://llvm.org/git
+      LLVM_SUFFIX=".git"
+  else
+      LLVM_URL=${CT_LOCAL_LLVM_GIT_PATH}
+      LLVM_SUFFIX=""
+  fi
+  LLVM_BRANCH="release_34"
 elif [ "${CT_LLVM_V_3_5_2}" = "y" ]; then
-    LLVM_SUFFIX=".src"
+#   LLVM_SUFFIX=".src"
+    LLVM_GET_FN="CT_GitGet"
+    if [ -z "${CT_LOCAL_LLVM_GIT_PATH}" ]; then
+        LLVM_URL=http://llvm.org/git
+        LLVM_SUFFIX=".git"
+    else
+        LLVM_URL=${CT_LOCAL_LLVM_GIT_PATH}
+        LLVM_SUFFIX=""
+    fi
+    LLVM_BRANCH="release_35"
 elif [ "${CT_LLVM_V_3_6_2}" = "y" ]; then
     LLVM_SUFFIX=".src"
 elif [ "${CT_LLVM_V_3_8_1}" = "y" ]; then

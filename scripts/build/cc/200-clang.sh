@@ -26,11 +26,31 @@ elif [ "${CT_CC_CLANG_V_3_4}" = "y" ]; then
     CLANG_SUFFIX=".src"
     CLANG_NAME="clang"
 elif [ "${CT_CC_CLANG_V_3_4_2}" = "y" ]; then
-    CLANG_SUFFIX=".src"
-    CLANG_NAME="cfe"
+#    CLANG_SUFFIX=".src"
+#    CLANG_NAME="cfe"
+  CLANG_NAME="clang"
+  CLANG_GET_FN="CT_GetGit"
+  if [ -z "${CT_LOCAL_LLVM_GIT_PATH}" ]; then
+      CLANG_URL=http://llvm.org/git
+      CLANG_SUFFIX=".git"
+  else
+      CLANG_URL=${CT_LOCAL_LLVM_GIT_PATH}
+      CLANG_SUFFIX=""
+  fi
+  CLANG_BRANCH="release_34"
 elif [ "${CT_CC_CLANG_V_3_5_2}" = "y" ]; then
-    CLANG_SUFFIX=".src"
-    CLANG_NAME="cfe"
+#    CLANG_SUFFIX=".src"
+#    CLANG_NAME="cfe"
+  CLANG_NAME="clang"
+  CLANG_GET_FN="CT_GetGit"
+  if [ -z "${CT_LOCAL_LLVM_GIT_PATH}" ]; then
+      CLANG_URL=http://llvm.org/git
+      CLANG_SUFFIX=".git"
+  else
+      CLANG_URL=${CT_LOCAL_LLVM_GIT_PATH}
+      CLANG_SUFFIX=""
+  fi
+  CLANG_BRANCH="release_35"
 elif [ "${CT_CC_CLANG_V_3_6_2}" = "y" ]; then
     CLANG_SUFFIX=".src"
     CLANG_NAME="cfe"
