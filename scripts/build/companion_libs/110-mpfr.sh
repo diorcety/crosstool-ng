@@ -134,6 +134,7 @@ do_mpfr_backend() {
     CT_DoExecLog CFG                                    \
     CC="${host}-gcc"                                    \
     CFLAGS="${cflags}"                                  \
+    CPPFLAGS="${cflags}"                                \
     LDFLAGS="${ldflags}"                                \
     "${CT_SRC_DIR}/mpfr-${CT_MPFR_VERSION}/configure"   \
         --build=${CT_BUILD}                             \
