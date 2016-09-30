@@ -238,14 +238,12 @@ do_llvm_backend() {
     # SparcTargetInfo.cpp:10:19: error: Sparc.h: No such file or directory
     # LLVM_TARGET_LIST=aarch64,arm,arm64,cpp,hexagon,mips,mipsel,mips64,mips64el,msp430,powerpc,nvptx,r600,sparc,systemz,x86,x86_64,xcore
     LLVM_TARGET_LIST=aarch64,arm,cpp,hexagon,mips,mipsel,mips64,mips64el,msp430,powerpc,x86,x86_64
-    # Cannot do this ...
-    # CPPFLAGS="${cflags}"              \
-
     CT_DoExecLog CFG                  \
     CFLAGS="${cflags}"                \
     CXXFLAGS="${cflags}"              \
+    CPPFLAGS="${cflags}"              \
     LDFLAGS="${ldflags}"              \
-    ./configure                       \
+    bash -x ./configure               \
         --build=${CT_BUILD}           \
         --host=${host}                \
         --prefix="${prefix}"          \
