@@ -237,7 +237,10 @@ do_llvm_backend() {
     # sparc target cannot be built (on 3.4.2 at least):
     # SparcTargetInfo.cpp:10:19: error: Sparc.h: No such file or directory
     # LLVM_TARGET_LIST=aarch64,arm,arm64,cpp,hexagon,mips,mipsel,mips64,mips64el,msp430,powerpc,nvptx,r600,sparc,systemz,x86,x86_64,xcore
-    LLVM_TARGET_LIST=aarch64,arm,cpp,hexagon,mips,mipsel,mips64,mips64el,msp430,powerpc,x86,x86_64
+    # LLVM_TARGET_LIST=aarch64,arm,cpp,hexagon,mips,mipsel,mips64,mips64el,msp430,powerpc,x86,x86_64
+    # using both env. var and argument for CFLAGS etc. For some discussion see: https://llvm.org/bugs/show_bug.cgi?id=6389
+    # probably want to use argument version only in future.
+    LLVM_TARGET_LIST=all
     CT_DoExecLog CFG                  \
     CFLAGS="${cflags}"                \
     CXXFLAGS="${cflags}"              \
@@ -250,14 +253,13 @@ do_llvm_backend() {
         --target=${CT_TARGET}         \
         --enable-targets=${LLVM_TARGET_LIST} \
         ${OPTIM_CONFIG_FLAG}          \
+    CFLAGS="${cflags}"                \
+    CXXFLAGS="${cflags}"              \
+    LDFLAGS="${ldflags}"
 
     CT_DoLog EXTRA "Building LLVM"
     CT_DoExecLog ALL                  \
     make ${JOBSFLAGS} VERBOSE=1       \
-    CFLAGS="${cflags}"                \
-    CXXFLAGS="${cflags}"              \
-    CPPFLAGS="${cflags}"              \
-    LDFLAGS="${ldflags}"              \
     ${OPTIM_MAKE_FLAG}                \
 
     CT_DoLog EXTRA "Installing LLVM"
