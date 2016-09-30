@@ -232,6 +232,11 @@ do_llvm_backend() {
         OPTIM_MAKE_FLAG="ENABLE_OPTIMIZED=1"
     fi
 
+    # Need to figure out something better for this.
+    if [ ! "${CT_TARGET/darwin/}" = "${CT_TARGET}" ]; then
+        DARWIN_TARGET_MAKE_FLAG="MACOSX_DEPLOYMENT_TARGET=10.5"
+    fi
+
     CT_DoLog EXTRA "Configuring LLVM"
 
     # sparc target cannot be built (on 3.4.2 at least):
@@ -253,18 +258,20 @@ do_llvm_backend() {
         --target=${CT_TARGET}         \
         --enable-targets=${LLVM_TARGET_LIST} \
         ${OPTIM_CONFIG_FLAG}          \
-    CFLAGS="${cflags}"                \
-    CXXFLAGS="${cflags}"              \
-    LDFLAGS="${ldflags}"
+        CFLAGS="${cflags}"            \
+        CXXFLAGS="${cflags}"          \
+        LDFLAGS="${ldflags}"
 
     CT_DoLog EXTRA "Building LLVM"
     CT_DoExecLog ALL                  \
     make ${JOBSFLAGS} VERBOSE=1       \
-    ${OPTIM_MAKE_FLAG}                \
+        ${DARWIN_TARGET_MAKE_FLAG}    \
+        ${OPTIM_MAKE_FLAG}            \
 
     CT_DoLog EXTRA "Installing LLVM"
     CT_DoExecLog ALL make install     \
-    ${OPTIM_MAKE_FLAG}                \
+        ${OPTIM_MAKE_FLAG}            \
+        ${DARWIN_TARGET_MAKE_FLAG}    \
 
     # LLVM installs dlls into ${prefix}/lib instead of ${prefix}/bin
     # so copy them to ${prefix}/bin so that executables load them in
