@@ -105,6 +105,8 @@ do_libuuid_utillinux_backend() {
     CT_DoExecLog CFG                                                      \
     CFLAGS="${cflags}"                                                    \
     LDFLAGS="${ldflags}"                                                  \
+    CPP="${host}-cpp"                                                     \
+    CPPFLAGS="${cflags}"                                                  \
     "${CT_SRC_DIR}/util-linux-${CT_LIBUUID_UTILLINUX_VERSION}/configure"  \
         --prefix="${prefix}"                                              \
         --host="${host}"                                                  \
@@ -149,6 +151,8 @@ do_libuuid_e2fsprogslibs_backend() {
     CT_DoExecLog CFG                                                             \
     CFLAGS="${cflags}"                                                           \
     LDFLAGS="${ldflags}"                                                         \
+    CPP="${host}-cpp"                                                            \
+    CPPFLAGS="${cflags}"                                                         \
     "${CT_SRC_DIR}/e2fsprogs-libs-${CT_LIBUUID_E2FSPROGSLIBS_VERSION}/configure" \
         --prefix="${prefix}"                                                     \
         --host="${host}"                                                         \
