@@ -23,9 +23,9 @@ choice
 # Don't remove next line
 # CT_INSERT_VERSION_BELOW
 
-config LIBUUID_UTILLINUX_V_2_20_1
+config LIBUUID_UTILLINUX_V_2_28
     bool
-    prompt "2.20.1"
+    prompt "2.28"
 
 endchoice
 
@@ -33,7 +33,7 @@ config LIBUUID_UTILLINUX_VERSION
     string
 # Don't remove next line
 # CT_INSERT_VERSION_STRING_BELOW
-    default "2.20.1" if LIBUUID_UTILLINUX_V_2_20_1
+    default "2.28" if LIBUUID_UTILLINUX_V_2_28
 
 choice
     bool
@@ -42,9 +42,9 @@ choice
 # Don't remove next line
 # CT_INSERT_VERSION_BELOW
 
-config LIBUUID_E2FSPROGSLIBS_V_1_41_14
+config LIBUUID_E2FSPROGSLIBS_V_1_43_3
     bool
-    prompt "1.41.14"
+    prompt "1.43.3"
 
 endchoice
 
@@ -52,5 +52,5 @@ config LIBUUID_E2FSPROGSLIBS_VERSION
     string
 # Don't remove next line
 # CT_INSERT_VERSION_STRING_BELOW
-    default "1.41.14" if LIBUUID_E2FSPROGSLIBS_V_1_41_14
+    default "1.43.3" if LIBUUID_E2FSPROGSLIBS_V_1_43_3
 

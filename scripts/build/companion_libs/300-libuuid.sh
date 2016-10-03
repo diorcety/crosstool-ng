@@ -10,11 +10,12 @@ if [ "${CT_LIBUUID}" = "y" ]; then
 do_libuuid_get() {
     if [ "${CT_LIBUUID_UTILLINUX}" = "y" ]; then
         short_version=$(echo ${CT_LIBUUID_UTILLINUX_VERSION} | sed -e 's/^\([0-9]\+.[0-9]\+\)\(.*\)/\1/g')
+        http://freefr.dl.sourceforge.net/project/e2fsprogs/e2fsprogs/v1.43.3/e2fsprogs-libs-1.43.3.tar.gz
         CT_GetFile "util-linux-${CT_LIBUUID_UTILLINUX_VERSION}" \
-                   http://www.kernel.org/pub/linux/utils/util-linux/v${short_version}
+                   http://www.kernel.org/pub/linux/utils/util-linux/v${CT_LIBUUID_UTILLINUX_VERSION}
     elif [ "${CT_LIBUUID_E2FSPROGSLIBS}" = "y" ]; then
         CT_GetFile "e2fsprogs-libs-${CT_LIBUUID_E2FSPROGSLIBS_VERSION}" \
-                   http://downloads.sourceforge.net/project/e2fsprogs/e2fsprogs/${CT_LIBUUID_E2FSPROGSLIBS_VERSION}
+                   http://downloads.sourceforge.net/project/e2fsprogs/e2fsprogs/v${CT_LIBUUID_E2FSPROGSLIBS_VERSION}
     fi
 }
 
@@ -105,7 +106,7 @@ do_libuuid_utillinux_backend() {
     CT_DoExecLog CFG                                                      \
     CFLAGS="${cflags}"                                                    \
     LDFLAGS="${ldflags}"                                                  \
-    CPP="${host}-cpp"                                                     \
+    CPP="${host}-gcc -E"                                                  \
     CPPFLAGS="${cflags}"                                                  \
     "${CT_SRC_DIR}/util-linux-${CT_LIBUUID_UTILLINUX_VERSION}/configure"  \
         --prefix="${prefix}"                                              \
@@ -151,7 +152,7 @@ do_libuuid_e2fsprogslibs_backend() {
     CT_DoExecLog CFG                                                             \
     CFLAGS="${cflags}"                                                           \
     LDFLAGS="${ldflags}"                                                         \
-    CPP="${host}-cpp"                                                            \
+    CPP="${host}-gcc -E"                                                         \
     CPPFLAGS="${cflags}"                                                         \
     "${CT_SRC_DIR}/e2fsprogs-libs-${CT_LIBUUID_E2FSPROGSLIBS_VERSION}/configure" \
         --prefix="${prefix}"                                                     \
