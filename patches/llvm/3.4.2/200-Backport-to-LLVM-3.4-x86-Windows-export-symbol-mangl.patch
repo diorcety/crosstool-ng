@@ -1,7 +1,18 @@
-diff -urN a/lib/Target/X86/X86AsmPrinter.cpp b/lib/Target/X86/X86AsmPrinter.cpp
---- a/lib/Target/X86/X86AsmPrinter.cpp	2013-11-19 00:08:12.000000000 +0100
-+++ b/lib/Target/X86/X86AsmPrinter.cpp	2014-05-05 14:25:30.913709871 +0200
-@@ -542,6 +542,26 @@
+From 71d15cf4733768bdbcd5f8ffda1785cd62648f5f Mon Sep 17 00:00:00 2001
+From: Ray Donnelly <mingw.android@gmail.com>
+Date: Tue, 11 Oct 2016 09:33:23 +0100
+Subject: [PATCH 6/7] Backport to LLVM 3.4 x86 Windows export symbol mangling
+
+---
+ lib/Target/X86/X86AsmPrinter.cpp | 39 ++++++++++++++++++++++-----------------
+ lib/Target/X86/X86AsmPrinter.h   |  2 ++
+ 2 files changed, 24 insertions(+), 17 deletions(-)
+
+diff --git a/lib/Target/X86/X86AsmPrinter.cpp b/lib/Target/X86/X86AsmPrinter.cpp
+index 1f5f918..d71f5f2 100644
+--- a/lib/Target/X86/X86AsmPrinter.cpp
++++ b/lib/Target/X86/X86AsmPrinter.cpp
+@@ -544,6 +544,26 @@ void X86AsmPrinter::EmitStartOfAsmFile(Module &M) {
    }
  }
  
@@ -28,7 +39,7 @@ diff -urN a/lib/Target/X86/X86AsmPrinter.cpp b/lib/Target/X86/X86AsmPrinter.cpp
  
  void X86AsmPrinter::EmitEndOfAsmFile(Module &M) {
    if (Subtarget->isTargetEnvMacho()) {
-@@ -679,27 +699,12 @@
+@@ -681,27 +701,12 @@ void X86AsmPrinter::EmitEndOfAsmFile(Module &M) {
      // Output linker support code for dllexported globals on windows.
      if (!DLLExportedGlobals.empty() || !DLLExportedFns.empty()) {
        OutStreamer.SwitchSection(TLOFCOFF.getDrectveSection());
@@ -58,10 +69,11 @@ diff -urN a/lib/Target/X86/X86AsmPrinter.cpp b/lib/Target/X86/X86AsmPrinter.cpp
        }
      }
    }
-diff -urN a/lib/Target/X86/X86AsmPrinter.h b/lib/Target/X86/X86AsmPrinter.h
---- a/lib/Target/X86/X86AsmPrinter.h	2013-11-17 02:36:23.000000000 +0100
-+++ b/lib/Target/X86/X86AsmPrinter.h	2014-05-05 14:43:56.832074011 +0200
-@@ -37,6 +37,8 @@
+diff --git a/lib/Target/X86/X86AsmPrinter.h b/lib/Target/X86/X86AsmPrinter.h
+index 24a768b..ad95442 100644
+--- a/lib/Target/X86/X86AsmPrinter.h
++++ b/lib/Target/X86/X86AsmPrinter.h
+@@ -37,6 +37,8 @@ class LLVM_LIBRARY_VISIBILITY X86AsmPrinter : public AsmPrinter {
                            MachineInstr::const_mop_iterator MOE,
                            const TargetMachine &TM);
  
@@ -70,3 +82,6 @@ diff -urN a/lib/Target/X86/X86AsmPrinter.h b/lib/Target/X86/X86AsmPrinter.h
   public:
    explicit X86AsmPrinter(TargetMachine &TM, MCStreamer &Streamer)
      : AsmPrinter(TM, Streamer), SM(*this, stackmapOperandParser) {
+-- 
+2.9.1
+

@@ -1,7 +1,17 @@
-diff -urN a/lib/Target/X86/X86AsmPrinter.cpp b/lib/Target/X86/X86AsmPrinter.cpp
---- a/lib/Target/X86/X86AsmPrinter.cpp	2014-05-05 14:25:30.913709871 +0200
-+++ b/lib/Target/X86/X86AsmPrinter.cpp	2014-05-05 14:28:59.439352205 +0200
-@@ -544,13 +544,17 @@
+From f929cde1d34166753dce800667fb54f7da9cadb6 Mon Sep 17 00:00:00 2001
+From: Ray Donnelly <mingw.android@gmail.com>
+Date: Tue, 11 Oct 2016 09:35:50 +0100
+Subject: [PATCH 7/7] X86 repair export compatibility with MinGW cygwin
+
+---
+ lib/Target/X86/X86AsmPrinter.cpp | 6 +++++-
+ 1 file changed, 5 insertions(+), 1 deletion(-)
+
+diff --git a/lib/Target/X86/X86AsmPrinter.cpp b/lib/Target/X86/X86AsmPrinter.cpp
+index d71f5f2..7f7f2f7 100644
+--- a/lib/Target/X86/X86AsmPrinter.cpp
++++ b/lib/Target/X86/X86AsmPrinter.cpp
+@@ -546,13 +546,17 @@ void X86AsmPrinter::EmitStartOfAsmFile(Module &M) {
  
  void X86AsmPrinter::GenerateExportDirective(const MCSymbol *Sym, bool IsData) {
    SmallString<128> name;
@@ -20,3 +30,6 @@ diff -urN a/lib/Target/X86/X86AsmPrinter.cpp b/lib/Target/X86/X86AsmPrinter.cpp
  
    if (IsData) {
      if (Subtarget->isTargetWindows())
+-- 
+2.9.1
+
