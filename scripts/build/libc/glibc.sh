@@ -191,6 +191,15 @@ do_libc_backend_once() {
     # glibc can't be built without -O2 (reference needed!)
     glibc_cflags+=" -O2"
 
+    # Hack for glibc 2.5 with CentOS5.11 GCC 4.4
+    # https://github.com/mscdex/node-mariasql/commit/bf4f4280b0f68fc31bc4661dca8eac224a58733f
+    # EOL 03/2017 [CentOS5.x]
+    if [ "${CT_LIBC_VERSION}" = "2.5" -a \
+         "${CT_ARCH_32}" = "y" -a \
+         "${libc_mode}" = "startfiles" ]; then
+         glibc_cflags+=" -g"
+    fi
+
     case "${CT_GLIBC_ENABLE_FORTIFIED_BUILD}" in
         y)  ;;
         *)  glibc_cflags+=" -U_FORTIFY_SOURCE";;
@@ -264,7 +273,7 @@ do_libc_backend_once() {
         --without-cvs                                               \
         --disable-profile                                           \
         --without-gd                                                \
-        --with-headers="${CT_HEADERS_DIR}"                          \
+        --with-headers="${CT_HEADERS_DIR}${EXTRA_CT_HEADERS_DIR}"   \
         "${extra_config[@]}"                                        \
         "${CT_GLIBC_EXTRA_CONFIG_ARRAY[@]}"
 
