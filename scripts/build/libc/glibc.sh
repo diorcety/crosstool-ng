@@ -185,6 +185,10 @@ do_libc_backend_once() {
         echo "libc_cv_c_cleanup=yes" >>config.cache
     fi
 
+    if [ "${CT_DISABLE_MULTILIB_LIB_OSDIRNAMES}" = "y" ]; then
+        echo "libc_cv_slibdir=/lib" >>config.cache
+    fi
+
     # Pre-seed the configparms file with values from the config option
     printf "%s\n" "${CT_GLIBC_CONFIGPARMS}" > configparms
 

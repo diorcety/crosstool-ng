@@ -70,6 +70,19 @@ config DEMULTILIB
       SuperH using them?) and hence not well tested in crosstool-NG; therefore,
       this option is experimental when MULTILIB is enabled.
 
+config DISABLE_MULTILIB_LIB_OSDIRNAMES
+    bool
+    prompt "Disable multilib lib os dir names (READ HELP!!!)"
+    depends on ! MULTILIB
+    help
+      If you say 'y' here, then the toolchain will use 'lib' as the OSes
+      lib dir name.
+
+      Specifically this prevents the compilers from using 'lib64' for 64-bit
+      arches and 'libx32' for x32. This option allows distributions to have
+      a uniform folder layout over different architectures and was added for
+      Continuum Analytic Inc's Anaconda/Miniconda and the conda-forge project.
+
 #--------------------------------------
 config ARCH_SUPPORTS_BOTH_MMU
     bool

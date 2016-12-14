@@ -27,6 +27,20 @@ do_cc_get() {
 do_cc_extract() {
     CT_ExtractPatch GCC
 
+    # Patching all the versions for this would be painful.
+    if [ "${CT_DISABLE_MULTILIB_LIB_OSDIRNAMES}" = "y" ]; then
+        CT_Pushd "${CT_SRC_DIR}/gcc-${CT_CC_GCC_VERSION}"
+        TINFO_FILES=$(find . -path "*/config/*/t-*")
+        for TINFO_FILE in ${TINFO_FILES}; do
+            echo TINFO_FILE ${TINFO_FILE}
+            sed -i.bak 's#^\(MULTILIB_OSDIRNAMES.*\)\(lib64\)#\1lib#g' ${TINFO_FILE}
+            rm -f ${TINFO_FILE}.bak
+            sed -i.bak 's#^\(MULTILIB_OSDIRNAMES.*\)\(libx32\)#\1lib#g' ${TINFO_FILE}
+            rm -f ${TINFO_FILE}.bak
+        done
+        CT_Popd
+    fi
+
     # Copy ecj-latest.jar to ecj.jar at the top of the GCC source tree
     if [ "${CT_CC_LANG_JAVA_USE_ECJ}" = "y" -a ! -f "${CT_SRC_DIR}/gcc/ecj.jar" ]; then
         CT_DoExecLog ALL cp -v "${CT_TARBALLS_DIR}/ecj-latest.jar" "${CT_SRC_DIR}/gcc/ecj.jar"
