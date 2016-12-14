@@ -110,9 +110,9 @@ config LIBC_GLIBC_V_2_18
     bool
     prompt "2.18"
 
-config LIBC_GLIBC_V_2_12
+config LIBC_GLIBC_V_2_12_2
     bool
-    prompt "2.12"
+    prompt "2.12.2"
 
 config LIBC_GLIBC_V_2_5
     bool
@@ -146,7 +146,7 @@ config LIBC_VERSION
     default "2.20" if LIBC_GLIBC_V_2_20
     default "2.19" if LIBC_GLIBC_V_2_19
     default "2.18" if LIBC_GLIBC_V_2_18
-    default "2.12" if LIBC_GLIBC_V_2_12
+    default "2.12.2" if LIBC_GLIBC_V_2_12_2
     default "2.5" if LIBC_GLIBC_V_2_5
 
 endif # ! LIBC_GLIBC_CUSTOM
