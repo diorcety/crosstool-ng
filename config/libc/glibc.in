@@ -182,6 +182,12 @@ config LIBC_GLIBC_V_2_8
     prompt "2.8"
     depends on OBSOLETE
 
+# I cannot remember why
+config LIBC_GLIBC_V_2_6
+    bool
+    prompt "2.6"
+    depends on OBSOLETE
+
 # EOL 03/2017 [CentOS5.x]
 config LIBC_GLIBC_V_2_5_1
     bool
@@ -231,6 +237,7 @@ config LIBC_VERSION
     default "2.12.2" if LIBC_GLIBC_V_2_12_2
     default "2.12.1" if LIBC_GLIBC_V_2_12_1
     default "2.8" if LIBC_GLIBC_V_2_8
+    default "2.6" if LIBC_GLIBC_V_2_6
     default "2.5.1" if LIBC_GLIBC_V_2_5_1
 
 endif # ! LIBC_GLIBC_CUSTOM
