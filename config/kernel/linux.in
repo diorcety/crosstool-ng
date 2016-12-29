@@ -89,6 +89,10 @@ config KERNEL_V_3_2
     bool
     prompt "3.2.83"
 
+config KERNEL_V_3_2_43
+    bool
+    prompt "3.2.43"
+
 config KERNEL_V_2_6_32
     bool
     prompt "2.6.32.71"
@@ -116,6 +120,7 @@ config KERNEL_VERSION
     default "3.7.8" if KERNEL_V_3_7
     default "3.4.113" if KERNEL_V_3_4
     default "3.2.83" if KERNEL_V_3_2
+    default "3.2.43" if KERNEL_V_3_2_43
     default "2.6.32.71" if KERNEL_V_2_6_32
     default "2.6.18" if KERNEL_V_2_6_18
 
