@@ -1,0 +1,497 @@
+From 4b386ffba9ebe520ddc51fe46ba88e008056a67e Mon Sep 17 00:00:00 2001
+From: "Thomas E. Dickey" <dickey@invisible-island.net>
+Date: Sun, 24 Apr 2016 01:26:19 +0000
+Subject: [PATCH 33/50] ncurses 6.0 - patch 20160423
+
++ modify test/ncurses.c 'd' edit-color menu to optionally read xterm
+  color palette directly from terminal, as well as handling KEY_RESIZE
+  and screen-repainting with control/L and control/R.
++ add 'oc' capability to xterm+256color, allowing palette reset for
+  xterm -TD
+---
+ NEWS                             |   9 +-
+ VERSION                          |   2 +-
+ dist.mk                          |   4 +-
+ misc/terminfo.src                |   9 +-
+ package/debian-mingw/changelog   |   4 +-
+ package/debian-mingw64/changelog |   4 +-
+ package/debian/changelog         |   4 +-
+ package/mingw-ncurses.nsi        |   4 +-
+ package/mingw-ncurses.spec       |   2 +-
+ package/ncurses.spec             |   2 +-
+ test/ncurses.c                   | 180 +++++++++++++++++++++++++++------------
+ 11 files changed, 155 insertions(+), 69 deletions(-)
+
+diff --git a/NEWS b/NEWS
+index 648a717..e344c70 100644
+--- a/NEWS
++++ b/NEWS
+@@ -25,7 +25,7 @@
+ -- sale, use or other dealings in this Software without prior written        --
+ -- authorization.                                                            --
+ -------------------------------------------------------------------------------
+--- $Id: NEWS,v 1.2594 2016/04/16 20:28:00 tom Exp $
++-- $Id: NEWS,v 1.2597 2016/04/24 01:01:58 tom Exp $
+ -------------------------------------------------------------------------------
+ 
+ This is a log of changes that ncurses has gone through since Zeyd started
+@@ -45,6 +45,13 @@ See the AUTHORS file for the corresponding full names.
+ Changes through 1.9.9e did not credit all contributions;
+ it is not possible to add this information.
+ 
++20160423
++	+ modify test/ncurses.c 'd' edit-color menu to optionally read xterm
++	  color palette directly from terminal, as well as handling KEY_RESIZE
++	  and screen-repainting with control/L and control/R.
++	+ add 'oc' capability to xterm+256color, allowing palette reset for
++	  xterm -TD
++
+ 20160416
+ 	+ add workaround in configure script for inept transition to PIE vs
+ 	  PIC builds documented in
+diff --git a/VERSION b/VERSION
+index 4450d43..c508645 100644
+--- a/VERSION
++++ b/VERSION
+@@ -1 +1 @@
+-5:0:9	6.0	20160416
++5:0:9	6.0	20160423
+diff --git a/dist.mk b/dist.mk
+index 22f147c..ed620dd 100644
+--- a/dist.mk
++++ b/dist.mk
+@@ -25,7 +25,7 @@
+ # use or other dealings in this Software without prior written               #
+ # authorization.                                                             #
+ ##############################################################################
+-# $Id: dist.mk,v 1.1102 2016/04/16 18:08:32 tom Exp $
++# $Id: dist.mk,v 1.1103 2016/04/23 10:14:21 tom Exp $
+ # Makefile for creating ncurses distributions.
+ #
+ # This only needs to be used directly as a makefile by developers, but
+@@ -37,7 +37,7 @@ SHELL = /bin/sh
+ # These define the major/minor/patch versions of ncurses.
+ NCURSES_MAJOR = 6
+ NCURSES_MINOR = 0
+-NCURSES_PATCH = 20160416
++NCURSES_PATCH = 20160423
+ 
+ # We don't append the patch to the version, since this only applies to releases
+ VERSION = $(NCURSES_MAJOR).$(NCURSES_MINOR)
+diff --git a/misc/terminfo.src b/misc/terminfo.src
+index 13cc1f9..1e28783 100644
+--- a/misc/terminfo.src
++++ b/misc/terminfo.src
+@@ -6,8 +6,8 @@
+ # Report bugs and new terminal descriptions to
+ #	bug-ncurses@gnu.org
+ #
+-#	$Revision: 1.561 $
+-#	$Date: 2016/01/17 00:25:26 $
++#	$Revision: 1.562 $
++#	$Date: 2016/04/23 10:59:12 $
+ #
+ # The original header is preserved below for reference.  It is noted that there
+ # is a "newer" version which differs in some cosmetic details (but actually
+@@ -4234,6 +4234,7 @@ xterm+256color|xterm 256-color feature,
+ 	ccc,
+ 	colors#256, pairs#32767,
+ 	initc=\E]4;%p1%d;rgb\:%p2%{255}%*%{1000}%/%2.2X/%p3%{255}%*%{1000}%/%2.2X/%p4%{255}%*%{1000}%/%2.2X\E\\,
++	oc=\E]104\007,
+ 	setab=\E[%?%p1%{8}%<%t4%p1%d%e%p1%{16}%<%t10%p1%{8}%-%d%e48;5;%p1%d%;m,
+ 	setaf=\E[%?%p1%{8}%<%t3%p1%d%e%p1%{16}%<%t9%p1%{8}%-%d%e38;5;%p1%d%;m,
+ 	setb@, setf@,
+@@ -23823,4 +23824,8 @@ v3220|LANPAR Vision II model 3220/3221/3222,
+ #	  for better consistency with xterm (report by Leonardo Brondani
+ #	  Schenkel) -TD
+ #
++# 2016-04-23
++#	+ add 'oc' capability to xterm+256color, allowing palette reset for
++#	  xterm -TD
++#
+ ######## SHANTIH!  SHANTIH!  SHANTIH!
+diff --git a/package/debian-mingw/changelog b/package/debian-mingw/changelog
+index 6882362..16b3e4d 100644
+--- a/package/debian-mingw/changelog
++++ b/package/debian-mingw/changelog
+@@ -1,8 +1,8 @@
+-ncurses6 (6.0+20160416) unstable; urgency=low
++ncurses6 (6.0+20160423) unstable; urgency=low
+ 
+   * latest weekly patch
+ 
+- -- Thomas E. Dickey <dickey@invisible-island.net>  Sat, 16 Apr 2016 14:08:32 -0400
++ -- Thomas E. Dickey <dickey@invisible-island.net>  Sat, 23 Apr 2016 06:14:21 -0400
+ 
+ ncurses6 (5.9-20131005) unstable; urgency=low
+ 
+diff --git a/package/debian-mingw64/changelog b/package/debian-mingw64/changelog
+index 6882362..16b3e4d 100644
+--- a/package/debian-mingw64/changelog
++++ b/package/debian-mingw64/changelog
+@@ -1,8 +1,8 @@
+-ncurses6 (6.0+20160416) unstable; urgency=low
++ncurses6 (6.0+20160423) unstable; urgency=low
+ 
+   * latest weekly patch
+ 
+- -- Thomas E. Dickey <dickey@invisible-island.net>  Sat, 16 Apr 2016 14:08:32 -0400
++ -- Thomas E. Dickey <dickey@invisible-island.net>  Sat, 23 Apr 2016 06:14:21 -0400
+ 
+ ncurses6 (5.9-20131005) unstable; urgency=low
+ 
+diff --git a/package/debian/changelog b/package/debian/changelog
+index 4301ec3..22ec722 100644
+--- a/package/debian/changelog
++++ b/package/debian/changelog
+@@ -1,8 +1,8 @@
+-ncurses6 (6.0+20160416) unstable; urgency=low
++ncurses6 (6.0+20160423) unstable; urgency=low
+ 
+   * latest weekly patch
+ 
+- -- Thomas E. Dickey <dickey@invisible-island.net>  Sat, 16 Apr 2016 14:08:32 -0400
++ -- Thomas E. Dickey <dickey@invisible-island.net>  Sat, 23 Apr 2016 06:14:21 -0400
+ 
+ ncurses6 (5.9-20120608) unstable; urgency=low
+ 
+diff --git a/package/mingw-ncurses.nsi b/package/mingw-ncurses.nsi
+index 6fc9069..1ff1089 100644
+--- a/package/mingw-ncurses.nsi
++++ b/package/mingw-ncurses.nsi
+@@ -1,4 +1,4 @@
+-; $Id: mingw-ncurses.nsi,v 1.154 2016/04/16 18:08:32 tom Exp $
++; $Id: mingw-ncurses.nsi,v 1.155 2016/04/23 10:14:21 tom Exp $
+ 
+ ; TODO add examples
+ ; TODO bump ABI to 6
+@@ -10,7 +10,7 @@
+ !define VERSION_MAJOR "6"
+ !define VERSION_MINOR "0"
+ !define VERSION_YYYY  "2016"
+-!define VERSION_MMDD  "0416"
++!define VERSION_MMDD  "0423"
+ !define VERSION_PATCH ${VERSION_YYYY}${VERSION_MMDD}
+ 
+ !define MY_ABI   "5"
+diff --git a/package/mingw-ncurses.spec b/package/mingw-ncurses.spec
+index 25d269e..813e32a 100644
+--- a/package/mingw-ncurses.spec
++++ b/package/mingw-ncurses.spec
+@@ -3,7 +3,7 @@
+ Summary: shared libraries for terminal handling
+ Name: mingw32-ncurses6
+ Version: 6.0
+-Release: 20160416
++Release: 20160423
+ License: X11
+ Group: Development/Libraries
+ Source: ncurses-%{version}-%{release}.tgz
+diff --git a/package/ncurses.spec b/package/ncurses.spec
+index 3ff49ea..252375b 100644
+--- a/package/ncurses.spec
++++ b/package/ncurses.spec
+@@ -1,7 +1,7 @@
+ Summary: shared libraries for terminal handling
+ Name: ncurses6
+ Version: 6.0
+-Release: 20160416
++Release: 20160423
+ License: X11
+ Group: Development/Libraries
+ Source: ncurses-%{version}-%{release}.tgz
+diff --git a/test/ncurses.c b/test/ncurses.c
+index 9a90d40..d04effb 100644
+--- a/test/ncurses.c
++++ b/test/ncurses.c
+@@ -40,7 +40,7 @@ AUTHOR
+    Author: Eric S. Raymond <esr@snark.thyrsus.com> 1993
+            Thomas E. Dickey (beginning revision 1.27 in 1996).
+ 
+-$Id: ncurses.c,v 1.429 2016/01/03 01:50:10 tom Exp $
++$Id: ncurses.c,v 1.433 2016/04/24 01:00:06 tom Exp $
+ 
+ ***************************************************************************/
+ 
+@@ -2652,7 +2652,7 @@ change_color(NCURSES_PAIRS_T current, int field, int value, int usebase)
+ }
+ 
+ static void
+-init_all_colors(void)
++reset_all_colors(void)
+ {
+     NCURSES_PAIRS_T c;
+ 
+@@ -2663,6 +2663,85 @@ init_all_colors(void)
+ 		   all_colors[c].blue);
+ }
+ 
++#define okCOLOR(n) ((n) >= 0 && (n) < max_colors)
++#define okRGB(n)   ((n) >= 0 && (n) <= 1000)
++#define DecodeRGB(n) ((n * 1000) / 0xffff)
++
++static void
++init_all_colors(bool xterm_colors, char *palette_file)
++{
++    NCURSES_PAIRS_T cp;
++    all_colors = typeMalloc(RGB_DATA, (unsigned) max_colors);
++    if (!all_colors)
++	failed("all_colors");
++    for (cp = 0; cp < max_colors; ++cp) {
++	color_content(cp,
++		      &all_colors[cp].red,
++		      &all_colors[cp].green,
++		      &all_colors[cp].blue);
++    }
++    /* xterm and compatible terminals can read results of an OSC string
++     * asking for the current color palette.
++     */
++    if (xterm_colors) {
++	int n;
++	int got;
++	char result[BUFSIZ];
++	int check_n, check_r, check_g, check_b;
++
++	raw();
++	noecho();
++	for (n = 0; n < max_colors; ++n) {
++	    fprintf(stderr, "\033]4;%d;?\007", n);
++	    got = read(0, result, sizeof(result) - 1);
++	    if (got < 0)
++		break;
++	    result[got] = '\0';
++	    if (sscanf(result, "\033]4;%d;rgb:%x/%x/%x\007",
++		       &check_n,
++		       &check_r,
++		       &check_g,
++		       &check_b) == 4 &&
++		check_n == n) {
++		all_colors[n].red = DecodeRGB(check_r);
++		all_colors[n].green = DecodeRGB(check_g);
++		all_colors[n].blue = DecodeRGB(check_b);
++	    } else {
++		break;
++	    }
++	}
++	reset_prog_mode();
++    }
++    if (palette_file != 0) {
++	FILE *fp = fopen(palette_file, "r");
++	if (fp != 0) {
++	    char buffer[BUFSIZ];
++	    int red, green, blue;
++	    int scale = 1000;
++	    int c;
++	    while (fgets(buffer, sizeof(buffer), fp) != 0) {
++		if (sscanf(buffer, "scale:%d", &c) == 1) {
++		    scale = c;
++		} else if (sscanf(buffer, "%d:%d %d %d",
++				  &c,
++				  &red,
++				  &green,
++				  &blue) == 4
++			   && okCOLOR(c)
++			   && okRGB(red)
++			   && okRGB(green)
++			   && okRGB(blue)) {
++#define Scaled(n) (NCURSES_COLOR_T) (((n) * 1000) / scale)
++		    all_colors[c].red = Scaled(red);
++		    all_colors[c].green = Scaled(green);
++		    all_colors[c].blue = Scaled(blue);
++		}
++	    }
++	    fclose(fp);
++	}
++    }
++}
++
+ #define scaled_rgb(n) ((255 * (n)) / 1000)
+ 
+ static void
+@@ -2670,14 +2749,23 @@ color_edit(void)
+ /* display the color test pattern, without trying to edit colors */
+ {
+     int i;
+-    int current = 0;
+-    int this_c = 0, value = 0, field = 0;
++    int current;
++    int this_c, value, field;
+     int last_c;
+-    int top_color = 0;
+-    int page_size = (LINES - 6);
+-
+-    init_all_colors();
+-    refresh();
++    int top_color;
++    int page_size;
++
++    reset_all_colors();
++#ifdef KEY_RESIZE
++  retry:
++#endif
++    current = 0;
++    this_c = 0;
++    value = 0;
++    field = 0;
++    top_color = 0;
++    page_size = (LINES - 6);
++    erase();
+ 
+     for (i = 0; i < max_colors; i++)
+ 	init_pair((NCURSES_PAIRS_T) i,
+@@ -2746,6 +2834,21 @@ color_edit(void)
+ 	    value = 0;
+ 
+ 	switch (this_c) {
++#ifdef KEY_RESIZE
++	case KEY_RESIZE:
++	    move(0, 0);
++	    goto retry;
++#endif
++	case '!':
++	    ShellOut(FALSE);
++	    /* FALLTHRU */
++	case CTRL('r'):
++	    endwin();
++	    refresh();
++	    break;
++	case CTRL('l'):
++	    refresh();
++	    break;
+ 	case CTRL('b'):
+ 	case KEY_PPAGE:
+ 	    if (current > 0)
+@@ -2772,10 +2875,12 @@ color_edit(void)
+ 	    current = (current == (max_colors - 1) ? 0 : current + 1);
+ 	    break;
+ 
++	case '\t':
+ 	case KEY_RIGHT:
+ 	    field = (field == 2 ? 0 : field + 1);
+ 	    break;
+ 
++	case KEY_BTAB:
+ 	case KEY_LEFT:
+ 	    field = (field == 0 ? 2 : field - 1);
+ 	    break;
+@@ -2818,6 +2923,8 @@ color_edit(void)
+ 	    P("To increment or decrement a value, use the same procedure, but finish");
+ 	    P("with a `+' or `-'.");
+ 	    P("");
++	    P("Use `!' to shell-out, ^R or ^L to repaint the screen.");
++	    P("");
+ 	    P("Press 'm' to invoke the top-level menu with the current color settings.");
+ 	    P("To quit, do ESC");
+ 
+@@ -2862,7 +2969,7 @@ color_edit(void)
+     /*
+      * ncurses does not reset each color individually when calling endwin().
+      */
+-    init_all_colors();
++    reset_all_colors();
+ 
+     endwin();
+ }
+@@ -6923,6 +7030,7 @@ usage(void)
+ #ifdef TRACE
+ 	,"  -t mask  specify default trace-level (may toggle with ^T)"
+ #endif
++	,"  -x       use xterm-compatible control for reading color palette"
+     };
+     size_t n;
+     for (n = 0; n < SIZEOF(tbl); n++)
+@@ -7088,9 +7196,6 @@ main_menu(bool top)
+ 	main(argc,argv)
+ --------------------------------------------------------------------------*/
+ 
+-#define okCOLOR(n) ((n) >= 0 && (n) < max_colors)
+-#define okRGB(n)   ((n) >= 0 && (n) <= 1000)
+-
+ int
+ main(int argc, char *argv[])
+ {
+@@ -7104,10 +7209,11 @@ main(int argc, char *argv[])
+ #endif
+     char *palette_file = 0;
+     bool monochrome = FALSE;
++    bool xterm_colors = FALSE;
+ 
+     setlocale(LC_ALL, "");
+ 
+-    while ((c = getopt(argc, argv, "a:dEe:fhmp:s:Tt:")) != -1) {
++    while ((c = getopt(argc, argv, "a:dEe:fhmp:s:Tt:x")) != -1) {
+ 	switch (c) {
+ #ifdef NCURSES_VERSION
+ 	case 'a':
+@@ -7169,6 +7275,9 @@ main(int argc, char *argv[])
+ 	    save_trace = (unsigned) strtol(optarg, 0, 0);
+ 	    break;
+ #endif
++	case 'x':
++	    xterm_colors = TRUE;
++	    break;
+ 	default:
+ 	    usage();
+ 	}
+@@ -7203,6 +7312,9 @@ main(int argc, char *argv[])
+     initscr();
+     bkgdset(BLANK);
+ 
++    set_terminal_modes();
++    def_prog_mode();
++
+     /* tests, in general, will want these modes */
+     use_colors = (bool) (monochrome ? FALSE : has_colors());
+ 
+@@ -7226,47 +7338,9 @@ main(int argc, char *argv[])
+ 	max_pairs = COLOR_PAIRS;	/* was > 256 ? 256 : COLOR_PAIRS */
+ 
+ 	if (can_change_color()) {
+-	    NCURSES_PAIRS_T cp;
+-	    all_colors = typeMalloc(RGB_DATA, (unsigned) max_colors);
+-	    if (!all_colors)
+-		failed("all_colors");
+-	    for (cp = 0; cp < max_colors; ++cp) {
+-		color_content(cp,
+-			      &all_colors[cp].red,
+-			      &all_colors[cp].green,
+-			      &all_colors[cp].blue);
+-	    }
+-	    if (palette_file != 0) {
+-		FILE *fp = fopen(palette_file, "r");
+-		if (fp != 0) {
+-		    char buffer[BUFSIZ];
+-		    int red, green, blue;
+-		    int scale = 1000;
+-		    while (fgets(buffer, sizeof(buffer), fp) != 0) {
+-			if (sscanf(buffer, "scale:%d", &c) == 1) {
+-			    scale = c;
+-			} else if (sscanf(buffer, "%d:%d %d %d",
+-					  &c,
+-					  &red,
+-					  &green,
+-					  &blue) == 4
+-				   && okCOLOR(c)
+-				   && okRGB(red)
+-				   && okRGB(green)
+-				   && okRGB(blue)) {
+-#define Scaled(n) (NCURSES_COLOR_T) (((n) * 1000) / scale)
+-			    all_colors[c].red = Scaled(red);
+-			    all_colors[c].green = Scaled(green);
+-			    all_colors[c].blue = Scaled(blue);
+-			}
+-		    }
+-		    fclose(fp);
+-		}
+-	    }
++	    init_all_colors(xterm_colors, palette_file);
+ 	}
+     }
+-    set_terminal_modes();
+-    def_prog_mode();
+ 
+     /*
+      * Return to terminal mode, so we're guaranteed of being able to
+-- 
+2.9.1
+

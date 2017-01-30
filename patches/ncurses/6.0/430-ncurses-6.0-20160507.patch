@@ -1,0 +1,374 @@
+From 5c085efbe35681c3847b3ced598635f083810865 Mon Sep 17 00:00:00 2001
+From: "Thomas E. Dickey" <dickey@invisible-island.net>
+Date: Sun, 8 May 2016 00:34:20 +0000
+Subject: [PATCH 34/50] ncurses 6.0 - patch 20160507
+
++ amend change to _nc_do_color to restore the early return for the
+  special case used in _nc_screen_wrap (report by Dick Streefland,
+  cf: 20151017).
++ modify test/ncurses.c:
+  + check return-value of putwin
+  + correct ifdef which made the 'g' test's legend not reflect changes
+    to keypad- and scroll-modes.
++ correct return-value of extended putwin (report by Mike Gran).
+---
+ NEWS                             | 12 ++++++-
+ VERSION                          |  2 +-
+ dist.mk                          |  4 +--
+ ncurses/base/lib_color.c         |  6 ++--
+ ncurses/base/lib_screen.c        |  5 +--
+ package/debian-mingw/changelog   |  4 +--
+ package/debian-mingw64/changelog |  4 +--
+ package/debian/changelog         |  4 +--
+ package/mingw-ncurses.nsi        |  4 +--
+ package/mingw-ncurses.spec       |  2 +-
+ package/ncurses.spec             |  2 +-
+ test/ncurses.c                   | 73 +++++++++++++---------------------------
+ 12 files changed, 55 insertions(+), 67 deletions(-)
+
+diff --git a/NEWS b/NEWS
+index e344c70..f2c8b78 100644
+--- a/NEWS
++++ b/NEWS
+@@ -25,7 +25,7 @@
+ -- sale, use or other dealings in this Software without prior written        --
+ -- authorization.                                                            --
+ -------------------------------------------------------------------------------
+--- $Id: NEWS,v 1.2597 2016/04/24 01:01:58 tom Exp $
++-- $Id: NEWS,v 1.2600 2016/05/07 23:49:50 tom Exp $
+ -------------------------------------------------------------------------------
+ 
+ This is a log of changes that ncurses has gone through since Zeyd started
+@@ -45,6 +45,16 @@ See the AUTHORS file for the corresponding full names.
+ Changes through 1.9.9e did not credit all contributions;
+ it is not possible to add this information.
+ 
++20160507
++	+ amend change to _nc_do_color to restore the early return for the
++	  special case used in _nc_screen_wrap (report by Dick Streefland,
++	  cf: 20151017).
++	+ modify test/ncurses.c:
++	  + check return-value of putwin
++	  + correct ifdef which made the 'g' test's legend not reflect changes
++	    to keypad- and scroll-modes.
++	+ correct return-value of extended putwin (report by Mike Gran).
++
+ 20160423
+ 	+ modify test/ncurses.c 'd' edit-color menu to optionally read xterm
+ 	  color palette directly from terminal, as well as handling KEY_RESIZE
+diff --git a/VERSION b/VERSION
+index c508645..88b60d6 100644
+--- a/VERSION
++++ b/VERSION
+@@ -1 +1 @@
+-5:0:9	6.0	20160423
++5:0:9	6.0	20160507
+diff --git a/dist.mk b/dist.mk
+index ed620dd..35dde3f 100644
+--- a/dist.mk
++++ b/dist.mk
+@@ -25,7 +25,7 @@
+ # use or other dealings in this Software without prior written               #
+ # authorization.                                                             #
+ ##############################################################################
+-# $Id: dist.mk,v 1.1103 2016/04/23 10:14:21 tom Exp $
++# $Id: dist.mk,v 1.1104 2016/05/07 17:04:36 tom Exp $
+ # Makefile for creating ncurses distributions.
+ #
+ # This only needs to be used directly as a makefile by developers, but
+@@ -37,7 +37,7 @@ SHELL = /bin/sh
+ # These define the major/minor/patch versions of ncurses.
+ NCURSES_MAJOR = 6
+ NCURSES_MINOR = 0
+-NCURSES_PATCH = 20160423
++NCURSES_PATCH = 20160507
+ 
+ # We don't append the patch to the version, since this only applies to releases
+ VERSION = $(NCURSES_MAJOR).$(NCURSES_MINOR)
+diff --git a/ncurses/base/lib_color.c b/ncurses/base/lib_color.c
+index 8ae26a0..9b4d2b8 100644
+--- a/ncurses/base/lib_color.c
++++ b/ncurses/base/lib_color.c
+@@ -1,5 +1,5 @@
+ /****************************************************************************
+- * Copyright (c) 1998-2014,2015 Free Software Foundation, Inc.              *
++ * Copyright (c) 1998-2015,2016 Free Software Foundation, Inc.              *
+  *                                                                          *
+  * Permission is hereby granted, free of charge, to any person obtaining a  *
+  * copy of this software and associated documentation files (the            *
+@@ -45,7 +45,7 @@
+ #define CUR SP_TERMTYPE
+ #endif
+ 
+-MODULE_ID("$Id: lib_color.c,v 1.112 2015/10/17 20:39:18 Denis.Tikhomirov Exp $")
++MODULE_ID("$Id: lib_color.c,v 1.113 2016/05/07 23:50:54 tom Exp $")
+ 
+ #ifdef USE_TERM_DRIVER
+ #define CanChange      InfoOf(SP_PARM).canchange
+@@ -858,6 +858,8 @@ NCURSES_SP_NAME(_nc_do_color) (NCURSES_SP_DCLx
+ 	}
+     } else {
+ 	reset_color_pair(NCURSES_SP_ARG);
++	if (old_pair < 0 && pair <= 0)
++	    return;
+     }
+ 
+ #if NCURSES_EXT_FUNCS
+diff --git a/ncurses/base/lib_screen.c b/ncurses/base/lib_screen.c
+index a35ad17..71d2173 100644
+--- a/ncurses/base/lib_screen.c
++++ b/ncurses/base/lib_screen.c
+@@ -1,5 +1,5 @@
+ /****************************************************************************
+- * Copyright (c) 1998-2011,2015 Free Software Foundation, Inc.              *
++ * Copyright (c) 1998-2015,2016 Free Software Foundation, Inc.              *
+  *                                                                          *
+  * Permission is hereby granted, free of charge, to any person obtaining a  *
+  * copy of this software and associated documentation files (the            *
+@@ -41,7 +41,7 @@
+ #define CUR SP_TERMTYPE
+ #endif
+ 
+-MODULE_ID("$Id: lib_screen.c,v 1.79 2015/12/20 01:22:59 tom Exp $")
++MODULE_ID("$Id: lib_screen.c,v 1.80 2016/05/04 00:46:06 tom Exp $")
+ 
+ #define MAX_SIZE 0x3fff		/* 16k is big enough for a window or pad */
+ 
+@@ -858,6 +858,7 @@ putwin(WINDOW *win, FILE *filep)
+ 	    }
+ 	    PUTS("\n");
+ 	}
++	code = OK;
+     }
+ #else
+     /*
+diff --git a/package/debian-mingw/changelog b/package/debian-mingw/changelog
+index 16b3e4d..fdf73ef 100644
+--- a/package/debian-mingw/changelog
++++ b/package/debian-mingw/changelog
+@@ -1,8 +1,8 @@
+-ncurses6 (6.0+20160423) unstable; urgency=low
++ncurses6 (6.0+20160507) unstable; urgency=low
+ 
+   * latest weekly patch
+ 
+- -- Thomas E. Dickey <dickey@invisible-island.net>  Sat, 23 Apr 2016 06:14:21 -0400
++ -- Thomas E. Dickey <dickey@invisible-island.net>  Sat, 07 May 2016 13:04:36 -0400
+ 
+ ncurses6 (5.9-20131005) unstable; urgency=low
+ 
+diff --git a/package/debian-mingw64/changelog b/package/debian-mingw64/changelog
+index 16b3e4d..fdf73ef 100644
+--- a/package/debian-mingw64/changelog
++++ b/package/debian-mingw64/changelog
+@@ -1,8 +1,8 @@
+-ncurses6 (6.0+20160423) unstable; urgency=low
++ncurses6 (6.0+20160507) unstable; urgency=low
+ 
+   * latest weekly patch
+ 
+- -- Thomas E. Dickey <dickey@invisible-island.net>  Sat, 23 Apr 2016 06:14:21 -0400
++ -- Thomas E. Dickey <dickey@invisible-island.net>  Sat, 07 May 2016 13:04:36 -0400
+ 
+ ncurses6 (5.9-20131005) unstable; urgency=low
+ 
+diff --git a/package/debian/changelog b/package/debian/changelog
+index 22ec722..27b3ebb 100644
+--- a/package/debian/changelog
++++ b/package/debian/changelog
+@@ -1,8 +1,8 @@
+-ncurses6 (6.0+20160423) unstable; urgency=low
++ncurses6 (6.0+20160507) unstable; urgency=low
+ 
+   * latest weekly patch
+ 
+- -- Thomas E. Dickey <dickey@invisible-island.net>  Sat, 23 Apr 2016 06:14:21 -0400
++ -- Thomas E. Dickey <dickey@invisible-island.net>  Sat, 07 May 2016 13:04:36 -0400
+ 
+ ncurses6 (5.9-20120608) unstable; urgency=low
+ 
+diff --git a/package/mingw-ncurses.nsi b/package/mingw-ncurses.nsi
+index 1ff1089..4217db7 100644
+--- a/package/mingw-ncurses.nsi
++++ b/package/mingw-ncurses.nsi
+@@ -1,4 +1,4 @@
+-; $Id: mingw-ncurses.nsi,v 1.155 2016/04/23 10:14:21 tom Exp $
++; $Id: mingw-ncurses.nsi,v 1.156 2016/05/07 17:04:36 tom Exp $
+ 
+ ; TODO add examples
+ ; TODO bump ABI to 6
+@@ -10,7 +10,7 @@
+ !define VERSION_MAJOR "6"
+ !define VERSION_MINOR "0"
+ !define VERSION_YYYY  "2016"
+-!define VERSION_MMDD  "0423"
++!define VERSION_MMDD  "0507"
+ !define VERSION_PATCH ${VERSION_YYYY}${VERSION_MMDD}
+ 
+ !define MY_ABI   "5"
+diff --git a/package/mingw-ncurses.spec b/package/mingw-ncurses.spec
+index 813e32a..0dca7c9 100644
+--- a/package/mingw-ncurses.spec
++++ b/package/mingw-ncurses.spec
+@@ -3,7 +3,7 @@
+ Summary: shared libraries for terminal handling
+ Name: mingw32-ncurses6
+ Version: 6.0
+-Release: 20160423
++Release: 20160507
+ License: X11
+ Group: Development/Libraries
+ Source: ncurses-%{version}-%{release}.tgz
+diff --git a/package/ncurses.spec b/package/ncurses.spec
+index 252375b..f18ff21 100644
+--- a/package/ncurses.spec
++++ b/package/ncurses.spec
+@@ -1,7 +1,7 @@
+ Summary: shared libraries for terminal handling
+ Name: ncurses6
+ Version: 6.0
+-Release: 20160423
++Release: 20160507
+ License: X11
+ Group: Development/Libraries
+ Source: ncurses-%{version}-%{release}.tgz
+diff --git a/test/ncurses.c b/test/ncurses.c
+index d04effb..664311c 100644
+--- a/test/ncurses.c
++++ b/test/ncurses.c
+@@ -40,7 +40,7 @@ AUTHOR
+    Author: Eric S. Raymond <esr@snark.thyrsus.com> 1993
+            Thomas E. Dickey (beginning revision 1.27 in 1996).
+ 
+-$Id: ncurses.c,v 1.433 2016/04/24 01:00:06 tom Exp $
++$Id: ncurses.c,v 1.437 2016/05/07 23:56:59 tom Exp $
+ 
+ ***************************************************************************/
+ 
+@@ -2665,7 +2665,7 @@ reset_all_colors(void)
+ 
+ #define okCOLOR(n) ((n) >= 0 && (n) < max_colors)
+ #define okRGB(n)   ((n) >= 0 && (n) <= 1000)
+-#define DecodeRGB(n) ((n * 1000) / 0xffff)
++#define DecodeRGB(n) (NCURSES_COLOR_T) ((n * 1000) / 0xffff)
+ 
+ static void
+ init_all_colors(bool xterm_colors, char *palette_file)
+@@ -2693,7 +2693,7 @@ init_all_colors(bool xterm_colors, char *palette_file)
+ 	noecho();
+ 	for (n = 0; n < max_colors; ++n) {
+ 	    fprintf(stderr, "\033]4;%d;?\007", n);
+-	    got = read(0, result, sizeof(result) - 1);
++	    got = (int) read(0, result, sizeof(result) - 1);
+ 	    if (got < 0)
+ 		break;
+ 	    result[got] = '\0';
+@@ -4361,13 +4361,10 @@ FRAME
+     WINDOW *wind;
+ };
+ 
+-#if defined(NCURSES_VERSION)
+-#if (NCURSES_VERSION_PATCH < 20070331) && NCURSES_EXT_FUNCS
++#if defined(NCURSES_VERSION) && NCURSES_EXT_FUNCS
++#if (NCURSES_VERSION_PATCH < 20070331)
+ #define is_keypad(win)   (win)->_use_keypad
+ #define is_scrollok(win) (win)->_scroll
+-#elif !defined(is_keypad)
+-#define is_keypad(win)   FALSE
+-#define is_scrollok(win) FALSE
+ #endif
+ #else
+ #define is_keypad(win)   FALSE
+@@ -4403,46 +4400,26 @@ HaveScroll(FRAME * curp)
+ static void
+ newwin_legend(FRAME * curp)
+ {
++#define DATA(num, name) { name, num }
+     static const struct {
+ 	const char *msg;
+ 	int code;
+     } legend[] = {
+-	{
+-	    "^C = create window", 0
+-	},
+-	{
+-	    "^N = next window", 0
+-	},
+-	{
+-	    "^P = previous window", 0
+-	},
+-	{
+-	    "^F = scroll forward", 0
+-	},
+-	{
+-	    "^B = scroll backward", 0
+-	},
+-	{
+-	    "^K = keypad(%s)", 1
+-	},
+-	{
+-	    "^S = scrollok(%s)", 2
+-	},
+-	{
+-	    "^W = save window to file", 0
+-	},
+-	{
+-	    "^R = restore window", 0
+-	},
++	DATA(0, "^C = create window"),
++	    DATA(0, "^N = next window"),
++	    DATA(0, "^P = previous window"),
++	    DATA(0, "^F = scroll forward"),
++	    DATA(0, "^B = scroll backward"),
++	    DATA(1, "^K = keypad(%s)"),
++	    DATA(2, "^S = scrollok(%s)"),
++	    DATA(0, "^W = save window"),
++	    DATA(0, "^R = restore window"),
+ #if HAVE_WRESIZE
+-	{
+-	    "^X = resize", 0
+-	},
++	    DATA(0, "^X = resize"),
+ #endif
+-	{
+-	    "^Q%s = exit", 3
+-	}
++	    DATA(3, "^Q%s = exit")
+     };
++#undef DATA
+     size_t n;
+     int x;
+     bool do_keypad = HaveKeypad(curp);
+@@ -4752,10 +4729,14 @@ acs_and_scroll(void)
+ 	    } else if ((fp = fopen(DUMPFILE, "w")) == (FILE *) 0) {
+ 		transient(current, "Can't open screen dump file");
+ 	    } else {
+-		(void) putwin(frame_win(current), fp);
++		int rc = putwin(frame_win(current), fp);
+ 		(void) fclose(fp);
+ 
+-		current = delete_framed(current, TRUE);
++		if (rc == OK) {
++		    current = delete_framed(current, TRUE);
++		} else {
++		    transient(current, "Can't write screen dump file");
++		}
+ 	    }
+ 	    break;
+ 
+@@ -4841,12 +4822,6 @@ acs_and_scroll(void)
+ 	    break;
+ #endif /* HAVE_WRESIZE */
+ 
+-	case KEY_F(10):	/* undocumented --- use this to test area clears */
+-	    selectcell(0, 0, LINES - 1, COLS - 1);
+-	    clrtobot();
+-	    refresh();
+-	    break;
+-
+ 	case KEY_UP:
+ 	    newwin_move(current, -1, 0);
+ 	    break;
+-- 
+2.9.1
+

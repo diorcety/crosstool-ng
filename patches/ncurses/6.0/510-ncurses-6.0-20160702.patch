@@ -1,0 +1,230 @@
+From 3353ecc7ed0f1d3b4e6c7e8e98d92f469d593e35 Mon Sep 17 00:00:00 2001
+From: "Thomas E. Dickey" <dickey@invisible-island.net>
+Date: Sun, 3 Jul 2016 00:26:06 +0000
+Subject: [PATCH 42/50] ncurses 6.0 - patch 20160702
+
++ improve test/list_keys.c, using $TERM if no parameters areg given.
+---
+ NEWS                             |  5 ++++-
+ VERSION                          |  2 +-
+ dist.mk                          |  4 ++--
+ package/debian-mingw/changelog   |  4 ++--
+ package/debian-mingw64/changelog |  4 ++--
+ package/debian/changelog         |  4 ++--
+ package/mingw-ncurses.nsi        |  4 ++--
+ package/mingw-ncurses.spec       |  2 +-
+ package/ncurses.spec             |  2 +-
+ test/list_keys.c                 | 26 +++++++++++++++++++-------
+ 10 files changed, 36 insertions(+), 21 deletions(-)
+
+diff --git a/NEWS b/NEWS
+index 140b001..6af578b 100644
+--- a/NEWS
++++ b/NEWS
+@@ -25,7 +25,7 @@
+ -- sale, use or other dealings in this Software without prior written        --
+ -- authorization.                                                            --
+ -------------------------------------------------------------------------------
+--- $Id: NEWS,v 1.2624 2016/06/25 21:23:38 tom Exp $
++-- $Id: NEWS,v 1.2626 2016/07/02 18:29:57 tom Exp $
+ -------------------------------------------------------------------------------
+ 
+ This is a log of changes that ncurses has gone through since Zeyd started
+@@ -45,6 +45,9 @@ See the AUTHORS file for the corresponding full names.
+ Changes through 1.9.9e did not credit all contributions;
+ it is not possible to add this information.
+ 
++20160702
++	+ improve test/list_keys.c, using $TERM if no parameters areg given.
++
+ 20160625
+ 	+ build-fixes for ncurses "test_progs" rule.
+ 	+ amend change to CF_CC_ENV_FLAGS in 20160521 to make multilib build
+diff --git a/VERSION b/VERSION
+index 5c26782..8f874c4 100644
+--- a/VERSION
++++ b/VERSION
+@@ -1 +1 @@
+-5:0:9	6.0	20160625
++5:0:9	6.0	20160702
+diff --git a/dist.mk b/dist.mk
+index b06bc4f..21e935b 100644
+--- a/dist.mk
++++ b/dist.mk
+@@ -25,7 +25,7 @@
+ # use or other dealings in this Software without prior written               #
+ # authorization.                                                             #
+ ##############################################################################
+-# $Id: dist.mk,v 1.1112 2016/06/25 17:17:16 tom Exp $
++# $Id: dist.mk,v 1.1113 2016/07/02 17:00:31 tom Exp $
+ # Makefile for creating ncurses distributions.
+ #
+ # This only needs to be used directly as a makefile by developers, but
+@@ -37,7 +37,7 @@ SHELL = /bin/sh
+ # These define the major/minor/patch versions of ncurses.
+ NCURSES_MAJOR = 6
+ NCURSES_MINOR = 0
+-NCURSES_PATCH = 20160625
++NCURSES_PATCH = 20160702
+ 
+ # We don't append the patch to the version, since this only applies to releases
+ VERSION = $(NCURSES_MAJOR).$(NCURSES_MINOR)
+diff --git a/package/debian-mingw/changelog b/package/debian-mingw/changelog
+index c53f8a0..304c088 100644
+--- a/package/debian-mingw/changelog
++++ b/package/debian-mingw/changelog
+@@ -1,8 +1,8 @@
+-ncurses6 (6.0+20160625) unstable; urgency=low
++ncurses6 (6.0+20160702) unstable; urgency=low
+ 
+   * latest weekly patch
+ 
+- -- Thomas E. Dickey <dickey@invisible-island.net>  Sat, 25 Jun 2016 13:17:16 -0400
++ -- Thomas E. Dickey <dickey@invisible-island.net>  Sat, 02 Jul 2016 13:00:31 -0400
+ 
+ ncurses6 (5.9-20131005) unstable; urgency=low
+ 
+diff --git a/package/debian-mingw64/changelog b/package/debian-mingw64/changelog
+index c53f8a0..304c088 100644
+--- a/package/debian-mingw64/changelog
++++ b/package/debian-mingw64/changelog
+@@ -1,8 +1,8 @@
+-ncurses6 (6.0+20160625) unstable; urgency=low
++ncurses6 (6.0+20160702) unstable; urgency=low
+ 
+   * latest weekly patch
+ 
+- -- Thomas E. Dickey <dickey@invisible-island.net>  Sat, 25 Jun 2016 13:17:16 -0400
++ -- Thomas E. Dickey <dickey@invisible-island.net>  Sat, 02 Jul 2016 13:00:31 -0400
+ 
+ ncurses6 (5.9-20131005) unstable; urgency=low
+ 
+diff --git a/package/debian/changelog b/package/debian/changelog
+index 0d3c8ca..bdbf2b4 100644
+--- a/package/debian/changelog
++++ b/package/debian/changelog
+@@ -1,8 +1,8 @@
+-ncurses6 (6.0+20160625) unstable; urgency=low
++ncurses6 (6.0+20160702) unstable; urgency=low
+ 
+   * latest weekly patch
+ 
+- -- Thomas E. Dickey <dickey@invisible-island.net>  Sat, 25 Jun 2016 13:17:16 -0400
++ -- Thomas E. Dickey <dickey@invisible-island.net>  Sat, 02 Jul 2016 13:00:31 -0400
+ 
+ ncurses6 (5.9-20120608) unstable; urgency=low
+ 
+diff --git a/package/mingw-ncurses.nsi b/package/mingw-ncurses.nsi
+index dbe5f26..9abdaee 100644
+--- a/package/mingw-ncurses.nsi
++++ b/package/mingw-ncurses.nsi
+@@ -1,4 +1,4 @@
+-; $Id: mingw-ncurses.nsi,v 1.164 2016/06/25 17:17:16 tom Exp $
++; $Id: mingw-ncurses.nsi,v 1.165 2016/07/02 17:00:31 tom Exp $
+ 
+ ; TODO add examples
+ ; TODO bump ABI to 6
+@@ -10,7 +10,7 @@
+ !define VERSION_MAJOR "6"
+ !define VERSION_MINOR "0"
+ !define VERSION_YYYY  "2016"
+-!define VERSION_MMDD  "0625"
++!define VERSION_MMDD  "0702"
+ !define VERSION_PATCH ${VERSION_YYYY}${VERSION_MMDD}
+ 
+ !define MY_ABI   "5"
+diff --git a/package/mingw-ncurses.spec b/package/mingw-ncurses.spec
+index 5e46474..a24081b 100644
+--- a/package/mingw-ncurses.spec
++++ b/package/mingw-ncurses.spec
+@@ -3,7 +3,7 @@
+ Summary: shared libraries for terminal handling
+ Name: mingw32-ncurses6
+ Version: 6.0
+-Release: 20160625
++Release: 20160702
+ License: X11
+ Group: Development/Libraries
+ Source: ncurses-%{version}-%{release}.tgz
+diff --git a/package/ncurses.spec b/package/ncurses.spec
+index 6840089..06d7af4 100644
+--- a/package/ncurses.spec
++++ b/package/ncurses.spec
+@@ -1,7 +1,7 @@
+ Summary: shared libraries for terminal handling
+ Name: ncurses6
+ Version: 6.0
+-Release: 20160625
++Release: 20160702
+ License: X11
+ Group: Development/Libraries
+ Source: ncurses-%{version}-%{release}.tgz
+diff --git a/test/list_keys.c b/test/list_keys.c
+index b43dd37..87c04c9 100644
+--- a/test/list_keys.c
++++ b/test/list_keys.c
+@@ -26,7 +26,7 @@
+  * authorization.                                                           *
+  ****************************************************************************/
+ /*
+- * $Id: list_keys.c,v 1.9 2016/06/18 22:18:30 tom Exp $
++ * $Id: list_keys.c,v 1.12 2016/07/02 23:45:53 tom Exp $
+  *
+  * Author: Thomas E Dickey
+  *
+@@ -88,7 +88,7 @@ show_key(const char *name, bool show)
+ {
+     int width = 0;
+     char buffer[10];
+-    char *value = tigetstr(name);
++    NCURSES_CONST char *value = tigetstr(name);
+ 
+     if (show && t_opt)
+ 	fputc('"', stdout);
+@@ -329,6 +329,7 @@ list_keys(TERMINAL ** terms, int count)
+ 	    printf("\n");
+ 	}
+     }
++    free(list);
+ }
+ 
+ static void
+@@ -358,7 +359,7 @@ int
+ main(int argc, char *argv[])
+ {
+     int n;
+-    TERMINAL **terms = typeCalloc(TERMINAL *, argc);
++    TERMINAL **terms = typeCalloc(TERMINAL *, argc + 1);
+ 
+     while ((n = getopt(argc, argv, "ftx")) != -1) {
+ 	switch (n) {
+@@ -383,11 +384,22 @@ main(int argc, char *argv[])
+     use_extended_names(x_opt);
+ #endif
+ 
+-    for (n = optind; n < argc; ++n) {
+-	setupterm((NCURSES_CONST char *) argv[n], 1, (int *) 0);
+-	terms[n - optind] = cur_term;
++    if (optind < argc) {
++	int found = 0;
++	int status;
++	for (n = optind; n < argc; ++n) {
++	    setupterm((NCURSES_CONST char *) argv[n], 1, &status);
++	    if (status > 0 && cur_term != 0) {
++		terms[found++] = cur_term;
++	    }
++	}
++	if (found)
++	    list_keys(terms, found);
++    } else {
++	setupterm(NULL, 1, (int *) 0);
++	terms[0] = cur_term;
++	list_keys(terms, 1);
+     }
+-    list_keys(terms, argc - optind);
+ 
+     ExitProgram(EXIT_SUCCESS);
+ }
+-- 
+2.9.1
+

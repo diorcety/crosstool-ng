@@ -1,0 +1,399 @@
+From 3e0f770501852be3a2cb05d8044219d7b04dbfad Mon Sep 17 00:00:00 2001
+From: "Thomas E. Dickey" <dickey@invisible-island.net>
+Date: Sun, 26 Jun 2016 01:11:40 +0000
+Subject: [PATCH 41/50] ncurses 6.0 - patch 20160625
+
++ build-fixes for ncurses "test_progs" rule.
++ amend change to CF_CC_ENV_FLAGS in 20160521 to make multilib build
+  work (report by Sven Joachim).
+---
+ Ada95/aclocal.m4                 | 9 ++++++---
+ Ada95/configure                  | 2 +-
+ NEWS                             | 7 ++++++-
+ VERSION                          | 2 +-
+ aclocal.m4                       | 9 ++++++---
+ configure                        | 2 +-
+ dist.mk                          | 4 ++--
+ ncurses/Makefile.in              | 4 +++-
+ ncurses/base/MKlib_gen.sh        | 6 +++---
+ ncurses/tty/lib_mvcur.c          | 4 ++--
+ package/debian-mingw/changelog   | 4 ++--
+ package/debian-mingw64/changelog | 4 ++--
+ package/debian/changelog         | 4 ++--
+ package/mingw-ncurses.nsi        | 4 ++--
+ package/mingw-ncurses.spec       | 2 +-
+ package/ncurses.spec             | 2 +-
+ test/aclocal.m4                  | 9 ++++++---
+ test/configure                   | 2 +-
+ 18 files changed, 48 insertions(+), 32 deletions(-)
+
+diff --git a/Ada95/aclocal.m4 b/Ada95/aclocal.m4
+index 5992306..95471b2 100644
+--- a/Ada95/aclocal.m4
++++ b/Ada95/aclocal.m4
+@@ -28,7 +28,7 @@ dnl***************************************************************************
+ dnl
+ dnl Author: Thomas E. Dickey
+ dnl
+-dnl $Id: aclocal.m4,v 1.111 2016/05/21 22:23:56 tom Exp $
++dnl $Id: aclocal.m4,v 1.112 2016/06/25 20:30:41 tom Exp $
+ dnl Macros used in NCURSES Ada95 auto-configuration script.
+ dnl
+ dnl These macros are maintained separately from NCURSES.  The copyright on
+@@ -514,12 +514,15 @@ AC_SUBST(BUILD_EXEEXT)
+ AC_SUBST(BUILD_OBJEXT)
+ ])dnl
+ dnl ---------------------------------------------------------------------------
+-dnl CF_CC_ENV_FLAGS version: 3 updated: 2016/05/21 18:10:17
++dnl CF_CC_ENV_FLAGS version: 4 updated: 2016/06/25 16:23:40
+ dnl ---------------
+ dnl Check for user's environment-breakage by stuffing CFLAGS/CPPFLAGS content
+ dnl into CC.  This will not help with broken scripts that wrap the compiler with
+ dnl options, but eliminates a more common category of user confusion.
+ dnl
++dnl In particular, it addresses the problem of being able to run the C
++dnl preprocessor in a consistent manner.
++dnl
+ dnl Caveat: this also disallows blanks in the pathname for the compiler, but
+ dnl the nuisance of having inconsistent settings for compiler and preprocessor
+ dnl outweighs that limitation.
+@@ -535,7 +538,7 @@ case "$CC" in
+ 	AC_MSG_WARN(your environment misuses the CC variable to hold CFLAGS/CPPFLAGS options)
+ 	# humor him...
+ 	cf_flags=`echo "$CC" | sed -e 's/^[[^ 	]]*[[ 	]][[ 	]]*//'`
+-	CC=`echo "$CC" | sed -e 's/[[ 	]].*//'`
++	CC=`echo "$CC " | sed -e 's/[[ 	]]-[[IUD]][[^ 	]][[^ 	]]*//g' -e 's/[[ 	]]*$//'`
+ 	CF_ADD_CFLAGS($cf_flags)
+ 	CF_VERBOSE(resulting CC: '$CC')
+ 	CF_VERBOSE(resulting CFLAGS: '$CFLAGS')
+diff --git a/Ada95/configure b/Ada95/configure
+index b71186c..74300c1 100755
+--- a/Ada95/configure
++++ b/Ada95/configure
+@@ -1838,7 +1838,7 @@ echo "${ECHO_T}broken" >&6
+ echo "$as_me: WARNING: your environment misuses the CC variable to hold CFLAGS/CPPFLAGS options" >&2;}
+ 	# humor him...
+ 	cf_flags=`echo "$CC" | sed -e 's/^[^ 	]*[ 	][ 	]*//'`
+-	CC=`echo "$CC" | sed -e 's/[ 	].*//'`
++	CC=`echo "$CC " | sed -e 's/[ 	]-[IUD][^ 	][^ 	]*//g' -e 's/[ 	]*$//'`
+ 
+ cf_fix_cppflags=no
+ cf_new_cflags=
+diff --git a/NEWS b/NEWS
+index c246440..140b001 100644
+--- a/NEWS
++++ b/NEWS
+@@ -25,7 +25,7 @@
+ -- sale, use or other dealings in this Software without prior written        --
+ -- authorization.                                                            --
+ -------------------------------------------------------------------------------
+--- $Id: NEWS,v 1.2621 2016/06/18 23:43:33 tom Exp $
++-- $Id: NEWS,v 1.2624 2016/06/25 21:23:38 tom Exp $
+ -------------------------------------------------------------------------------
+ 
+ This is a log of changes that ncurses has gone through since Zeyd started
+@@ -45,6 +45,11 @@ See the AUTHORS file for the corresponding full names.
+ Changes through 1.9.9e did not credit all contributions;
+ it is not possible to add this information.
+ 
++20160625
++	+ build-fixes for ncurses "test_progs" rule.
++	+ amend change to CF_CC_ENV_FLAGS in 20160521 to make multilib build
++	  work (report by Sven Joachim).
++
+ 20160618
+ 	+ build-fixes for ncurses-examples with NetBSD curses.
+ 	+ improve test/list_keys.c, fixing column-widths and sorting the list
+diff --git a/VERSION b/VERSION
+index 78ed1b7..5c26782 100644
+--- a/VERSION
++++ b/VERSION
+@@ -1 +1 @@
+-5:0:9	6.0	20160618
++5:0:9	6.0	20160625
+diff --git a/aclocal.m4 b/aclocal.m4
+index 806dec1..4546836 100644
+--- a/aclocal.m4
++++ b/aclocal.m4
+@@ -28,7 +28,7 @@ dnl***************************************************************************
+ dnl
+ dnl Author: Thomas E. Dickey 1995-on
+ dnl
+-dnl $Id: aclocal.m4,v 1.790 2016/05/29 00:35:34 tom Exp $
++dnl $Id: aclocal.m4,v 1.791 2016/06/25 20:25:03 tom Exp $
+ dnl Macros used in NCURSES auto-configuration script.
+ dnl
+ dnl These macros are maintained separately from NCURSES.  The copyright on
+@@ -711,12 +711,15 @@ AC_SUBST(BUILD_EXEEXT)
+ AC_SUBST(BUILD_OBJEXT)
+ ])dnl
+ dnl ---------------------------------------------------------------------------
+-dnl CF_CC_ENV_FLAGS version: 3 updated: 2016/05/21 18:10:17
++dnl CF_CC_ENV_FLAGS version: 4 updated: 2016/06/25 16:23:40
+ dnl ---------------
+ dnl Check for user's environment-breakage by stuffing CFLAGS/CPPFLAGS content
+ dnl into CC.  This will not help with broken scripts that wrap the compiler with
+ dnl options, but eliminates a more common category of user confusion.
+ dnl
++dnl In particular, it addresses the problem of being able to run the C
++dnl preprocessor in a consistent manner.
++dnl
+ dnl Caveat: this also disallows blanks in the pathname for the compiler, but
+ dnl the nuisance of having inconsistent settings for compiler and preprocessor
+ dnl outweighs that limitation.
+@@ -732,7 +735,7 @@ case "$CC" in
+ 	AC_MSG_WARN(your environment misuses the CC variable to hold CFLAGS/CPPFLAGS options)
+ 	# humor him...
+ 	cf_flags=`echo "$CC" | sed -e 's/^[[^ 	]]*[[ 	]][[ 	]]*//'`
+-	CC=`echo "$CC" | sed -e 's/[[ 	]].*//'`
++	CC=`echo "$CC " | sed -e 's/[[ 	]]-[[IUD]][[^ 	]][[^ 	]]*//g' -e 's/[[ 	]]*$//'`
+ 	CF_ADD_CFLAGS($cf_flags)
+ 	CF_VERBOSE(resulting CC: '$CC')
+ 	CF_VERBOSE(resulting CFLAGS: '$CFLAGS')
+diff --git a/configure b/configure
+index 6770ce5..b2f1919 100755
+--- a/configure
++++ b/configure
+@@ -2189,7 +2189,7 @@ echo "${ECHO_T}broken" >&6
+ echo "$as_me: WARNING: your environment misuses the CC variable to hold CFLAGS/CPPFLAGS options" >&2;}
+ 	# humor him...
+ 	cf_flags=`echo "$CC" | sed -e 's/^[^ 	]*[ 	][ 	]*//'`
+-	CC=`echo "$CC" | sed -e 's/[ 	].*//'`
++	CC=`echo "$CC " | sed -e 's/[ 	]-[IUD][^ 	][^ 	]*//g' -e 's/[ 	]*$//'`
+ 
+ cf_fix_cppflags=no
+ cf_new_cflags=
+diff --git a/dist.mk b/dist.mk
+index 0c3f7a0..b06bc4f 100644
+--- a/dist.mk
++++ b/dist.mk
+@@ -25,7 +25,7 @@
+ # use or other dealings in this Software without prior written               #
+ # authorization.                                                             #
+ ##############################################################################
+-# $Id: dist.mk,v 1.1111 2016/06/18 17:50:50 tom Exp $
++# $Id: dist.mk,v 1.1112 2016/06/25 17:17:16 tom Exp $
+ # Makefile for creating ncurses distributions.
+ #
+ # This only needs to be used directly as a makefile by developers, but
+@@ -37,7 +37,7 @@ SHELL = /bin/sh
+ # These define the major/minor/patch versions of ncurses.
+ NCURSES_MAJOR = 6
+ NCURSES_MINOR = 0
+-NCURSES_PATCH = 20160618
++NCURSES_PATCH = 20160625
+ 
+ # We don't append the patch to the version, since this only applies to releases
+ VERSION = $(NCURSES_MAJOR).$(NCURSES_MINOR)
+diff --git a/ncurses/Makefile.in b/ncurses/Makefile.in
+index 40380ea..d761af1 100644
+--- a/ncurses/Makefile.in
++++ b/ncurses/Makefile.in
+@@ -1,4 +1,4 @@
+-# $Id: Makefile.in,v 1.151 2016/05/21 21:28:51 tom Exp $
++# $Id: Makefile.in,v 1.152 2016/06/25 21:13:06 tom Exp $
+ ##############################################################################
+ # Copyright (c) 1998-2015,2016 Free Software Foundation, Inc.                #
+ #                                                                            #
+@@ -196,6 +196,8 @@ TEST_PROGS = \
+ 	hashmap$x \
+ 	lib_mvcur$x
+ 
++LOCAL_LIBDIR	= @top_builddir@/lib
++
+ base	 = $(srcdir)/base
+ serial	 = $(srcdir)/tty
+ tinfo	 = $(srcdir)/tinfo
+diff --git a/ncurses/base/MKlib_gen.sh b/ncurses/base/MKlib_gen.sh
+index 71a478f..4c35b73 100755
+--- a/ncurses/base/MKlib_gen.sh
++++ b/ncurses/base/MKlib_gen.sh
+@@ -2,10 +2,10 @@
+ #
+ # MKlib_gen.sh -- generate sources from curses.h macro definitions
+ #
+-# ($Id: MKlib_gen.sh,v 1.52 2015/10/10 19:36:47 tom Exp $)
++# ($Id: MKlib_gen.sh,v 1.53 2016/06/25 22:08:12 tom Exp $)
+ #
+ ##############################################################################
+-# Copyright (c) 1998-2014,2015 Free Software Foundation, Inc.                #
++# Copyright (c) 1998-2015,2016 Free Software Foundation, Inc.                #
+ #                                                                            #
+ # Permission is hereby granted, free of charge, to any person obtaining a    #
+ # copy of this software and associated documentation files (the "Software"), #
+@@ -231,7 +231,7 @@ $0 !~ /^P_/ {
+ 	} else if ( $first == "bool" || $first == "NCURSES_BOOL" ) {
+ 		returnType = "Bool";
+ 	} else if ( $second == "*" ) {
+-		returnType = "Ptr";
++		returnType = ($1 == "NCURSES_CONST") ? "CPtr" : "Ptr";
+ 	} else {
+ 		returnType = "Code";
+ 	}
+diff --git a/ncurses/tty/lib_mvcur.c b/ncurses/tty/lib_mvcur.c
+index ffd42bb..08828ac 100644
+--- a/ncurses/tty/lib_mvcur.c
++++ b/ncurses/tty/lib_mvcur.c
+@@ -159,7 +159,7 @@
+ #define CUR SP_TERMTYPE
+ #endif
+ 
+-MODULE_ID("$Id: lib_mvcur.c,v 1.137 2016/05/28 23:32:40 tom Exp $")
++MODULE_ID("$Id: lib_mvcur.c,v 1.138 2016/06/25 20:49:00 tom Exp $")
+ 
+ #define WANT_CHAR(sp, y, x) NewScreen(sp)->_line[y].text[x]	/* desired state */
+ 
+@@ -1278,7 +1278,7 @@ main(int argc GCC_UNUSED, char *argv[]GCC_UNUSED)
+ 		}
+ 	    }
+ 	} else if (buf[0] == 'i') {
+-	    dump_init(NULL, F_TERMINFO, S_TERMINFO, 70, 0, 0, FALSE, FALSE);
++	    dump_init(NULL, F_TERMINFO, S_TERMINFO, 70, 0, 0, FALSE, FALSE, 0);
+ 	    dump_entry(&cur_term->type, FALSE, TRUE, 0, 0);
+ 	    putchar('\n');
+ 	} else if (buf[0] == 'o') {
+diff --git a/package/debian-mingw/changelog b/package/debian-mingw/changelog
+index 697c51c..c53f8a0 100644
+--- a/package/debian-mingw/changelog
++++ b/package/debian-mingw/changelog
+@@ -1,8 +1,8 @@
+-ncurses6 (6.0+20160618) unstable; urgency=low
++ncurses6 (6.0+20160625) unstable; urgency=low
+ 
+   * latest weekly patch
+ 
+- -- Thomas E. Dickey <dickey@invisible-island.net>  Sat, 18 Jun 2016 13:50:50 -0400
++ -- Thomas E. Dickey <dickey@invisible-island.net>  Sat, 25 Jun 2016 13:17:16 -0400
+ 
+ ncurses6 (5.9-20131005) unstable; urgency=low
+ 
+diff --git a/package/debian-mingw64/changelog b/package/debian-mingw64/changelog
+index 697c51c..c53f8a0 100644
+--- a/package/debian-mingw64/changelog
++++ b/package/debian-mingw64/changelog
+@@ -1,8 +1,8 @@
+-ncurses6 (6.0+20160618) unstable; urgency=low
++ncurses6 (6.0+20160625) unstable; urgency=low
+ 
+   * latest weekly patch
+ 
+- -- Thomas E. Dickey <dickey@invisible-island.net>  Sat, 18 Jun 2016 13:50:50 -0400
++ -- Thomas E. Dickey <dickey@invisible-island.net>  Sat, 25 Jun 2016 13:17:16 -0400
+ 
+ ncurses6 (5.9-20131005) unstable; urgency=low
+ 
+diff --git a/package/debian/changelog b/package/debian/changelog
+index 5c1a309..0d3c8ca 100644
+--- a/package/debian/changelog
++++ b/package/debian/changelog
+@@ -1,8 +1,8 @@
+-ncurses6 (6.0+20160618) unstable; urgency=low
++ncurses6 (6.0+20160625) unstable; urgency=low
+ 
+   * latest weekly patch
+ 
+- -- Thomas E. Dickey <dickey@invisible-island.net>  Sat, 18 Jun 2016 13:50:50 -0400
++ -- Thomas E. Dickey <dickey@invisible-island.net>  Sat, 25 Jun 2016 13:17:16 -0400
+ 
+ ncurses6 (5.9-20120608) unstable; urgency=low
+ 
+diff --git a/package/mingw-ncurses.nsi b/package/mingw-ncurses.nsi
+index 6c45796..dbe5f26 100644
+--- a/package/mingw-ncurses.nsi
++++ b/package/mingw-ncurses.nsi
+@@ -1,4 +1,4 @@
+-; $Id: mingw-ncurses.nsi,v 1.163 2016/06/18 17:50:50 tom Exp $
++; $Id: mingw-ncurses.nsi,v 1.164 2016/06/25 17:17:16 tom Exp $
+ 
+ ; TODO add examples
+ ; TODO bump ABI to 6
+@@ -10,7 +10,7 @@
+ !define VERSION_MAJOR "6"
+ !define VERSION_MINOR "0"
+ !define VERSION_YYYY  "2016"
+-!define VERSION_MMDD  "0618"
++!define VERSION_MMDD  "0625"
+ !define VERSION_PATCH ${VERSION_YYYY}${VERSION_MMDD}
+ 
+ !define MY_ABI   "5"
+diff --git a/package/mingw-ncurses.spec b/package/mingw-ncurses.spec
+index bc90f3d..5e46474 100644
+--- a/package/mingw-ncurses.spec
++++ b/package/mingw-ncurses.spec
+@@ -3,7 +3,7 @@
+ Summary: shared libraries for terminal handling
+ Name: mingw32-ncurses6
+ Version: 6.0
+-Release: 20160618
++Release: 20160625
+ License: X11
+ Group: Development/Libraries
+ Source: ncurses-%{version}-%{release}.tgz
+diff --git a/package/ncurses.spec b/package/ncurses.spec
+index f0072c5..6840089 100644
+--- a/package/ncurses.spec
++++ b/package/ncurses.spec
+@@ -1,7 +1,7 @@
+ Summary: shared libraries for terminal handling
+ Name: ncurses6
+ Version: 6.0
+-Release: 20160618
++Release: 20160625
+ License: X11
+ Group: Development/Libraries
+ Source: ncurses-%{version}-%{release}.tgz
+diff --git a/test/aclocal.m4 b/test/aclocal.m4
+index fabcf72..81c1b9f 100644
+--- a/test/aclocal.m4
++++ b/test/aclocal.m4
+@@ -26,7 +26,7 @@ dnl sale, use or other dealings in this Software without prior written       *
+ dnl authorization.                                                           *
+ dnl***************************************************************************
+ dnl
+-dnl $Id: aclocal.m4,v 1.129 2016/05/29 00:38:29 tom Exp $
++dnl $Id: aclocal.m4,v 1.130 2016/06/25 20:29:33 tom Exp $
+ dnl
+ dnl Author: Thomas E. Dickey
+ dnl
+@@ -376,12 +376,15 @@ ifelse([$3],,[    :]dnl
+ ])dnl
+ ])])dnl
+ dnl ---------------------------------------------------------------------------
+-dnl CF_CC_ENV_FLAGS version: 3 updated: 2016/05/21 18:10:17
++dnl CF_CC_ENV_FLAGS version: 4 updated: 2016/06/25 16:23:40
+ dnl ---------------
+ dnl Check for user's environment-breakage by stuffing CFLAGS/CPPFLAGS content
+ dnl into CC.  This will not help with broken scripts that wrap the compiler with
+ dnl options, but eliminates a more common category of user confusion.
+ dnl
++dnl In particular, it addresses the problem of being able to run the C
++dnl preprocessor in a consistent manner.
++dnl
+ dnl Caveat: this also disallows blanks in the pathname for the compiler, but
+ dnl the nuisance of having inconsistent settings for compiler and preprocessor
+ dnl outweighs that limitation.
+@@ -397,7 +400,7 @@ case "$CC" in
+ 	AC_MSG_WARN(your environment misuses the CC variable to hold CFLAGS/CPPFLAGS options)
+ 	# humor him...
+ 	cf_flags=`echo "$CC" | sed -e 's/^[[^ 	]]*[[ 	]][[ 	]]*//'`
+-	CC=`echo "$CC" | sed -e 's/[[ 	]].*//'`
++	CC=`echo "$CC " | sed -e 's/[[ 	]]-[[IUD]][[^ 	]][[^ 	]]*//g' -e 's/[[ 	]]*$//'`
+ 	CF_ADD_CFLAGS($cf_flags)
+ 	CF_VERBOSE(resulting CC: '$CC')
+ 	CF_VERBOSE(resulting CFLAGS: '$CFLAGS')
+diff --git a/test/configure b/test/configure
+index 1383c2f..f12396b 100755
+--- a/test/configure
++++ b/test/configure
+@@ -1943,7 +1943,7 @@ echo "${ECHO_T}broken" >&6
+ echo "$as_me: WARNING: your environment misuses the CC variable to hold CFLAGS/CPPFLAGS options" >&2;}
+ 	# humor him...
+ 	cf_flags=`echo "$CC" | sed -e 's/^[^ 	]*[ 	][ 	]*//'`
+-	CC=`echo "$CC" | sed -e 's/[ 	].*//'`
++	CC=`echo "$CC " | sed -e 's/[ 	]-[IUD][^ 	][^ 	]*//g' -e 's/[ 	]*$//'`
+ 
+ cf_fix_cppflags=no
+ cf_new_cflags=
+-- 
+2.9.1
+

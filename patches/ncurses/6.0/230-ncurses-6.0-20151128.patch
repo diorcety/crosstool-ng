@@ -1,0 +1,619 @@
+From cfd9c6f8e5af24820fefbb789b7345d93b8ed837 Mon Sep 17 00:00:00 2001
+From: "Thomas E. Dickey" <dickey@invisible-island.net>
+Date: Sun, 29 Nov 2015 01:57:16 +0000
+Subject: [PATCH 14/50] ncurses 6.0 - patch 20151128
+
++ add missing assignment in lib_getch.c to make notimeout() work
+  (Debian #805618).
++ add 't' toggle for notimeout() function in test/ncurses.c a/A screens
++ add viewdata terminal description (Alexandre Montaron).
++ fix a case in tic/infocmp for formatting capabilities where a
+  backslash at the end of a string was mishandled.
++ fix some typos in curs_inopts.3x (Benno Schulenberg).
+---
+ NEWS                             | 11 +++++++++-
+ VERSION                          |  2 +-
+ dist.mk                          |  4 ++--
+ form/form.h                      |  5 +++--
+ form/form.priv.h                 |  7 ++++---
+ form/frm_driver.c                | 12 +++++++----
+ man/curs_inopts.3x               | 12 +++++------
+ man/form_field_opts.3x           |  9 +++++---
+ misc/terminfo.src                | 26 ++++++++++++++++++++++--
+ ncurses/base/lib_getch.c         |  4 +++-
+ package/debian-mingw/changelog   |  4 ++--
+ package/debian-mingw64/changelog |  4 ++--
+ package/debian/changelog         |  4 ++--
+ package/mingw-ncurses.nsi        |  4 ++--
+ package/mingw-ncurses.spec       |  2 +-
+ package/ncurses.spec             |  2 +-
+ progs/dump_entry.c               |  6 +++++-
+ test/ncurses.c                   | 44 +++++++++++++++++++++++++++-------------
+ 18 files changed, 112 insertions(+), 50 deletions(-)
+
+diff --git a/NEWS b/NEWS
+index c90b0f2..6a6a337 100644
+--- a/NEWS
++++ b/NEWS
+@@ -25,7 +25,7 @@
+ -- sale, use or other dealings in this Software without prior written        --
+ -- authorization.                                                            --
+ -------------------------------------------------------------------------------
+--- $Id: NEWS,v 1.2530 2015/11/21 23:33:30 tom Exp $
++-- $Id: NEWS,v 1.2536 2015/11/29 01:31:02 tom Exp $
+ -------------------------------------------------------------------------------
+ 
+ This is a log of changes that ncurses has gone through since Zeyd started
+@@ -45,6 +45,15 @@ See the AUTHORS file for the corresponding full names.
+ Changes through 1.9.9e did not credit all contributions;
+ it is not possible to add this information.
+ 
++20151128
++	+ add missing assignment in lib_getch.c to make notimeout() work
++	  (Debian #805618).
++	+ add 't' toggle for notimeout() function in test/ncurses.c a/A screens
++	+ add viewdata terminal description (Alexandre Montaron).
++	+ fix a case in tic/infocmp for formatting capabilities where a
++	  backslash at the end of a string was mishandled.
++	+ fix some typos in curs_inopts.3x (Benno Schulenberg).
++
+ 20151121
+ 	+ fix some inconsistencies in the pccon* entries -TD
+ 	+ add bold to pccon+sgr+acs and pccon-base (Tati Chevron).
+diff --git a/VERSION b/VERSION
+index ccabf82..d9059c3 100644
+--- a/VERSION
++++ b/VERSION
+@@ -1 +1 @@
+-5:0:9	6.0	20151121
++5:0:9	6.0	20151128
+diff --git a/dist.mk b/dist.mk
+index 6652459..a1e3fe5 100644
+--- a/dist.mk
++++ b/dist.mk
+@@ -25,7 +25,7 @@
+ # use or other dealings in this Software without prior written               #
+ # authorization.                                                             #
+ ##############################################################################
+-# $Id: dist.mk,v 1.1080 2015/11/21 15:55:51 tom Exp $
++# $Id: dist.mk,v 1.1081 2015/11/28 16:31:05 tom Exp $
+ # Makefile for creating ncurses distributions.
+ #
+ # This only needs to be used directly as a makefile by developers, but
+@@ -37,7 +37,7 @@ SHELL = /bin/sh
+ # These define the major/minor/patch versions of ncurses.
+ NCURSES_MAJOR = 6
+ NCURSES_MINOR = 0
+-NCURSES_PATCH = 20151121
++NCURSES_PATCH = 20151128
+ 
+ # We don't append the patch to the version, since this only applies to releases
+ VERSION = $(NCURSES_MAJOR).$(NCURSES_MINOR)
+diff --git a/form/form.h b/form/form.h
+index 09856dc..05a7861 100644
+--- a/form/form.h
++++ b/form/form.h
+@@ -1,5 +1,5 @@
+ /****************************************************************************
+- * Copyright (c) 1998-2013,2014 Free Software Foundation, Inc.              *
++ * Copyright (c) 1998-2014,2015 Free Software Foundation, Inc.              *
+  *                                                                          *
+  * Permission is hereby granted, free of charge, to any person obtaining a  *
+  * copy of this software and associated documentation files (the            *
+@@ -30,7 +30,7 @@
+  *   Author:  Juergen Pfeifer, 1995,1997                                    *
+  ****************************************************************************/
+ 
+-/* $Id: form.h,v 0.24 2014/07/26 20:52:28 tom Exp $ */
++/* $Id: form.h,v 0.25 2015/11/28 20:13:39 Leon.Winter Exp $ */
+ 
+ #ifndef FORM_H
+ #define FORM_H
+@@ -205,6 +205,7 @@ typedef void (*Form_Hook)(FORM *);
+ #define O_PASSOK		(0x0100U)
+ #define O_STATIC		(0x0200U)
+ #define O_DYNAMIC_JUSTIFY	(0x0400U)	/* ncurses extension	*/
++#define O_NO_LEFT_STRIP		(0x0800U)	/* ncurses extension	*/
+ 
+ /* form options */
+ #define O_NL_OVERLOAD		(0x0001U)
+diff --git a/form/form.priv.h b/form/form.priv.h
+index 4d1dfe7..625fc10 100644
+--- a/form/form.priv.h
++++ b/form/form.priv.h
+@@ -1,5 +1,5 @@
+ /****************************************************************************
+- * Copyright (c) 1998-2012,2014 Free Software Foundation, Inc.              *
++ * Copyright (c) 1998-2014,2015 Free Software Foundation, Inc.              *
+  *                                                                          *
+  * Permission is hereby granted, free of charge, to any person obtaining a  *
+  * copy of this software and associated documentation files (the            *
+@@ -30,7 +30,7 @@
+  *   Author:  Juergen Pfeifer, 1995,1997                                    *
+  ****************************************************************************/
+ 
+-/* $Id: form.priv.h,v 0.38 2014/11/01 13:56:14 tom Exp $ */
++/* $Id: form.priv.h,v 0.39 2015/11/28 20:13:39 Leon.Winter Exp $ */
+ 
+ #ifndef FORM_PRIV_H
+ #define FORM_PRIV_H 1
+@@ -162,7 +162,8 @@ TypeArgument;
+ 
+ #define ALL_FIELD_OPTS (Field_Options)( \
+ 			STD_FIELD_OPTS |\
+-			O_DYNAMIC_JUSTIFY)
++			O_DYNAMIC_JUSTIFY |\
++			O_NO_LEFT_STRIP)
+ 
+ #define C_BLANK ' '
+ #define is_blank(c) ((c)==C_BLANK)
+diff --git a/form/frm_driver.c b/form/frm_driver.c
+index eebde42..f78a45e 100644
+--- a/form/frm_driver.c
++++ b/form/frm_driver.c
+@@ -1,5 +1,5 @@
+ /****************************************************************************
+- * Copyright (c) 1998-2013,2014 Free Software Foundation, Inc.              *
++ * Copyright (c) 1998-2014,2015 Free Software Foundation, Inc.              *
+  *                                                                          *
+  * Permission is hereby granted, free of charge, to any person obtaining a  *
+  * copy of this software and associated documentation files (the            *
+@@ -32,7 +32,7 @@
+ 
+ #include "form.priv.h"
+ 
+-MODULE_ID("$Id: frm_driver.c,v 1.115 2014/09/25 21:55:24 tom Exp $")
++MODULE_ID("$Id: frm_driver.c,v 1.117 2015/11/28 20:39:09 tom Exp $")
+ 
+ /*----------------------------------------------------------------------------
+   This is the core module of the form library. It contains the majority
+@@ -979,7 +979,9 @@ Perform_Justification(FIELD *field, WINDOW *win)
+   int len;
+   int col = 0;
+ 
+-  bp = Get_Start_Of_Data(field->buf, Buffer_Length(field));
++  bp = (Field_Has_Option(field, O_NO_LEFT_STRIP)
++	? field->buf
++	: Get_Start_Of_Data(field->buf, Buffer_Length(field)));
+   len = (int)(After_End_Of_Data(field->buf, Buffer_Length(field)) - bp);
+ 
+   if (len > 0)
+@@ -1023,7 +1025,9 @@ Undo_Justification(FIELD *field, WINDOW *win)
+   FIELD_CELL *bp;
+   int len;
+ 
+-  bp = Get_Start_Of_Data(field->buf, Buffer_Length(field));
++  bp = (Field_Has_Option(field, O_NO_LEFT_STRIP)
++	? field->buf
++	: Get_Start_Of_Data(field->buf, Buffer_Length(field)));
+   len = (int)(After_End_Of_Data(field->buf, Buffer_Length(field)) - bp);
+ 
+   if (len > 0)
+diff --git a/man/curs_inopts.3x b/man/curs_inopts.3x
+index 7b9a1be..b3d071b 100644
+--- a/man/curs_inopts.3x
++++ b/man/curs_inopts.3x
+@@ -26,7 +26,7 @@
+ .\" authorization.                                                           *
+ .\"***************************************************************************
+ .\"
+-.\" $Id: curs_inopts.3x,v 1.19 2015/04/11 10:21:38 tom Exp $
++.\" $Id: curs_inopts.3x,v 1.20 2015/11/28 19:03:12 Benno.Schulenberg Exp $
+ .TH curs_inopts 3X ""
+ .ie \n(.g .ds `` \(lq
+ .el       .ds `` ``
+@@ -93,7 +93,7 @@
+ .br
+ .SH DESCRIPTION
+ The \fBncurses\fP library provides several functions which let an application
+-change way input from the terminal is handled.
++change the way input from the terminal is handled.
+ Some are global, applying to all windows.
+ Others apply only to a specific window.
+ Window-specific settings are not automatically applied to new or derived
+@@ -141,19 +141,19 @@ The \fBhalfdelay\fR routine is used for half-delay mode, which is similar to
+ available to the program.
+ However, after blocking for \fItenths\fR tenths of
+ seconds, ERR is returned if nothing has been typed.
+-The value of \fBtenths\fR
++The value of \fItenths\fR
+ must be a number between 1 and 255.
+ Use \fBnocbreak\fR to leave half-delay
+ mode.
+ .\"
+ .SS intrflush
+ .PP
+-If the \fBintrflush\fR option is enabled, (\fIbf\fR is \fBTRUE\fR), when an
+-interrupt key is pressed on the keyboard (interrupt, break, quit) all output in
++If the \fBintrflush\fR option is enabled (\fIbf\fR is \fBTRUE\fR), and an
++interrupt key is pressed on the keyboard (interrupt, break, quit), all output in
+ the tty driver queue will be flushed, giving the effect of faster response to
+ the interrupt, but causing \fBcurses\fR to have the wrong idea of what is on
+ the screen.
+-Disabling (\fIbf\fR is \fBFALSE\fR), the option prevents the
++Disabling the option (\fIbf\fR is \fBFALSE\fR) prevents the
+ flush.
+ The default for the option is inherited from the tty driver settings.
+ The window argument is ignored.
+diff --git a/man/form_field_opts.3x b/man/form_field_opts.3x
+index ff27fe1..f1249a3 100644
+--- a/man/form_field_opts.3x
++++ b/man/form_field_opts.3x
+@@ -1,6 +1,6 @@
+ '\" t
+ .\"***************************************************************************
+-.\" Copyright (c) 1998-2010,2014 Free Software Foundation, Inc.              *
++.\" Copyright (c) 1998-2014,2015 Free Software Foundation, Inc.              *
+ .\"                                                                          *
+ .\" Permission is hereby granted, free of charge, to any person obtaining a  *
+ .\" copy of this software and associated documentation files (the            *
+@@ -27,7 +27,7 @@
+ .\" authorization.                                                           *
+ .\"***************************************************************************
+ .\"
+-.\" $Id: form_field_opts.3x,v 1.17 2014/07/26 21:21:57 tom Exp $
++.\" $Id: form_field_opts.3x,v 1.19 2015/11/28 20:40:13 tom Exp $
+ .TH form_field_opts 3X ""
+ .SH NAME
+ \fBform_field_opts\fR \- set and get field options
+@@ -91,10 +91,13 @@ O_WRAP
+ Words that do not fit on a line are wrapped to the next line.  Words are
+ blank-separated.
+ .PP
+-One extension option is defined (extensions are off by default):
++These extension options are defined (extensions are off by default):
+ .TP 5
+ O_DYNAMIC_JUSTIFY
+ Permit dynamic fields to be justified, like static fields.
++.TP 5
++O_NO_LEFT_STRIP
++Preserve leading whitespace in the field buffer, which is normally discarded.
+ .SH RETURN VALUE
+ Except for \fBfield_opts\fR, each routine returns one of the following:
+ .TP 5
+diff --git a/misc/terminfo.src b/misc/terminfo.src
+index ad5cf18..612b47a 100644
+--- a/misc/terminfo.src
++++ b/misc/terminfo.src
+@@ -6,8 +6,8 @@
+ # Report bugs and new terminal descriptions to
+ #	bug-ncurses@gnu.org
+ #
+-#	$Revision: 1.558 $
+-#	$Date: 2015/11/22 01:01:00 $
++#	$Revision: 1.559 $
++#	$Date: 2015/11/28 21:35:00 $
+ #
+ # The original header is preserved below for reference.  It is noted that there
+ # is a "newer" version which differs in some cosmetic details (but actually
+@@ -18753,6 +18753,25 @@ minitel1b-nb|minitel 1b (40cols) noir & blanc sans couleurs avec bold et dim ...
+ 	sgr0=\EI\E\\\EB, smacs=^N, .invis=\E@, .rs2=^L\EB,
+ 	.u8=\001Cu|\004, use=minitel1b,
+ 
++# From: Alexandre Montaron, 19 Nov 2015
++#
++# He comments:
++# viewdata lacks a true cup capabilitie,
++# so I achieved it with home and cud1/cuf1 sequences only !
++viewdata|prestel/viewdata terminals,
++	am, bw, eslok, hz,
++	cols#40, lines#24,
++	bel=^G, civis=^T, clear=^L, cnorm=^Q, cr=^M, cub1=^H, cud1=^J,
++	cuf1=^I,
++	cup=\036%?%p1%{07}%>%t\n\n\n\n\n\n\n\n%;%?%p1%{15}%>%t\n\n\n\n\n\n\n\n%;%?%p1%{4}%&%t\n\n\n\n%;%?%p1%{2}%&%t\n\n%;%?%p1%{1}%&%t\n%;%?%p2%{07}%>%t\011\011\011\011\011\011\011\011%;%?%p2%{15}%>%t\011\011\011\011\011\011\011\011%;%?%p2%{23}%>%t\011\011\011\011\011\011\011\011%;%?%p2%{31}%>%t\011\011\011\011\011\011\011\011%;%?%p2%{4}%&%t\011\011\011\011%;%?%p2%{2}%&%t\011\011%;%?%p2%{1}%&%t\011%;,
++	cuu1=^K, home=^^, nel=^M^J, .el=^X, .ind=^J,
++	.rep=%p1%c\022%p2%'?'%+%c, .ri=^K,
++# Also:
++# viewdata-rv works with some applications (e.g. emacs, xemacs) but fails with vim.
++viewdata-rv|prestel/viewdata terminals with reverse capabilitie (as green),
++	xmc#1,
++	rmso=\EG, smso=\EB, use=viewdata,
++
+ ######## OBSOLETE VDT TYPES
+ #
+ # These terminals are *long* dead -- these entries are retained for
+@@ -23792,4 +23811,7 @@ v3220|LANPAR Vision II model 3220/3221/3222,
+ # 2015-11-21
+ #	+ fix some inconsistencies in the pccon* entries -TD
+ #
++# 2015-11-28
++#	  add viewdata (Alexandre Montaron).
++#
+ ######## SHANTIH!  SHANTIH!  SHANTIH!
+diff --git a/ncurses/base/lib_getch.c b/ncurses/base/lib_getch.c
+index 42eb9cc..4048fde 100644
+--- a/ncurses/base/lib_getch.c
++++ b/ncurses/base/lib_getch.c
+@@ -42,7 +42,7 @@
+ 
+ #include <curses.priv.h>
+ 
+-MODULE_ID("$Id: lib_getch.c,v 1.132 2015/05/09 17:10:41 tom Exp $")
++MODULE_ID("$Id: lib_getch.c,v 1.133 2015/11/29 01:28:52 tom Exp $")
+ 
+ #include <fifo_defs.h>
+ 
+@@ -497,6 +497,8 @@ _nc_wgetch(WINDOW *win,
+ 	    TR(TRACE_IEVENT, ("timed delay in wgetch()"));
+ 	    if (sp->_cbreak > 1)
+ 		delay = (sp->_cbreak - 1) * 100;
++	    else if (win->_notimeout)
++		delay = 0;
+ 	    else
+ 		delay = win->_delay;
+ 
+diff --git a/package/debian-mingw/changelog b/package/debian-mingw/changelog
+index 28dbca4..ca97e78 100644
+--- a/package/debian-mingw/changelog
++++ b/package/debian-mingw/changelog
+@@ -1,8 +1,8 @@
+-ncurses6 (6.0+20151121) unstable; urgency=low
++ncurses6 (6.0+20151128) unstable; urgency=low
+ 
+   * latest weekly patch
+ 
+- -- Thomas E. Dickey <dickey@invisible-island.net>  Sat, 21 Nov 2015 10:55:51 -0500
++ -- Thomas E. Dickey <dickey@invisible-island.net>  Sat, 28 Nov 2015 11:31:05 -0500
+ 
+ ncurses6 (5.9-20131005) unstable; urgency=low
+ 
+diff --git a/package/debian-mingw64/changelog b/package/debian-mingw64/changelog
+index 28dbca4..ca97e78 100644
+--- a/package/debian-mingw64/changelog
++++ b/package/debian-mingw64/changelog
+@@ -1,8 +1,8 @@
+-ncurses6 (6.0+20151121) unstable; urgency=low
++ncurses6 (6.0+20151128) unstable; urgency=low
+ 
+   * latest weekly patch
+ 
+- -- Thomas E. Dickey <dickey@invisible-island.net>  Sat, 21 Nov 2015 10:55:51 -0500
++ -- Thomas E. Dickey <dickey@invisible-island.net>  Sat, 28 Nov 2015 11:31:05 -0500
+ 
+ ncurses6 (5.9-20131005) unstable; urgency=low
+ 
+diff --git a/package/debian/changelog b/package/debian/changelog
+index bfe3549..ee011af 100644
+--- a/package/debian/changelog
++++ b/package/debian/changelog
+@@ -1,8 +1,8 @@
+-ncurses6 (6.0+20151121) unstable; urgency=low
++ncurses6 (6.0+20151128) unstable; urgency=low
+ 
+   * latest weekly patch
+ 
+- -- Thomas E. Dickey <dickey@invisible-island.net>  Sat, 21 Nov 2015 10:55:51 -0500
++ -- Thomas E. Dickey <dickey@invisible-island.net>  Sat, 28 Nov 2015 11:31:05 -0500
+ 
+ ncurses6 (5.9-20120608) unstable; urgency=low
+ 
+diff --git a/package/mingw-ncurses.nsi b/package/mingw-ncurses.nsi
+index bbc42f6..e032807 100644
+--- a/package/mingw-ncurses.nsi
++++ b/package/mingw-ncurses.nsi
+@@ -1,4 +1,4 @@
+-; $Id: mingw-ncurses.nsi,v 1.133 2015/11/21 15:55:51 tom Exp $
++; $Id: mingw-ncurses.nsi,v 1.134 2015/11/28 16:31:05 tom Exp $
+ 
+ ; TODO add examples
+ ; TODO bump ABI to 6
+@@ -10,7 +10,7 @@
+ !define VERSION_MAJOR "6"
+ !define VERSION_MINOR "0"
+ !define VERSION_YYYY  "2015"
+-!define VERSION_MMDD  "1121"
++!define VERSION_MMDD  "1128"
+ !define VERSION_PATCH ${VERSION_YYYY}${VERSION_MMDD}
+ 
+ !define MY_ABI   "5"
+diff --git a/package/mingw-ncurses.spec b/package/mingw-ncurses.spec
+index 03a90f0..7e2cec2 100644
+--- a/package/mingw-ncurses.spec
++++ b/package/mingw-ncurses.spec
+@@ -3,7 +3,7 @@
+ Summary: shared libraries for terminal handling
+ Name: mingw32-ncurses6
+ Version: 6.0
+-Release: 20151121
++Release: 20151128
+ License: X11
+ Group: Development/Libraries
+ Source: ncurses-%{version}-%{release}.tgz
+diff --git a/package/ncurses.spec b/package/ncurses.spec
+index 11743f9..7ff615d 100644
+--- a/package/ncurses.spec
++++ b/package/ncurses.spec
+@@ -1,7 +1,7 @@
+ Summary: shared libraries for terminal handling
+ Name: ncurses6
+ Version: 6.0
+-Release: 20151121
++Release: 20151128
+ License: X11
+ Group: Development/Libraries
+ Source: ncurses-%{version}-%{release}.tgz
+diff --git a/progs/dump_entry.c b/progs/dump_entry.c
+index 19d6cde..7be9b91 100644
+--- a/progs/dump_entry.c
++++ b/progs/dump_entry.c
+@@ -39,7 +39,7 @@
+ #include "termsort.c"		/* this C file is generated */
+ #include <parametrized.h>	/* so is this */
+ 
+-MODULE_ID("$Id: dump_entry.c,v 1.123 2015/09/05 23:31:12 tom Exp $")
++MODULE_ID("$Id: dump_entry.c,v 1.124 2015/11/28 22:54:33 tom Exp $")
+ 
+ #define DISCARD(string) string = ABSENT_STRING
+ #define PRINTF (void) printf
+@@ -510,6 +510,10 @@ fmt_complex(TERMTYPE *tterm, const char *capability, char *src, int level)
+ 
+     while (*src != '\0') {
+ 	switch (*src) {
++	case '^':
++	    percent = FALSE;
++	    strncpy_DYN(&tmpbuf, src++, (size_t) 1);
++	    break;
+ 	case '\\':
+ 	    percent = FALSE;
+ 	    strncpy_DYN(&tmpbuf, src++, (size_t) 1);
+diff --git a/test/ncurses.c b/test/ncurses.c
+index 48e889b..9fb47f1 100644
+--- a/test/ncurses.c
++++ b/test/ncurses.c
+@@ -40,7 +40,7 @@ AUTHOR
+    Author: Eric S. Raymond <esr@snark.thyrsus.com> 1993
+            Thomas E. Dickey (beginning revision 1.27 in 1996).
+ 
+-$Id: ncurses.c,v 1.423 2015/10/31 19:53:06 tom Exp $
++$Id: ncurses.c,v 1.425 2015/11/29 01:26:41 tom Exp $
+ 
+ ***************************************************************************/
+ 
+@@ -636,15 +636,22 @@ setup_getch(WINDOW *win, GetchFlags flags)
+ }
+ 
+ static void
+-init_getch(WINDOW *win, GetchFlags flags)
++init_getch(WINDOW *win, GetchFlags flags, int delay)
+ {
+     memset(flags, FALSE, NUM_GETCH_FLAGS);
+     flags[UChar('k')] = (win == stdscr);
+     flags[UChar('m')] = TRUE;
++    flags[UChar('t')] = (delay != 0);
+ 
+     setup_getch(win, flags);
+ }
+ 
++static bool
++blocking_getch(GetchFlags flags, int delay)
++{
++    return ((delay < 0) && flags['t']);
++}
++
+ static void
+ wgetch_help(WINDOW *win, GetchFlags flags)
+ {
+@@ -655,7 +662,8 @@ wgetch_help(WINDOW *win, GetchFlags flags)
+ 	,"k  -- toggle keypad/literal mode"
+ 	,"m  -- toggle meta (7-bit/8-bit) mode"
+ 	,"^q -- quit"
+-	,"s  -- shell out\n"
++	,"s  -- shell out"
++	,"t  -- toggle timeout"
+ 	,"w  -- create a new window"
+ #ifdef SIGTSTP
+ 	,"z  -- suspend this process"
+@@ -810,9 +818,9 @@ wgetch_test(unsigned level, WINDOW *win, int delay)
+     int c;
+     int incount = 0;
+     GetchFlags flags;
+-    bool blocking = (delay < 0);
+ 
+-    init_getch(win, flags);
++    init_getch(win, flags, delay);
++    notimeout(win, FALSE);
+     wtimeout(win, delay);
+     getyx(win, first_y, first_x);
+ 
+@@ -823,7 +831,7 @@ wgetch_test(unsigned level, WINDOW *win, int delay)
+     for (;;) {
+ 	while ((c = wGetchar(win)) == ERR) {
+ 	    incount++;
+-	    if (blocking) {
++	    if (blocking_getch(flags, delay)) {
+ 		(void) wprintw(win, "%05d: input error", incount);
+ 		break;
+ 	    } else {
+@@ -831,7 +839,7 @@ wgetch_test(unsigned level, WINDOW *win, int delay)
+ 	    }
+ 	    wgetch_wrap(win, first_y);
+ 	}
+-	if (c == ERR && blocking) {
++	if (c == ERR && blocking_getch(flags, delay)) {
+ 	    wprintw(win, "ERR");
+ 	    wgetch_wrap(win, first_y);
+ 	} else if (isQuit(c)) {
+@@ -860,6 +868,10 @@ wgetch_test(unsigned level, WINDOW *win, int delay)
+ 	    wgetch_help(win, flags);
+ 	} else if (c == 's') {
+ 	    ShellOut(TRUE);
++	} else if (c == 't') {
++	    notimeout(win, flags[UChar('t')]);
++	    flags[UChar('t')] = !flags[UChar('t')];
++	    wgetch_help(win, flags);
+ 	} else if (c == 'w') {
+ 	    int high = getmaxy(win) - 1 - first_y + 1;
+ 	    int wide = getmaxx(win) - first_x;
+@@ -931,7 +943,7 @@ wgetch_test(unsigned level, WINDOW *win, int delay)
+     wtimeout(win, -1);
+ 
+     if (!level)
+-	init_getch(win, flags);
++	init_getch(win, flags, delay);
+ }
+ 
+ static int
+@@ -958,7 +970,7 @@ begin_getch_test(void)
+ 	delay = -1;
+     }
+     raw();
+-    move(5, 0);
++    move(6, 0);
+     return delay;
+ }
+ 
+@@ -1060,11 +1072,11 @@ wget_wch_test(unsigned level, WINDOW *win, int delay)
+     wint_t c;
+     int incount = 0;
+     GetchFlags flags;
+-    bool blocking = (delay < 0);
+     int code;
+     char *temp;
+ 
+-    init_getch(win, flags);
++    init_getch(win, flags, delay);
++    notimeout(win, FALSE);
+     wtimeout(win, delay);
+     getyx(win, first_y, first_x);
+ 
+@@ -1075,7 +1087,7 @@ wget_wch_test(unsigned level, WINDOW *win, int delay)
+     for (;;) {
+ 	while ((code = wGet_wchar(win, &c)) == ERR) {
+ 	    incount++;
+-	    if (blocking) {
++	    if (blocking_getch(flags, delay)) {
+ 		(void) wprintw(win, "%05d: input error", incount);
+ 		break;
+ 	    } else {
+@@ -1083,7 +1095,7 @@ wget_wch_test(unsigned level, WINDOW *win, int delay)
+ 	    }
+ 	    wgetch_wrap(win, first_y);
+ 	}
+-	if (code == ERR && blocking) {
++	if (code == ERR && blocking_getch(flags, delay)) {
+ 	    wprintw(win, "ERR");
+ 	    wgetch_wrap(win, first_y);
+ 	} else if (isQuit((int) c)) {
+@@ -1125,6 +1137,10 @@ wget_wch_test(unsigned level, WINDOW *win, int delay)
+ 	    wgetch_help(win, flags);
+ 	} else if (c == 's') {
+ 	    ShellOut(TRUE);
++	} else if (c == 't') {
++	    notimeout(win, flags[UChar('t')]);
++	    flags[UChar('t')] = !flags[UChar('t')];
++	    wgetch_help(win, flags);
+ 	} else if (c == 'w') {
+ 	    int high = getmaxy(win) - 1 - first_y + 1;
+ 	    int wide = getmaxx(win) - first_x;
+@@ -1184,7 +1200,7 @@ wget_wch_test(unsigned level, WINDOW *win, int delay)
+     wtimeout(win, -1);
+ 
+     if (!level)
+-	init_getch(win, flags);
++	init_getch(win, flags, delay);
+ }
+ 
+ static void
+-- 
+2.9.1
+

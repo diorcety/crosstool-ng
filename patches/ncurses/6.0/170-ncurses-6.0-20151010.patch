@@ -1,47 +1,45 @@
-# ncurses 6.0 - patch 20151010 - Thomas E. Dickey
-#
-# ------------------------------------------------------------------------------
-#
-# Ncurses 6.0 is at
-# 	ftp.gnu.org:/pub/gnu
-#
-# Patches for ncurses 6.0 can be found at
-# 	ftp://invisible-island.net/ncurses/6.0
-#	http://invisible-mirror.net/archives/ncurses/6.0 
-#
-# ------------------------------------------------------------------------------
-# ftp://invisible-island.net/ncurses/6.0/ncurses-6.0-20151010.patch.gz
-# patch by Thomas E. Dickey <dickey@invisible-island.net>
-# created  Sun Oct 11 01:01:49 UTC 2015
-# ------------------------------------------------------------------------------
-# Ada95/aclocal.m4                 |   10 
-# Ada95/configure                  |   54 +-
-# NEWS                             |   12 
-# VERSION                          |    2 
-# aclocal.m4                       |   20 
-# configure                        |  861 ++++++++++++++++++++-----------------
-# dist.mk                          |    4 
-# ncurses/base/MKlib_gen.sh        |    3 
-# ncurses/base/resizeterm.c        |   12 
-# package/debian-mingw/changelog   |    4 
-# package/debian-mingw64/changelog |    4 
-# package/debian/changelog         |    4 
-# package/mingw-ncurses.nsi        |    4 
-# package/mingw-ncurses.spec       |    2 
-# package/ncurses.spec             |    2 
-# test/aclocal.m4                  |   30 +
-# test/configure                   |  722 +++++++++++++++++++------------
-# test/configure.in                |   13 
-# test/demo_termcap.c              |    4 
-# test/demo_terminfo.c             |    6 
-# test/view.c                      |   26 -
-# 21 files changed, 1085 insertions(+), 714 deletions(-)
-# ------------------------------------------------------------------------------
-Index: Ada95/aclocal.m4
-Prereq:  1.106 
---- ncurses-6.0-20150926+/Ada95/aclocal.m4	2015-08-22 21:14:14.000000000 +0000
-+++ ncurses-6.0-20151010/Ada95/aclocal.m4	2015-10-10 19:52:33.000000000 +0000
-@@ -28,7 +28,7 @@
+From 9eb6f4991977566a493a5b1c36de2299f2754449 Mon Sep 17 00:00:00 2001
+From: "Thomas E. Dickey" <dickey@invisible-island.net>
+Date: Sun, 11 Oct 2015 01:01:49 +0000
+Subject: [PATCH 08/50] ncurses 6.0 - patch 20151010
+
++ add configure check for openpty to test/configure script, for ditto.
++ minor fixes to test/view.c in investigating Debian #790847.
++ update autoconf patch to 2.52.20150926, incorporates a fix for Cdk.
++ add workaround for breakage of POSIX makefiles by recent binutils
+  change.
++ improve check for working poll() by using posix_openpt() as a
+  fallback in case there is no valid terminal on the standard input
+  (prompted by discussion on bug-ncurses mailing list, Debian #676461).
+---
+ Ada95/aclocal.m4                 |  10 +-
+ Ada95/configure                  |  54 ++-
+ NEWS                             |  12 +-
+ VERSION                          |   2 +-
+ aclocal.m4                       |  20 +-
+ configure                        | 861 ++++++++++++++++++++++-----------------
+ dist.mk                          |   4 +-
+ ncurses/base/MKlib_gen.sh        |   3 +-
+ ncurses/base/resizeterm.c        |  12 +-
+ package/debian-mingw/changelog   |   4 +-
+ package/debian-mingw64/changelog |   4 +-
+ package/debian/changelog         |   4 +-
+ package/mingw-ncurses.nsi        |   4 +-
+ package/mingw-ncurses.spec       |   2 +-
+ package/ncurses.spec             |   2 +-
+ test/aclocal.m4                  |  30 +-
+ test/configure                   | 722 ++++++++++++++++++++------------
+ test/configure.in                |  13 +-
+ test/demo_termcap.c              |   4 +-
+ test/demo_terminfo.c             |   6 +-
+ test/view.c                      |  26 +-
+ 21 files changed, 1085 insertions(+), 714 deletions(-)
+
+diff --git a/Ada95/aclocal.m4 b/Ada95/aclocal.m4
+index 49d733a..8c2da83 100644
+--- a/Ada95/aclocal.m4
++++ b/Ada95/aclocal.m4
+@@ -28,7 +28,7 @@ dnl***************************************************************************
  dnl
  dnl Author: Thomas E. Dickey
  dnl
@@ -50,7 +48,7 @@ Prereq:  1.106
  dnl Macros used in NCURSES Ada95 auto-configuration script.
  dnl
  dnl These macros are maintained separately from NCURSES.  The copyright on
-@@ -365,15 +365,19 @@
+@@ -365,15 +365,19 @@ ifelse([$3],,[    :]dnl
  ])dnl
  ])])dnl
  dnl ---------------------------------------------------------------------------
@@ -72,9 +70,10 @@ Prereq:  1.106
  	do
  
  		# check if $ARFLAGS already contains this choice
-Index: Ada95/configure
---- ncurses-6.0-20150926+/Ada95/configure	2015-09-19 20:50:21.000000000 +0000
-+++ ncurses-6.0-20151010/Ada95/configure	2015-10-10 19:53:00.000000000 +0000
+diff --git a/Ada95/configure b/Ada95/configure
+index 183720f..bf20633 100755
+--- a/Ada95/configure
++++ b/Ada95/configure
 @@ -1,7 +1,7 @@
  #! /bin/sh
  # From configure.in Revision: 1.61 .
@@ -84,7 +83,7 @@ Index: Ada95/configure
  #
  # Copyright 1992, 1993, 1994, 1995, 1996, 1998, 1999, 2000, 2001
  # Free Software Foundation, Inc.
-@@ -804,7 +804,7 @@
+@@ -804,7 +804,7 @@ This file contains any messages produced by compilers while
  running configure, to aid debugging if configure makes a mistake.
  
  It was created by $as_me, which was
@@ -93,7 +92,7 @@ Index: Ada95/configure
  
    $ $0 $@
  
-@@ -3268,7 +3268,7 @@
+@@ -3268,7 +3268,7 @@ if test "${cf_cv_ar_flags+set}" = set; then
  else
  
  	cf_cv_ar_flags=unknown
@@ -102,7 +101,7 @@ Index: Ada95/configure
  	do
  
  		# check if $ARFLAGS already contains this choice
-@@ -14601,7 +14601,7 @@
+@@ -14601,7 +14601,7 @@ EOF
  cat >>$CONFIG_STATUS <<EOF
  ac_cs_version="\\
  config.status
@@ -111,7 +110,7 @@ Index: Ada95/configure
    with options \\"`echo "$ac_configure_args" | sed 's/[\\""\`\$]/\\\\&/g'`\\"
  
  Copyright 1992, 1993, 1994, 1995, 1996, 1998, 1999, 2000, 2001
-@@ -14683,7 +14683,7 @@
+@@ -14683,7 +14683,7 @@ cat >&5 << _ACEOF
  ## Running config.status.  ##
  ## ----------------------- ##
  
@@ -120,7 +119,7 @@ Index: Ada95/configure
    CONFIG_FILES    = $CONFIG_FILES
    CONFIG_HEADERS  = $CONFIG_HEADERS
    CONFIG_LINKS    = $CONFIG_LINKS
-@@ -14974,10 +14974,28 @@
+@@ -14974,10 +14974,28 @@ EOF
        # These are the two extra sed commands mentioned above.
        (echo ':t
    /@[a-zA-Z_][a-zA-Z_0-9]*@/!b' && cat $tmp/subs.frag) >$tmp/subs-$ac_sed_frag.sed
@@ -151,7 +150,7 @@ Index: Ada95/configure
        fi
        ac_sed_frag=`expr $ac_sed_frag + 1`
        ac_beg=$ac_end
-@@ -15060,7 +15078,7 @@
+@@ -15060,7 +15078,7 @@ done; }
    esac
  
    if test x"$ac_file" != x-; then
@@ -160,7 +159,7 @@ Index: Ada95/configure
  echo "$as_me: creating $ac_file" >&6;}
      rm -f "$ac_file"
    fi
-@@ -15078,7 +15096,7 @@
+@@ -15078,7 +15096,7 @@ echo "$as_me: creating $ac_file" >&6;}
        -) echo $tmp/stdin ;;
        [\\/$]*)
           # Absolute (can't be DOS-style, as IFS=:)
@@ -169,7 +168,7 @@ Index: Ada95/configure
  echo "$as_me: error: cannot find input file: $f" >&2;}
     { (exit 1); exit 1; }; }
           echo $f;;
-@@ -15091,7 +15109,7 @@
+@@ -15091,7 +15109,7 @@ echo "$as_me: error: cannot find input file: $f" >&2;}
             echo $srcdir/$f
           else
             # /dev/null tree
@@ -178,7 +177,7 @@ Index: Ada95/configure
  echo "$as_me: error: cannot find input file: $f" >&2;}
     { (exit 1); exit 1; }; }
           fi;;
-@@ -15107,7 +15125,7 @@
+@@ -15107,7 +15125,7 @@ cat >>$CONFIG_STATUS <<\EOF
        if test -n "$ac_seen"; then
          ac_used=`grep '@datarootdir@' $ac_item`
          if test -z "$ac_used"; then
@@ -187,7 +186,7 @@ Index: Ada95/configure
  $ac_seen" >&5
  echo "$as_me: WARNING: datarootdir was used implicitly but not set:
  $ac_seen" >&2;}
-@@ -15116,7 +15134,7 @@
+@@ -15116,7 +15134,7 @@ $ac_seen" >&2;}
        fi
        ac_seen=`grep '${datarootdir}' $ac_item`
        if test -n "$ac_seen"; then
@@ -196,7 +195,7 @@ Index: Ada95/configure
  $ac_seen" >&5
  echo "$as_me: WARNING: datarootdir was used explicitly but not set:
  $ac_seen" >&2;}
-@@ -15153,7 +15171,7 @@
+@@ -15153,7 +15171,7 @@ s,@INSTALL@,$ac_INSTALL,;t t
              ac_init=`egrep '[ 	]*'$ac_name'[ 	]*=' $ac_file`
              if test -z "$ac_init"; then
                ac_seen=`echo "$ac_seen" |sed -e 's,^,'$ac_file':,'`
@@ -205,7 +204,7 @@ Index: Ada95/configure
  $ac_seen" >&5
  echo "$as_me: WARNING: Variable $ac_name is used but was not set:
  $ac_seen" >&2;}
-@@ -15164,7 +15182,7 @@
+@@ -15164,7 +15182,7 @@ $ac_seen" >&2;}
      egrep -n '@[A-Z_][A-Z_0-9]+@' $ac_file >>$tmp/out
      if test -s $tmp/out; then
        ac_seen=`sed -e 's,^,'$ac_file':,' < $tmp/out`
@@ -214,7 +213,7 @@ Index: Ada95/configure
  $ac_seen" >&5
  echo "$as_me: WARNING: Some variables may not be substituted:
  $ac_seen" >&2;}
-@@ -15213,7 +15231,7 @@
+@@ -15213,7 +15231,7 @@ for ac_file in : $CONFIG_HEADERS; do test "x$ac_file" = x: && continue
    * )   ac_file_in=$ac_file.in ;;
    esac
  
@@ -223,7 +222,7 @@ Index: Ada95/configure
  echo "$as_me: creating $ac_file" >&6;}
  
    # First look for the input files in the build tree, otherwise in the
-@@ -15224,7 +15242,7 @@
+@@ -15224,7 +15242,7 @@ echo "$as_me: creating $ac_file" >&6;}
        -) echo $tmp/stdin ;;
        [\\/$]*)
           # Absolute (can't be DOS-style, as IFS=:)
@@ -232,7 +231,7 @@ Index: Ada95/configure
  echo "$as_me: error: cannot find input file: $f" >&2;}
     { (exit 1); exit 1; }; }
           echo $f;;
-@@ -15237,7 +15255,7 @@
+@@ -15237,7 +15255,7 @@ echo "$as_me: error: cannot find input file: $f" >&2;}
             echo $srcdir/$f
           else
             # /dev/null tree
@@ -241,7 +240,7 @@ Index: Ada95/configure
  echo "$as_me: error: cannot find input file: $f" >&2;}
     { (exit 1); exit 1; }; }
           fi;;
-@@ -15295,7 +15313,7 @@
+@@ -15295,7 +15313,7 @@ cat >>$CONFIG_STATUS <<\EOF
    rm -f $tmp/in
    if test x"$ac_file" != x-; then
      if cmp -s $ac_file $tmp/config.h 2>/dev/null; then
@@ -250,10 +249,10 @@ Index: Ada95/configure
  echo "$as_me: $ac_file is unchanged" >&6;}
      else
        ac_dir=`$as_expr X"$ac_file" : 'X\(.*[^/]\)//*[^/][^/]*/*$' \| \
-Index: NEWS
-Prereq:  1.2499 
---- ncurses-6.0-20150926+/NEWS	2015-09-26 21:58:14.000000000 +0000
-+++ ncurses-6.0-20151010/NEWS	2015-10-10 20:24:26.000000000 +0000
+diff --git a/NEWS b/NEWS
+index 3d41180..9d00e97 100644
+--- a/NEWS
++++ b/NEWS
 @@ -25,7 +25,7 @@
  -- sale, use or other dealings in this Software without prior written        --
  -- authorization.                                                            --
@@ -263,7 +262,7 @@ Prereq:  1.2499
  -------------------------------------------------------------------------------
  
  This is a log of changes that ncurses has gone through since Zeyd started
-@@ -45,6 +45,16 @@
+@@ -45,6 +45,16 @@ See the AUTHORS file for the corresponding full names.
  Changes through 1.9.9e did not credit all contributions;
  it is not possible to add this information.
  
@@ -280,17 +279,18 @@ Prereq:  1.2499
  20150926
  	+ change makefile rule for removing resulting.map to distclean rather
  	  than clean.
-Index: VERSION
---- ncurses-6.0-20150926+/VERSION	2015-09-26 18:50:05.000000000 +0000
-+++ ncurses-6.0-20151010/VERSION	2015-10-10 17:06:12.000000000 +0000
+diff --git a/VERSION b/VERSION
+index b6bab4d..b76dae2 100644
+--- a/VERSION
++++ b/VERSION
 @@ -1 +1 @@
 -5:0:9	6.0	20150926
 +5:0:9	6.0	20151010
-Index: aclocal.m4
-Prereq:  1.768 
---- ncurses-6.0-20150926+/aclocal.m4	2015-09-26 21:56:12.000000000 +0000
-+++ ncurses-6.0-20151010/aclocal.m4	2015-10-10 19:27:07.000000000 +0000
-@@ -28,7 +28,7 @@
+diff --git a/aclocal.m4 b/aclocal.m4
+index 0ef9ed3..6644ff0 100644
+--- a/aclocal.m4
++++ b/aclocal.m4
+@@ -28,7 +28,7 @@ dnl***************************************************************************
  dnl
  dnl Author: Thomas E. Dickey 1995-on
  dnl
@@ -299,7 +299,7 @@ Prereq:  1.768
  dnl Macros used in NCURSES auto-configuration script.
  dnl
  dnl These macros are maintained separately from NCURSES.  The copyright on
-@@ -423,15 +423,19 @@
+@@ -423,15 +423,19 @@ ifelse([$3],,[    :]dnl
  ])dnl
  ])])dnl
  dnl ---------------------------------------------------------------------------
@@ -321,7 +321,7 @@ Prereq:  1.768
  	do
  
  		# check if $ARFLAGS already contains this choice
-@@ -1821,11 +1825,12 @@
+@@ -1821,11 +1825,12 @@ AC_CACHE_CHECK(for openpty header,cf_cv_func_openpty,[
  ])
  ])dnl
  dnl ---------------------------------------------------------------------------
@@ -335,7 +335,7 @@ Prereq:  1.768
  AC_CACHE_CHECK(if poll really works,cf_cv_working_poll,[
  AC_TRY_RUN([
  #include <stdlib.h>
-@@ -1837,7 +1842,7 @@
+@@ -1837,7 +1842,7 @@ AC_TRY_RUN([
  #else
  #include <sys/poll.h>
  #endif
@@ -344,7 +344,7 @@ Prereq:  1.768
  	struct pollfd myfds;
  	int ret;
  
-@@ -1857,6 +1862,11 @@
+@@ -1857,6 +1862,11 @@ int main() {
  		if (!isatty(fd)) {
  			fd = open("/dev/tty", 2);	/* O_RDWR */
  		}
@@ -356,9 +356,10 @@ Prereq:  1.768
  
  		if (fd >= 0) {
  			/* also check with standard input */
-Index: configure
---- ncurses-6.0-20150926+/configure	2015-09-26 21:56:47.000000000 +0000
-+++ ncurses-6.0-20151010/configure	2015-10-10 19:18:37.000000000 +0000
+diff --git a/configure b/configure
+index 7d62d69..bca48d3 100755
+--- a/configure
++++ b/configure
 @@ -1,7 +1,7 @@
  #! /bin/sh
  # From configure.in Revision: 1.619 .
@@ -368,7 +369,7 @@ Index: configure
  #
  # Copyright 1992, 1993, 1994, 1995, 1996, 1998, 1999, 2000, 2001
  # Free Software Foundation, Inc.
-@@ -907,7 +907,7 @@
+@@ -907,7 +907,7 @@ This file contains any messages produced by compilers while
  running configure, to aid debugging if configure makes a mistake.
  
  It was created by $as_me, which was
@@ -377,7 +378,7 @@ Index: configure
  
    $ $0 $@
  
-@@ -4408,7 +4408,7 @@
+@@ -4408,7 +4408,7 @@ if test "${cf_cv_ar_flags+set}" = set; then
  else
  
  	cf_cv_ar_flags=unknown
@@ -386,7 +387,7 @@ Index: configure
  	do
  
  		# check if $ARFLAGS already contains this choice
-@@ -17833,7 +17833,77 @@
+@@ -17833,7 +17833,77 @@ EOF
  
  fi
  
@@ -465,7 +466,7 @@ Index: configure
  echo $ECHO_N "checking if poll really works... $ECHO_C" >&6
  if test "${cf_cv_working_poll+set}" = set; then
    echo $ECHO_N "(cached) $ECHO_C" >&6
-@@ -17843,7 +17913,7 @@
+@@ -17843,7 +17913,7 @@ if test "$cross_compiling" = yes; then
    cf_cv_working_poll=unknown
  else
    cat >conftest.$ac_ext <<_ACEOF
@@ -474,7 +475,7 @@ Index: configure
  #include "confdefs.h"
  
  #include <stdlib.h>
-@@ -17855,7 +17925,7 @@
+@@ -17855,7 +17925,7 @@ else
  #else
  #include <sys/poll.h>
  #endif
@@ -483,7 +484,7 @@ Index: configure
  	struct pollfd myfds;
  	int ret;
  
-@@ -17875,6 +17945,11 @@
+@@ -17875,6 +17945,11 @@ int main() {
  		if (!isatty(fd)) {
  			fd = open("/dev/tty", 2);	/* O_RDWR */
  		}
@@ -495,7 +496,7 @@ Index: configure
  
  		if (fd >= 0) {
  			/* also check with standard input */
-@@ -17890,15 +17965,15 @@
+@@ -17890,15 +17965,15 @@ int main() {
  }
  _ACEOF
  rm -f conftest$ac_exeext
@@ -515,7 +516,7 @@ Index: configure
    (exit $ac_status); }; }; then
    cf_cv_working_poll=yes
  else
-@@ -17910,21 +17985,21 @@
+@@ -17910,21 +17985,21 @@ fi
  rm -f core core.* *.core conftest$ac_exeext conftest.$ac_objext conftest.$ac_ext
  fi
  fi
@@ -540,7 +541,7 @@ Index: configure
  #include "confdefs.h"
  
  #include <stdarg.h>
-@@ -17941,16 +18016,16 @@
+@@ -17941,16 +18016,16 @@ main ()
  }
  _ACEOF
  rm -f conftest.$ac_objext conftest$ac_exeext
@@ -561,7 +562,7 @@ Index: configure
    (exit $ac_status); }; }; then
    cf_cv_have_va_copy=yes
  else
-@@ -17960,7 +18035,7 @@
+@@ -17960,7 +18035,7 @@ cf_cv_have_va_copy=no
  fi
  rm -f conftest.$ac_objext conftest$ac_exeext conftest.$ac_ext
  fi
@@ -570,7 +571,7 @@ Index: configure
  echo "${ECHO_T}$cf_cv_have_va_copy" >&6
  
  test "$cf_cv_have_va_copy" = yes &&
-@@ -17968,14 +18043,14 @@
+@@ -17968,14 +18043,14 @@ cat >>confdefs.h <<\EOF
  #define HAVE_VA_COPY 1
  EOF
  
@@ -587,7 +588,7 @@ Index: configure
  #include "confdefs.h"
  
  #include <stdarg.h>
-@@ -17992,16 +18067,16 @@
+@@ -17992,16 +18067,16 @@ main ()
  }
  _ACEOF
  rm -f conftest.$ac_objext conftest$ac_exeext
@@ -608,7 +609,7 @@ Index: configure
    (exit $ac_status); }; }; then
    cf_cv_have___va_copy=yes
  else
-@@ -18011,7 +18086,7 @@
+@@ -18011,7 +18086,7 @@ cf_cv_have___va_copy=no
  fi
  rm -f conftest.$ac_objext conftest$ac_exeext conftest.$ac_ext
  fi
@@ -617,7 +618,7 @@ Index: configure
  echo "${ECHO_T}$cf_cv_have___va_copy" >&6
  
  test "$cf_cv_have___va_copy" = yes &&
-@@ -18019,13 +18094,13 @@
+@@ -18019,13 +18094,13 @@ cat >>confdefs.h <<\EOF
  #define HAVE___VA_COPY 1
  EOF
  
@@ -633,7 +634,7 @@ Index: configure
  #include "confdefs.h"
  $ac_includes_default
  int
-@@ -18040,16 +18115,16 @@
+@@ -18040,16 +18115,16 @@ if (sizeof (pid_t))
  }
  _ACEOF
  rm -f conftest.$ac_objext
@@ -654,7 +655,7 @@ Index: configure
    (exit $ac_status); }; }; then
    ac_cv_type_pid_t=yes
  else
-@@ -18059,7 +18134,7 @@
+@@ -18059,7 +18134,7 @@ ac_cv_type_pid_t=no
  fi
  rm -f conftest.$ac_objext conftest.$ac_ext
  fi
@@ -663,7 +664,7 @@ Index: configure
  echo "${ECHO_T}$ac_cv_type_pid_t" >&6
  if test $ac_cv_type_pid_t = yes; then
    :
-@@ -18074,23 +18149,23 @@
+@@ -18074,23 +18149,23 @@ fi
  for ac_header in unistd.h vfork.h
  do
  as_ac_Header=`echo "ac_cv_header_$ac_header" | $as_tr_sh`
@@ -691,7 +692,7 @@ Index: configure
    (exit $ac_status); } >/dev/null; then
    if test -s conftest.err; then
      ac_cpp_err=$ac_c_preproc_warn_flag
-@@ -18109,7 +18184,7 @@
+@@ -18109,7 +18184,7 @@ else
  fi
  rm -f conftest.err conftest.$ac_ext
  fi
@@ -700,7 +701,7 @@ Index: configure
  echo "${ECHO_T}`eval echo '${'$as_ac_Header'}'`" >&6
  if test `eval echo '${'$as_ac_Header'}'` = yes; then
    cat >>confdefs.h <<EOF
-@@ -18122,13 +18197,13 @@
+@@ -18122,13 +18197,13 @@ done
  for ac_func in fork vfork
  do
  as_ac_var=`echo "ac_cv_func_$ac_func" | $as_tr_sh`
@@ -716,7 +717,7 @@ Index: configure
  #include "confdefs.h"
  /* System header to define __stub macros and hopefully few prototypes,
      which can conflict with char $ac_func (); below.  */
-@@ -18159,16 +18234,16 @@
+@@ -18159,16 +18234,16 @@ f = $ac_func; /* workaround for ICC 12.0.3 */ if (f == 0) return 1;
  }
  _ACEOF
  rm -f conftest.$ac_objext conftest$ac_exeext
@@ -737,7 +738,7 @@ Index: configure
    (exit $ac_status); }; }; then
    eval "$as_ac_var=yes"
  else
-@@ -18178,7 +18253,7 @@
+@@ -18178,7 +18253,7 @@ eval "$as_ac_var=no"
  fi
  rm -f conftest.$ac_objext conftest$ac_exeext conftest.$ac_ext
  fi
@@ -746,7 +747,7 @@ Index: configure
  echo "${ECHO_T}`eval echo '${'$as_ac_var'}'`" >&6
  if test `eval echo '${'$as_ac_var'}'` = yes; then
    cat >>confdefs.h <<EOF
-@@ -18190,7 +18265,7 @@
+@@ -18190,7 +18265,7 @@ done
  
  ac_cv_func_fork_works=$ac_cv_func_fork
  if test "x$ac_cv_func_fork" = xyes; then
@@ -755,7 +756,7 @@ Index: configure
  echo $ECHO_N "checking for working fork... $ECHO_C" >&6
  if test "${ac_cv_func_fork_works+set}" = set; then
    echo $ECHO_N "(cached) $ECHO_C" >&6
-@@ -18213,15 +18288,15 @@
+@@ -18213,15 +18288,15 @@ else
        }
  _ACEOF
  rm -f conftest$ac_exeext
@@ -775,7 +776,7 @@ Index: configure
    (exit $ac_status); }; }; then
    ac_cv_func_fork_works=yes
  else
-@@ -18233,7 +18308,7 @@
+@@ -18233,7 +18308,7 @@ fi
  rm -f core core.* *.core conftest$ac_exeext conftest.$ac_objext conftest.$ac_ext
  fi
  fi
@@ -784,7 +785,7 @@ Index: configure
  echo "${ECHO_T}$ac_cv_func_fork_works" >&6
  
  fi
-@@ -18247,12 +18322,12 @@
+@@ -18247,12 +18322,12 @@ if test "x$ac_cv_func_fork_works" = xcross; then
        ac_cv_func_fork_works=yes
        ;;
    esac
@@ -799,7 +800,7 @@ Index: configure
  echo $ECHO_N "checking for working vfork... $ECHO_C" >&6
  if test "${ac_cv_func_vfork_works+set}" = set; then
    echo $ECHO_N "(cached) $ECHO_C" >&6
-@@ -18261,7 +18336,7 @@
+@@ -18261,7 +18336,7 @@ else
    ac_cv_func_vfork_works=cross
  else
    cat >conftest.$ac_ext <<_ACEOF
@@ -808,7 +809,7 @@ Index: configure
  #include "confdefs.h"
  /* Thanks to Paul Eggert for this test.  */
  #include <stdio.h>
-@@ -18358,15 +18433,15 @@
+@@ -18358,15 +18433,15 @@ main ()
  }
  _ACEOF
  rm -f conftest$ac_exeext
@@ -828,7 +829,7 @@ Index: configure
    (exit $ac_status); }; }; then
    ac_cv_func_vfork_works=yes
  else
-@@ -18378,13 +18453,13 @@
+@@ -18378,13 +18453,13 @@ fi
  rm -f core core.* *.core conftest$ac_exeext conftest.$ac_objext conftest.$ac_ext
  fi
  fi
@@ -844,7 +845,7 @@ Index: configure
  echo "$as_me: WARNING: CROSS: Result $ac_cv_func_vfork_works guessed due to cross-compiling." >&2;}
  fi
  
-@@ -18411,7 +18486,7 @@
+@@ -18411,7 +18486,7 @@ fi
  
  # special check for test/ditto.c
  
@@ -853,7 +854,7 @@ Index: configure
  echo $ECHO_N "checking for openpty in -lutil... $ECHO_C" >&6
  if test "${ac_cv_lib_util_openpty+set}" = set; then
    echo $ECHO_N "(cached) $ECHO_C" >&6
-@@ -18419,7 +18494,7 @@
+@@ -18419,7 +18494,7 @@ else
    ac_check_lib_save_LIBS=$LIBS
  LIBS="-lutil  $LIBS"
  cat >conftest.$ac_ext <<_ACEOF
@@ -862,7 +863,7 @@ Index: configure
  #include "confdefs.h"
  
  /* Override any gcc2 internal prototype to avoid an error.  */
-@@ -18438,16 +18513,16 @@
+@@ -18438,16 +18513,16 @@ openpty ();
  }
  _ACEOF
  rm -f conftest.$ac_objext conftest$ac_exeext
@@ -883,7 +884,7 @@ Index: configure
    (exit $ac_status); }; }; then
    ac_cv_lib_util_openpty=yes
  else
-@@ -18458,7 +18533,7 @@
+@@ -18458,7 +18533,7 @@ fi
  rm -f conftest.$ac_objext conftest$ac_exeext conftest.$ac_ext
  LIBS=$ac_check_lib_save_LIBS
  fi
@@ -892,7 +893,7 @@ Index: configure
  echo "${ECHO_T}$ac_cv_lib_util_openpty" >&6
  if test $ac_cv_lib_util_openpty = yes; then
    cf_cv_lib_util=yes
-@@ -18466,7 +18541,7 @@
+@@ -18466,7 +18541,7 @@ else
    cf_cv_lib_util=no
  fi
  
@@ -901,7 +902,7 @@ Index: configure
  echo $ECHO_N "checking for openpty header... $ECHO_C" >&6
  if test "${cf_cv_func_openpty+set}" = set; then
    echo $ECHO_N "(cached) $ECHO_C" >&6
-@@ -18493,7 +18568,7 @@
+@@ -18493,7 +18568,7 @@ LIBS="$cf_add_libs"
  	for cf_header in pty.h libutil.h util.h
  	do
  	cat >conftest.$ac_ext <<_ACEOF
@@ -910,7 +911,7 @@ Index: configure
  #include "confdefs.h"
  
  #include <$cf_header>
-@@ -18510,16 +18585,16 @@
+@@ -18510,16 +18585,16 @@ main ()
  }
  _ACEOF
  rm -f conftest.$ac_objext conftest$ac_exeext
@@ -931,7 +932,7 @@ Index: configure
    (exit $ac_status); }; }; then
  
  		cf_cv_func_openpty=$cf_header
-@@ -18537,7 +18612,7 @@
+@@ -18537,7 +18612,7 @@ rm -f conftest.$ac_objext conftest$ac_exeext conftest.$ac_ext
  	LIBS="$cf_save_LIBS"
  
  fi
@@ -940,7 +941,7 @@ Index: configure
  echo "${ECHO_T}$cf_cv_func_openpty" >&6
  
  if test "$cf_cv_func_openpty" != no ; then
-@@ -18607,7 +18682,7 @@
+@@ -18607,7 +18682,7 @@ if test -n "$with_hashed_db/include" ; then
  			  cf_save_CPPFLAGS=$CPPFLAGS
  			  CPPFLAGS="$CPPFLAGS -I$cf_add_incdir"
  			  cat >conftest.$ac_ext <<_ACEOF
@@ -949,7 +950,7 @@ Index: configure
  #include "confdefs.h"
  #include <stdio.h>
  int
-@@ -18619,16 +18694,16 @@
+@@ -18619,16 +18694,16 @@ printf("Hello")
  }
  _ACEOF
  rm -f conftest.$ac_objext
@@ -970,7 +971,7 @@ Index: configure
    (exit $ac_status); }; }; then
    :
  else
-@@ -18645,7 +18720,7 @@
+@@ -18645,7 +18720,7 @@ rm -f conftest.$ac_objext conftest.$ac_ext
  		if test "$cf_have_incdir" = no ; then
  		  test -n "$verbose" && echo "	adding $cf_add_incdir to include-path" 1>&6
  
@@ -979,7 +980,7 @@ Index: configure
  
  		  CPPFLAGS="$CPPFLAGS -I$cf_add_incdir"
  
-@@ -18681,7 +18756,7 @@
+@@ -18681,7 +18756,7 @@ if test -n "$with_hashed_db/lib" ; then
  			if test "$cf_have_libdir" = no ; then
  				test -n "$verbose" && echo "	adding $cf_add_libdir to library-path" 1>&6
  
@@ -988,7 +989,7 @@ Index: configure
  
  				LDFLAGS="-L$cf_add_libdir $LDFLAGS"
  			fi
-@@ -18692,7 +18767,7 @@
+@@ -18692,7 +18767,7 @@ fi
  	else
  		case "$with_hashed_db" in
  		(./*|../*|/*)
@@ -997,7 +998,7 @@ Index: configure
  echo "$as_me: WARNING: no such directory $with_hashed_db" >&2;}
  			;;
  		(*)
-@@ -18761,7 +18836,7 @@
+@@ -18761,7 +18836,7 @@ if test -n "$cf_item" ; then
  			  cf_save_CPPFLAGS=$CPPFLAGS
  			  CPPFLAGS="$CPPFLAGS -I$cf_add_incdir"
  			  cat >conftest.$ac_ext <<_ACEOF
@@ -1006,7 +1007,7 @@ Index: configure
  #include "confdefs.h"
  #include <stdio.h>
  int
-@@ -18773,16 +18848,16 @@
+@@ -18773,16 +18848,16 @@ printf("Hello")
  }
  _ACEOF
  rm -f conftest.$ac_objext
@@ -1027,7 +1028,7 @@ Index: configure
    (exit $ac_status); }; }; then
    :
  else
-@@ -18799,7 +18874,7 @@
+@@ -18799,7 +18874,7 @@ rm -f conftest.$ac_objext conftest.$ac_ext
  		if test "$cf_have_incdir" = no ; then
  		  test -n "$verbose" && echo "	adding $cf_add_incdir to include-path" 1>&6
  
@@ -1036,7 +1037,7 @@ Index: configure
  
  		  CPPFLAGS="$CPPFLAGS -I$cf_add_incdir"
  
-@@ -18879,7 +18954,7 @@
+@@ -18879,7 +18954,7 @@ if test -n "$cf_item" ; then
  			if test "$cf_have_libdir" = no ; then
  				test -n "$verbose" && echo "	adding $cf_add_libdir to library-path" 1>&6
  
@@ -1045,7 +1046,7 @@ Index: configure
  
  				LDFLAGS="-L$cf_add_libdir $LDFLAGS"
  			fi
-@@ -18896,23 +18971,23 @@
+@@ -18896,23 +18971,23 @@ fi
  	fi
  esac
  
@@ -1073,7 +1074,7 @@ Index: configure
    (exit $ac_status); } >/dev/null; then
    if test -s conftest.err; then
      ac_cpp_err=$ac_c_preproc_warn_flag
-@@ -18931,11 +19006,11 @@
+@@ -18931,11 +19006,11 @@ else
  fi
  rm -f conftest.err conftest.$ac_ext
  fi
@@ -1087,7 +1088,7 @@ Index: configure
  echo $ECHO_N "checking for version of db... $ECHO_C" >&6
  if test "${cf_cv_hashed_db_version+set}" = set; then
    echo $ECHO_N "(cached) $ECHO_C" >&6
-@@ -18946,10 +19021,10 @@
+@@ -18946,10 +19021,10 @@ cf_cv_hashed_db_version=unknown
  for cf_db_version in 1 2 3 4 5 6
  do
  
@@ -1100,7 +1101,7 @@ Index: configure
  #include "confdefs.h"
  
  $ac_includes_default
-@@ -18979,16 +19054,16 @@
+@@ -18979,16 +19054,16 @@ DBT *foo = 0
  }
  _ACEOF
  rm -f conftest.$ac_objext
@@ -1121,7 +1122,7 @@ Index: configure
    (exit $ac_status); }; }; then
  
  	cf_cv_hashed_db_version=$cf_db_version
-@@ -19002,16 +19077,16 @@
+@@ -19002,16 +19077,16 @@ rm -f conftest.$ac_objext conftest.$ac_ext
  done
  
  fi
@@ -1141,7 +1142,7 @@ Index: configure
  echo $ECHO_N "checking for db libraries... $ECHO_C" >&6
  if test "${cf_cv_hashed_db_libs+set}" = set; then
    echo $ECHO_N "(cached) $ECHO_C" >&6
-@@ -19041,10 +19116,10 @@
+@@ -19041,10 +19116,10 @@ LIBS="$cf_add_libs"
  
  	fi
  
@@ -1154,7 +1155,7 @@ Index: configure
  #include "confdefs.h"
  
  $ac_includes_default
-@@ -19099,16 +19174,16 @@
+@@ -19099,16 +19174,16 @@ main ()
  }
  _ACEOF
  rm -f conftest.$ac_objext conftest$ac_exeext
@@ -1175,7 +1176,7 @@ Index: configure
    (exit $ac_status); }; }; then
  
  	if test -n "$cf_db_libs" ; then
-@@ -19128,11 +19203,11 @@
+@@ -19128,11 +19203,11 @@ rm -f conftest.$ac_objext conftest$ac_exeext conftest.$ac_ext
  done
  
  fi
@@ -1189,7 +1190,7 @@ Index: configure
  echo "$as_me: error: Cannot determine library for db" >&2;}
     { (exit 1); exit 1; }; }
  	elif test "$cf_cv_hashed_db_libs" != default ; then
-@@ -19158,7 +19233,7 @@
+@@ -19158,7 +19233,7 @@ fi
  
  else
  
@@ -1198,7 +1199,7 @@ Index: configure
  echo "$as_me: error: Cannot find db.h" >&2;}
     { (exit 1); exit 1; }; }
  
-@@ -19173,7 +19248,7 @@
+@@ -19173,7 +19248,7 @@ fi
  
  # Just in case, check if the C compiler has a bool type.
  
@@ -1207,7 +1208,7 @@ Index: configure
  echo $ECHO_N "checking if we should include stdbool.h... $ECHO_C" >&6
  
  if test "${cf_cv_header_stdbool_h+set}" = set; then
-@@ -19181,7 +19256,7 @@
+@@ -19181,7 +19256,7 @@ if test "${cf_cv_header_stdbool_h+set}" = set; then
  else
  
  	cat >conftest.$ac_ext <<_ACEOF
@@ -1216,7 +1217,7 @@ Index: configure
  #include "confdefs.h"
  
  int
-@@ -19193,23 +19268,23 @@
+@@ -19193,23 +19268,23 @@ bool foo = false
  }
  _ACEOF
  rm -f conftest.$ac_objext
@@ -1245,7 +1246,7 @@ Index: configure
  #include "confdefs.h"
  
  #ifndef __BEOS__
-@@ -19225,16 +19300,16 @@
+@@ -19225,16 +19300,16 @@ bool foo = false
  }
  _ACEOF
  rm -f conftest.$ac_objext
@@ -1266,7 +1267,7 @@ Index: configure
    (exit $ac_status); }; }; then
    cf_cv_header_stdbool_h=1
  else
-@@ -19248,13 +19323,13 @@
+@@ -19248,13 +19323,13 @@ rm -f conftest.$ac_objext conftest.$ac_ext
  fi
  
  if test "$cf_cv_header_stdbool_h" = 1
@@ -1283,7 +1284,7 @@ Index: configure
  echo $ECHO_N "checking for builtin bool type... $ECHO_C" >&6
  
  if test "${cf_cv_cc_bool_type+set}" = set; then
-@@ -19262,7 +19337,7 @@
+@@ -19262,7 +19337,7 @@ if test "${cf_cv_cc_bool_type+set}" = set; then
  else
  
  	cat >conftest.$ac_ext <<_ACEOF
@@ -1292,7 +1293,7 @@ Index: configure
  #include "confdefs.h"
  
  #include <stdio.h>
-@@ -19277,16 +19352,16 @@
+@@ -19277,16 +19352,16 @@ bool x = false
  }
  _ACEOF
  rm -f conftest.$ac_objext
@@ -1313,7 +1314,7 @@ Index: configure
    (exit $ac_status); }; }; then
    cf_cv_cc_bool_type=1
  else
-@@ -19299,9 +19374,9 @@
+@@ -19299,9 +19374,9 @@ rm -f conftest.$ac_objext conftest.$ac_ext
  fi
  
  if test "$cf_cv_cc_bool_type" = 1
@@ -1325,7 +1326,7 @@ Index: configure
  echo "${ECHO_T}no" >&6
  fi
  
-@@ -19318,10 +19393,10 @@
+@@ -19318,10 +19393,10 @@ if test -n "$GXX" ; then
  
  	cf_save="$LIBS"
  	LIBS="$LIBS $CXXLIBS"
@@ -1338,7 +1339,7 @@ Index: configure
  #include "confdefs.h"
  
  			#include <iostream>
-@@ -19335,16 +19410,16 @@
+@@ -19335,16 +19410,16 @@ main ()
  }
  _ACEOF
  rm -f conftest.$ac_objext conftest$ac_exeext
@@ -1359,7 +1360,7 @@ Index: configure
    (exit $ac_status); }; }; then
    cf_have_libstdcpp=yes
  else
-@@ -19353,7 +19428,7 @@
+@@ -19353,7 +19428,7 @@ cat conftest.$ac_ext >&5
  cf_have_libstdcpp=no
  fi
  rm -f conftest.$ac_objext conftest$ac_exeext conftest.$ac_ext
@@ -1368,7 +1369,7 @@ Index: configure
  echo "${ECHO_T}$cf_have_libstdcpp" >&6
  	LIBS="$cf_save"
  
-@@ -19368,7 +19443,7 @@
+@@ -19368,7 +19443,7 @@ echo "${ECHO_T}$cf_have_libstdcpp" >&6
  			;;
  		esac
  
@@ -1377,7 +1378,7 @@ Index: configure
  echo $ECHO_N "checking for library $cf_stdcpp_libname... $ECHO_C" >&6
  if test "${cf_cv_libstdcpp+set}" = set; then
    echo $ECHO_N "(cached) $ECHO_C" >&6
-@@ -19394,7 +19469,7 @@
+@@ -19394,7 +19469,7 @@ done
  LIBS="$cf_add_libs"
  
  		cat >conftest.$ac_ext <<_ACEOF
@@ -1386,7 +1387,7 @@ Index: configure
  #include "confdefs.h"
  
  				#include <iostream>
-@@ -19408,16 +19483,16 @@
+@@ -19408,16 +19483,16 @@ main ()
  }
  _ACEOF
  rm -f conftest.$ac_objext conftest$ac_exeext
@@ -1407,7 +1408,7 @@ Index: configure
    (exit $ac_status); }; }; then
    cf_cv_libstdcpp=yes
  else
-@@ -19429,7 +19504,7 @@
+@@ -19429,7 +19504,7 @@ rm -f conftest.$ac_objext conftest$ac_exeext conftest.$ac_ext
  			LIBS="$cf_save"
  
  fi
@@ -1416,7 +1417,7 @@ Index: configure
  echo "${ECHO_T}$cf_cv_libstdcpp" >&6
  		test "$cf_cv_libstdcpp" = yes && {
  cf_add_libs="-l$cf_stdcpp_libname"
-@@ -19451,7 +19526,7 @@
+@@ -19451,7 +19526,7 @@ CXXLIBS="$cf_add_libs"
  	fi
  fi
  
@@ -1425,7 +1426,7 @@ Index: configure
  echo $ECHO_N "checking whether $CXX understands -c and -o together... $ECHO_C" >&6
  if test "${cf_cv_prog_CXX_c_o+set}" = set; then
    echo $ECHO_N "(cached) $ECHO_C" >&6
-@@ -19467,15 +19542,15 @@
+@@ -19467,15 +19542,15 @@ CF_EOF
  # We do the test twice because some compilers refuse to overwrite an
  # existing .o file with -o, though they will create one.
  ac_try='$CXX -c conftest.$ac_ext -o conftest2.$ac_objext >&5'
@@ -1445,7 +1446,7 @@ Index: configure
    (exit $ac_status); };
  then
    eval cf_cv_prog_CXX_c_o=yes
-@@ -19486,10 +19561,10 @@
+@@ -19486,10 +19561,10 @@ rm -rf conftest*
  
  fi
  if test $cf_cv_prog_CXX_c_o = yes; then
@@ -1458,7 +1459,7 @@ Index: configure
  echo "${ECHO_T}no" >&6
  fi
  
-@@ -19509,7 +19584,7 @@
+@@ -19509,7 +19584,7 @@ case $cf_cv_system_name in
  	;;
  esac
  if test "$GXX" = yes; then
@@ -1467,7 +1468,7 @@ Index: configure
  echo $ECHO_N "checking for lib$cf_gpp_libname... $ECHO_C" >&6
  	cf_save="$LIBS"
  
-@@ -19530,7 +19605,7 @@
+@@ -19530,7 +19605,7 @@ done
  LIBS="$cf_add_libs"
  
  	cat >conftest.$ac_ext <<_ACEOF
@@ -1476,7 +1477,7 @@ Index: configure
  #include "confdefs.h"
  
  #include <$cf_gpp_libname/builtin.h>
-@@ -19544,16 +19619,16 @@
+@@ -19544,16 +19619,16 @@ two_arg_error_handler_t foo2 = lib_error_handler
  }
  _ACEOF
  rm -f conftest.$ac_objext conftest$ac_exeext
@@ -1497,7 +1498,7 @@ Index: configure
    (exit $ac_status); }; }; then
    cf_cxx_library=yes
  
-@@ -19590,7 +19665,7 @@
+@@ -19590,7 +19665,7 @@ else
    echo "$as_me: failed program was:" >&5
  cat conftest.$ac_ext >&5
  cat >conftest.$ac_ext <<_ACEOF
@@ -1506,7 +1507,7 @@ Index: configure
  #include "confdefs.h"
  
  #include <builtin.h>
-@@ -19604,16 +19679,16 @@
+@@ -19604,16 +19679,16 @@ two_arg_error_handler_t foo2 = lib_error_handler
  }
  _ACEOF
  rm -f conftest.$ac_objext conftest$ac_exeext
@@ -1527,7 +1528,7 @@ Index: configure
    (exit $ac_status); }; }; then
    cf_cxx_library=yes
  
-@@ -19646,7 +19721,7 @@
+@@ -19646,7 +19721,7 @@ rm -f conftest.$ac_objext conftest$ac_exeext conftest.$ac_ext
  fi
  rm -f conftest.$ac_objext conftest$ac_exeext conftest.$ac_ext
  	LIBS="$cf_save"
@@ -1536,7 +1537,7 @@ Index: configure
  echo "${ECHO_T}$cf_cxx_library" >&6
  fi
  
-@@ -19662,7 +19737,7 @@
+@@ -19662,7 +19737,7 @@ ac_compile='$CXX -c $CXXFLAGS $CPPFLAGS conftest.$ac_ext >&5'
  ac_link='$CXX -o conftest$ac_exeext $CXXFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
  ac_compiler_gnu=$ac_cv_cxx_compiler_gnu
  ac_main_return=return
@@ -1545,7 +1546,7 @@ Index: configure
  echo $ECHO_N "checking how to run the C++ preprocessor... $ECHO_C" >&6
  if test -z "$CXXCPP"; then
    if test "${ac_cv_prog_CXXCPP+set}" = set; then
-@@ -19679,18 +19754,18 @@
+@@ -19679,18 +19754,18 @@ do
    # On the NeXT, cc -E runs the code through the compiler's parser,
    # not just through cpp. "Syntax error" is here to catch this case.
    cat >conftest.$ac_ext <<_ACEOF
@@ -1567,7 +1568,7 @@ Index: configure
    (exit $ac_status); } >/dev/null; then
    if test -s conftest.err; then
      ac_cpp_err=$ac_cxx_preproc_warn_flag
-@@ -19713,17 +19788,17 @@
+@@ -19713,17 +19788,17 @@ rm -f conftest.err conftest.$ac_ext
    # OK, works on sane cases.  Now check whether non-existent headers
    # can be detected and how.
    cat >conftest.$ac_ext <<_ACEOF
@@ -1588,7 +1589,7 @@ Index: configure
    (exit $ac_status); } >/dev/null; then
    if test -s conftest.err; then
      ac_cpp_err=$ac_cxx_preproc_warn_flag
-@@ -19760,7 +19835,7 @@
+@@ -19760,7 +19835,7 @@ fi
  else
    ac_cv_prog_CXXCPP=$CXXCPP
  fi
@@ -1597,7 +1598,7 @@ Index: configure
  echo "${ECHO_T}$CXXCPP" >&6
  ac_preproc_ok=false
  for ac_cxx_preproc_warn_flag in '' yes
-@@ -19770,18 +19845,18 @@
+@@ -19770,18 +19845,18 @@ do
    # On the NeXT, cc -E runs the code through the compiler's parser,
    # not just through cpp. "Syntax error" is here to catch this case.
    cat >conftest.$ac_ext <<_ACEOF
@@ -1619,7 +1620,7 @@ Index: configure
    (exit $ac_status); } >/dev/null; then
    if test -s conftest.err; then
      ac_cpp_err=$ac_cxx_preproc_warn_flag
-@@ -19804,17 +19879,17 @@
+@@ -19804,17 +19879,17 @@ rm -f conftest.err conftest.$ac_ext
    # OK, works on sane cases.  Now check whether non-existent headers
    # can be detected and how.
    cat >conftest.$ac_ext <<_ACEOF
@@ -1640,7 +1641,7 @@ Index: configure
    (exit $ac_status); } >/dev/null; then
    if test -s conftest.err; then
      ac_cpp_err=$ac_cxx_preproc_warn_flag
-@@ -19842,7 +19917,7 @@
+@@ -19842,7 +19917,7 @@ rm -f conftest.err conftest.$ac_ext
  if $ac_preproc_ok; then
    :
  else
@@ -1649,7 +1650,7 @@ Index: configure
  echo "$as_me: error: C++ preprocessor \"$CXXCPP\" fails sanity check" >&2;}
     { (exit 1); exit 1; }; }
  fi
-@@ -19857,23 +19932,23 @@
+@@ -19857,23 +19932,23 @@ ac_main_return=return
  for ac_header in typeinfo
  do
  as_ac_Header=`echo "ac_cv_header_$ac_header" | $as_tr_sh`
@@ -1677,7 +1678,7 @@ Index: configure
    (exit $ac_status); } >/dev/null; then
    if test -s conftest.err; then
      ac_cpp_err=$ac_cxx_preproc_warn_flag
-@@ -19892,7 +19967,7 @@
+@@ -19892,7 +19967,7 @@ else
  fi
  rm -f conftest.err conftest.$ac_ext
  fi
@@ -1686,7 +1687,7 @@ Index: configure
  echo "${ECHO_T}`eval echo '${'$as_ac_Header'}'`" >&6
  if test `eval echo '${'$as_ac_Header'}'` = yes; then
    cat >>confdefs.h <<EOF
-@@ -19905,23 +19980,23 @@
+@@ -19905,23 +19980,23 @@ done
  for ac_header in iostream
  do
  as_ac_Header=`echo "ac_cv_header_$ac_header" | $as_tr_sh`
@@ -1714,7 +1715,7 @@ Index: configure
    (exit $ac_status); } >/dev/null; then
    if test -s conftest.err; then
      ac_cpp_err=$ac_cxx_preproc_warn_flag
-@@ -19940,7 +20015,7 @@
+@@ -19940,7 +20015,7 @@ else
  fi
  rm -f conftest.err conftest.$ac_ext
  fi
@@ -1723,7 +1724,7 @@ Index: configure
  echo "${ECHO_T}`eval echo '${'$as_ac_Header'}'`" >&6
  if test `eval echo '${'$as_ac_Header'}'` = yes; then
    cat >>confdefs.h <<EOF
-@@ -19951,10 +20026,10 @@
+@@ -19951,10 +20026,10 @@ fi
  done
  
  if test x"$ac_cv_header_iostream" = xyes ; then
@@ -1736,7 +1737,7 @@ Index: configure
  #include "confdefs.h"
  
  #include <iostream>
-@@ -19971,16 +20046,16 @@
+@@ -19971,16 +20046,16 @@ cerr << "testing" << endl;
  }
  _ACEOF
  rm -f conftest.$ac_objext
@@ -1757,7 +1758,7 @@ Index: configure
    (exit $ac_status); }; }; then
    cf_iostream_namespace=yes
  else
-@@ -19989,7 +20064,7 @@
+@@ -19989,7 +20064,7 @@ cat conftest.$ac_ext >&5
  cf_iostream_namespace=no
  fi
  rm -f conftest.$ac_objext conftest.$ac_ext
@@ -1766,7 +1767,7 @@ Index: configure
  echo "${ECHO_T}$cf_iostream_namespace" >&6
  	if test "$cf_iostream_namespace" = yes ; then
  
-@@ -20000,7 +20075,7 @@
+@@ -20000,7 +20075,7 @@ EOF
  	fi
  fi
  
@@ -1775,7 +1776,7 @@ Index: configure
  echo $ECHO_N "checking if we should include stdbool.h... $ECHO_C" >&6
  
  if test "${cf_cv_header_stdbool_h+set}" = set; then
-@@ -20008,7 +20083,7 @@
+@@ -20008,7 +20083,7 @@ if test "${cf_cv_header_stdbool_h+set}" = set; then
  else
  
  	cat >conftest.$ac_ext <<_ACEOF
@@ -1784,7 +1785,7 @@ Index: configure
  #include "confdefs.h"
  
  int
-@@ -20020,23 +20095,23 @@
+@@ -20020,23 +20095,23 @@ bool foo = false
  }
  _ACEOF
  rm -f conftest.$ac_objext
@@ -1813,7 +1814,7 @@ Index: configure
  #include "confdefs.h"
  
  #ifndef __BEOS__
-@@ -20052,16 +20127,16 @@
+@@ -20052,16 +20127,16 @@ bool foo = false
  }
  _ACEOF
  rm -f conftest.$ac_objext
@@ -1834,7 +1835,7 @@ Index: configure
    (exit $ac_status); }; }; then
    cf_cv_header_stdbool_h=1
  else
-@@ -20075,13 +20150,13 @@
+@@ -20075,13 +20150,13 @@ rm -f conftest.$ac_objext conftest.$ac_ext
  fi
  
  if test "$cf_cv_header_stdbool_h" = 1
@@ -1851,7 +1852,7 @@ Index: configure
  echo $ECHO_N "checking for builtin bool type... $ECHO_C" >&6
  
  if test "${cf_cv_builtin_bool+set}" = set; then
-@@ -20089,7 +20164,7 @@
+@@ -20089,7 +20164,7 @@ if test "${cf_cv_builtin_bool+set}" = set; then
  else
  
  	cat >conftest.$ac_ext <<_ACEOF
@@ -1860,7 +1861,7 @@ Index: configure
  #include "confdefs.h"
  
  #include <stdio.h>
-@@ -20104,16 +20179,16 @@
+@@ -20104,16 +20179,16 @@ bool x = false
  }
  _ACEOF
  rm -f conftest.$ac_objext
@@ -1881,7 +1882,7 @@ Index: configure
    (exit $ac_status); }; }; then
    cf_cv_builtin_bool=1
  else
-@@ -20126,13 +20201,13 @@
+@@ -20126,13 +20201,13 @@ rm -f conftest.$ac_objext conftest.$ac_ext
  fi
  
  if test "$cf_cv_builtin_bool" = 1
@@ -1898,7 +1899,7 @@ Index: configure
  echo $ECHO_N "checking for size of bool... $ECHO_C" >&6
  if test "${cf_cv_type_of_bool+set}" = set; then
    echo $ECHO_N "(cached) $ECHO_C" >&6
-@@ -20143,7 +20218,7 @@
+@@ -20143,7 +20218,7 @@ else
    cf_cv_type_of_bool=unknown
  else
    cat >conftest.$ac_ext <<_ACEOF
@@ -1907,7 +1908,7 @@ Index: configure
  #include "confdefs.h"
  
  #include <stdlib.h>
-@@ -20185,15 +20260,15 @@
+@@ -20185,15 +20260,15 @@ int main()
  
  _ACEOF
  rm -f conftest$ac_exeext
@@ -1927,7 +1928,7 @@ Index: configure
    (exit $ac_status); }; }; then
    cf_cv_type_of_bool=`cat cf_test.out`
  		 if test -z "$cf_cv_type_of_bool"; then
-@@ -20211,18 +20286,18 @@
+@@ -20211,18 +20286,18 @@ fi
  fi
  
  	rm -f cf_test.out
@@ -1949,7 +1950,7 @@ Index: configure
  echo $ECHO_N "checking for special defines needed for etip.h... $ECHO_C" >&6
  cf_save_CXXFLAGS="$CXXFLAGS"
  cf_result="none"
-@@ -20240,7 +20315,7 @@
+@@ -20240,7 +20315,7 @@ do
  	test -n "$cf_math" && CXXFLAGS="$CXXFLAGS -DETIP_NEEDS_${cf_math}"
  	test -n "$cf_excp" && CXXFLAGS="$CXXFLAGS -DETIP_NEEDS_${cf_excp}"
  cat >conftest.$ac_ext <<_ACEOF
@@ -1958,7 +1959,7 @@ Index: configure
  #include "confdefs.h"
  
  #include <etip.h.in>
-@@ -20254,16 +20329,16 @@
+@@ -20254,16 +20329,16 @@ main ()
  }
  _ACEOF
  rm -f conftest.$ac_objext
@@ -1979,7 +1980,7 @@ Index: configure
    (exit $ac_status); }; }; then
  
  	test -n "$cf_math" && cat >>confdefs.h <<EOF
-@@ -20284,12 +20359,12 @@
+@@ -20284,12 +20359,12 @@ fi
  rm -f conftest.$ac_objext conftest.$ac_ext
  done
  done
@@ -1994,7 +1995,7 @@ Index: configure
  echo $ECHO_N "checking if $CXX accepts parameter initialization... $ECHO_C" >&6
  if test "${cf_cv_cpp_param_init+set}" = set; then
    echo $ECHO_N "(cached) $ECHO_C" >&6
-@@ -20306,7 +20381,7 @@
+@@ -20306,7 +20381,7 @@ ac_main_return=return
    cf_cv_cpp_param_init=unknown
  else
    cat >conftest.$ac_ext <<_ACEOF
@@ -2003,7 +2004,7 @@ Index: configure
  #include "confdefs.h"
  
  class TEST {
-@@ -20325,15 +20400,15 @@
+@@ -20325,15 +20400,15 @@ int main() { }
  
  _ACEOF
  rm -f conftest$ac_exeext
@@ -2023,7 +2024,7 @@ Index: configure
    (exit $ac_status); }; }; then
    cf_cv_cpp_param_init=yes
  else
-@@ -20352,7 +20427,7 @@
+@@ -20352,7 +20427,7 @@ ac_compiler_gnu=$ac_cv_cxx_compiler_gnu
  ac_main_return=return
  
  fi
@@ -2032,7 +2033,7 @@ Index: configure
  echo "${ECHO_T}$cf_cv_cpp_param_init" >&6
  fi
  test "$cf_cv_cpp_param_init" = yes &&
-@@ -20362,7 +20437,7 @@
+@@ -20362,7 +20437,7 @@ EOF
  
  if test -n "$CXX"; then
  
@@ -2041,7 +2042,7 @@ Index: configure
  echo $ECHO_N "checking if $CXX accepts static_cast... $ECHO_C" >&6
  if test "${cf_cv_cpp_static_cast+set}" = set; then
    echo $ECHO_N "(cached) $ECHO_C" >&6
-@@ -20376,7 +20451,7 @@
+@@ -20376,7 +20451,7 @@ ac_compiler_gnu=$ac_cv_cxx_compiler_gnu
  ac_main_return=return
  
  	cat >conftest.$ac_ext <<_ACEOF
@@ -2050,7 +2051,7 @@ Index: configure
  #include "confdefs.h"
  
  class NCursesPanel
-@@ -20420,16 +20495,16 @@
+@@ -20420,16 +20495,16 @@ main ()
  }
  _ACEOF
  rm -f conftest.$ac_objext
@@ -2071,7 +2072,7 @@ Index: configure
    (exit $ac_status); }; }; then
    cf_cv_cpp_static_cast=yes
  else
-@@ -20447,7 +20522,7 @@
+@@ -20447,7 +20522,7 @@ ac_compiler_gnu=$ac_cv_cxx_compiler_gnu
  ac_main_return=return
  
  fi
@@ -2080,7 +2081,7 @@ Index: configure
  echo "${ECHO_T}$cf_cv_cpp_static_cast" >&6
  
  fi
-@@ -20496,7 +20571,7 @@
+@@ -20496,7 +20571,7 @@ else
  	else
  		if test "$cf_cv_header_stdbool_h" = 1 ; then
  
@@ -2089,7 +2090,7 @@ Index: configure
  echo $ECHO_N "checking for size of bool... $ECHO_C" >&6
  if test "${cf_cv_type_of_bool+set}" = set; then
    echo $ECHO_N "(cached) $ECHO_C" >&6
-@@ -20507,7 +20582,7 @@
+@@ -20507,7 +20582,7 @@ else
    cf_cv_type_of_bool=unknown
  else
    cat >conftest.$ac_ext <<_ACEOF
@@ -2098,7 +2099,7 @@ Index: configure
  #include "confdefs.h"
  
  #include <stdlib.h>
-@@ -20549,15 +20624,15 @@
+@@ -20549,15 +20624,15 @@ int main()
  
  _ACEOF
  rm -f conftest$ac_exeext
@@ -2118,7 +2119,7 @@ Index: configure
    (exit $ac_status); }; }; then
    cf_cv_type_of_bool=`cat cf_test.out`
  		 if test -z "$cf_cv_type_of_bool"; then
-@@ -20575,25 +20650,25 @@
+@@ -20575,25 +20650,25 @@ fi
  fi
  
  	rm -f cf_test.out
@@ -2148,7 +2149,7 @@ Index: configure
  echo "${ECHO_T}$cf_cv_type_of_bool" >&6
  		fi
  	fi
-@@ -20622,7 +20697,7 @@
+@@ -20622,7 +20697,7 @@ if test -f "${srcdir}/Ada95/Makefile.in" ; then
  
  	if test "$cf_with_ada" != "no" ; then
  		if test "$with_libtool" != "no"; then
@@ -2157,7 +2158,7 @@ Index: configure
  echo "$as_me: WARNING: libtool does not support Ada - disabling feature" >&2;}
  			cf_with_ada=no
  		fi
-@@ -20633,7 +20708,7 @@
+@@ -20633,7 +20708,7 @@ echo "$as_me: WARNING: libtool does not support Ada - disabling feature" >&2;}
  cf_ada_make=gnatmake
  # Extract the first word of "$cf_ada_make", so it can be a program name with args.
  set dummy $cf_ada_make; ac_word=$2
@@ -2166,7 +2167,7 @@ Index: configure
  echo $ECHO_N "checking for $ac_word... $ECHO_C" >&6
  if test "${ac_cv_prog_gnat_exists+set}" = set; then
    echo $ECHO_N "(cached) $ECHO_C" >&6
-@@ -20648,7 +20723,7 @@
+@@ -20648,7 +20723,7 @@ for ac_dir in $ac_dummy; do
    test -z "$ac_dir" && ac_dir=.
    $as_executable_p "$ac_dir/$ac_word" || continue
  ac_cv_prog_gnat_exists="yes"
@@ -2175,7 +2176,7 @@ Index: configure
  break
  done
  
-@@ -20657,10 +20732,10 @@
+@@ -20657,10 +20732,10 @@ fi
  fi
  gnat_exists=$ac_cv_prog_gnat_exists
  if test -n "$gnat_exists"; then
@@ -2188,7 +2189,7 @@ Index: configure
  echo "${ECHO_T}no" >&6
  fi
  
-@@ -20669,12 +20744,12 @@
+@@ -20669,12 +20744,12 @@ if test "$ac_cv_prog_gnat_exists" = no; then
  	cf_cv_prog_gnat_correct=no
  else
  
@@ -2203,7 +2204,7 @@ Index: configure
  echo "${ECHO_T}$cf_gnat_version" >&6
  
  case $cf_gnat_version in
-@@ -20682,7 +20757,7 @@
+@@ -20682,7 +20757,7 @@ case $cf_gnat_version in
  	cf_cv_prog_gnat_correct=yes
  	;;
  (*)
@@ -2212,7 +2213,7 @@ Index: configure
  echo "$as_me: WARNING: Unsupported GNAT version $cf_gnat_version. We require 3.11 or better. Disabling Ada95 binding." >&2;}
  	cf_cv_prog_gnat_correct=no
  	;;
-@@ -20690,7 +20765,7 @@
+@@ -20690,7 +20765,7 @@ esac
  
  	# Extract the first word of "m4", so it can be a program name with args.
  set dummy m4; ac_word=$2
@@ -2221,7 +2222,7 @@ Index: configure
  echo $ECHO_N "checking for $ac_word... $ECHO_C" >&6
  if test "${ac_cv_prog_M4_exists+set}" = set; then
    echo $ECHO_N "(cached) $ECHO_C" >&6
-@@ -20705,7 +20780,7 @@
+@@ -20705,7 +20780,7 @@ for ac_dir in $ac_dummy; do
    test -z "$ac_dir" && ac_dir=.
    $as_executable_p "$ac_dir/$ac_word" || continue
  ac_cv_prog_M4_exists="yes"
@@ -2230,7 +2231,7 @@ Index: configure
  break
  done
  
-@@ -20714,10 +20789,10 @@
+@@ -20714,10 +20789,10 @@ fi
  fi
  M4_exists=$ac_cv_prog_M4_exists
  if test -n "$M4_exists"; then
@@ -2243,7 +2244,7 @@ Index: configure
  echo "${ECHO_T}no" >&6
  fi
  
-@@ -20726,7 +20801,7 @@
+@@ -20726,7 +20801,7 @@ fi
  		echo Ada95 binding required program m4 not found. Ada95 binding disabled.
  	fi
  	if test "$cf_cv_prog_gnat_correct" = yes; then
@@ -2252,7 +2253,7 @@ Index: configure
  echo $ECHO_N "checking if GNAT works... $ECHO_C" >&6
  
  rm -rf conftest* *~conftest*
-@@ -20754,7 +20829,7 @@
+@@ -20754,7 +20829,7 @@ else
  fi
  rm -rf conftest* *~conftest*
  
@@ -2261,7 +2262,7 @@ Index: configure
  echo "${ECHO_T}$cf_cv_prog_gnat_correct" >&6
  	fi
  fi
-@@ -20763,7 +20838,7 @@
+@@ -20763,7 +20838,7 @@ fi
  
   	ADAFLAGS="$ADAFLAGS -gnatpn"
  
@@ -2270,7 +2271,7 @@ Index: configure
  echo $ECHO_N "checking optimization options for ADAFLAGS... $ECHO_C" >&6
  	case "$CFLAGS" in
  	(*-g*)
-@@ -20780,10 +20855,10 @@
+@@ -20780,10 +20855,10 @@ echo $ECHO_N "checking optimization options for ADAFLAGS... $ECHO_C" >&6
  
  		;;
  	esac
@@ -2283,7 +2284,7 @@ Index: configure
  echo $ECHO_N "checking if GNATPREP supports -T option... $ECHO_C" >&6
  if test "${cf_cv_gnatprep_opt_t+set}" = set; then
    echo $ECHO_N "(cached) $ECHO_C" >&6
-@@ -20793,11 +20868,11 @@
+@@ -20793,11 +20868,11 @@ cf_cv_gnatprep_opt_t=no
  gnatprep -T 2>/dev/null >/dev/null && cf_cv_gnatprep_opt_t=yes
  
  fi
@@ -2297,7 +2298,7 @@ Index: configure
  echo $ECHO_N "checking if GNAT supports generics... $ECHO_C" >&6
  case $cf_gnat_version in
  (3.[1-9]*|[4-9].*)
-@@ -20807,7 +20882,7 @@
+@@ -20807,7 +20882,7 @@ case $cf_gnat_version in
  	cf_gnat_generics=no
  	;;
  esac
@@ -2306,7 +2307,7 @@ Index: configure
  echo "${ECHO_T}$cf_gnat_generics" >&6
  
  if test "$cf_gnat_generics" = yes
-@@ -20819,7 +20894,7 @@
+@@ -20819,7 +20894,7 @@ else
  	cf_generic_objects=
  fi
  
@@ -2315,7 +2316,7 @@ Index: configure
  echo $ECHO_N "checking if GNAT supports SIGINT... $ECHO_C" >&6
  if test "${cf_cv_gnat_sigint+set}" = set; then
    echo $ECHO_N "(cached) $ECHO_C" >&6
-@@ -20867,7 +20942,7 @@
+@@ -20867,7 +20942,7 @@ fi
  rm -rf conftest* *~conftest*
  
  fi
@@ -2324,7 +2325,7 @@ Index: configure
  echo "${ECHO_T}$cf_cv_gnat_sigint" >&6
  
  if test $cf_cv_gnat_sigint = yes ; then
-@@ -20880,7 +20955,7 @@
+@@ -20880,7 +20955,7 @@ cf_gnat_libraries=no
  cf_gnat_projects=no
  
  if test "$enable_gnat_projects" != no ; then
@@ -2333,7 +2334,7 @@ Index: configure
  echo $ECHO_N "checking if GNAT supports project files... $ECHO_C" >&6
  case $cf_gnat_version in
  (3.[0-9]*)
-@@ -20940,15 +21015,15 @@
+@@ -20940,15 +21015,15 @@ CF_EOF
  	esac
  	;;
  esac
@@ -2352,7 +2353,7 @@ Index: configure
  echo "${ECHO_T}$cf_gnat_libraries" >&6
  fi
  
-@@ -20968,7 +21043,7 @@
+@@ -20968,7 +21043,7 @@ else
  	USE_GNAT_LIBRARIES="#"
  fi
  
@@ -2361,7 +2362,7 @@ Index: configure
  echo $ECHO_N "checking for ada-compiler... $ECHO_C" >&6
  
  # Check whether --with-ada-compiler or --without-ada-compiler was given.
-@@ -20979,12 +21054,12 @@
+@@ -20979,12 +21054,12 @@ else
    cf_ada_compiler=gnatmake
  fi;
  
@@ -2376,7 +2377,7 @@ Index: configure
  echo $ECHO_N "checking for ada-include... $ECHO_C" >&6
  
  # Check whether --with-ada-include or --without-ada-include was given.
-@@ -21020,7 +21095,7 @@
+@@ -21020,7 +21095,7 @@ case ".$withval" in
  	withval=`echo $withval | sed -e s%NONE%$cf_path_syntax%`
  	;;
  (*)
@@ -2385,7 +2386,7 @@ Index: configure
  echo "$as_me: error: expected a pathname, not \"$withval\"" >&2;}
     { (exit 1); exit 1; }; }
  	;;
-@@ -21029,10 +21104,10 @@
+@@ -21029,10 +21104,10 @@ esac
  fi
  eval ADA_INCLUDE="$withval"
  
@@ -2398,7 +2399,7 @@ Index: configure
  echo $ECHO_N "checking for ada-objects... $ECHO_C" >&6
  
  # Check whether --with-ada-objects or --without-ada-objects was given.
-@@ -21068,7 +21143,7 @@
+@@ -21068,7 +21143,7 @@ case ".$withval" in
  	withval=`echo $withval | sed -e s%NONE%$cf_path_syntax%`
  	;;
  (*)
@@ -2407,7 +2408,7 @@ Index: configure
  echo "$as_me: error: expected a pathname, not \"$withval\"" >&2;}
     { (exit 1); exit 1; }; }
  	;;
-@@ -21077,10 +21152,10 @@
+@@ -21077,10 +21152,10 @@ esac
  fi
  eval ADA_OBJECTS="$withval"
  
@@ -2420,7 +2421,7 @@ Index: configure
  echo $ECHO_N "checking if an Ada95 shared-library should be built... $ECHO_C" >&6
  
  # Check whether --with-ada-sharedlib or --without-ada-sharedlib was given.
-@@ -21090,7 +21165,7 @@
+@@ -21090,7 +21165,7 @@ if test "${with_ada_sharedlib+set}" = set; then
  else
    with_ada_sharedlib=no
  fi;
@@ -2429,7 +2430,7 @@ Index: configure
  echo "${ECHO_T}$with_ada_sharedlib" >&6
  
  ADA_SHAREDLIB='lib$(LIB_NAME).so.1'
-@@ -21113,13 +21188,13 @@
+@@ -21113,13 +21188,13 @@ fi
  
  # do this "late" to avoid conflict with header-checks
  if test "x$with_widec" = xyes ; then
@@ -2445,7 +2446,7 @@ Index: configure
  #include "confdefs.h"
  $ac_includes_default
  int
-@@ -21134,16 +21209,16 @@
+@@ -21134,16 +21209,16 @@ if (sizeof (wchar_t))
  }
  _ACEOF
  rm -f conftest.$ac_objext
@@ -2466,7 +2467,7 @@ Index: configure
    (exit $ac_status); }; }; then
    ac_cv_type_wchar_t=yes
  else
-@@ -21153,10 +21228,10 @@
+@@ -21153,10 +21228,10 @@ ac_cv_type_wchar_t=no
  fi
  rm -f conftest.$ac_objext conftest.$ac_ext
  fi
@@ -2479,7 +2480,7 @@ Index: configure
  echo $ECHO_N "checking size of wchar_t... $ECHO_C" >&6
  if test "${ac_cv_sizeof_wchar_t+set}" = set; then
    echo $ECHO_N "(cached) $ECHO_C" >&6
-@@ -21165,7 +21240,7 @@
+@@ -21165,7 +21240,7 @@ else
    if test "$cross_compiling" = yes; then
    # Depending upon the size, compute the lo and hi bounds.
  cat >conftest.$ac_ext <<_ACEOF
@@ -2488,7 +2489,7 @@ Index: configure
  #include "confdefs.h"
  $ac_includes_default
  int
-@@ -21177,21 +21252,21 @@
+@@ -21177,21 +21252,21 @@ int _array_ [1 - 2 * !((sizeof (wchar_t)) >= 0)]
  }
  _ACEOF
  rm -f conftest.$ac_objext
@@ -2515,7 +2516,7 @@ Index: configure
  #include "confdefs.h"
  $ac_includes_default
  int
-@@ -21203,16 +21278,16 @@
+@@ -21203,16 +21278,16 @@ int _array_ [1 - 2 * !((sizeof (wchar_t)) <= $ac_mid)]
  }
  _ACEOF
  rm -f conftest.$ac_objext
@@ -2536,7 +2537,7 @@ Index: configure
    (exit $ac_status); }; }; then
    ac_hi=$ac_mid; break
  else
-@@ -21228,7 +21303,7 @@
+@@ -21228,7 +21303,7 @@ cat conftest.$ac_ext >&5
  ac_hi=-1 ac_mid=-1
    while :; do
      cat >conftest.$ac_ext <<_ACEOF
@@ -2545,7 +2546,7 @@ Index: configure
  #include "confdefs.h"
  $ac_includes_default
  int
-@@ -21240,16 +21315,16 @@
+@@ -21240,16 +21315,16 @@ int _array_ [1 - 2 * !((sizeof (wchar_t)) >= $ac_mid)]
  }
  _ACEOF
  rm -f conftest.$ac_objext
@@ -2566,7 +2567,7 @@ Index: configure
    (exit $ac_status); }; }; then
    ac_lo=$ac_mid; break
  else
-@@ -21265,7 +21340,7 @@
+@@ -21265,7 +21340,7 @@ rm -f conftest.$ac_objext conftest.$ac_ext
  while test "x$ac_lo" != "x$ac_hi"; do
    ac_mid=`expr '(' $ac_hi - $ac_lo ')' / 2 + $ac_lo`
    cat >conftest.$ac_ext <<_ACEOF
@@ -2575,7 +2576,7 @@ Index: configure
  #include "confdefs.h"
  $ac_includes_default
  int
-@@ -21277,16 +21352,16 @@
+@@ -21277,16 +21352,16 @@ int _array_ [1 - 2 * !((sizeof (wchar_t)) <= $ac_mid)]
  }
  _ACEOF
  rm -f conftest.$ac_objext
@@ -2596,7 +2597,7 @@ Index: configure
    (exit $ac_status); }; }; then
    ac_hi=$ac_mid
  else
-@@ -21299,12 +21374,12 @@
+@@ -21299,12 +21374,12 @@ done
  ac_cv_sizeof_wchar_t=$ac_lo
  else
    if test "$cross_compiling" = yes; then
@@ -2611,7 +2612,7 @@ Index: configure
  #include "confdefs.h"
  $ac_includes_default
  int
-@@ -21320,15 +21395,15 @@
+@@ -21320,15 +21395,15 @@ fclose (f);
  }
  _ACEOF
  rm -f conftest$ac_exeext
@@ -2631,7 +2632,7 @@ Index: configure
    (exit $ac_status); }; }; then
    ac_cv_sizeof_wchar_t=`cat conftest.val`
  else
-@@ -21344,7 +21419,7 @@
+@@ -21344,7 +21419,7 @@ else
    ac_cv_sizeof_wchar_t=0
  fi
  fi
@@ -2640,7 +2641,7 @@ Index: configure
  echo "${ECHO_T}$ac_cv_sizeof_wchar_t" >&6
  cat >>confdefs.h <<EOF
  #define SIZEOF_WCHAR_T $ac_cv_sizeof_wchar_t
-@@ -21362,7 +21437,7 @@
+@@ -21362,7 +21437,7 @@ fi
  ### chooses to split module lists into libraries.
  ###
  ### (see CF_LIB_RULES).
@@ -2649,7 +2650,7 @@ Index: configure
  echo $ECHO_N "checking for library subsets... $ECHO_C" >&6
  LIB_SUBSETS=
  
-@@ -21404,7 +21479,7 @@
+@@ -21404,7 +21479,7 @@ fi
  test "x$with_widec"     = xyes && LIB_SUBSETS="${LIB_SUBSETS}+widechar"
  test "x$with_ext_funcs" = xyes && LIB_SUBSETS="${LIB_SUBSETS}+ext_funcs"
  
@@ -2658,7 +2659,7 @@ Index: configure
  echo "${ECHO_T}$LIB_SUBSETS" >&6
  
  ### Construct the list of include-directories to be generated
-@@ -21435,7 +21510,7 @@
+@@ -21435,7 +21510,7 @@ elif test "$includedir" != "/usr/include"; then
  fi
  
  ### Build up pieces for makefile rules
@@ -2667,7 +2668,7 @@ Index: configure
  echo $ECHO_N "checking default library suffix... $ECHO_C" >&6
  
  	case $DFT_LWR_MODEL in
-@@ -21446,10 +21521,10 @@
+@@ -21446,10 +21521,10 @@ echo $ECHO_N "checking default library suffix... $ECHO_C" >&6
  	(shared)  DFT_ARG_SUFFIX=''   ;;
  	esac
  	test -n "$LIB_SUFFIX" && DFT_ARG_SUFFIX="${LIB_SUFFIX}${DFT_ARG_SUFFIX}"
@@ -2680,7 +2681,7 @@ Index: configure
  echo $ECHO_N "checking default library-dependency suffix... $ECHO_C" >&6
  
  	case X$DFT_LWR_MODEL in
-@@ -21507,10 +21582,10 @@
+@@ -21507,10 +21582,10 @@ echo $ECHO_N "checking default library-dependency suffix... $ECHO_C" >&6
  		DFT_LIB_SUFFIX="${LIB_SUFFIX}${EXTRA_SUFFIX}${DFT_LIB_SUFFIX}"
  		DFT_DEP_SUFFIX="${LIB_SUFFIX}${EXTRA_SUFFIX}${DFT_DEP_SUFFIX}"
  	fi
@@ -2693,7 +2694,7 @@ Index: configure
  echo $ECHO_N "checking default object directory... $ECHO_C" >&6
  
  	case $DFT_LWR_MODEL in
-@@ -21526,11 +21601,11 @@
+@@ -21526,11 +21601,11 @@ echo $ECHO_N "checking default object directory... $ECHO_C" >&6
  			DFT_OBJ_SUBDIR='obj_s' ;;
  		esac
  	esac
@@ -2707,7 +2708,7 @@ Index: configure
  echo $ECHO_N "checking c++ library-dependency suffix... $ECHO_C" >&6
  if test "$with_libtool" != "no"; then
  	# libtool thinks it can make c++ shared libraries (perhaps only g++)
-@@ -21598,7 +21673,7 @@
+@@ -21598,7 +21673,7 @@ else
  	fi
  
  fi
@@ -2716,7 +2717,7 @@ Index: configure
  echo "${ECHO_T}$CXX_LIB_SUFFIX" >&6
  
  fi
-@@ -21771,19 +21846,19 @@
+@@ -21771,19 +21846,19 @@ fi
  
  if test -n "$LDFLAGS_STATIC" && test -n "$LDFLAGS_SHARED"
  then
@@ -2740,7 +2741,7 @@ Index: configure
    (exit $ac_status); } ; then
  		( $AR $ARFLAGS libconftest.a conftest.o ) 2>&5 1>/dev/null
  		( eval $RANLIB libconftest.a ) 2>&5 >/dev/null
-@@ -21794,10 +21869,10 @@
+@@ -21794,10 +21869,10 @@ EOF
  
  	LIBS="$LDFLAGS_STATIC -L`pwd` -lconftest $LDFLAGS_DYNAMIC $LIBS"
  	cat >conftest.$ac_ext <<_ACEOF
@@ -2753,7 +2754,7 @@ Index: configure
  #include <stdio.h>
  int cf_ldflags_static(FILE *fp);
  
-@@ -21812,16 +21887,16 @@
+@@ -21812,16 +21887,16 @@ main ()
  }
  _ACEOF
  rm -f conftest.$ac_objext conftest$ac_exeext
@@ -2774,7 +2775,7 @@ Index: configure
    (exit $ac_status); }; }; then
  
  	# some linkers simply ignore the -dynamic
-@@ -21844,7 +21919,7 @@
+@@ -21844,7 +21919,7 @@ rm -f conftest.$ac_objext conftest$ac_exeext conftest.$ac_ext
  	rm -f libconftest.*
  	LIBS="$cf_save_LIBS"
  
@@ -2783,7 +2784,7 @@ Index: configure
  echo "${ECHO_T}$cf_ldflags_static" >&6
  
  	if test $cf_ldflags_static != yes
-@@ -21860,7 +21935,7 @@
+@@ -21860,7 +21935,7 @@ fi
  	;;
  esac
  
@@ -2792,7 +2793,7 @@ Index: configure
  echo $ECHO_N "checking where we will install curses.h... $ECHO_C" >&6
  
  includesubdir=
-@@ -21870,7 +21945,7 @@
+@@ -21870,7 +21945,7 @@ if test "$with_overwrite" = no && \
  then
  	includesubdir="/ncurses${USE_LIB_SUFFIX}"
  fi
@@ -2801,7 +2802,7 @@ Index: configure
  echo "${ECHO_T}${includedir}${includesubdir}" >&6
  
  ### Resolve a conflict between normal and wide-curses by forcing applications
-@@ -21878,7 +21953,7 @@
+@@ -21878,7 +21953,7 @@ echo "${ECHO_T}${includedir}${includesubdir}" >&6
  if test "$with_overwrite" != no ; then
  if test "$NCURSES_LIBUTF8" = 1 ; then
  	NCURSES_LIBUTF8='defined(HAVE_LIBUTF8_H)'
@@ -2810,7 +2811,7 @@ Index: configure
  echo "$as_me: WARNING: Wide-character applications must define HAVE_LIBUTF8_H to include curses.h" >&2;}
  fi
  fi
-@@ -21896,7 +21971,7 @@
+@@ -21896,7 +21971,7 @@ EOF
  ### Construct the list of subdirectories for which we'll customize makefiles
  ### with the appropriate compile-rules.
  
@@ -2819,7 +2820,7 @@ Index: configure
  echo $ECHO_N "checking for src modules... $ECHO_C" >&6
  
  # dependencies and linker-arguments for test-programs
-@@ -21961,7 +22036,7 @@
+@@ -21961,7 +22036,7 @@ EOF
  		fi
  	fi
  done
@@ -2828,7 +2829,7 @@ Index: configure
  echo "${ECHO_T}$cf_cv_src_modules" >&6
  
  TEST_ARGS="-L${LIB_DIR} $TEST_ARGS"
-@@ -22181,7 +22256,7 @@
+@@ -22181,7 +22256,7 @@ fi
  
  # Extract the first word of "tic", so it can be a program name with args.
  set dummy tic; ac_word=$2
@@ -2837,7 +2838,7 @@ Index: configure
  echo $ECHO_N "checking for $ac_word... $ECHO_C" >&6
  if test "${ac_cv_path_TIC_PATH+set}" = set; then
    echo $ECHO_N "(cached) $ECHO_C" >&6
-@@ -22198,7 +22273,7 @@
+@@ -22198,7 +22273,7 @@ for ac_dir in $ac_dummy; do
    test -z "$ac_dir" && ac_dir=.
    if $as_executable_p "$ac_dir/$ac_word"; then
     ac_cv_path_TIC_PATH="$ac_dir/$ac_word"
@@ -2846,7 +2847,7 @@ Index: configure
     break
  fi
  done
-@@ -22210,10 +22285,10 @@
+@@ -22210,10 +22285,10 @@ fi
  TIC_PATH=$ac_cv_path_TIC_PATH
  
  if test -n "$TIC_PATH"; then
@@ -2859,7 +2860,7 @@ Index: configure
  echo "${ECHO_T}no" >&6
  fi
  
-@@ -22221,7 +22296,7 @@
+@@ -22221,7 +22296,7 @@ if test -n "$FALLBACK_LIST"
  then
  	if test "$TIC_PATH" = unknown
  	then
@@ -2868,7 +2869,7 @@ Index: configure
  echo "$as_me: WARNING: no tic program found for fallbacks" >&2;}
  	fi
  fi
-@@ -22247,7 +22322,7 @@
+@@ -22247,7 +22322,7 @@ case $cf_cv_system_name in
  	(*-D_XOPEN_SOURCE_EXTENDED*)
  		test -n "$verbose" && echo "	moving _XOPEN_SOURCE_EXTENDED to work around g++ problem" 1>&6
  
@@ -2877,7 +2878,7 @@ Index: configure
  
  		CFLAGS="$CFLAGS -D_XOPEN_SOURCE_EXTENDED"
  		CPPFLAGS=`echo "x$CPPFLAGS" | sed -e  's/^.//' -e 's/-D_XOPEN_SOURCE_EXTENDED//'`
-@@ -22258,7 +22333,7 @@
+@@ -22258,7 +22333,7 @@ esac
  
  # Help to automatically enable the extended curses features when using either
  # the *-config or the ".pc" files by adding defines.
@@ -2886,7 +2887,7 @@ Index: configure
  echo $ECHO_N "checking for defines to add to ncurses${USE_CFG_SUFFIX}-config script... $ECHO_C" >&6
  PKG_CFLAGS=
  for cf_loop1 in $CPPFLAGS_after_XOPEN
-@@ -22274,7 +22349,7 @@
+@@ -22274,7 +22349,7 @@ do
  	done
  	test "$cf_found" = no && PKG_CFLAGS="$PKG_CFLAGS $cf_loop1"
  done
@@ -2895,7 +2896,7 @@ Index: configure
  echo "${ECHO_T}$PKG_CFLAGS" >&6
  
  # AC_CHECK_SIZEOF demands a literal parameter, no variables.  So we do this.
-@@ -22331,7 +22406,7 @@
+@@ -22331,7 +22406,7 @@ then
  	cf_filter_syms=$cf_dft_filter_syms
  	test -n "$verbose" && echo "	will map symbols to ABI=$cf_cv_abi_version" 1>&6
  
@@ -2904,7 +2905,7 @@ Index: configure
  
  fi
  
-@@ -22433,7 +22508,7 @@
+@@ -22433,7 +22508,7 @@ DEFS=-DHAVE_CONFIG_H
  : ${CONFIG_STATUS=./config.status}
  ac_clean_files_save=$ac_clean_files
  ac_clean_files="$ac_clean_files $CONFIG_STATUS"
@@ -2913,7 +2914,7 @@ Index: configure
  echo "$as_me: creating $CONFIG_STATUS" >&6;}
  cat >$CONFIG_STATUS <<_ACEOF
  #! $SHELL
-@@ -22565,7 +22640,7 @@
+@@ -22565,7 +22640,7 @@ EOF
  cat >>$CONFIG_STATUS <<EOF
  ac_cs_version="\\
  config.status
@@ -2922,7 +2923,7 @@ Index: configure
    with options \\"`echo "$ac_configure_args" | sed 's/[\\""\`\$]/\\\\&/g'`\\"
  
  Copyright 1992, 1993, 1994, 1995, 1996, 1998, 1999, 2000, 2001
-@@ -22609,7 +22684,7 @@
+@@ -22609,7 +22684,7 @@ cat >>$CONFIG_STATUS <<\EOF
      echo "$ac_cs_version"; exit 0 ;;
    --he | --h)
      # Conflict between --help and --header
@@ -2931,7 +2932,7 @@ Index: configure
  Try \`$0 --help' for more information." >&5
  echo "$as_me: error: ambiguous option: $1
  Try \`$0 --help' for more information." >&2;}
-@@ -22628,7 +22703,7 @@
+@@ -22628,7 +22703,7 @@ Try \`$0 --help' for more information." >&2;}
      ac_need_defaults=false;;
  
    # This is an error.
@@ -2940,7 +2941,7 @@ Index: configure
  Try \`$0 --help' for more information." >&5
  echo "$as_me: error: unrecognized option: $1
  Try \`$0 --help' for more information." >&2;}
-@@ -22647,7 +22722,7 @@
+@@ -22647,7 +22722,7 @@ cat >&5 << _ACEOF
  ## Running config.status.  ##
  ## ----------------------- ##
  
@@ -2949,7 +2950,7 @@ Index: configure
    CONFIG_FILES    = $CONFIG_FILES
    CONFIG_HEADERS  = $CONFIG_HEADERS
    CONFIG_LINKS    = $CONFIG_LINKS
-@@ -22746,7 +22821,7 @@
+@@ -22746,7 +22821,7 @@ do
    "Makefile" ) CONFIG_FILES="$CONFIG_FILES Makefile" ;;
    "default" ) CONFIG_COMMANDS="$CONFIG_COMMANDS default" ;;
    "include/ncurses_cfg.h" ) CONFIG_HEADERS="$CONFIG_HEADERS include/ncurses_cfg.h:include/ncurses_cfg.hin" ;;
@@ -2958,7 +2959,7 @@ Index: configure
  echo "$as_me: error: invalid argument: $ac_config_target" >&2;}
     { (exit 1); exit 1; }; };;
    esac
-@@ -23115,10 +23190,28 @@
+@@ -23115,10 +23190,28 @@ EOF
        # These are the two extra sed commands mentioned above.
        (echo ':t
    /@[a-zA-Z_][a-zA-Z_0-9]*@/!b' && cat $tmp/subs.frag) >$tmp/subs-$ac_sed_frag.sed
@@ -2989,7 +2990,7 @@ Index: configure
        fi
        ac_sed_frag=`expr $ac_sed_frag + 1`
        ac_beg=$ac_end
-@@ -23201,7 +23294,7 @@
+@@ -23201,7 +23294,7 @@ done; }
    esac
  
    if test x"$ac_file" != x-; then
@@ -2998,7 +2999,7 @@ Index: configure
  echo "$as_me: creating $ac_file" >&6;}
      rm -f "$ac_file"
    fi
-@@ -23219,7 +23312,7 @@
+@@ -23219,7 +23312,7 @@ echo "$as_me: creating $ac_file" >&6;}
        -) echo $tmp/stdin ;;
        [\\/$]*)
           # Absolute (can't be DOS-style, as IFS=:)
@@ -3007,7 +3008,7 @@ Index: configure
  echo "$as_me: error: cannot find input file: $f" >&2;}
     { (exit 1); exit 1; }; }
           echo $f;;
-@@ -23232,7 +23325,7 @@
+@@ -23232,7 +23325,7 @@ echo "$as_me: error: cannot find input file: $f" >&2;}
             echo $srcdir/$f
           else
             # /dev/null tree
@@ -3016,7 +3017,7 @@ Index: configure
  echo "$as_me: error: cannot find input file: $f" >&2;}
     { (exit 1); exit 1; }; }
           fi;;
-@@ -23248,7 +23341,7 @@
+@@ -23248,7 +23341,7 @@ cat >>$CONFIG_STATUS <<\EOF
        if test -n "$ac_seen"; then
          ac_used=`grep '@datarootdir@' $ac_item`
          if test -z "$ac_used"; then
@@ -3025,7 +3026,7 @@ Index: configure
  $ac_seen" >&5
  echo "$as_me: WARNING: datarootdir was used implicitly but not set:
  $ac_seen" >&2;}
-@@ -23257,7 +23350,7 @@
+@@ -23257,7 +23350,7 @@ $ac_seen" >&2;}
        fi
        ac_seen=`grep '${datarootdir}' $ac_item`
        if test -n "$ac_seen"; then
@@ -3034,7 +3035,7 @@ Index: configure
  $ac_seen" >&5
  echo "$as_me: WARNING: datarootdir was used explicitly but not set:
  $ac_seen" >&2;}
-@@ -23294,7 +23387,7 @@
+@@ -23294,7 +23387,7 @@ s,@INSTALL@,$ac_INSTALL,;t t
              ac_init=`egrep '[ 	]*'$ac_name'[ 	]*=' $ac_file`
              if test -z "$ac_init"; then
                ac_seen=`echo "$ac_seen" |sed -e 's,^,'$ac_file':,'`
@@ -3043,7 +3044,7 @@ Index: configure
  $ac_seen" >&5
  echo "$as_me: WARNING: Variable $ac_name is used but was not set:
  $ac_seen" >&2;}
-@@ -23305,7 +23398,7 @@
+@@ -23305,7 +23398,7 @@ $ac_seen" >&2;}
      egrep -n '@[A-Z_][A-Z_0-9]+@' $ac_file >>$tmp/out
      if test -s $tmp/out; then
        ac_seen=`sed -e 's,^,'$ac_file':,' < $tmp/out`
@@ -3052,7 +3053,7 @@ Index: configure
  $ac_seen" >&5
  echo "$as_me: WARNING: Some variables may not be substituted:
  $ac_seen" >&2;}
-@@ -23354,7 +23447,7 @@
+@@ -23354,7 +23447,7 @@ for ac_file in : $CONFIG_HEADERS; do test "x$ac_file" = x: && continue
    * )   ac_file_in=$ac_file.in ;;
    esac
  
@@ -3061,7 +3062,7 @@ Index: configure
  echo "$as_me: creating $ac_file" >&6;}
  
    # First look for the input files in the build tree, otherwise in the
-@@ -23365,7 +23458,7 @@
+@@ -23365,7 +23458,7 @@ echo "$as_me: creating $ac_file" >&6;}
        -) echo $tmp/stdin ;;
        [\\/$]*)
           # Absolute (can't be DOS-style, as IFS=:)
@@ -3070,7 +3071,7 @@ Index: configure
  echo "$as_me: error: cannot find input file: $f" >&2;}
     { (exit 1); exit 1; }; }
           echo $f;;
-@@ -23378,7 +23471,7 @@
+@@ -23378,7 +23471,7 @@ echo "$as_me: error: cannot find input file: $f" >&2;}
             echo $srcdir/$f
           else
             # /dev/null tree
@@ -3079,7 +3080,7 @@ Index: configure
  echo "$as_me: error: cannot find input file: $f" >&2;}
     { (exit 1); exit 1; }; }
           fi;;
-@@ -23436,7 +23529,7 @@
+@@ -23436,7 +23529,7 @@ cat >>$CONFIG_STATUS <<\EOF
    rm -f $tmp/in
    if test x"$ac_file" != x-; then
      if cmp -s $ac_file $tmp/config.h 2>/dev/null; then
@@ -3088,7 +3089,7 @@ Index: configure
  echo "$as_me: $ac_file is unchanged" >&6;}
      else
        ac_dir=`$as_expr X"$ac_file" : 'X\(.*[^/]\)//*[^/][^/]*/*$' \| \
-@@ -23774,7 +23867,7 @@
+@@ -23774,7 +23867,7 @@ cf_ITEM=`echo "$cf_item" | sed y%abcdefghijklmnopqrstuvwxyz./-%ABCDEFGHIJKLMNOPQ
  				(cygdll|msysdll|mingw)
  					test "x$with_shared_cxx" = xno && test -n "$verbose" && echo "	overriding CXX_MODEL to SHARED" 1>&6
  
@@ -3097,10 +3098,10 @@ Index: configure
  
  					with_shared_cxx=yes
  					;;
-Index: dist.mk
-Prereq:  1.1072 
---- ncurses-6.0-20150926+/dist.mk	2015-09-26 18:50:05.000000000 +0000
-+++ ncurses-6.0-20151010/dist.mk	2015-10-10 17:06:12.000000000 +0000
+diff --git a/dist.mk b/dist.mk
+index e2d9e33..694c71c 100644
+--- a/dist.mk
++++ b/dist.mk
 @@ -25,7 +25,7 @@
  # use or other dealings in this Software without prior written               #
  # authorization.                                                             #
@@ -3110,7 +3111,7 @@ Prereq:  1.1072
  # Makefile for creating ncurses distributions.
  #
  # This only needs to be used directly as a makefile by developers, but
-@@ -37,7 +37,7 @@
+@@ -37,7 +37,7 @@ SHELL = /bin/sh
  # These define the major/minor/patch versions of ncurses.
  NCURSES_MAJOR = 6
  NCURSES_MINOR = 0
@@ -3119,10 +3120,10 @@ Prereq:  1.1072
  
  # We don't append the patch to the version, since this only applies to releases
  VERSION = $(NCURSES_MAJOR).$(NCURSES_MINOR)
-Index: ncurses/base/MKlib_gen.sh
-Prereq:  1.51 
---- ncurses-6.0-20150926+/ncurses/base/MKlib_gen.sh	2015-08-10 08:56:39.000000000 +0000
-+++ ncurses-6.0-20151010/ncurses/base/MKlib_gen.sh	2015-10-10 19:36:47.000000000 +0000
+diff --git a/ncurses/base/MKlib_gen.sh b/ncurses/base/MKlib_gen.sh
+index e7f1f5d..71a478f 100755
+--- a/ncurses/base/MKlib_gen.sh
++++ b/ncurses/base/MKlib_gen.sh
 @@ -2,7 +2,7 @@
  #
  # MKlib_gen.sh -- generate sources from curses.h macro definitions
@@ -3132,7 +3133,7 @@ Prereq:  1.51
  #
  ##############################################################################
  # Copyright (c) 1998-2014,2015 Free Software Foundation, Inc.                #
-@@ -177,6 +177,7 @@
+@@ -177,6 +177,7 @@ EOF3
  if test "$USE" = generated ; then
  cat >$ED4 <<EOF
  	s/^\(.*\) \(.*\) (\(.*\))\$/NCURSES_EXPORT(\1) (\2) (\3)/
@@ -3140,10 +3141,10 @@ Prereq:  1.51
  EOF
  else
  cat >$ED4 <<EOF
-Index: ncurses/base/resizeterm.c
-Prereq:  1.47 
---- ncurses-6.0-20150926+/ncurses/base/resizeterm.c	2014-10-13 08:56:49.000000000 +0000
-+++ ncurses-6.0-20151010/ncurses/base/resizeterm.c	2015-10-10 19:47:25.000000000 +0000
+diff --git a/ncurses/base/resizeterm.c b/ncurses/base/resizeterm.c
+index 1eca279..0ee3006 100644
+--- a/ncurses/base/resizeterm.c
++++ b/ncurses/base/resizeterm.c
 @@ -1,5 +1,5 @@
  /****************************************************************************
 - * Copyright (c) 1998-2011,2014 Free Software Foundation, Inc.              *
@@ -3160,7 +3161,7 @@ Prereq:  1.47
  
  /*
   * If we're trying to be reentrant, do not want any local statics.
-@@ -62,6 +62,12 @@
+@@ -62,6 +62,12 @@ static int current_cols;
  #define EXTRA_DCLS		/* nothing */
  #endif
  
@@ -3173,7 +3174,7 @@ Prereq:  1.47
  #ifdef TRACE
  static void
  show_window_sizes(const char *name)
-@@ -276,6 +282,7 @@
+@@ -276,6 +282,7 @@ decrease_size(NCURSES_SP_DCLx int ToLines, int ToCols, int stolen EXTRA_DCLS)
      WINDOWLIST *wp;
  
      T((T_CALLED("decrease_size(%p, %d, %d)"), (void *) SP_PARM, ToLines, ToCols));
@@ -3181,7 +3182,7 @@ Prereq:  1.47
  
      do {
  	found = FALSE;
-@@ -310,6 +317,7 @@
+@@ -310,6 +317,7 @@ increase_size(NCURSES_SP_DCLx int ToLines, int ToCols, int stolen EXTRA_DCLS)
      WINDOWLIST *wp;
  
      T((T_CALLED("increase_size(%p, %d, %d)"), (void *) SP_PARM, ToLines, ToCols));
@@ -3189,9 +3190,10 @@ Prereq:  1.47
  
      do {
  	found = FALSE;
-Index: package/debian-mingw/changelog
---- ncurses-6.0-20150926+/package/debian-mingw/changelog	2015-09-26 18:50:05.000000000 +0000
-+++ ncurses-6.0-20151010/package/debian-mingw/changelog	2015-10-10 17:06:12.000000000 +0000
+diff --git a/package/debian-mingw/changelog b/package/debian-mingw/changelog
+index eb558f5..4837d35 100644
+--- a/package/debian-mingw/changelog
++++ b/package/debian-mingw/changelog
 @@ -1,8 +1,8 @@
 -ncurses6 (6.0+20150926) unstable; urgency=low
 +ncurses6 (6.0+20151010) unstable; urgency=low
@@ -3203,9 +3205,10 @@ Index: package/debian-mingw/changelog
  
  ncurses6 (5.9-20131005) unstable; urgency=low
  
-Index: package/debian-mingw64/changelog
---- ncurses-6.0-20150926+/package/debian-mingw64/changelog	2015-09-26 18:50:05.000000000 +0000
-+++ ncurses-6.0-20151010/package/debian-mingw64/changelog	2015-10-10 17:06:12.000000000 +0000
+diff --git a/package/debian-mingw64/changelog b/package/debian-mingw64/changelog
+index eb558f5..4837d35 100644
+--- a/package/debian-mingw64/changelog
++++ b/package/debian-mingw64/changelog
 @@ -1,8 +1,8 @@
 -ncurses6 (6.0+20150926) unstable; urgency=low
 +ncurses6 (6.0+20151010) unstable; urgency=low
@@ -3217,9 +3220,10 @@ Index: package/debian-mingw64/changelog
  
  ncurses6 (5.9-20131005) unstable; urgency=low
  
-Index: package/debian/changelog
---- ncurses-6.0-20150926+/package/debian/changelog	2015-09-26 18:50:05.000000000 +0000
-+++ ncurses-6.0-20151010/package/debian/changelog	2015-10-10 17:06:12.000000000 +0000
+diff --git a/package/debian/changelog b/package/debian/changelog
+index 8c141a3..77d850d 100644
+--- a/package/debian/changelog
++++ b/package/debian/changelog
 @@ -1,8 +1,8 @@
 -ncurses6 (6.0+20150926) unstable; urgency=low
 +ncurses6 (6.0+20151010) unstable; urgency=low
@@ -3231,10 +3235,10 @@ Index: package/debian/changelog
  
  ncurses6 (5.9-20120608) unstable; urgency=low
  
-Index: package/mingw-ncurses.nsi
-Prereq:  1.125 
---- ncurses-6.0-20150926+/package/mingw-ncurses.nsi	2015-09-26 18:50:05.000000000 +0000
-+++ ncurses-6.0-20151010/package/mingw-ncurses.nsi	2015-10-10 17:06:12.000000000 +0000
+diff --git a/package/mingw-ncurses.nsi b/package/mingw-ncurses.nsi
+index bddfa25..9b53054 100644
+--- a/package/mingw-ncurses.nsi
++++ b/package/mingw-ncurses.nsi
 @@ -1,4 +1,4 @@
 -; $Id: mingw-ncurses.nsi,v 1.125 2015/09/26 18:50:05 tom Exp $
 +; $Id: mingw-ncurses.nsi,v 1.126 2015/10/10 17:06:12 tom Exp $
@@ -3250,9 +3254,10 @@ Prereq:  1.125
  !define VERSION_PATCH ${VERSION_YYYY}${VERSION_MMDD}
  
  !define MY_ABI   "5"
-Index: package/mingw-ncurses.spec
---- ncurses-6.0-20150926+/package/mingw-ncurses.spec	2015-09-26 18:50:05.000000000 +0000
-+++ ncurses-6.0-20151010/package/mingw-ncurses.spec	2015-10-10 17:06:12.000000000 +0000
+diff --git a/package/mingw-ncurses.spec b/package/mingw-ncurses.spec
+index 239d57d..ed4f8ab 100644
+--- a/package/mingw-ncurses.spec
++++ b/package/mingw-ncurses.spec
 @@ -3,7 +3,7 @@
  Summary: shared libraries for terminal handling
  Name: mingw32-ncurses6
@@ -3262,9 +3267,10 @@ Index: package/mingw-ncurses.spec
  License: X11
  Group: Development/Libraries
  Source: ncurses-%{version}-%{release}.tgz
-Index: package/ncurses.spec
---- ncurses-6.0-20150926+/package/ncurses.spec	2015-09-26 18:50:05.000000000 +0000
-+++ ncurses-6.0-20151010/package/ncurses.spec	2015-10-10 17:06:12.000000000 +0000
+diff --git a/package/ncurses.spec b/package/ncurses.spec
+index f8e7cba..4c4a6e5 100644
+--- a/package/ncurses.spec
++++ b/package/ncurses.spec
 @@ -1,7 +1,7 @@
  Summary: shared libraries for terminal handling
  Name: ncurses6
@@ -3274,11 +3280,11 @@ Index: package/ncurses.spec
  License: X11
  Group: Development/Libraries
  Source: ncurses-%{version}-%{release}.tgz
-Index: test/aclocal.m4
-Prereq:  1.120 
---- ncurses-6.0-20150926+/test/aclocal.m4	2015-08-08 14:27:27.000000000 +0000
-+++ ncurses-6.0-20151010/test/aclocal.m4	2015-10-10 20:30:48.000000000 +0000
-@@ -26,7 +26,7 @@
+diff --git a/test/aclocal.m4 b/test/aclocal.m4
+index 0ea83b5..3160350 100644
+--- a/test/aclocal.m4
++++ b/test/aclocal.m4
+@@ -26,7 +26,7 @@ dnl sale, use or other dealings in this Software without prior written       *
  dnl authorization.                                                           *
  dnl***************************************************************************
  dnl
@@ -3287,7 +3293,7 @@ Prereq:  1.120
  dnl
  dnl Author: Thomas E. Dickey
  dnl
-@@ -1297,6 +1297,34 @@
+@@ -1297,6 +1297,34 @@ rm -f core])
  test "$cf_cv_func_curses_version" = yes && AC_DEFINE(HAVE_CURSES_VERSION,1,[Define to 1 if we have curses_version function])
  ])
  dnl ---------------------------------------------------------------------------
@@ -3322,9 +3328,10 @@ Prereq:  1.120
  dnl CF_GCC_ATTRIBUTES version: 17 updated: 2015/04/12 15:39:00
  dnl -----------------
  dnl Test for availability of useful gcc __attribute__ directives to quiet
-Index: test/configure
---- ncurses-6.0-20150926+/test/configure	2015-08-08 20:32:27.000000000 +0000
-+++ ncurses-6.0-20151010/test/configure	2015-10-10 20:30:58.000000000 +0000
+diff --git a/test/configure b/test/configure
+index 29e858c..f6b4901 100755
+--- a/test/configure
++++ b/test/configure
 @@ -1,6 +1,6 @@
  #! /bin/sh
  # Guess values for system-dependent variables and create Makefiles.
@@ -3333,7 +3340,7 @@ Index: test/configure
  #
  # Copyright 1992, 1993, 1994, 1995, 1996, 1998, 1999, 2000, 2001
  # Free Software Foundation, Inc.
-@@ -748,7 +748,7 @@
+@@ -748,7 +748,7 @@ This file contains any messages produced by compilers while
  running configure, to aid debugging if configure makes a mistake.
  
  It was created by $as_me, which was
@@ -3342,7 +3349,7 @@ Index: test/configure
  
    $ $0 $@
  
-@@ -14849,7 +14849,169 @@
+@@ -14849,7 +14849,169 @@ cat >>confdefs.h <<\EOF
  #define HAVE_SYS_TIME_SELECT 1
  EOF
  
@@ -3513,7 +3520,7 @@ Index: test/configure
  echo $ECHO_N "checking for function curses_version... $ECHO_C" >&6
  if test "${cf_cv_func_curses_version+set}" = set; then
    echo $ECHO_N "(cached) $ECHO_C" >&6
-@@ -14859,7 +15021,7 @@
+@@ -14859,7 +15021,7 @@ if test "$cross_compiling" = yes; then
    cf_cv_func_curses_version=unknown
  else
    cat >conftest.$ac_ext <<_ACEOF
@@ -3522,7 +3529,7 @@ Index: test/configure
  #include "confdefs.h"
  
  #include <${cf_cv_ncurses_header:-curses.h}>
-@@ -14872,15 +15034,15 @@
+@@ -14872,15 +15034,15 @@ int main()
  
  _ACEOF
  rm -f conftest$ac_exeext
@@ -3542,7 +3549,7 @@ Index: test/configure
    (exit $ac_status); }; }; then
    cf_cv_func_curses_version=yes
  
-@@ -14895,14 +15057,14 @@
+@@ -14895,14 +15057,14 @@ rm -f core core.* *.core conftest$ac_exeext conftest.$ac_objext conftest.$ac_ext
  fi
  rm -f core
  fi
@@ -3559,7 +3566,7 @@ Index: test/configure
  echo $ECHO_N "checking for alternate character set array... $ECHO_C" >&6
  if test "${cf_cv_curses_acs_map+set}" = set; then
    echo $ECHO_N "(cached) $ECHO_C" >&6
-@@ -14912,7 +15074,7 @@
+@@ -14912,7 +15074,7 @@ cf_cv_curses_acs_map=unknown
  for name in acs_map _acs_map __acs_map ${NCURSES_WRAP_PREFIX}acs_map
  do
  cat >conftest.$ac_ext <<_ACEOF
@@ -3568,7 +3575,7 @@ Index: test/configure
  #include "confdefs.h"
  
  #include <${cf_cv_ncurses_header:-curses.h}>
-@@ -14928,16 +15090,16 @@
+@@ -14928,16 +15090,16 @@ $name['k'] = ACS_PLUS
  }
  _ACEOF
  rm -f conftest.$ac_objext conftest$ac_exeext
@@ -3589,7 +3596,7 @@ Index: test/configure
    (exit $ac_status); }; }; then
    cf_cv_curses_acs_map=$name; break
  else
-@@ -14948,7 +15110,7 @@
+@@ -14948,7 +15110,7 @@ rm -f conftest.$ac_objext conftest$ac_exeext conftest.$ac_ext
  done
  
  fi
@@ -3598,7 +3605,7 @@ Index: test/configure
  echo "${ECHO_T}$cf_cv_curses_acs_map" >&6
  
  test "$cf_cv_curses_acs_map" != unknown &&
-@@ -14958,7 +15120,7 @@
+@@ -14958,7 +15120,7 @@ EOF
  
  if test "$cf_enable_widec" = yes; then
  
@@ -3607,7 +3614,7 @@ Index: test/configure
  echo $ECHO_N "checking for wide alternate character set array... $ECHO_C" >&6
  if test "${cf_cv_curses_wacs_map+set}" = set; then
    echo $ECHO_N "(cached) $ECHO_C" >&6
-@@ -14968,7 +15130,7 @@
+@@ -14968,7 +15130,7 @@ else
  	for name in wacs_map _wacs_map __wacs_map _nc_wacs _wacs_char
  	do
  	cat >conftest.$ac_ext <<_ACEOF
@@ -3616,7 +3623,7 @@ Index: test/configure
  #include "confdefs.h"
  
  #ifndef _XOPEN_SOURCE_EXTENDED
-@@ -14984,16 +15146,16 @@
+@@ -14984,16 +15146,16 @@ void *foo = &($name['k'])
  }
  _ACEOF
  rm -f conftest.$ac_objext conftest$ac_exeext
@@ -3637,7 +3644,7 @@ Index: test/configure
    (exit $ac_status); }; }; then
    cf_cv_curses_wacs_map=$name
  	 break
-@@ -15004,7 +15166,7 @@
+@@ -15004,7 +15166,7 @@ fi
  rm -f conftest.$ac_objext conftest$ac_exeext conftest.$ac_ext
  	done
  fi
@@ -3646,7 +3653,7 @@ Index: test/configure
  echo "${ECHO_T}$cf_cv_curses_wacs_map" >&6
  
  test "$cf_cv_curses_wacs_map" != unknown &&
-@@ -15012,7 +15174,7 @@
+@@ -15012,7 +15174,7 @@ cat >>confdefs.h <<EOF
  #define CURSES_WACS_ARRAY $cf_cv_curses_wacs_map
  EOF
  
@@ -3655,7 +3662,7 @@ Index: test/configure
  echo $ECHO_N "checking for wide alternate character constants... $ECHO_C" >&6
  if test "${cf_cv_curses_wacs_symbols+set}" = set; then
    echo $ECHO_N "(cached) $ECHO_C" >&6
-@@ -15022,7 +15184,7 @@
+@@ -15022,7 +15184,7 @@ cf_cv_curses_wacs_symbols=no
  if test "$cf_cv_curses_wacs_map" != unknown
  then
  	cat >conftest.$ac_ext <<_ACEOF
@@ -3664,7 +3671,7 @@ Index: test/configure
  #include "confdefs.h"
  
  #ifndef _XOPEN_SOURCE_EXTENDED
-@@ -15039,16 +15201,16 @@
+@@ -15039,16 +15201,16 @@ cchar_t *foo = WACS_PLUS;
  }
  _ACEOF
  rm -f conftest.$ac_objext conftest$ac_exeext
@@ -3685,7 +3692,7 @@ Index: test/configure
    (exit $ac_status); }; }; then
    cf_cv_curses_wacs_symbols=yes
  else
-@@ -15058,7 +15220,7 @@
+@@ -15058,7 +15220,7 @@ fi
  rm -f conftest.$ac_objext conftest$ac_exeext conftest.$ac_ext
  else
  	cat >conftest.$ac_ext <<_ACEOF
@@ -3694,7 +3701,7 @@ Index: test/configure
  #include "confdefs.h"
  
  #ifndef _XOPEN_SOURCE_EXTENDED
-@@ -15074,16 +15236,16 @@
+@@ -15074,16 +15236,16 @@ cchar_t *foo = WACS_PLUS
  }
  _ACEOF
  rm -f conftest.$ac_objext conftest$ac_exeext
@@ -3715,7 +3722,7 @@ Index: test/configure
    (exit $ac_status); }; }; then
    cf_cv_curses_wacs_symbols=yes
  else
-@@ -15094,7 +15256,7 @@
+@@ -15094,7 +15256,7 @@ rm -f conftest.$ac_objext conftest$ac_exeext conftest.$ac_ext
  fi
  
  fi
@@ -3724,7 +3731,7 @@ Index: test/configure
  echo "${ECHO_T}$cf_cv_curses_wacs_symbols" >&6
  
  test "$cf_cv_curses_wacs_symbols" != no &&
-@@ -15104,10 +15266,10 @@
+@@ -15104,10 +15266,10 @@ EOF
  
  fi
  
@@ -3737,7 +3744,7 @@ Index: test/configure
  #include "confdefs.h"
  
  #ifndef _XOPEN_SOURCE_EXTENDED
-@@ -15125,16 +15287,16 @@
+@@ -15125,16 +15287,16 @@ attr_t foo
  }
  _ACEOF
  rm -f conftest.$ac_objext
@@ -3758,7 +3765,7 @@ Index: test/configure
    (exit $ac_status); }; }; then
    cf_result=yes
  else
-@@ -15143,7 +15305,7 @@
+@@ -15143,7 +15305,7 @@ cat conftest.$ac_ext >&5
  cf_result=no
  fi
  rm -f conftest.$ac_objext conftest.$ac_ext
@@ -3767,7 +3774,7 @@ Index: test/configure
  echo "${ECHO_T}$cf_result" >&6
  if test $cf_result = yes ; then
  
-@@ -15164,14 +15326,14 @@
+@@ -15164,14 +15326,14 @@ fi
  if test "$cf_enable_widec" = yes; then
  
  # This is needed on Tru64 5.0 to declare mbstate_t
@@ -3784,7 +3791,7 @@ Index: test/configure
  #include "confdefs.h"
  
  #include <stdlib.h>
-@@ -15189,23 +15351,23 @@
+@@ -15189,23 +15351,23 @@ mbstate_t state
  }
  _ACEOF
  rm -f conftest.$ac_objext
@@ -3813,7 +3820,7 @@ Index: test/configure
  #include "confdefs.h"
  
  #include <stdlib.h>
-@@ -15224,16 +15386,16 @@
+@@ -15224,16 +15386,16 @@ mbstate_t value
  }
  _ACEOF
  rm -f conftest.$ac_objext
@@ -3834,7 +3841,7 @@ Index: test/configure
    (exit $ac_status); }; }; then
    cf_cv_mbstate_t=yes
  else
-@@ -15245,7 +15407,7 @@
+@@ -15245,7 +15407,7 @@ rm -f conftest.$ac_objext conftest.$ac_ext
  fi
  rm -f conftest.$ac_objext conftest.$ac_ext
  fi
@@ -3843,7 +3850,7 @@ Index: test/configure
  echo "${ECHO_T}$cf_cv_mbstate_t" >&6
  
  if test "$cf_cv_mbstate_t" = yes ; then
-@@ -15268,14 +15430,14 @@
+@@ -15268,14 +15430,14 @@ if test "$cf_cv_mbstate_t" != unknown ; then
  fi
  
  # This is needed on Tru64 5.0 to declare wchar_t
@@ -3860,7 +3867,7 @@ Index: test/configure
  #include "confdefs.h"
  
  #include <stdlib.h>
-@@ -15293,23 +15455,23 @@
+@@ -15293,23 +15455,23 @@ wchar_t state
  }
  _ACEOF
  rm -f conftest.$ac_objext
@@ -3889,7 +3896,7 @@ Index: test/configure
  #include "confdefs.h"
  
  #include <stdlib.h>
-@@ -15328,16 +15490,16 @@
+@@ -15328,16 +15490,16 @@ wchar_t value
  }
  _ACEOF
  rm -f conftest.$ac_objext
@@ -3910,7 +3917,7 @@ Index: test/configure
    (exit $ac_status); }; }; then
    cf_cv_wchar_t=yes
  else
-@@ -15349,7 +15511,7 @@
+@@ -15349,7 +15511,7 @@ rm -f conftest.$ac_objext conftest.$ac_ext
  fi
  rm -f conftest.$ac_objext conftest.$ac_ext
  fi
@@ -3919,7 +3926,7 @@ Index: test/configure
  echo "${ECHO_T}$cf_cv_wchar_t" >&6
  
  if test "$cf_cv_wchar_t" = yes ; then
-@@ -15372,14 +15534,14 @@
+@@ -15372,14 +15534,14 @@ if test "$cf_cv_wchar_t" != unknown ; then
  fi
  
  # This is needed on Tru64 5.0 to declare wint_t
@@ -3936,7 +3943,7 @@ Index: test/configure
  #include "confdefs.h"
  
  #include <stdlib.h>
-@@ -15397,23 +15559,23 @@
+@@ -15397,23 +15559,23 @@ wint_t state
  }
  _ACEOF
  rm -f conftest.$ac_objext
@@ -3965,7 +3972,7 @@ Index: test/configure
  #include "confdefs.h"
  
  #include <stdlib.h>
-@@ -15432,16 +15594,16 @@
+@@ -15432,16 +15594,16 @@ wint_t value
  }
  _ACEOF
  rm -f conftest.$ac_objext
@@ -3986,7 +3993,7 @@ Index: test/configure
    (exit $ac_status); }; }; then
    cf_cv_wint_t=yes
  else
-@@ -15453,7 +15615,7 @@
+@@ -15453,7 +15615,7 @@ rm -f conftest.$ac_objext conftest.$ac_ext
  fi
  rm -f conftest.$ac_objext conftest.$ac_ext
  fi
@@ -3995,7 +4002,7 @@ Index: test/configure
  echo "${ECHO_T}$cf_cv_wint_t" >&6
  
  if test "$cf_cv_wint_t" = yes ; then
-@@ -15477,10 +15639,10 @@
+@@ -15477,10 +15639,10 @@ fi
  
  	if test "$NCURSES_OK_MBSTATE_T" = 0 ; then
  
@@ -4008,7 +4015,7 @@ Index: test/configure
  #include "confdefs.h"
  
  #ifndef _XOPEN_SOURCE_EXTENDED
-@@ -15498,16 +15660,16 @@
+@@ -15498,16 +15660,16 @@ mbstate_t foo
  }
  _ACEOF
  rm -f conftest.$ac_objext
@@ -4029,7 +4036,7 @@ Index: test/configure
    (exit $ac_status); }; }; then
    cf_result=yes
  else
-@@ -15516,7 +15678,7 @@
+@@ -15516,7 +15678,7 @@ cat conftest.$ac_ext >&5
  cf_result=no
  fi
  rm -f conftest.$ac_objext conftest.$ac_ext
@@ -4038,7 +4045,7 @@ Index: test/configure
  echo "${ECHO_T}$cf_result" >&6
  if test $cf_result = yes ; then
  
-@@ -15538,10 +15700,10 @@
+@@ -15538,10 +15700,10 @@ fi
  
  	if test "$NCURSES_OK_WCHAR_T" = 0 ; then
  
@@ -4051,7 +4058,7 @@ Index: test/configure
  #include "confdefs.h"
  
  #ifndef _XOPEN_SOURCE_EXTENDED
-@@ -15559,16 +15721,16 @@
+@@ -15559,16 +15721,16 @@ wchar_t foo
  }
  _ACEOF
  rm -f conftest.$ac_objext
@@ -4072,7 +4079,7 @@ Index: test/configure
    (exit $ac_status); }; }; then
    cf_result=yes
  else
-@@ -15577,7 +15739,7 @@
+@@ -15577,7 +15739,7 @@ cat conftest.$ac_ext >&5
  cf_result=no
  fi
  rm -f conftest.$ac_objext conftest.$ac_ext
@@ -4081,7 +4088,7 @@ Index: test/configure
  echo "${ECHO_T}$cf_result" >&6
  if test $cf_result = yes ; then
  
-@@ -15599,10 +15761,10 @@
+@@ -15599,10 +15761,10 @@ fi
  
  	if test "$NCURSES_OK_WINT_T" = 0 ; then
  
@@ -4094,7 +4101,7 @@ Index: test/configure
  #include "confdefs.h"
  
  #ifndef _XOPEN_SOURCE_EXTENDED
-@@ -15620,16 +15782,16 @@
+@@ -15620,16 +15782,16 @@ wint_t foo
  }
  _ACEOF
  rm -f conftest.$ac_objext
@@ -4115,7 +4122,7 @@ Index: test/configure
    (exit $ac_status); }; }; then
    cf_result=yes
  else
-@@ -15638,7 +15800,7 @@
+@@ -15638,7 +15800,7 @@ cat conftest.$ac_ext >&5
  cf_result=no
  fi
  rm -f conftest.$ac_objext conftest.$ac_ext
@@ -4124,7 +4131,7 @@ Index: test/configure
  echo "${ECHO_T}$cf_result" >&6
  if test $cf_result = yes ; then
  
-@@ -15659,11 +15821,11 @@
+@@ -15659,11 +15821,11 @@ fi
  	fi
  fi
  
@@ -4138,7 +4145,7 @@ Index: test/configure
  #include "confdefs.h"
  
  #ifdef HAVE_XCURSES
-@@ -15691,16 +15853,16 @@
+@@ -15691,16 +15853,16 @@ void *foo = &(ospeed)
  }
  _ACEOF
  rm -f conftest.$ac_objext
@@ -4159,7 +4166,7 @@ Index: test/configure
    (exit $ac_status); }; }; then
    cf_result=yes
  else
-@@ -15709,7 +15871,7 @@
+@@ -15709,7 +15871,7 @@ cat conftest.$ac_ext >&5
  cf_result=no
  fi
  rm -f conftest.$ac_objext conftest.$ac_ext
@@ -4168,7 +4175,7 @@ Index: test/configure
  echo "${ECHO_T}$cf_result" >&6
  
  if test $cf_result = yes ; then
-@@ -15721,14 +15883,14 @@
+@@ -15721,14 +15883,14 @@ cf_result=`echo "have_curses_data_ospeed" | sed y%abcdefghijklmnopqrstuvwxyz./-%
  EOF
  
  else
@@ -4185,7 +4192,7 @@ Index: test/configure
  #include "confdefs.h"
  
  #ifdef HAVE_XCURSES
-@@ -15761,16 +15923,16 @@
+@@ -15761,16 +15923,16 @@ main ()
  }
  _ACEOF
  rm -f conftest.$ac_objext conftest$ac_exeext
@@ -4206,7 +4213,7 @@ Index: test/configure
    (exit $ac_status); }; }; then
    cf_result=yes
  else
-@@ -15782,7 +15944,7 @@
+@@ -15782,7 +15944,7 @@ rm -f conftest.$ac_objext conftest$ac_exeext conftest.$ac_ext
  
  else
    cat >conftest.$ac_ext <<_ACEOF
@@ -4215,7 +4222,7 @@ Index: test/configure
  #include "confdefs.h"
  
  #ifdef HAVE_XCURSES
-@@ -15808,15 +15970,15 @@
+@@ -15808,15 +15970,15 @@ int main(void)
  }
  _ACEOF
  rm -f conftest$ac_exeext
@@ -4235,7 +4242,7 @@ Index: test/configure
    (exit $ac_status); }; }; then
    cf_result=yes
  else
-@@ -15827,7 +15989,7 @@
+@@ -15827,7 +15989,7 @@ cf_result=no
  fi
  rm -f core core.* *.core conftest$ac_exeext conftest.$ac_objext conftest.$ac_ext
  fi
@@ -4244,7 +4251,7 @@ Index: test/configure
  echo "${ECHO_T}$cf_result" >&6
  	if test $cf_result = yes ; then
  
-@@ -15840,11 +16002,11 @@
+@@ -15840,11 +16002,11 @@ EOF
  	fi
  fi
  
@@ -4258,7 +4265,7 @@ Index: test/configure
  #include "confdefs.h"
  
  #ifdef HAVE_XCURSES
-@@ -15872,16 +16034,16 @@
+@@ -15872,16 +16034,16 @@ void *foo = &(boolnames)
  }
  _ACEOF
  rm -f conftest.$ac_objext
@@ -4279,7 +4286,7 @@ Index: test/configure
    (exit $ac_status); }; }; then
    cf_result=yes
  else
-@@ -15890,7 +16052,7 @@
+@@ -15890,7 +16052,7 @@ cat conftest.$ac_ext >&5
  cf_result=no
  fi
  rm -f conftest.$ac_objext conftest.$ac_ext
@@ -4288,7 +4295,7 @@ Index: test/configure
  echo "${ECHO_T}$cf_result" >&6
  
  if test $cf_result = yes ; then
-@@ -15902,14 +16064,14 @@
+@@ -15902,14 +16064,14 @@ cf_result=`echo "have_curses_data_boolnames" | sed y%abcdefghijklmnopqrstuvwxyz.
  EOF
  
  else
@@ -4305,7 +4312,7 @@ Index: test/configure
  #include "confdefs.h"
  
  #ifdef HAVE_XCURSES
-@@ -15942,16 +16104,16 @@
+@@ -15942,16 +16104,16 @@ main ()
  }
  _ACEOF
  rm -f conftest.$ac_objext conftest$ac_exeext
@@ -4326,7 +4333,7 @@ Index: test/configure
    (exit $ac_status); }; }; then
    cf_result=yes
  else
-@@ -15963,7 +16125,7 @@
+@@ -15963,7 +16125,7 @@ rm -f conftest.$ac_objext conftest$ac_exeext conftest.$ac_ext
  
  else
    cat >conftest.$ac_ext <<_ACEOF
@@ -4335,7 +4342,7 @@ Index: test/configure
  #include "confdefs.h"
  
  #ifdef HAVE_XCURSES
-@@ -15989,15 +16151,15 @@
+@@ -15989,15 +16151,15 @@ int main(void)
  }
  _ACEOF
  rm -f conftest$ac_exeext
@@ -4355,7 +4362,7 @@ Index: test/configure
    (exit $ac_status); }; }; then
    cf_result=yes
  else
-@@ -16008,7 +16170,7 @@
+@@ -16008,7 +16170,7 @@ cf_result=no
  fi
  rm -f core core.* *.core conftest$ac_exeext conftest.$ac_objext conftest.$ac_ext
  fi
@@ -4364,7 +4371,7 @@ Index: test/configure
  echo "${ECHO_T}$cf_result" >&6
  	if test $cf_result = yes ; then
  
-@@ -16021,11 +16183,11 @@
+@@ -16021,11 +16183,11 @@ EOF
  	fi
  fi
  
@@ -4378,7 +4385,7 @@ Index: test/configure
  #include "confdefs.h"
  
  #ifdef HAVE_XCURSES
-@@ -16053,16 +16215,16 @@
+@@ -16053,16 +16215,16 @@ void *foo = &(boolfnames)
  }
  _ACEOF
  rm -f conftest.$ac_objext
@@ -4399,7 +4406,7 @@ Index: test/configure
    (exit $ac_status); }; }; then
    cf_result=yes
  else
-@@ -16071,7 +16233,7 @@
+@@ -16071,7 +16233,7 @@ cat conftest.$ac_ext >&5
  cf_result=no
  fi
  rm -f conftest.$ac_objext conftest.$ac_ext
@@ -4408,7 +4415,7 @@ Index: test/configure
  echo "${ECHO_T}$cf_result" >&6
  
  if test $cf_result = yes ; then
-@@ -16083,14 +16245,14 @@
+@@ -16083,14 +16245,14 @@ cf_result=`echo "have_curses_data_boolfnames" | sed y%abcdefghijklmnopqrstuvwxyz
  EOF
  
  else
@@ -4425,7 +4432,7 @@ Index: test/configure
  #include "confdefs.h"
  
  #ifdef HAVE_XCURSES
-@@ -16123,16 +16285,16 @@
+@@ -16123,16 +16285,16 @@ main ()
  }
  _ACEOF
  rm -f conftest.$ac_objext conftest$ac_exeext
@@ -4446,7 +4453,7 @@ Index: test/configure
    (exit $ac_status); }; }; then
    cf_result=yes
  else
-@@ -16144,7 +16306,7 @@
+@@ -16144,7 +16306,7 @@ rm -f conftest.$ac_objext conftest$ac_exeext conftest.$ac_ext
  
  else
    cat >conftest.$ac_ext <<_ACEOF
@@ -4455,7 +4462,7 @@ Index: test/configure
  #include "confdefs.h"
  
  #ifdef HAVE_XCURSES
-@@ -16170,15 +16332,15 @@
+@@ -16170,15 +16332,15 @@ int main(void)
  }
  _ACEOF
  rm -f conftest$ac_exeext
@@ -4475,7 +4482,7 @@ Index: test/configure
    (exit $ac_status); }; }; then
    cf_result=yes
  else
-@@ -16189,7 +16351,7 @@
+@@ -16189,7 +16351,7 @@ cf_result=no
  fi
  rm -f core core.* *.core conftest$ac_exeext conftest.$ac_objext conftest.$ac_ext
  fi
@@ -4484,7 +4491,7 @@ Index: test/configure
  echo "${ECHO_T}$cf_result" >&6
  	if test $cf_result = yes ; then
  
-@@ -16204,7 +16366,7 @@
+@@ -16204,7 +16366,7 @@ fi
  
  if ( test "$GCC" = yes || test "$GXX" = yes )
  then
@@ -4493,7 +4500,7 @@ Index: test/configure
  echo $ECHO_N "checking if you want to turn on gcc warnings... $ECHO_C" >&6
  
  # Check whether --enable-warnings or --disable-warnings was given.
-@@ -16221,7 +16383,7 @@
+@@ -16221,7 +16383,7 @@ else
  	with_warnings=no
  
  fi;
@@ -4502,7 +4509,7 @@ Index: test/configure
  echo "${ECHO_T}$with_warnings" >&6
  if test "$with_warnings" = "yes"
  then
-@@ -16244,10 +16406,10 @@
+@@ -16244,10 +16406,10 @@ cat > conftest.i <<EOF
  EOF
  if test "$GCC" = yes
  then
@@ -4515,7 +4522,7 @@ Index: test/configure
  #include "confdefs.h"
  #include "conftest.h"
  #include "conftest.i"
-@@ -16296,12 +16458,12 @@
+@@ -16296,12 +16458,12 @@ EOF
  			;;
  		esac
  
@@ -4531,7 +4538,7 @@ Index: test/configure
  echo "${ECHO_T}... $cf_attribute" >&6
  			cat conftest.h >>confdefs.h
  			case $cf_attribute in
-@@ -16365,12 +16527,12 @@
+@@ -16365,12 +16527,12 @@ INTEL_COMPILER=no
  if test "$GCC" = yes ; then
  	case $host_os in
  	(linux*|gnu*)
@@ -4546,7 +4553,7 @@ Index: test/configure
  #include "confdefs.h"
  
  int
-@@ -16387,16 +16549,16 @@
+@@ -16387,16 +16549,16 @@ make an error
  }
  _ACEOF
  rm -f conftest.$ac_objext
@@ -4567,7 +4574,7 @@ Index: test/configure
    (exit $ac_status); }; }; then
    INTEL_COMPILER=yes
  cf_save_CFLAGS="$cf_save_CFLAGS -we147"
-@@ -16407,7 +16569,7 @@
+@@ -16407,7 +16569,7 @@ cat conftest.$ac_ext >&5
  fi
  rm -f conftest.$ac_objext conftest.$ac_ext
  		CFLAGS="$cf_save_CFLAGS"
@@ -4576,7 +4583,7 @@ Index: test/configure
  echo "${ECHO_T}$INTEL_COMPILER" >&6
  		;;
  	esac
-@@ -16416,12 +16578,12 @@
+@@ -16416,12 +16578,12 @@ fi
  CLANG_COMPILER=no
  
  if test "$GCC" = yes ; then
@@ -4591,7 +4598,7 @@ Index: test/configure
  #include "confdefs.h"
  
  int
-@@ -16438,16 +16600,16 @@
+@@ -16438,16 +16600,16 @@ make an error
  }
  _ACEOF
  rm -f conftest.$ac_objext
@@ -4612,7 +4619,7 @@ Index: test/configure
    (exit $ac_status); }; }; then
    CLANG_COMPILER=yes
  cf_save_CFLAGS="$cf_save_CFLAGS -Qunused-arguments"
-@@ -16458,12 +16620,12 @@
+@@ -16458,12 +16620,12 @@ cat conftest.$ac_ext >&5
  fi
  rm -f conftest.$ac_objext conftest.$ac_ext
  	CFLAGS="$cf_save_CFLAGS"
@@ -4627,7 +4634,7 @@ Index: test/configure
  int main(int argc, char *argv[]) { return (argv[argc-1] == 0) ; }
  EOF
  
-@@ -16480,7 +16642,7 @@
+@@ -16480,7 +16642,7 @@ then
  # remark #981: operands are evaluated in unspecified order
  # warning #279: controlling expression is constant
  
@@ -4636,7 +4643,7 @@ Index: test/configure
  echo "$as_me: checking for $CC warning options..." >&6;}
  	cf_save_CFLAGS="$CFLAGS"
  	EXTRA_CFLAGS="-Wall"
-@@ -16496,12 +16658,12 @@
+@@ -16496,12 +16658,12 @@ echo "$as_me: checking for $CC warning options..." >&6;}
  		wd981
  	do
  		CFLAGS="$cf_save_CFLAGS $EXTRA_CFLAGS -$cf_opt"
@@ -4652,7 +4659,7 @@ Index: test/configure
  echo "${ECHO_T}... -$cf_opt" >&6
  			EXTRA_CFLAGS="$EXTRA_CFLAGS -$cf_opt"
  		fi
-@@ -16510,7 +16672,7 @@
+@@ -16510,7 +16672,7 @@ echo "${ECHO_T}... -$cf_opt" >&6
  
  elif test "$GCC" = yes
  then
@@ -4661,7 +4668,7 @@ Index: test/configure
  echo "$as_me: checking for $CC warning options..." >&6;}
  	cf_save_CFLAGS="$CFLAGS"
  	EXTRA_CFLAGS=
-@@ -16534,12 +16696,12 @@
+@@ -16534,12 +16696,12 @@ echo "$as_me: checking for $CC warning options..." >&6;}
  		Wundef $cf_gcc_warnings $cf_warn_CONST
  	do
  		CFLAGS="$cf_save_CFLAGS $EXTRA_CFLAGS -$cf_opt"
@@ -4677,7 +4684,7 @@ Index: test/configure
  echo "${ECHO_T}... -$cf_opt" >&6
  			case $cf_opt in
  			(Wcast-qual)
-@@ -16550,7 +16712,7 @@
+@@ -16550,7 +16712,7 @@ echo "${ECHO_T}... -$cf_opt" >&6
  				([34].*)
  					test -n "$verbose" && echo "	feature is broken in gcc $GCC_VERSION" 1>&6
  
@@ -4686,7 +4693,7 @@ Index: test/configure
  
  					continue;;
  				esac
-@@ -16560,7 +16722,7 @@
+@@ -16560,7 +16722,7 @@ echo "${as_me:-configure}:16553: testing feature is broken in gcc $GCC_VERSION .
  				([12].*)
  					test -n "$verbose" && echo "	feature is broken in gcc $GCC_VERSION" 1>&6
  
@@ -4695,7 +4702,7 @@ Index: test/configure
  
  					continue;;
  				esac
-@@ -16576,7 +16738,7 @@
+@@ -16576,7 +16738,7 @@ rm -rf conftest*
  fi
  fi
  
@@ -4704,7 +4711,7 @@ Index: test/configure
  echo $ECHO_N "checking if you want to use dmalloc for testing... $ECHO_C" >&6
  
  # Check whether --with-dmalloc or --without-dmalloc was given.
-@@ -16593,7 +16755,7 @@
+@@ -16593,7 +16755,7 @@ EOF
  else
    with_dmalloc=
  fi;
@@ -4713,7 +4720,7 @@ Index: test/configure
  echo "${ECHO_T}${with_dmalloc:-no}" >&6
  
  case .$with_cflags in
-@@ -16687,23 +16849,23 @@
+@@ -16687,23 +16849,23 @@ fi
  esac
  
  if test "$with_dmalloc" = yes ; then
@@ -4741,7 +4748,7 @@ Index: test/configure
    (exit $ac_status); } >/dev/null; then
    if test -s conftest.err; then
      ac_cpp_err=$ac_c_preproc_warn_flag
-@@ -16722,11 +16884,11 @@
+@@ -16722,11 +16884,11 @@ else
  fi
  rm -f conftest.err conftest.$ac_ext
  fi
@@ -4755,7 +4762,7 @@ Index: test/configure
  echo $ECHO_N "checking for dmalloc_debug in -ldmalloc... $ECHO_C" >&6
  if test "${ac_cv_lib_dmalloc_dmalloc_debug+set}" = set; then
    echo $ECHO_N "(cached) $ECHO_C" >&6
-@@ -16734,7 +16896,7 @@
+@@ -16734,7 +16896,7 @@ else
    ac_check_lib_save_LIBS=$LIBS
  LIBS="-ldmalloc  $LIBS"
  cat >conftest.$ac_ext <<_ACEOF
@@ -4764,7 +4771,7 @@ Index: test/configure
  #include "confdefs.h"
  
  /* Override any gcc2 internal prototype to avoid an error.  */
-@@ -16753,16 +16915,16 @@
+@@ -16753,16 +16915,16 @@ dmalloc_debug ();
  }
  _ACEOF
  rm -f conftest.$ac_objext conftest$ac_exeext
@@ -4785,7 +4792,7 @@ Index: test/configure
    (exit $ac_status); }; }; then
    ac_cv_lib_dmalloc_dmalloc_debug=yes
  else
-@@ -16773,7 +16935,7 @@
+@@ -16773,7 +16935,7 @@ fi
  rm -f conftest.$ac_objext conftest$ac_exeext conftest.$ac_ext
  LIBS=$ac_check_lib_save_LIBS
  fi
@@ -4794,7 +4801,7 @@ Index: test/configure
  echo "${ECHO_T}$ac_cv_lib_dmalloc_dmalloc_debug" >&6
  if test $ac_cv_lib_dmalloc_dmalloc_debug = yes; then
    cat >>confdefs.h <<EOF
-@@ -16788,7 +16950,7 @@
+@@ -16788,7 +16950,7 @@ fi
  
  fi
  
@@ -4803,7 +4810,7 @@ Index: test/configure
  echo $ECHO_N "checking if you want to use dbmalloc for testing... $ECHO_C" >&6
  
  # Check whether --with-dbmalloc or --without-dbmalloc was given.
-@@ -16805,7 +16967,7 @@
+@@ -16805,7 +16967,7 @@ EOF
  else
    with_dbmalloc=
  fi;
@@ -4812,7 +4819,7 @@ Index: test/configure
  echo "${ECHO_T}${with_dbmalloc:-no}" >&6
  
  case .$with_cflags in
-@@ -16899,23 +17061,23 @@
+@@ -16899,23 +17061,23 @@ fi
  esac
  
  if test "$with_dbmalloc" = yes ; then
@@ -4840,7 +4847,7 @@ Index: test/configure
    (exit $ac_status); } >/dev/null; then
    if test -s conftest.err; then
      ac_cpp_err=$ac_c_preproc_warn_flag
-@@ -16934,11 +17096,11 @@
+@@ -16934,11 +17096,11 @@ else
  fi
  rm -f conftest.err conftest.$ac_ext
  fi
@@ -4854,7 +4861,7 @@ Index: test/configure
  echo $ECHO_N "checking for debug_malloc in -ldbmalloc... $ECHO_C" >&6
  if test "${ac_cv_lib_dbmalloc_debug_malloc+set}" = set; then
    echo $ECHO_N "(cached) $ECHO_C" >&6
-@@ -16946,7 +17108,7 @@
+@@ -16946,7 +17108,7 @@ else
    ac_check_lib_save_LIBS=$LIBS
  LIBS="-ldbmalloc  $LIBS"
  cat >conftest.$ac_ext <<_ACEOF
@@ -4863,7 +4870,7 @@ Index: test/configure
  #include "confdefs.h"
  
  /* Override any gcc2 internal prototype to avoid an error.  */
-@@ -16965,16 +17127,16 @@
+@@ -16965,16 +17127,16 @@ debug_malloc ();
  }
  _ACEOF
  rm -f conftest.$ac_objext conftest$ac_exeext
@@ -4884,7 +4891,7 @@ Index: test/configure
    (exit $ac_status); }; }; then
    ac_cv_lib_dbmalloc_debug_malloc=yes
  else
-@@ -16985,7 +17147,7 @@
+@@ -16985,7 +17147,7 @@ fi
  rm -f conftest.$ac_objext conftest$ac_exeext conftest.$ac_ext
  LIBS=$ac_check_lib_save_LIBS
  fi
@@ -4893,7 +4900,7 @@ Index: test/configure
  echo "${ECHO_T}$ac_cv_lib_dbmalloc_debug_malloc" >&6
  if test $ac_cv_lib_dbmalloc_debug_malloc = yes; then
    cat >>confdefs.h <<EOF
-@@ -17000,7 +17162,7 @@
+@@ -17000,7 +17162,7 @@ fi
  
  fi
  
@@ -4902,7 +4909,7 @@ Index: test/configure
  echo $ECHO_N "checking if you want to use valgrind for testing... $ECHO_C" >&6
  
  # Check whether --with-valgrind or --without-valgrind was given.
-@@ -17017,7 +17179,7 @@
+@@ -17017,7 +17179,7 @@ EOF
  else
    with_valgrind=
  fi;
@@ -4911,7 +4918,7 @@ Index: test/configure
  echo "${ECHO_T}${with_valgrind:-no}" >&6
  
  case .$with_cflags in
-@@ -17110,7 +17272,7 @@
+@@ -17110,7 +17272,7 @@ fi
  	;;
  esac
  
@@ -4920,7 +4927,7 @@ Index: test/configure
  echo $ECHO_N "checking if you want to perform memory-leak testing... $ECHO_C" >&6
  
  # Check whether --enable-leaks or --disable-leaks was given.
-@@ -17120,7 +17282,7 @@
+@@ -17120,7 +17282,7 @@ if test "${enable_leaks+set}" = set; then
  else
    : ${with_no_leaks:=no}
  fi;
@@ -4929,7 +4936,7 @@ Index: test/configure
  echo "${ECHO_T}$with_no_leaks" >&6
  
  if test "$with_no_leaks" = yes ; then
-@@ -17136,7 +17298,7 @@
+@@ -17136,7 +17298,7 @@ EOF
  fi
  
  LD_RPATH_OPT=
@@ -4938,7 +4945,7 @@ Index: test/configure
  echo $ECHO_N "checking for an rpath option... $ECHO_C" >&6
  case $cf_cv_system_name in
  (irix*)
-@@ -17167,12 +17329,12 @@
+@@ -17167,12 +17329,12 @@ case $cf_cv_system_name in
  (*)
  	;;
  esac
@@ -4953,7 +4960,7 @@ Index: test/configure
  echo $ECHO_N "checking if we need a space after rpath option... $ECHO_C" >&6
  	cf_save_LIBS="$LIBS"
  
-@@ -17193,7 +17355,7 @@
+@@ -17193,7 +17355,7 @@ done
  LIBS="$cf_add_libs"
  
  	cat >conftest.$ac_ext <<_ACEOF
@@ -4962,7 +4969,7 @@ Index: test/configure
  #include "confdefs.h"
  
  int
-@@ -17205,16 +17367,16 @@
+@@ -17205,16 +17367,16 @@ main ()
  }
  _ACEOF
  rm -f conftest.$ac_objext conftest$ac_exeext
@@ -4983,7 +4990,7 @@ Index: test/configure
    (exit $ac_status); }; }; then
    cf_rpath_space=no
  else
-@@ -17224,13 +17386,13 @@
+@@ -17224,13 +17386,13 @@ cf_rpath_space=yes
  fi
  rm -f conftest.$ac_objext conftest$ac_exeext conftest.$ac_ext
  	LIBS="$cf_save_LIBS"
@@ -4999,7 +5006,7 @@ Index: test/configure
  echo $ECHO_N "checking if rpath-hack should be disabled... $ECHO_C" >&6
  
  # Check whether --enable-rpath-hack or --disable-rpath-hack was given.
-@@ -17247,21 +17409,21 @@
+@@ -17247,21 +17409,21 @@ else
  	cf_disable_rpath_hack=no
  
  fi;
@@ -5025,7 +5032,7 @@ Index: test/configure
  echo $ECHO_N "checking for $ac_word... $ECHO_C" >&6
  if test "${ac_cv_prog_cf_ldd_prog+set}" = set; then
    echo $ECHO_N "(cached) $ECHO_C" >&6
-@@ -17276,7 +17438,7 @@
+@@ -17276,7 +17438,7 @@ for ac_dir in $ac_dummy; do
    test -z "$ac_dir" && ac_dir=.
    $as_executable_p "$ac_dir/$ac_word" || continue
  ac_cv_prog_cf_ldd_prog="$ac_prog"
@@ -5034,7 +5041,7 @@ Index: test/configure
  break
  done
  
-@@ -17284,10 +17446,10 @@
+@@ -17284,10 +17446,10 @@ fi
  fi
  cf_ldd_prog=$ac_cv_prog_cf_ldd_prog
  if test -n "$cf_ldd_prog"; then
@@ -5047,7 +5054,7 @@ Index: test/configure
  echo "${ECHO_T}no" >&6
  fi
  
-@@ -17301,7 +17463,7 @@
+@@ -17301,7 +17463,7 @@ test -n "$cf_ldd_prog" || cf_ldd_prog="no"
  		cf_rpath_oops=
  
  cat >conftest.$ac_ext <<_ACEOF
@@ -5056,7 +5063,7 @@ Index: test/configure
  #include "confdefs.h"
  #include <stdio.h>
  int
-@@ -17313,16 +17475,16 @@
+@@ -17313,16 +17475,16 @@ printf("Hello");
  }
  _ACEOF
  rm -f conftest.$ac_objext conftest$ac_exeext
@@ -5077,7 +5084,7 @@ Index: test/configure
    (exit $ac_status); }; }; then
    cf_rpath_oops=`$cf_ldd_prog conftest$ac_exeext | fgrep ' not found' | sed -e 's% =>.*$%%' |sort | uniq`
  		 cf_rpath_list=`$cf_ldd_prog conftest$ac_exeext | fgrep / | sed -e 's%^.*[ 	]/%/%' -e 's%/[^/][^/]*$%%' |sort | uniq`
-@@ -17350,7 +17512,7 @@
+@@ -17350,7 +17512,7 @@ rm -f conftest.$ac_objext conftest$ac_exeext conftest.$ac_ext
  					then
  						test -n "$verbose" && echo "	...adding -L$cf_rpath_dir/lib to LDFLAGS for $cf_rpath_src" 1>&6
  
@@ -5086,7 +5093,7 @@ Index: test/configure
  
  						LDFLAGS="$LDFLAGS -L$cf_rpath_dir/lib"
  						break
-@@ -17362,11 +17524,11 @@
+@@ -17362,11 +17524,11 @@ echo "${as_me:-configure}:17353: testing ...adding -L$cf_rpath_dir/lib to LDFLAG
  
  	test -n "$verbose" && echo "	...checking EXTRA_LDFLAGS $EXTRA_LDFLAGS" 1>&6
  
@@ -5100,7 +5107,7 @@ Index: test/configure
  
  cf_rpath_dst=
  for cf_rpath_src in $LDFLAGS
-@@ -17403,7 +17565,7 @@
+@@ -17403,7 +17565,7 @@ do
  			then
  				test -n "$verbose" && echo "	...Filter $cf_rpath_src ->$cf_rpath_tmp" 1>&6
  
@@ -5109,7 +5116,7 @@ Index: test/configure
  
  				EXTRA_LDFLAGS="$cf_rpath_tmp $EXTRA_LDFLAGS"
  			fi
-@@ -17416,11 +17578,11 @@
+@@ -17416,11 +17578,11 @@ LDFLAGS=$cf_rpath_dst
  
  test -n "$verbose" && echo "	...checked LDFLAGS $LDFLAGS" 1>&6
  
@@ -5123,7 +5130,7 @@ Index: test/configure
  
  cf_rpath_dst=
  for cf_rpath_src in $LIBS
-@@ -17457,7 +17619,7 @@
+@@ -17457,7 +17619,7 @@ do
  			then
  				test -n "$verbose" && echo "	...Filter $cf_rpath_src ->$cf_rpath_tmp" 1>&6
  
@@ -5132,7 +5139,7 @@ Index: test/configure
  
  				EXTRA_LDFLAGS="$cf_rpath_tmp $EXTRA_LDFLAGS"
  			fi
-@@ -17470,14 +17632,14 @@
+@@ -17470,14 +17632,14 @@ LIBS=$cf_rpath_dst
  
  test -n "$verbose" && echo "	...checked LIBS $LIBS" 1>&6
  
@@ -5150,7 +5157,7 @@ Index: test/configure
  echo "${ECHO_T}no" >&6
  fi
  
-@@ -17567,7 +17729,7 @@
+@@ -17567,7 +17729,7 @@ DEFS=-DHAVE_CONFIG_H
  : ${CONFIG_STATUS=./config.status}
  ac_clean_files_save=$ac_clean_files
  ac_clean_files="$ac_clean_files $CONFIG_STATUS"
@@ -5159,7 +5166,7 @@ Index: test/configure
  echo "$as_me: creating $CONFIG_STATUS" >&6;}
  cat >$CONFIG_STATUS <<_ACEOF
  #! $SHELL
-@@ -17699,7 +17861,7 @@
+@@ -17699,7 +17861,7 @@ EOF
  cat >>$CONFIG_STATUS <<EOF
  ac_cs_version="\\
  config.status
@@ -5168,7 +5175,7 @@ Index: test/configure
    with options \\"`echo "$ac_configure_args" | sed 's/[\\""\`\$]/\\\\&/g'`\\"
  
  Copyright 1992, 1993, 1994, 1995, 1996, 1998, 1999, 2000, 2001
-@@ -17743,7 +17905,7 @@
+@@ -17743,7 +17905,7 @@ cat >>$CONFIG_STATUS <<\EOF
      echo "$ac_cs_version"; exit 0 ;;
    --he | --h)
      # Conflict between --help and --header
@@ -5177,7 +5184,7 @@ Index: test/configure
  Try \`$0 --help' for more information." >&5
  echo "$as_me: error: ambiguous option: $1
  Try \`$0 --help' for more information." >&2;}
-@@ -17762,7 +17924,7 @@
+@@ -17762,7 +17924,7 @@ Try \`$0 --help' for more information." >&2;}
      ac_need_defaults=false;;
  
    # This is an error.
@@ -5186,7 +5193,7 @@ Index: test/configure
  Try \`$0 --help' for more information." >&5
  echo "$as_me: error: unrecognized option: $1
  Try \`$0 --help' for more information." >&2;}
-@@ -17781,7 +17943,7 @@
+@@ -17781,7 +17943,7 @@ cat >&5 << _ACEOF
  ## Running config.status.  ##
  ## ----------------------- ##
  
@@ -5195,7 +5202,7 @@ Index: test/configure
    CONFIG_FILES    = $CONFIG_FILES
    CONFIG_HEADERS  = $CONFIG_HEADERS
    CONFIG_LINKS    = $CONFIG_LINKS
-@@ -17812,7 +17974,7 @@
+@@ -17812,7 +17974,7 @@ do
    "Makefile" ) CONFIG_FILES="$CONFIG_FILES Makefile" ;;
    "default" ) CONFIG_COMMANDS="$CONFIG_COMMANDS default" ;;
    "ncurses_cfg.h" ) CONFIG_HEADERS="$CONFIG_HEADERS ncurses_cfg.h:ncurses_tst.hin" ;;
@@ -5204,7 +5211,7 @@ Index: test/configure
  echo "$as_me: error: invalid argument: $ac_config_target" >&2;}
     { (exit 1); exit 1; }; };;
    esac
-@@ -17999,10 +18161,28 @@
+@@ -17999,10 +18161,28 @@ EOF
        # These are the two extra sed commands mentioned above.
        (echo ':t
    /@[a-zA-Z_][a-zA-Z_0-9]*@/!b' && cat $tmp/subs.frag) >$tmp/subs-$ac_sed_frag.sed
@@ -5235,7 +5242,7 @@ Index: test/configure
        fi
        ac_sed_frag=`expr $ac_sed_frag + 1`
        ac_beg=$ac_end
-@@ -18085,7 +18265,7 @@
+@@ -18085,7 +18265,7 @@ done; }
    esac
  
    if test x"$ac_file" != x-; then
@@ -5244,7 +5251,7 @@ Index: test/configure
  echo "$as_me: creating $ac_file" >&6;}
      rm -f "$ac_file"
    fi
-@@ -18103,7 +18283,7 @@
+@@ -18103,7 +18283,7 @@ echo "$as_me: creating $ac_file" >&6;}
        -) echo $tmp/stdin ;;
        [\\/$]*)
           # Absolute (can't be DOS-style, as IFS=:)
@@ -5253,7 +5260,7 @@ Index: test/configure
  echo "$as_me: error: cannot find input file: $f" >&2;}
     { (exit 1); exit 1; }; }
           echo $f;;
-@@ -18116,7 +18296,7 @@
+@@ -18116,7 +18296,7 @@ echo "$as_me: error: cannot find input file: $f" >&2;}
             echo $srcdir/$f
           else
             # /dev/null tree
@@ -5262,7 +5269,7 @@ Index: test/configure
  echo "$as_me: error: cannot find input file: $f" >&2;}
     { (exit 1); exit 1; }; }
           fi;;
-@@ -18132,7 +18312,7 @@
+@@ -18132,7 +18312,7 @@ cat >>$CONFIG_STATUS <<\EOF
        if test -n "$ac_seen"; then
          ac_used=`grep '@datarootdir@' $ac_item`
          if test -z "$ac_used"; then
@@ -5271,7 +5278,7 @@ Index: test/configure
  $ac_seen" >&5
  echo "$as_me: WARNING: datarootdir was used implicitly but not set:
  $ac_seen" >&2;}
-@@ -18141,7 +18321,7 @@
+@@ -18141,7 +18321,7 @@ $ac_seen" >&2;}
        fi
        ac_seen=`grep '${datarootdir}' $ac_item`
        if test -n "$ac_seen"; then
@@ -5280,7 +5287,7 @@ Index: test/configure
  $ac_seen" >&5
  echo "$as_me: WARNING: datarootdir was used explicitly but not set:
  $ac_seen" >&2;}
-@@ -18178,7 +18358,7 @@
+@@ -18178,7 +18358,7 @@ s,@INSTALL@,$ac_INSTALL,;t t
              ac_init=`egrep '[ 	]*'$ac_name'[ 	]*=' $ac_file`
              if test -z "$ac_init"; then
                ac_seen=`echo "$ac_seen" |sed -e 's,^,'$ac_file':,'`
@@ -5289,7 +5296,7 @@ Index: test/configure
  $ac_seen" >&5
  echo "$as_me: WARNING: Variable $ac_name is used but was not set:
  $ac_seen" >&2;}
-@@ -18189,7 +18369,7 @@
+@@ -18189,7 +18369,7 @@ $ac_seen" >&2;}
      egrep -n '@[A-Z_][A-Z_0-9]+@' $ac_file >>$tmp/out
      if test -s $tmp/out; then
        ac_seen=`sed -e 's,^,'$ac_file':,' < $tmp/out`
@@ -5298,7 +5305,7 @@ Index: test/configure
  $ac_seen" >&5
  echo "$as_me: WARNING: Some variables may not be substituted:
  $ac_seen" >&2;}
-@@ -18238,7 +18418,7 @@
+@@ -18238,7 +18418,7 @@ for ac_file in : $CONFIG_HEADERS; do test "x$ac_file" = x: && continue
    * )   ac_file_in=$ac_file.in ;;
    esac
  
@@ -5307,7 +5314,7 @@ Index: test/configure
  echo "$as_me: creating $ac_file" >&6;}
  
    # First look for the input files in the build tree, otherwise in the
-@@ -18249,7 +18429,7 @@
+@@ -18249,7 +18429,7 @@ echo "$as_me: creating $ac_file" >&6;}
        -) echo $tmp/stdin ;;
        [\\/$]*)
           # Absolute (can't be DOS-style, as IFS=:)
@@ -5316,7 +5323,7 @@ Index: test/configure
  echo "$as_me: error: cannot find input file: $f" >&2;}
     { (exit 1); exit 1; }; }
           echo $f;;
-@@ -18262,7 +18442,7 @@
+@@ -18262,7 +18442,7 @@ echo "$as_me: error: cannot find input file: $f" >&2;}
             echo $srcdir/$f
           else
             # /dev/null tree
@@ -5325,7 +5332,7 @@ Index: test/configure
  echo "$as_me: error: cannot find input file: $f" >&2;}
     { (exit 1); exit 1; }; }
           fi;;
-@@ -18320,7 +18500,7 @@
+@@ -18320,7 +18500,7 @@ cat >>$CONFIG_STATUS <<\EOF
    rm -f $tmp/in
    if test x"$ac_file" != x-; then
      if cmp -s $ac_file $tmp/config.h 2>/dev/null; then
@@ -5334,11 +5341,11 @@ Index: test/configure
  echo "$as_me: $ac_file is unchanged" >&6;}
      else
        ac_dir=`$as_expr X"$ac_file" : 'X\(.*[^/]\)//*[^/][^/]*/*$' \| \
-Index: test/configure.in
-Prereq:  1.124 
---- ncurses-6.0-20150926+/test/configure.in	2015-08-08 20:24:49.000000000 +0000
-+++ ncurses-6.0-20151010/test/configure.in	2015-10-10 20:23:49.000000000 +0000
-@@ -28,7 +28,7 @@
+diff --git a/test/configure.in b/test/configure.in
+index 8a12523..d5d3a67 100644
+--- a/test/configure.in
++++ b/test/configure.in
+@@ -28,7 +28,7 @@ dnl***************************************************************************
  dnl
  dnl Author: Thomas E. Dickey 1996, etc.
  dnl
@@ -5347,7 +5354,7 @@ Prereq:  1.124
  dnl This is a simple configuration-script for the ncurses test programs that
  dnl allows the test-directory to be separately configured against a reference
  dnl system (i.e., sysvr4 curses)
-@@ -302,6 +302,17 @@
+@@ -302,6 +302,17 @@ extern void _nc_init_pthreads(void);
  test $cf_cv_use_pthreads = yes && AC_DEFINE(USE_PTHREADS)
  
  CF_SYS_TIME_SELECT
@@ -5365,10 +5372,10 @@ Prereq:  1.124
  CF_FUNC_CURSES_VERSION
  
  CF_CURSES_ACS_MAP
-Index: test/demo_termcap.c
-Prereq:  1.48 
---- ncurses-6.0-20150926+/test/demo_termcap.c	2015-08-08 20:25:39.000000000 +0000
-+++ ncurses-6.0-20151010/test/demo_termcap.c	2015-10-10 20:41:16.000000000 +0000
+diff --git a/test/demo_termcap.c b/test/demo_termcap.c
+index 65c2d13..c62dba8 100644
+--- a/test/demo_termcap.c
++++ b/test/demo_termcap.c
 @@ -29,7 +29,7 @@
  /*
   * Author: Thomas E. Dickey
@@ -5387,10 +5394,10 @@ Prereq:  1.48
  static void
  failed(const char *msg)
  {
-Index: test/demo_terminfo.c
-Prereq:  1.39 
---- ncurses-6.0-20150926+/test/demo_terminfo.c	2015-07-10 23:45:44.000000000 +0000
-+++ ncurses-6.0-20151010/test/demo_terminfo.c	2015-10-10 20:52:41.000000000 +0000
+diff --git a/test/demo_terminfo.c b/test/demo_terminfo.c
+index 8e6ae1c..5a5631d 100644
+--- a/test/demo_terminfo.c
++++ b/test/demo_terminfo.c
 @@ -29,7 +29,7 @@
  /*
   * Author: Thomas E. Dickey
@@ -5409,7 +5416,7 @@ Prereq:  1.39
  static void
  failed(const char *msg)
  {
-@@ -914,7 +916,7 @@
+@@ -914,7 +916,7 @@ main(int argc, char *argv[])
  int
  main(int argc GCC_UNUSED, char *argv[]GCC_UNUSED)
  {
@@ -5418,10 +5425,10 @@ Prereq:  1.39
      ExitProgram(EXIT_FAILURE);
  }
  #endif /* HAVE_TIGETSTR */
-Index: test/view.c
-Prereq:  1.94 
---- ncurses-6.0-20150926+/test/view.c	2013-09-28 21:58:42.000000000 +0000
-+++ ncurses-6.0-20151010/test/view.c	2015-10-10 20:03:58.000000000 +0000
+diff --git a/test/view.c b/test/view.c
+index 4782d85..fcc0705 100644
+--- a/test/view.c
++++ b/test/view.c
 @@ -1,5 +1,5 @@
  /****************************************************************************
 - * Copyright (c) 1998-2012,2013 Free Software Foundation, Inc.              *
@@ -5438,7 +5445,7 @@ Prereq:  1.94
   */
  
  #include <test.priv.h>
-@@ -188,20 +188,23 @@
+@@ -188,20 +188,23 @@ ch_dup(char *src)
      for (j = k = 0; j < len; j++) {
  #if USE_WIDEC_SUPPORT
  	rc = (size_t) check_mbytes(wch, src + j, len - j, state);
@@ -5469,7 +5476,7 @@ Prereq:  1.94
  	wstr[l++] = wch;
  #else
  	dst[k++] = (chtype) UChar(src[j]);
-@@ -329,10 +332,11 @@
+@@ -329,10 +332,11 @@ main(int argc, char *argv[])
  	/* convert tabs and nonprinting chars so that shift will work properly */
  	for (s = buf, d = temp, col = 0; (*d = *s) != '\0'; s++) {
  	    if (*d == '\r') {
@@ -5483,3 +5490,6 @@ Prereq:  1.94
  	    }
  	    if (*d == '\n') {
  		*d = '\0';
+-- 
+2.9.1
+

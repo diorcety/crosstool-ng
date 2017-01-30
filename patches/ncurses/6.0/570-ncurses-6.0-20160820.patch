@@ -1,0 +1,882 @@
+From 29a36e53e1f77a0c3672f2e267d573823d6a9a60 Mon Sep 17 00:00:00 2001
+From: "Thomas E. Dickey" <dickey@invisible-island.net>
+Date: Sun, 21 Aug 2016 01:36:58 +0000
+Subject: [PATCH 48/50] ncurses 6.0 - patch 20160820
+
++ update tput manual page to reflect changes to manipulate terminal
+  modes by sharing functions with tset.
++ add the terminal-mode parts of "reset" (aka tset) to the "tput reset"
+  command, making the two almost the same except for window-size.
++ adapt logic used in dialog "--keep-tite" option for test/filter.c as
+  "-a" option.  When set, test/filter attempts to suppress the
+  alternate screen.
++ correct a typo in interix entry -TD
+---
+ NEWS                               | 12 +++++++-
+ VERSION                            |  2 +-
+ dist.mk                            |  4 +--
+ doc/html/man/captoinfo.1m.html     |  2 +-
+ doc/html/man/clear.1.html          |  2 +-
+ doc/html/man/curs_terminfo.3x.html |  6 ++--
+ doc/html/man/form.3x.html          |  2 +-
+ doc/html/man/infocmp.1m.html       |  2 +-
+ doc/html/man/infotocap.1m.html     |  2 +-
+ doc/html/man/menu.3x.html          |  2 +-
+ doc/html/man/ncurses.3x.html       |  2 +-
+ doc/html/man/panel.3x.html         |  2 +-
+ doc/html/man/tabs.1.html           |  2 +-
+ doc/html/man/terminfo.5.html       |  2 +-
+ doc/html/man/tic.1m.html           |  2 +-
+ doc/html/man/toe.1m.html           |  2 +-
+ doc/html/man/tput.1.html           | 60 +++++++++++++++++++++++++-------------
+ doc/html/man/tset.1.html           | 14 +++++----
+ man/curs_terminfo.3x               |  6 ++--
+ man/tput.1                         | 28 ++++++++++++++----
+ misc/terminfo.src                  | 23 ++++++++-------
+ package/debian-mingw/changelog     |  4 +--
+ package/debian-mingw64/changelog   |  4 +--
+ package/debian/changelog           |  4 +--
+ package/mingw-ncurses.nsi          |  4 +--
+ package/mingw-ncurses.spec         |  2 +-
+ package/ncurses.spec               |  2 +-
+ progs/reset_cmd.c                  |  3 +-
+ progs/tput.c                       | 18 ++++++++++--
+ progs/tset.c                       |  4 ++-
+ test/bs.c                          |  6 ++--
+ test/filter.c                      | 60 ++++++++++++++++++++++++++++++++++++--
+ 32 files changed, 206 insertions(+), 84 deletions(-)
+
+diff --git a/NEWS b/NEWS
+index 0d97b82..e8cdb63 100644
+--- a/NEWS
++++ b/NEWS
+@@ -25,7 +25,7 @@
+ -- sale, use or other dealings in this Software without prior written        --
+ -- authorization.                                                            --
+ -------------------------------------------------------------------------------
+--- $Id: NEWS,v 1.2642 2016/08/13 18:03:28 tom Exp $
++-- $Id: NEWS,v 1.2647 2016/08/20 23:43:08 tom Exp $
+ -------------------------------------------------------------------------------
+ 
+ This is a log of changes that ncurses has gone through since Zeyd started
+@@ -45,6 +45,16 @@ See the AUTHORS file for the corresponding full names.
+ Changes through 1.9.9e did not credit all contributions;
+ it is not possible to add this information.
+ 
++20160820
++	+ update tput manual page to reflect changes to manipulate terminal
++	  modes by sharing functions with tset.
++	+ add the terminal-mode parts of "reset" (aka tset) to the "tput reset"
++	  command, making the two almost the same except for window-size.
++	+ adapt logic used in dialog "--keep-tite" option for test/filter.c as
++	  "-a" option.  When set, test/filter attempts to suppress the
++	  alternate screen.
++	+ correct a typo in interix entry -TD
++
+ 20160813
+ 	+ add a dependency upon generated-sources in Ada95/src/Makefile.in to
+ 	  handle a case of "configure && make install".
+diff --git a/VERSION b/VERSION
+index 67f75ed..98d0ccc 100644
+--- a/VERSION
++++ b/VERSION
+@@ -1 +1 @@
+-5:0:9	6.0	20160813
++5:0:9	6.0	20160820
+diff --git a/dist.mk b/dist.mk
+index 3e0305c..a82a948 100644
+--- a/dist.mk
++++ b/dist.mk
+@@ -25,7 +25,7 @@
+ # use or other dealings in this Software without prior written               #
+ # authorization.                                                             #
+ ##############################################################################
+-# $Id: dist.mk,v 1.1119 2016/08/13 15:43:19 tom Exp $
++# $Id: dist.mk,v 1.1120 2016/08/20 18:31:02 tom Exp $
+ # Makefile for creating ncurses distributions.
+ #
+ # This only needs to be used directly as a makefile by developers, but
+@@ -37,7 +37,7 @@ SHELL = /bin/sh
+ # These define the major/minor/patch versions of ncurses.
+ NCURSES_MAJOR = 6
+ NCURSES_MINOR = 0
+-NCURSES_PATCH = 20160813
++NCURSES_PATCH = 20160820
+ 
+ # We don't append the patch to the version, since this only applies to releases
+ VERSION = $(NCURSES_MAJOR).$(NCURSES_MINOR)
+diff --git a/doc/html/man/captoinfo.1m.html b/doc/html/man/captoinfo.1m.html
+index 8d9c204..f12bce3 100644
+--- a/doc/html/man/captoinfo.1m.html
++++ b/doc/html/man/captoinfo.1m.html
+@@ -198,7 +198,7 @@
+ </PRE><H2><a name="h2-SEE-ALSO">SEE ALSO</a></H2><PRE>
+        <STRONG><A HREF="infocmp.1m.html">infocmp(1m)</A></STRONG>, <STRONG><A HREF="ncurses.3x.html">curses(3x)</A></STRONG>, <STRONG><A HREF="terminfo.5.html">terminfo(5)</A></STRONG>
+ 
+-       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160730).
++       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160820).
+ 
+ 
+ </PRE><H2><a name="h2-AUTHOR">AUTHOR</a></H2><PRE>
+diff --git a/doc/html/man/clear.1.html b/doc/html/man/clear.1.html
+index 92d86c8..7c36d6c 100644
+--- a/doc/html/man/clear.1.html
++++ b/doc/html/man/clear.1.html
+@@ -67,7 +67,7 @@
+ </PRE><H2><a name="h2-SEE-ALSO">SEE ALSO</a></H2><PRE>
+        <STRONG><A HREF="tput.1.html">tput(1)</A></STRONG>, <STRONG><A HREF="terminfo.5.html">terminfo(5)</A></STRONG>
+ 
+-       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160730).
++       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160820).
+ 
+ 
+ 
+diff --git a/doc/html/man/curs_terminfo.3x.html b/doc/html/man/curs_terminfo.3x.html
+index c72b2f4..2477c6b 100644
+--- a/doc/html/man/curs_terminfo.3x.html
++++ b/doc/html/man/curs_terminfo.3x.html
+@@ -1,6 +1,6 @@
+ <!-- 
+   ****************************************************************************
+-  * Copyright (c) 1999-2011,2013 Free Software Foundation, Inc.              *
++  * Copyright (c) 1999-2013,2016 Free Software Foundation, Inc.              *
+   *                                                                          *
+   * Permission is hereby granted, free of charge, to any person obtaining a  *
+   * copy of this software and associated documentation files (the            *
+@@ -26,7 +26,7 @@
+   * sale, use or other dealings in this Software without prior written       *
+   * authorization.                                                           *
+   ****************************************************************************
+-  * @Id: curs_terminfo.3x,v 1.43 2013/07/20 19:29:59 tom Exp @
++  * @Id: curs_terminfo.3x,v 1.44 2016/08/20 23:26:10 tom Exp @
+   * ***************************************************************************
+   * ***************************************************************************
+   * ***************************************************************************
+@@ -362,7 +362,7 @@
+        passed to <STRONG>setupterm</STRONG> from <STRONG>initscr</STRONG> or <STRONG>newterm</STRONG> uses  buffered
+        I/O,  and would write to the corresponding stream.  In ad-
+        dition to the limitation that the  terminal  was  left  in
+-       block-buffered  mode on exit (like SystemV curses), it was
++       block-buffered mode on exit (like System V curses), it was
+        problematic because <STRONG>ncurses</STRONG> did not allow a  reliable  way
+        to cleanup on receiving SIGTSTP.  The current version uses
+        output buffers managed directly by <STRONG>ncurses</STRONG>.  Some  of  the
+diff --git a/doc/html/man/form.3x.html b/doc/html/man/form.3x.html
+index c7a86ef..2a0849f 100644
+--- a/doc/html/man/form.3x.html
++++ b/doc/html/man/form.3x.html
+@@ -235,7 +235,7 @@
+        <STRONG><A HREF="ncurses.3x.html">curses(3x)</A></STRONG> and related pages whose names begin "form_" for
+        detailed descriptions of the entry points.
+ 
+-       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160730).
++       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160820).
+ 
+ 
+ 
+diff --git a/doc/html/man/infocmp.1m.html b/doc/html/man/infocmp.1m.html
+index b99fed4..7dfefaf 100644
+--- a/doc/html/man/infocmp.1m.html
++++ b/doc/html/man/infocmp.1m.html
+@@ -475,7 +475,7 @@
+ 
+        http://invisible-island.net/ncurses/tctest.html
+ 
+-       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160730).
++       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160820).
+ 
+ 
+ </PRE><H2><a name="h2-AUTHOR">AUTHOR</a></H2><PRE>
+diff --git a/doc/html/man/infotocap.1m.html b/doc/html/man/infotocap.1m.html
+index a0b5638..81006a5 100644
+--- a/doc/html/man/infotocap.1m.html
++++ b/doc/html/man/infotocap.1m.html
+@@ -88,7 +88,7 @@
+ </PRE><H2><a name="h2-SEE-ALSO">SEE ALSO</a></H2><PRE>
+        <STRONG><A HREF="ncurses.3x.html">curses(3x)</A></STRONG>, <STRONG><A HREF="tic.1m.html">tic(1m)</A></STRONG>, <STRONG><A HREF="infocmp.1m.html">infocmp(1m)</A></STRONG>, <STRONG><A HREF="terminfo.5.html">terminfo(5)</A></STRONG>
+ 
+-       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160730).
++       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160820).
+ 
+ 
+ </PRE><H2><a name="h2-AUTHOR">AUTHOR</a></H2><PRE>
+diff --git a/doc/html/man/menu.3x.html b/doc/html/man/menu.3x.html
+index 469a230..86db173 100644
+--- a/doc/html/man/menu.3x.html
++++ b/doc/html/man/menu.3x.html
+@@ -217,7 +217,7 @@
+        <STRONG><A HREF="ncurses.3x.html">curses(3x)</A></STRONG> and related pages whose names begin "menu_" for
+        detailed descriptions of the entry points.
+ 
+-       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160730).
++       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160820).
+ 
+ 
+ 
+diff --git a/doc/html/man/ncurses.3x.html b/doc/html/man/ncurses.3x.html
+index e7c39f3..2e9e92e 100644
+--- a/doc/html/man/ncurses.3x.html
++++ b/doc/html/man/ncurses.3x.html
+@@ -60,7 +60,7 @@
+        sonable optimization.  This implementation is "new curses"
+        (ncurses) and is the approved replacement for 4.4BSD clas-
+        sic  curses,  which has been discontinued.  This describes
+-       <STRONG>ncurses</STRONG> version 6.0 (patch 20160730).
++       <STRONG>ncurses</STRONG> version 6.0 (patch 20160820).
+ 
+        The <STRONG>ncurses</STRONG> library emulates the curses library of  System
+        V  Release  4  UNIX,  and  XPG4 (X/Open Portability Guide)
+diff --git a/doc/html/man/panel.3x.html b/doc/html/man/panel.3x.html
+index 9a9ac9f..db2923f 100644
+--- a/doc/html/man/panel.3x.html
++++ b/doc/html/man/panel.3x.html
+@@ -209,7 +209,7 @@
+ </PRE><H2><a name="h2-SEE-ALSO">SEE ALSO</a></H2><PRE>
+        <STRONG><A HREF="ncurses.3x.html">curses(3x)</A></STRONG>, <STRONG><A HREF="curs_variables.3x.html">curs_variables(3x)</A></STRONG>,
+ 
+-       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160730).
++       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160820).
+ 
+ 
+ </PRE><H2><a name="h2-AUTHOR">AUTHOR</a></H2><PRE>
+diff --git a/doc/html/man/tabs.1.html b/doc/html/man/tabs.1.html
+index c91682c..c3156d6 100644
+--- a/doc/html/man/tabs.1.html
++++ b/doc/html/man/tabs.1.html
+@@ -164,7 +164,7 @@
+ </PRE><H2><a name="h2-SEE-ALSO">SEE ALSO</a></H2><PRE>
+        <STRONG><A HREF="tset.1.html">tset(1)</A></STRONG>, <STRONG><A HREF="infocmp.1m.html">infocmp(1m)</A></STRONG>, <STRONG><A HREF="ncurses.3x.html">curses(3x)</A></STRONG>, <STRONG><A HREF="terminfo.5.html">terminfo(5)</A></STRONG>.
+ 
+-       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160730).
++       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160820).
+ 
+ 
+ 
+diff --git a/doc/html/man/terminfo.5.html b/doc/html/man/terminfo.5.html
+index b2be450..5f73558 100644
+--- a/doc/html/man/terminfo.5.html
++++ b/doc/html/man/terminfo.5.html
+@@ -75,7 +75,7 @@
+        nals by giving a set of capabilities which they  have,  by
+        specifying how to perform screen operations, and by speci-
+        fying padding requirements and  initialization  sequences.
+-       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160730).
++       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160820).
+ 
+        Entries in <EM>terminfo</EM> consist of a sequence of `,' separated
+        fields (embedded commas may be escaped with a backslash or
+diff --git a/doc/html/man/tic.1m.html b/doc/html/man/tic.1m.html
+index 3c9470c..95df6d1 100644
+--- a/doc/html/man/tic.1m.html
++++ b/doc/html/man/tic.1m.html
+@@ -398,7 +398,7 @@
+        <STRONG><A HREF="infocmp.1m.html">infocmp(1m)</A></STRONG>,    <STRONG><A HREF="captoinfo.1m.html">captoinfo(1m)</A></STRONG>,   <STRONG><A HREF="infotocap.1m.html">infotocap(1m)</A></STRONG>,   <STRONG><A HREF="toe.1m.html">toe(1m)</A></STRONG>,
+        <STRONG><A HREF="ncurses.3x.html">curses(3x)</A></STRONG>, <STRONG><A HREF="term.5.html">term(5)</A></STRONG>.  <STRONG><A HREF="terminfo.5.html">terminfo(5)</A></STRONG>.
+ 
+-       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160730).
++       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160820).
+ 
+ 
+ </PRE><H2><a name="h2-AUTHOR">AUTHOR</a></H2><PRE>
+diff --git a/doc/html/man/toe.1m.html b/doc/html/man/toe.1m.html
+index 3a3506e..f25a2a1 100644
+--- a/doc/html/man/toe.1m.html
++++ b/doc/html/man/toe.1m.html
+@@ -117,7 +117,7 @@
+        <STRONG><A HREF="tic.1m.html">tic(1m)</A></STRONG>,   <STRONG><A HREF="infocmp.1m.html">infocmp(1m)</A></STRONG>,   <STRONG><A HREF="captoinfo.1m.html">captoinfo(1m)</A></STRONG>,    <STRONG><A HREF="infotocap.1m.html">infotocap(1m)</A></STRONG>,
+        <STRONG><A HREF="ncurses.3x.html">curses(3x)</A></STRONG>, <STRONG><A HREF="terminfo.5.html">terminfo(5)</A></STRONG>.
+ 
+-       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160730).
++       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160820).
+ 
+ 
+ 
+diff --git a/doc/html/man/tput.1.html b/doc/html/man/tput.1.html
+index 32a8b22..f754de3 100644
+--- a/doc/html/man/tput.1.html
++++ b/doc/html/man/tput.1.html
+@@ -27,7 +27,7 @@
+   * sale, use or other dealings in this Software without prior written       *
+   * authorization.                                                           *
+   ****************************************************************************
+-  * @Id: tput.1,v 1.42 2016/07/30 21:01:09 tom Exp @
++  * @Id: tput.1,v 1.44 2016/08/20 23:40:31 tom Exp @
+ -->
+ <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN">
+ <HTML>
+@@ -329,33 +329,51 @@
+        The <STRONG>tput</STRONG> command was begun by Bill Joy in 1980.  The  ini-
+        tial version only cleared the screen.
+ 
+-       Keith  Bostic replaced this in 1989 with a new implementa-
+-       tion based on the AT&amp;T SystemV  program  <STRONG>tput</STRONG>.   Like  the
+-       AT&amp;T  program,  Bostic's  version accepted some parameters
+-       named for <EM>terminfo</EM> <EM>capabilities</EM> (<STRONG>clear</STRONG>, <STRONG>init</STRONG>, <STRONG>longname</STRONG> and
+-       <STRONG>reset</STRONG>).   However (because he had only termcap available),
+-       it accepted <EM>termcap</EM> <EM>names</EM> for other capabilities.
+-
+-       At the same  time,  Bostic  added  a  shell  script  named
++       AT&amp;T  System  V  provided  a different <STRONG>tput</STRONG> command, whose
++       <STRONG>init</STRONG> and <STRONG>reset</STRONG>  subcommands (more than half  the  program)
++       were incorporated from the <STRONG>reset</STRONG> feature of BSD <STRONG>tset</STRONG> writ-
++       ten by Eric Allman.  Later the corresponding  source  code
++       for  <EM>reset</EM>  was  removed  from the BSD <STRONG>tset</STRONG> (in June 1993,
++       released in 4.4BSD-Lite a year later).
++
++       Keith Bostic replaced the BSD <STRONG>tput</STRONG> command in 1989 with  a
++       new  implementation  based  on  the  AT&amp;T System V program
++       <STRONG>tput</STRONG>.  Like the AT&amp;T program,  Bostic's  version  accepted
++       some  parameters  named  for <EM>terminfo</EM> <EM>capabilities</EM> (<STRONG>clear</STRONG>,
++       <STRONG>init</STRONG>, <STRONG>longname</STRONG> and <STRONG>reset</STRONG>).  However (because he  had  only
++       termcap  available),  it  accepted <EM>termcap</EM> <EM>names</EM> for other
++       capabilities.  Also, Bostic's BSD <STRONG>tput</STRONG> did not modify  the
++       terminal I/O modes as the earlier BSD <STRONG>tset</STRONG> had done.
++
++       At  the  same  time,  Bostic  added  a  shell script named
+        "clear", which used <STRONG>tput</STRONG> to clear the screen.
+ 
+-       Both  of  these  appeared in 4.4BSD, becoming the "modern"
++       Both of these appeared in 4.4BSD,  becoming  the  "modern"
+        BSD implementation of <STRONG>tput</STRONG>.
+ 
+ 
+ </PRE><H2><a name="h2-PORTABILITY">PORTABILITY</a></H2><PRE>
+-       This implementation of <STRONG>tput</STRONG> differs from AT&amp;T <STRONG>tput</STRONG> in  two
++       This  implementation of <STRONG>tput</STRONG> differs from AT&amp;T <STRONG>tput</STRONG> in two
+        important areas:
+ 
+-       <STRONG>o</STRONG>   tput  writes to the standard output.  That need not be
+-           a regular terminal.
+-
+-           The AT&amp;T implementation's <STRONG>init</STRONG> and <STRONG>reset</STRONG> commands  use
+-           the <STRONG>tset</STRONG> source, which manipulates terminal modes.  It
+-           successively tries standard  output,  standard  error,
+-           standard  input  before falling back to "/dev/tty" and
+-           finally just assumes a 1200Bd terminal.  When updating
+-           terminal modes, it ignores errors.
++       <STRONG>o</STRONG>   tput <EM>capname</EM> writes to the standard output.  That need
++           not  be  a regular terminal.  However, the subcommands
++           which manipulate terminal modes may not use the  stan-
++           dard output.
++
++           The  AT&amp;T implementation's <STRONG>init</STRONG> and <STRONG>reset</STRONG> commands use
++           the BSD (4.1c) <STRONG>tset</STRONG> source, which manipulates terminal
++           modes.   It  successively tries standard output, stan-
++           dard error, standard  input  before  falling  back  to
++           "/dev/tty" and finally just assumes a 1200Bd terminal.
++           When updating terminal modes, it ignores errors.
++
++           Until changes made after ncurses  6.0,  tput  did  not
++           modify  terminal  modes.   tput  now  uses  a  similar
++           scheme, using functions shared with  tset  (and  ulti-
++           mately  based  on the 4.4BSD <STRONG>tset</STRONG>).  If it is not able
++           to open a terminal, e.g., when running in  <STRONG>cron</STRONG>,  tput
++           will return an error.
+ 
+        <STRONG>o</STRONG>   AT&amp;T  <STRONG>tput</STRONG> guesses the type of its <EM>capname</EM> operands by
+            seeing if all of the characters are numeric, or not.
+@@ -420,7 +438,7 @@
+        <STRONG><A HREF="clear.1.html">clear(1)</A></STRONG>,    <STRONG>stty(1)</STRONG>,   <STRONG><A HREF="tabs.1.html">tabs(1)</A></STRONG>,   <STRONG><A HREF="tset.1.html">tset(1)</A></STRONG>,   <STRONG><A HREF="terminfo.5.html">terminfo(5)</A></STRONG>,
+        <STRONG><A HREF="curs_termcap.3x.html">curs_termcap(3x)</A></STRONG>.
+ 
+-       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160730).
++       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160820).
+ 
+ 
+ 
+diff --git a/doc/html/man/tset.1.html b/doc/html/man/tset.1.html
+index 6cf8124..dc475cc 100644
+--- a/doc/html/man/tset.1.html
++++ b/doc/html/man/tset.1.html
+@@ -26,7 +26,7 @@
+   * sale, use or other dealings in this Software without prior written       *
+   * authorization.                                                           *
+   ****************************************************************************
+-  * @Id: tset.1,v 1.42 2016/07/30 21:59:39 tom Exp @
++  * @Id: tset.1,v 1.43 2016/08/06 23:16:39 tom Exp @
+ -->
+ <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN">
+ <HTML>
+@@ -277,10 +277,12 @@
+        <STRONG>tset</STRONG> or <STRONG>reset</STRONG>.
+ 
+        The AT&amp;T <STRONG>tput</STRONG> utility (AIX,  HPUX,  Solaris)  incorporated
+-       the  terminal-mode manipulation from <STRONG>tset</STRONG>, presumably with
+-       the intention of making <STRONG>tset</STRONG> obsolete.  However,  each  of
+-       those systems still provides <STRONG>tset</STRONG>.  In fact, the commonly-
+-       used <STRONG>reset</STRONG> utility is always an alias for <STRONG>tset</STRONG>.
++       the  terminal-mode  manipulation  as well as termcap-based
++       features such as  resetting  tabstops  from  <STRONG>tset</STRONG>  in  BSD
++       (4.1c), presumably with the intention of making <STRONG>tset</STRONG> obso-
++       lete.  However, each of those systems still provides <STRONG>tset</STRONG>.
++       In  fact,  the  commonly-used  <STRONG>reset</STRONG>  utility is always an
++       alias for <STRONG>tset</STRONG>.
+ 
+        The <STRONG>tset</STRONG> utility provides for backward-compatibility  with
+        BSD  environments  (under most modern UNIXes, <STRONG>/etc/inittab</STRONG>
+@@ -385,7 +387,7 @@
+        <STRONG>csh(1)</STRONG>,   <STRONG>sh(1)</STRONG>,   <STRONG>stty(1)</STRONG>,   <STRONG><A HREF="curs_terminfo.3x.html">curs_terminfo(3x)</A></STRONG>,   <STRONG>tty(4)</STRONG>,
+        <STRONG><A HREF="terminfo.5.html">terminfo(5)</A></STRONG>, <STRONG>ttys(5)</STRONG>, <STRONG>environ(7)</STRONG>
+ 
+-       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160730).
++       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160820).
+ 
+ 
+ 
+diff --git a/man/curs_terminfo.3x b/man/curs_terminfo.3x
+index 7d440bf..9e9dfa4 100644
+--- a/man/curs_terminfo.3x
++++ b/man/curs_terminfo.3x
+@@ -1,5 +1,5 @@
+ .\"***************************************************************************
+-.\" Copyright (c) 1999-2011,2013 Free Software Foundation, Inc.              *
++.\" Copyright (c) 1999-2013,2016 Free Software Foundation, Inc.              *
+ .\"                                                                          *
+ .\" Permission is hereby granted, free of charge, to any person obtaining a  *
+ .\" copy of this software and associated documentation files (the            *
+@@ -26,7 +26,7 @@
+ .\" authorization.                                                           *
+ .\"***************************************************************************
+ .\"
+-.\" $Id: curs_terminfo.3x,v 1.43 2013/07/20 19:29:59 tom Exp $
++.\" $Id: curs_terminfo.3x,v 1.44 2016/08/20 23:26:10 tom Exp $
+ .TH curs_terminfo 3X ""
+ .ie \n(.g .ds `` \(lq
+ .el       .ds `` ``
+@@ -387,7 +387,7 @@ Older versions of \fBncurses\fP assumed that the file descriptor passed to
+ \fBsetupterm\fP from \fBinitscr\fP or \fBnewterm\fP uses buffered I/O,
+ and would write to the corresponding stream.
+ In addition to the limitation that the terminal was left in block-buffered
+-mode on exit (like SystemV curses),
++mode on exit (like System V curses),
+ it was problematic because \fBncurses\fP
+ did not allow a reliable way to cleanup on receiving SIGTSTP.
+ The current version uses output buffers managed directly by \fBncurses\fP.
+diff --git a/man/tput.1 b/man/tput.1
+index 46f1966..f8da1f2 100644
+--- a/man/tput.1
++++ b/man/tput.1
+@@ -27,7 +27,7 @@
+ .\" authorization.                                                           *
+ .\"***************************************************************************
+ .\"
+-.\" $Id: tput.1,v 1.42 2016/07/30 21:01:09 tom Exp $
++.\" $Id: tput.1,v 1.44 2016/08/20 23:40:31 tom Exp $
+ .TH @TPUT@ 1 ""
+ .ds d @TERMINFO@
+ .ds n 1
+@@ -328,13 +328,23 @@ T}
+ The \fBtput\fP command was begun by Bill Joy in 1980.
+ The initial version only cleared the screen.
+ .PP
+-Keith Bostic replaced this in 1989 with a new implementation
+-based on the AT&T SystemV program \fBtput\fP.
++AT&T System V provided a different \fBtput\fP command,
++whose \fBinit\fP and \fBreset\fP  subcommands
++(more than half the program) were incorporated from
++the \fBreset\fP feature of BSD \fBtset\fP written by Eric Allman.
++Later the corresponding source code for \fIreset\fP
++was removed from the BSD \fBtset\fP
++(in June 1993, released in 4.4BSD-Lite a year later).
++.PP
++Keith Bostic replaced the BSD \fBtput\fP command in 1989 with a new implementation
++based on the AT&T System V program \fBtput\fP.
+ Like the AT&T program, Bostic's version
+ accepted some parameters named for \fIterminfo capabilities\fP
+ (\fBclear\fP, \fBinit\fP, \fBlongname\fP and \fBreset\fP).
+ However (because he had only termcap available),
+ it accepted \fItermcap names\fP for other capabilities.
++Also, Bostic's BSD \fBtput\fP did not modify the terminal I/O modes
++as the earlier BSD \fBtset\fP had done.
+ .PP
+ At the same time, Bostic added a shell script named \*(lqclear\*(rq,
+ which used \fBtput\fP to clear the screen.
+@@ -346,15 +356,23 @@ becoming the \*(lqmodern\*(rq BSD implementation of \fBtput\fP.
+ This implementation of \fBtput\fP differs from AT&T \fBtput\fP in
+ two important areas:
+ .bP
+-@TPUT@ writes to the standard output.
++@TPUT@ \fIcapname\fP writes to the standard output.
+ That need not be a regular terminal.
++However, the subcommands which manipulate terminal modes
++may not use the standard output.
+ .IP
+ The AT&T implementation's \fBinit\fP and \fBreset\fP commands
+-use the \fBtset\fP source, which manipulates terminal modes.
++use the BSD (4.1c) \fBtset\fP source, which manipulates terminal modes.
+ It successively tries standard output, standard error, standard input
+ before falling back to \*(lq/dev/tty\*(rq and finally just assumes
+ a 1200Bd terminal.
+ When updating terminal modes, it ignores errors.
++.IP
++Until changes made after ncurses 6.0, @TPUT@ did not modify terminal modes.
++@TPUT@ now uses a similar scheme, using functions shared with @TSET@
++(and ultimately based on the 4.4BSD \fBtset\fP).
++If it is not able to open a terminal, e.g., when running in \fBcron\fP,
++@TPUT@ will return an error.
+ .bP
+ AT&T \fBtput\fP guesses the type of its \fIcapname\fP operands by seeing if
+ all of the characters are numeric, or not.
+diff --git a/misc/terminfo.src b/misc/terminfo.src
+index 63e7f51..965b243 100644
+--- a/misc/terminfo.src
++++ b/misc/terminfo.src
+@@ -6,8 +6,8 @@
+ # Report bugs and new terminal descriptions to
+ #	bug-ncurses@gnu.org
+ #
+-#	$Revision: 1.565 $
+-#	$Date: 2016/06/11 18:59:38 $
++#	$Revision: 1.566 $
++#	$Date: 2016/08/17 08:17:26 $
+ #
+ # The original header is preserved below for reference.  It is noted that there
+ # is a "newer" version which differs in some cosmetic details (but actually
+@@ -7252,14 +7252,14 @@ interix|opennt|opennt-25|ntconsole|ntconsole-25|OpenNT-term compatible with colo
+ 	kf46=\EFk, kf47=\EFm, kf48=\EFn, kf49=\EFo, kf5=\EF5,
+ 	kf50=\EFp, kf51=\EFq, kf52=\EFr, kf53=\EFs, kf54=\EFt,
+ 	kf55=\EFu, kf56=\EFv, kf57=\EFw, kf58=\EFx, kf59=\EFy,
+-	kf6=\EF6, kf60=\EFz, kf61=\EF+, kf62=\EF-,
+-	kf63=\EF\014 kf64=\EF$, kf7=\EF7, kf8=\EF8, kf9=\EF9,
+-	kich1=\E[L, kll=\E[U, knp=\E[T, kpp=\E[S, ll=\E[U, nel=^M^J,
+-	op=\E[m, rc=\E[u, rev=\E[7m, ri=\E[T, rin=\E[%p1%dT,
+-	rmcup=\E[2b\E[u\r\E[K, rmso=\E[m, rmul=\E[m, rs1=\Ec,
+-	sc=\E[s, setab=\E[4%p1%dm, setaf=\E[3%p1%dm,
+-	setb=\E[%p1%{40}%+%dm, setf=\E[%p1%{30}%+%dm,
+-	sgr0=\E[0m, smcup=\E[s\E[1b, smso=\E[7m, smul=\E[4m,
++	kf6=\EF6, kf60=\EFz, kf61=\EF+, kf62=\EF-, kf63=\EF^L,
++	kf7=\EF7, kf8=\EF8, kf9=\EF9, kich1=\E[L, kll=\E[U, knp=\E[T,
++	kpp=\E[S, ll=\E[U, nel=^M^J, op=\E[m, rc=\E[u, rev=\E[7m,
++	ri=\E[T, rin=\E[%p1%dT, rmcup=\E[2b\E[u\r\E[K, rmso=\E[m,
++	rmul=\E[m, rs1=\Ec, sc=\E[s, setab=\E[4%p1%dm,
++	setaf=\E[3%p1%dm, setb=\E[%p1%{40}%+%dm,
++	setf=\E[%p1%{30}%+%dm, sgr0=\E[0m, smcup=\E[s\E[1b,
++	smso=\E[7m, smul=\E[4m, kf64=\EF$,
+ 
+ opennt-35|ntconsole-35|OpenNT-term35 compatible with color,
+ 	lines#35, use=opennt,
+@@ -23851,4 +23851,7 @@ v3220|LANPAR Vision II model 3220/3221/3222,
+ #	  that could be returned -TD
+ #	+ added a few capabilities fixed in recent vte -TD
+ #
++# 20160817
++#	+ correct a typo in interix -TD
++#
+ ######## SHANTIH!  SHANTIH!  SHANTIH!
+diff --git a/package/debian-mingw/changelog b/package/debian-mingw/changelog
+index 7bb77f7..2d9ef4c 100644
+--- a/package/debian-mingw/changelog
++++ b/package/debian-mingw/changelog
+@@ -1,8 +1,8 @@
+-ncurses6 (6.0+20160813) unstable; urgency=low
++ncurses6 (6.0+20160820) unstable; urgency=low
+ 
+   * latest weekly patch
+ 
+- -- Thomas E. Dickey <dickey@invisible-island.net>  Sat, 13 Aug 2016 11:43:19 -0400
++ -- Thomas E. Dickey <dickey@invisible-island.net>  Sat, 20 Aug 2016 14:31:02 -0400
+ 
+ ncurses6 (5.9-20131005) unstable; urgency=low
+ 
+diff --git a/package/debian-mingw64/changelog b/package/debian-mingw64/changelog
+index 7bb77f7..2d9ef4c 100644
+--- a/package/debian-mingw64/changelog
++++ b/package/debian-mingw64/changelog
+@@ -1,8 +1,8 @@
+-ncurses6 (6.0+20160813) unstable; urgency=low
++ncurses6 (6.0+20160820) unstable; urgency=low
+ 
+   * latest weekly patch
+ 
+- -- Thomas E. Dickey <dickey@invisible-island.net>  Sat, 13 Aug 2016 11:43:19 -0400
++ -- Thomas E. Dickey <dickey@invisible-island.net>  Sat, 20 Aug 2016 14:31:02 -0400
+ 
+ ncurses6 (5.9-20131005) unstable; urgency=low
+ 
+diff --git a/package/debian/changelog b/package/debian/changelog
+index ccea93f..177dd0f 100644
+--- a/package/debian/changelog
++++ b/package/debian/changelog
+@@ -1,8 +1,8 @@
+-ncurses6 (6.0+20160813) unstable; urgency=low
++ncurses6 (6.0+20160820) unstable; urgency=low
+ 
+   * latest weekly patch
+ 
+- -- Thomas E. Dickey <dickey@invisible-island.net>  Sat, 13 Aug 2016 11:43:19 -0400
++ -- Thomas E. Dickey <dickey@invisible-island.net>  Sat, 20 Aug 2016 14:31:02 -0400
+ 
+ ncurses6 (5.9-20120608) unstable; urgency=low
+ 
+diff --git a/package/mingw-ncurses.nsi b/package/mingw-ncurses.nsi
+index c07fc91..e415c10 100644
+--- a/package/mingw-ncurses.nsi
++++ b/package/mingw-ncurses.nsi
+@@ -1,4 +1,4 @@
+-; $Id: mingw-ncurses.nsi,v 1.171 2016/08/13 15:43:19 tom Exp $
++; $Id: mingw-ncurses.nsi,v 1.172 2016/08/20 18:31:02 tom Exp $
+ 
+ ; TODO add examples
+ ; TODO bump ABI to 6
+@@ -10,7 +10,7 @@
+ !define VERSION_MAJOR "6"
+ !define VERSION_MINOR "0"
+ !define VERSION_YYYY  "2016"
+-!define VERSION_MMDD  "0813"
++!define VERSION_MMDD  "0820"
+ !define VERSION_PATCH ${VERSION_YYYY}${VERSION_MMDD}
+ 
+ !define MY_ABI   "5"
+diff --git a/package/mingw-ncurses.spec b/package/mingw-ncurses.spec
+index 43fd8a9..4ed3cfb 100644
+--- a/package/mingw-ncurses.spec
++++ b/package/mingw-ncurses.spec
+@@ -3,7 +3,7 @@
+ Summary: shared libraries for terminal handling
+ Name: mingw32-ncurses6
+ Version: 6.0
+-Release: 20160813
++Release: 20160820
+ License: X11
+ Group: Development/Libraries
+ Source: ncurses-%{version}-%{release}.tgz
+diff --git a/package/ncurses.spec b/package/ncurses.spec
+index 687ab7d..0a885f2 100644
+--- a/package/ncurses.spec
++++ b/package/ncurses.spec
+@@ -1,7 +1,7 @@
+ Summary: shared libraries for terminal handling
+ Name: ncurses6
+ Version: 6.0
+-Release: 20160813
++Release: 20160820
+ License: X11
+ Group: Development/Libraries
+ Source: ncurses-%{version}-%{release}.tgz
+diff --git a/progs/reset_cmd.c b/progs/reset_cmd.c
+index 94ad750..da953eb 100644
+--- a/progs/reset_cmd.c
++++ b/progs/reset_cmd.c
+@@ -51,7 +51,7 @@
+ #include <sys/ptem.h>
+ #endif
+ 
+-MODULE_ID("$Id: reset_cmd.c,v 1.5 2016/08/06 21:04:54 tom Exp $")
++MODULE_ID("$Id: reset_cmd.c,v 1.6 2016/08/20 23:53:44 tom Exp $")
+ 
+ /*
+  * SCO defines TIOCGSIZE and the corresponding struct.  Other systems (SunOS,
+@@ -491,6 +491,7 @@ send_init_strings(TTY * old_settings)
+     int i;
+     bool need_flush = FALSE;
+ 
++    (void) old_settings;
+ #ifdef TAB3
+     if (old_settings != 0 &&
+ 	old_settings->c_oflag & (TAB3 | ONLCR | OCRNL | ONLRET)) {
+diff --git a/progs/tput.c b/progs/tput.c
+index f90e76c..8ff3be1 100644
+--- a/progs/tput.c
++++ b/progs/tput.c
+@@ -48,7 +48,7 @@
+ #endif
+ #include <transform.h>
+ 
+-MODULE_ID("$Id: tput.c,v 1.56 2016/08/06 20:59:26 tom Exp $")
++MODULE_ID("$Id: tput.c,v 1.57 2016/08/20 21:46:31 tom Exp $")
+ 
+ #define PUTS(s)		fputs(s, stdout)
+ 
+@@ -118,10 +118,24 @@ tput_cmd(int argc, char *argv[])
+ 	name = "";
+     check_aliases(name, FALSE);
+     if (is_reset || is_init) {
++	TTY mode, oldmode;
++
++	int terasechar = -1;	/* new erase character */
++	int intrchar = -1;	/* new interrupt character */
++	int tkillchar = -1;	/* new kill character */
++
++	(void) save_tty_settings(&mode);
++
+ 	reset_start(stdout, is_reset, is_init);
+-	if (send_init_strings((TTY *) 0)) {
++	reset_tty_settings(&mode);
++
++	set_control_chars(&mode, terasechar, intrchar, tkillchar);
++	set_conversions(&mode);
++	if (send_init_strings(&oldmode)) {
+ 	    reset_flush();
+ 	}
++
++	update_tty_settings(&oldmode, &mode);
+ 	return 0;
+     }
+ 
+diff --git a/progs/tset.c b/progs/tset.c
+index 0292076..7a0f521 100644
+--- a/progs/tset.c
++++ b/progs/tset.c
+@@ -96,7 +96,7 @@
+ char *ttyname(int fd);
+ #endif
+ 
+-MODULE_ID("$Id: tset.c,v 1.107 2016/08/06 20:54:22 tom Exp $")
++MODULE_ID("$Id: tset.c,v 1.108 2016/08/20 23:53:44 tom Exp $")
+ 
+ #ifndef environ
+ extern char **environ;
+@@ -492,6 +492,8 @@ get_termcap_entry(int fd, char *userarg)
+ #endif
+     char *ttypath;
+ 
++    (void) fd;
++
+     if (userarg) {
+ 	ttype = userarg;
+ 	goto found;
+diff --git a/test/bs.c b/test/bs.c
+index a74f643..aeb92f3 100644
+--- a/test/bs.c
++++ b/test/bs.c
+@@ -1,5 +1,5 @@
+ /****************************************************************************
+- * Copyright (c) 1998-2013,2014 Free Software Foundation, Inc.              *
++ * Copyright (c) 1998-2014,2016 Free Software Foundation, Inc.              *
+  *                                                                          *
+  * Permission is hereby granted, free of charge, to any person obtaining a  *
+  * copy of this software and associated documentation files (the            *
+@@ -34,7 +34,7 @@
+  * v2.0 featuring strict ANSI/POSIX conformance, November 1993.
+  * v2.1 with ncurses mouse support, September 1995
+  *
+- * $Id: bs.c,v 1.63 2014/08/09 22:27:12 tom Exp $
++ * $Id: bs.c,v 1.64 2016/08/21 00:03:32 tom Exp $
+  */
+ 
+ #include <test.priv.h>
+@@ -214,7 +214,7 @@ announceopts(void)
+ static void
+ intro(void)
+ {
+-    char *tmpname;
++    const char *tmpname;
+ 
+     srand((unsigned) (time(0L) + getpid()));	/* Kick the random number generator */
+ 
+diff --git a/test/filter.c b/test/filter.c
+index fe587cb..89096ba 100644
+--- a/test/filter.c
++++ b/test/filter.c
+@@ -29,7 +29,7 @@
+ /*
+  * Author:  Thomas E. Dickey 1998
+  *
+- * $Id: filter.c,v 1.24 2016/04/16 22:11:03 tom Exp $
++ * $Id: filter.c,v 1.26 2016/08/20 20:38:56 tom Exp $
+  *
+  * An example of the 'filter()' function in ncurses, this program prompts
+  * for commands and executes them (like a command shell).  It illustrates
+@@ -258,6 +258,44 @@ new_command(char *buffer, int length, int underline, bool clocked, bool polled)
+     return code;
+ }
+ 
++#ifdef NCURSES_VERSION
++/*
++ * Cancel xterm's alternate-screen mode (from dialog -TD)
++ */
++#define isprivate(s) ((s) != 0 && strstr(s, "\033[?") != 0)
++static void
++cancel_altscreen(void)
++{
++    if (isatty(fileno(stdout))
++	&& key_mouse != 0	/* xterm and kindred */
++	&& isprivate(enter_ca_mode)
++	&& isprivate(exit_ca_mode)) {
++	/*
++	 * initscr() or newterm() already wrote enter_ca_mode as a side effect
++	 * of initializing the screen.  It would be nice to not even do that,
++	 * but we do not really have access to the correct copy of the
++	 * terminfo description until those functions have been invoked.
++	 */
++	(void) refresh();
++	(void) putp(exit_ca_mode);
++	(void) fflush(stdout);
++	/*
++	 * Prevent ncurses from switching "back" to the normal screen when
++	 * exiting from this program.  That would move the cursor to the
++	 * original location saved in xterm.  Normally curses sets the cursor
++	 * position to the first line after the display, but the alternate
++	 * screen switching is done after that point.
++	 *
++	 * Cancelling the strings altogether also works around the buggy
++	 * implementation of alternate-screen in rxvt, etc., which clear more
++	 * of the display than they should.
++	 */
++	enter_ca_mode = 0;
++	exit_ca_mode = 0;
++    }
++}
++#endif
++
+ static void
+ usage(void)
+ {
+@@ -266,6 +304,9 @@ usage(void)
+ 	"Usage: filter [options]"
+ 	,""
+ 	,"Options:"
++#ifdef NCURSES_VERSION
++	,"  -a   suppress xterm alternate-screen by amending smcup/rmcup"
++#endif
+ 	,"  -c   show current time on prompt line with \"Command\""
+ 	,"  -i   use initscr() rather than newterm()"
+ 	,"  -p   poll for individual characters rather than using getnstr"
+@@ -282,14 +323,22 @@ main(int argc, char *argv[])
+     int ch;
+     char buffer[80];
+     int underline;
++#ifdef NCURSES_VERSION
++    bool a_option = FALSE;
++#endif
+     bool c_option = FALSE;
+     bool i_option = FALSE;
+     bool p_option = FALSE;
+ 
+     setlocale(LC_ALL, "");
+ 
+-    while ((ch = getopt(argc, argv, "cip")) != -1) {
++    while ((ch = getopt(argc, argv, "acip")) != -1) {
+ 	switch (ch) {
++#ifdef NCURSES_VERSION
++	case 'a':
++	    a_option = TRUE;
++	    break;
++#endif
+ 	case 'c':
+ 	    c_option = TRUE;
+ 	    break;
+@@ -312,6 +361,11 @@ main(int argc, char *argv[])
+     } else {
+ 	(void) newterm((char *) 0, stdout, stdin);
+     }
++#ifdef NCURSES_VERSION
++    if (a_option) {
++	cancel_altscreen();
++    }
++#endif
+     cbreak();
+     keypad(stdscr, TRUE);
+ 
+@@ -342,7 +396,7 @@ main(int argc, char *argv[])
+ 	erase();
+ 	refresh();
+     }
+-    printw("done");
++    clear();
+     refresh();
+     endwin();
+     ExitProgram(EXIT_SUCCESS);
+-- 
+2.9.1
+

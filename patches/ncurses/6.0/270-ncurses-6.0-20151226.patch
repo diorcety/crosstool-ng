@@ -1,0 +1,368 @@
+From 4b1d778499db088254fdf97fa7dc271c82c36622 Mon Sep 17 00:00:00 2001
+From: "Thomas E. Dickey" <dickey@invisible-island.net>
+Date: Sun, 27 Dec 2015 01:49:34 +0000
+Subject: [PATCH 18/50] ncurses 6.0 - patch 20151226
+
++ add check in tic for use of bold, etc., video attributes in the
+  color capabilities, accounting whether the feature is listed in ncv.
++ add check in tic for conflict between ritm, rmso, rmul versus sgr0.
+---
+ NEWS                             |   7 +-
+ VERSION                          |   2 +-
+ dist.mk                          |   4 +-
+ package/debian-mingw/changelog   |   4 +-
+ package/debian-mingw64/changelog |   4 +-
+ package/debian/changelog         |   4 +-
+ package/mingw-ncurses.nsi        |   4 +-
+ package/mingw-ncurses.spec       |   2 +-
+ package/ncurses.spec             |   2 +-
+ progs/tic.c                      | 140 +++++++++++++++++++++++++++++++++------
+ 10 files changed, 139 insertions(+), 34 deletions(-)
+
+diff --git a/NEWS b/NEWS
+index d57faff..c775548 100644
+--- a/NEWS
++++ b/NEWS
+@@ -25,7 +25,7 @@
+ -- sale, use or other dealings in this Software without prior written        --
+ -- authorization.                                                            --
+ -------------------------------------------------------------------------------
+--- $Id: NEWS,v 1.2547 2015/12/20 02:03:35 tom Exp $
++-- $Id: NEWS,v 1.2550 2015/12/27 01:01:41 tom Exp $
+ -------------------------------------------------------------------------------
+ 
+ This is a log of changes that ncurses has gone through since Zeyd started
+@@ -45,6 +45,11 @@ See the AUTHORS file for the corresponding full names.
+ Changes through 1.9.9e did not credit all contributions;
+ it is not possible to add this information.
+ 
++20151226
++	+ add check in tic for use of bold, etc., video attributes in the
++	  color capabilities, accounting whether the feature is listed in ncv.
++	+ add check in tic for conflict between ritm, rmso, rmul versus sgr0.
++
+ 20151219
+ 	+ add a paragraph to curs_getch.3x discussing key naming (discussion
+ 	  with James Crippen).
+diff --git a/VERSION b/VERSION
+index aa1f663..a73c4e0 100644
+--- a/VERSION
++++ b/VERSION
+@@ -1 +1 @@
+-5:0:9	6.0	20151219
++5:0:9	6.0	20151226
+diff --git a/dist.mk b/dist.mk
+index e8db24b..246a077 100644
+--- a/dist.mk
++++ b/dist.mk
+@@ -25,7 +25,7 @@
+ # use or other dealings in this Software without prior written               #
+ # authorization.                                                             #
+ ##############################################################################
+-# $Id: dist.mk,v 1.1084 2015/12/13 14:53:53 tom Exp $
++# $Id: dist.mk,v 1.1085 2015/12/26 15:21:12 tom Exp $
+ # Makefile for creating ncurses distributions.
+ #
+ # This only needs to be used directly as a makefile by developers, but
+@@ -37,7 +37,7 @@ SHELL = /bin/sh
+ # These define the major/minor/patch versions of ncurses.
+ NCURSES_MAJOR = 6
+ NCURSES_MINOR = 0
+-NCURSES_PATCH = 20151219
++NCURSES_PATCH = 20151226
+ 
+ # We don't append the patch to the version, since this only applies to releases
+ VERSION = $(NCURSES_MAJOR).$(NCURSES_MINOR)
+diff --git a/package/debian-mingw/changelog b/package/debian-mingw/changelog
+index 9b2d3f0..e5e5325 100644
+--- a/package/debian-mingw/changelog
++++ b/package/debian-mingw/changelog
+@@ -1,8 +1,8 @@
+-ncurses6 (6.0+20151219) unstable; urgency=low
++ncurses6 (6.0+20151226) unstable; urgency=low
+ 
+   * latest weekly patch
+ 
+- -- Thomas E. Dickey <dickey@invisible-island.net>  Sun, 13 Dec 2015 09:53:53 -0500
++ -- Thomas E. Dickey <dickey@invisible-island.net>  Sat, 26 Dec 2015 10:21:12 -0500
+ 
+ ncurses6 (5.9-20131005) unstable; urgency=low
+ 
+diff --git a/package/debian-mingw64/changelog b/package/debian-mingw64/changelog
+index 9b2d3f0..e5e5325 100644
+--- a/package/debian-mingw64/changelog
++++ b/package/debian-mingw64/changelog
+@@ -1,8 +1,8 @@
+-ncurses6 (6.0+20151219) unstable; urgency=low
++ncurses6 (6.0+20151226) unstable; urgency=low
+ 
+   * latest weekly patch
+ 
+- -- Thomas E. Dickey <dickey@invisible-island.net>  Sun, 13 Dec 2015 09:53:53 -0500
++ -- Thomas E. Dickey <dickey@invisible-island.net>  Sat, 26 Dec 2015 10:21:12 -0500
+ 
+ ncurses6 (5.9-20131005) unstable; urgency=low
+ 
+diff --git a/package/debian/changelog b/package/debian/changelog
+index cec2185..10c95e5 100644
+--- a/package/debian/changelog
++++ b/package/debian/changelog
+@@ -1,8 +1,8 @@
+-ncurses6 (6.0+20151219) unstable; urgency=low
++ncurses6 (6.0+20151226) unstable; urgency=low
+ 
+   * latest weekly patch
+ 
+- -- Thomas E. Dickey <dickey@invisible-island.net>  Sun, 13 Dec 2015 09:53:53 -0500
++ -- Thomas E. Dickey <dickey@invisible-island.net>  Sat, 26 Dec 2015 10:21:12 -0500
+ 
+ ncurses6 (5.9-20120608) unstable; urgency=low
+ 
+diff --git a/package/mingw-ncurses.nsi b/package/mingw-ncurses.nsi
+index d242020..9155484 100644
+--- a/package/mingw-ncurses.nsi
++++ b/package/mingw-ncurses.nsi
+@@ -1,4 +1,4 @@
+-; $Id: mingw-ncurses.nsi,v 1.137 2015/12/13 14:53:53 tom Exp $
++; $Id: mingw-ncurses.nsi,v 1.138 2015/12/26 15:21:12 tom Exp $
+ 
+ ; TODO add examples
+ ; TODO bump ABI to 6
+@@ -10,7 +10,7 @@
+ !define VERSION_MAJOR "6"
+ !define VERSION_MINOR "0"
+ !define VERSION_YYYY  "2015"
+-!define VERSION_MMDD  "1219"
++!define VERSION_MMDD  "1226"
+ !define VERSION_PATCH ${VERSION_YYYY}${VERSION_MMDD}
+ 
+ !define MY_ABI   "5"
+diff --git a/package/mingw-ncurses.spec b/package/mingw-ncurses.spec
+index 287c4f0..e840308 100644
+--- a/package/mingw-ncurses.spec
++++ b/package/mingw-ncurses.spec
+@@ -3,7 +3,7 @@
+ Summary: shared libraries for terminal handling
+ Name: mingw32-ncurses6
+ Version: 6.0
+-Release: 20151219
++Release: 20151226
+ License: X11
+ Group: Development/Libraries
+ Source: ncurses-%{version}-%{release}.tgz
+diff --git a/package/ncurses.spec b/package/ncurses.spec
+index b496031..9a58c64 100644
+--- a/package/ncurses.spec
++++ b/package/ncurses.spec
+@@ -1,7 +1,7 @@
+ Summary: shared libraries for terminal handling
+ Name: ncurses6
+ Version: 6.0
+-Release: 20151219
++Release: 20151226
+ License: X11
+ Group: Development/Libraries
+ Source: ncurses-%{version}-%{release}.tgz
+diff --git a/progs/tic.c b/progs/tic.c
+index cd1efb2..4b3a4c8 100644
+--- a/progs/tic.c
++++ b/progs/tic.c
+@@ -48,7 +48,7 @@
+ #include <parametrized.h>
+ #include <transform.h>
+ 
+-MODULE_ID("$Id: tic.c,v 1.216 2015/09/05 19:22:49 tom Exp $")
++MODULE_ID("$Id: tic.c,v 1.220 2015/12/27 01:46:01 tom Exp $")
+ 
+ #define STDIN_NAME "<stdin>"
+ 
+@@ -2028,6 +2028,23 @@ ignore_delays(char *s)
+     return s;
+ }
+ 
++#define DATA(name) { #name }
++static const char sgr_names[][11] =
++{
++    DATA(none),
++    DATA(standout),
++    DATA(underline),
++    DATA(reverse),
++    DATA(blink),
++    DATA(dim),
++    DATA(bold),
++    DATA(invis),
++    DATA(protect),
++    DATA(altcharset),
++    ""
++};
++#undef DATA
++
+ /*
+  * An sgr string may contain several settings other than the one we're
+  * interested in, essentially sgr0 + rmacs + whatever.  As long as the
+@@ -2037,21 +2054,6 @@ ignore_delays(char *s)
+ static bool
+ similar_sgr(int num, char *a, char *b)
+ {
+-#define DATA(name) { #name }
+-    static const char names[][11] =
+-    {
+-	DATA(none),
+-	DATA(standout),
+-	DATA(underline),
+-	DATA(reverse),
+-	DATA(blink),
+-	DATA(dim),
+-	DATA(bold),
+-	DATA(invis),
+-	DATA(protect),
+-	DATA(altcharset),
+-    };
+-#undef DATA
+     char *base_a = a;
+     char *base_b = b;
+     int delaying = 0;
+@@ -2059,12 +2061,14 @@ similar_sgr(int num, char *a, char *b)
+     while (*b != 0) {
+ 	while (*a != *b) {
+ 	    if (*a == 0) {
+-		if (b[0] == '$'
+-		    && b[1] == '<') {
++		if (num < 0) {
++		    ;
++		} else if (b[0] == '$'
++			   && b[1] == '<') {
+ 		    _nc_warning("Did not find delay %s", _nc_visbuf(b));
+ 		} else {
+ 		    _nc_warning("checking sgr(%s) %s\n\tcompare to %s\n\tunmatched %s",
+-				names[num], _nc_visbuf2(1, base_a),
++				sgr_names[num], _nc_visbuf2(1, base_a),
+ 				_nc_visbuf2(2, base_b),
+ 				_nc_visbuf2(3, b));
+ 		}
+@@ -2264,6 +2268,92 @@ check_conflict(TERMTYPE *tp)
+     }
+ }
+ 
++/*
++ * Exiting a video mode should not duplicate sgr0
++ */
++static void
++check_exit_attribute(const char *name, char *test, char *trimmed, char *untrimmed)
++{
++    if (VALID_STRING(test)) {
++	if (similar_sgr(-1, trimmed, test) ||
++	    similar_sgr(-1, untrimmed, test)) {
++	    _nc_warning("%s matches exit_attribute_mode", name);
++	}
++    }
++}
++
++/*
++ * Returns true if the string looks like a standard SGR string.
++ */
++static bool
++is_sgr_string(char *value)
++{
++    bool result = FALSE;
++
++    if (VALID_STRING(value)) {
++	if (value[0] == '\033' && value[1] == '[') {
++	    result = TRUE;
++	    value += 2;
++	} else if (UChar(value[0]) == 0x9a) {
++	    result = TRUE;
++	    value += 1;
++	}
++	if (result) {
++	    int ch;
++	    while ((ch = UChar(*value++)) != '\0') {
++		if (isdigit(ch) || ch == ';') {
++		    ;
++		} else if (ch == 'm' && *value == '\0') {
++		    ;
++		} else {
++		    result = FALSE;
++		    break;
++		}
++	    }
++	}
++    }
++    return result;
++}
++
++/*
++ * Check if the given capability contains a given SGR attribute.
++ */
++static void
++check_sgr_param(TERMTYPE *tp, int code, const char *name, char *value)
++{
++    if (VALID_STRING(value)) {
++	int ncv = ((code != 0) ? (1 << (code - 1)) : 0);
++	char *test = tgoto(value, 0, 0);
++	if (is_sgr_string(test)) {
++	    int param = 0;
++	    int count = 0;
++	    while (*test != 0) {
++		if (isdigit(UChar(*test))) {
++		    param = 10 * param + (*test - '0');
++		    ++count;
++		} else {
++		    if (count) {
++			if (param == code)
++			    break;
++		    }
++		    count = 0;
++		    param = 0;
++		}
++		++test;
++	    }
++	    if (count != 0 && param == code) {
++		if (code == 0 ||
++		    no_color_video < 0 ||
++		    !(no_color_video & ncv)) {
++		    _nc_warning("\"%s\" SGR-attribute used in %s",
++				sgr_names[code],
++				name);
++		}
++	    }
++	}
++    }
++}
++
+ /* other sanity-checks (things that we don't want in the normal
+  * logic that reads a terminfo entry)
+  */
+@@ -2346,7 +2436,7 @@ check_termtype(TERMTYPE *tp, bool literal)
+ 	if (_nc_syntax == SYN_TERMINFO)
+ 	    _nc_warning("missing sgr string");
+     }
+-
++#define CHECK_SGR0(name) check_exit_attribute(#name, name, check_sgr0, exit_attribute_mode)
+     if (PRESENT(exit_attribute_mode)) {
+ 	char *check_sgr0 = _nc_trim_sgr0(tp);
+ 
+@@ -2365,10 +2455,20 @@ check_termtype(TERMTYPE *tp, bool literal)
+ 		       _nc_visbuf(exit_attribute_mode)));
+ 	    }
+ 	}
++	CHECK_SGR0(exit_italics_mode);
++	CHECK_SGR0(exit_standout_mode);
++	CHECK_SGR0(exit_underline_mode);
+ 	if (check_sgr0 != exit_attribute_mode) {
+ 	    free(check_sgr0);
+ 	}
+     }
++#define CHECK_SGR_PARAM(code, name) check_sgr_param(tp, (int)code, #name, name)
++    for (j = 0; *sgr_names[j] != '\0'; ++j) {
++	CHECK_SGR_PARAM(j, set_a_foreground);
++	CHECK_SGR_PARAM(j, set_a_background);
++	CHECK_SGR_PARAM(j, set_foreground);
++	CHECK_SGR_PARAM(j, set_background);
++    }
+ #ifdef TRACE
+     show_where(2);
+     if (!auto_right_margin) {
+-- 
+2.9.1
+

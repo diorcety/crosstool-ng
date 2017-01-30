@@ -1,0 +1,944 @@
+From 4298026c68384077462178f8018c8c1add0c3cdf Mon Sep 17 00:00:00 2001
+From: "Thomas E. Dickey" <dickey@invisible-island.net>
+Date: Sun, 14 Aug 2016 02:00:38 +0000
+Subject: [PATCH 47/50] ncurses 6.0 - patch 20160813
+
++ add a dependency upon generated-sources in Ada95/src/Makefile.in to
+  handle a case of "configure && make install".
++ trim trailing blanks from include/Caps*, to work around a problem
+  in sed (Debian #818067).
+---
+ Ada95/src/Makefile.in            | 12 +++++++++---
+ NEWS                             |  8 +++++++-
+ VERSION                          |  2 +-
+ dist.mk                          |  4 ++--
+ include/Caps                     | 28 ++++++++++++++--------------
+ include/Caps.aix4                | 28 ++++++++++++++--------------
+ include/Caps.hpux11              | 28 ++++++++++++++--------------
+ include/Caps.keys                | 28 ++++++++++++++--------------
+ include/Caps.osf1r5              | 28 ++++++++++++++--------------
+ include/Caps.uwin                | 28 ++++++++++++++--------------
+ package/debian-mingw/changelog   |  4 ++--
+ package/debian-mingw64/changelog |  4 ++--
+ package/debian/changelog         |  4 ++--
+ package/mingw-ncurses.nsi        |  4 ++--
+ package/mingw-ncurses.spec       |  2 +-
+ package/ncurses.spec             |  2 +-
+ 16 files changed, 113 insertions(+), 101 deletions(-)
+
+diff --git a/Ada95/src/Makefile.in b/Ada95/src/Makefile.in
+index b0e80de..10bd2ce 100644
+--- a/Ada95/src/Makefile.in
++++ b/Ada95/src/Makefile.in
+@@ -1,5 +1,5 @@
+ ##############################################################################
+-# Copyright (c) 1998-2014,2015 Free Software Foundation, Inc.                #
++# Copyright (c) 1998-2015,2016 Free Software Foundation, Inc.                #
+ #                                                                            #
+ # Permission is hereby granted, free of charge, to any person obtaining a    #
+ # copy of this software and associated documentation files (the "Software"), #
+@@ -28,7 +28,7 @@
+ #
+ #  Author:  Juergen Pfeifer, 1996
+ #
+-#  $Id: Makefile.in,v 1.71 2015/08/05 23:15:41 tom Exp $
++#  $Id: Makefile.in,v 1.72 2016/08/13 18:04:27 tom Exp $
+ #
+ .SUFFIXES:
+ 
+@@ -36,6 +36,9 @@ SHELL		= @SHELL@
+ VPATH		= @srcdir@
+ THIS		= Makefile
+ 
++ADA_MFLAGS 	= @cf_cv_makeflags@
++@SET_MAKE@
++
+ MODEL		= ../../@DFT_OBJ_SUBDIR@
+ 
+ DESTDIR		= @DESTDIR@
+@@ -179,7 +182,10 @@ $(LIBDIR) \
+ $(BUILD_DIR_LIB) :
+ 	mkdir -p $@
+ 
+-sources :
++$(GENERATED_SOURCES) :
++	cd ../gen; $(MAKE) $(ADA_MFLAGS)
++
++sources : $(GENERATED_SOURCES)
+ 	@echo made $@
+ 
+ libs \
+diff --git a/NEWS b/NEWS
+index c7588e8..0d97b82 100644
+--- a/NEWS
++++ b/NEWS
+@@ -25,7 +25,7 @@
+ -- sale, use or other dealings in this Software without prior written        --
+ -- authorization.                                                            --
+ -------------------------------------------------------------------------------
+--- $Id: NEWS,v 1.2639 2016/08/06 23:45:47 tom Exp $
++-- $Id: NEWS,v 1.2642 2016/08/13 18:03:28 tom Exp $
+ -------------------------------------------------------------------------------
+ 
+ This is a log of changes that ncurses has gone through since Zeyd started
+@@ -45,6 +45,12 @@ See the AUTHORS file for the corresponding full names.
+ Changes through 1.9.9e did not credit all contributions;
+ it is not possible to add this information.
+ 
++20160813
++	+ add a dependency upon generated-sources in Ada95/src/Makefile.in to
++	  handle a case of "configure && make install".
++	+ trim trailing blanks from include/Caps*, to work around a problem
++	  in sed (Debian #818067).
++
+ 20160806
+ 	+ improve CF_GNU_SOURCE configure macro to optionally define
+ 	  _DEFAULT_SOURCE work around a nuisance in recent glibc releases.
+diff --git a/VERSION b/VERSION
+index d3fa3e8..67f75ed 100644
+--- a/VERSION
++++ b/VERSION
+@@ -1 +1 @@
+-5:0:9	6.0	20160806
++5:0:9	6.0	20160813
+diff --git a/dist.mk b/dist.mk
+index ff88732..3e0305c 100644
+--- a/dist.mk
++++ b/dist.mk
+@@ -25,7 +25,7 @@
+ # use or other dealings in this Software without prior written               #
+ # authorization.                                                             #
+ ##############################################################################
+-# $Id: dist.mk,v 1.1118 2016/08/06 12:01:54 tom Exp $
++# $Id: dist.mk,v 1.1119 2016/08/13 15:43:19 tom Exp $
+ # Makefile for creating ncurses distributions.
+ #
+ # This only needs to be used directly as a makefile by developers, but
+@@ -37,7 +37,7 @@ SHELL = /bin/sh
+ # These define the major/minor/patch versions of ncurses.
+ NCURSES_MAJOR = 6
+ NCURSES_MINOR = 0
+-NCURSES_PATCH = 20160806
++NCURSES_PATCH = 20160813
+ 
+ # We don't append the patch to the version, since this only applies to releases
+ VERSION = $(NCURSES_MAJOR).$(NCURSES_MINOR)
+diff --git a/include/Caps b/include/Caps
+index 120ae35..dfc6a39 100644
+--- a/include/Caps
++++ b/include/Caps
+@@ -1,5 +1,5 @@
+ ##############################################################################
+-# Copyright (c) 1998-2011,2015 Free Software Foundation, Inc.                #
++# Copyright (c) 1998-2015,2016 Free Software Foundation, Inc.                #
+ #                                                                            #
+ # Permission is hereby granted, free of charge, to any person obtaining a    #
+ # copy of this software and associated documentation files (the "Software"), #
+@@ -29,12 +29,12 @@
+ # Author: Zeyd M. Ben-Halim <zmbenhal@netcom.com> 1992,1995
+ #    and: Eric S. Raymond <esr@snark.thyrsus.com>
+ #
+-# $Id: Caps,v 1.39 2015/04/26 15:25:55 tom Exp $
++# $Id: Caps,v 1.40 2016/08/13 17:45:50 tom Exp $
+ #
+ # This is the master termcap/terminfo capability table.
+ #
+ # This table is used to generate initializers for tables that drive tic,
+-# infocmp, and the library compilation code used to support the termcap 
++# infocmp, and the library compilation code used to support the termcap
+ # compatibility hack.  It is also used to generate the tabular portion of the
+ # terminfo(5) man page; lines beginning with `#%' are passed through to become
+ # the terminfo table.
+@@ -119,14 +119,14 @@
+ # You'll need to write custom code, probably in postprocess_termcap() or
+ # postprocess_terminfo(), to handle the translation.
+ #
+-# CONTROLLING ENTRY LENGTH 
++# CONTROLLING ENTRY LENGTH
+ #
+ # Notes on specific elisions made to fit translations within 1023 bytes:
+ #
+ # Machines with IBM PC-like keyboards want to be able to define the following
+ # keys: key_npage, key_ppage, key_home, key_ll (which is used for in termcap-
+ # only environments for End or Home-Down), key_dc, and key_ic.  This is also
+-# the set of keys the `joe' editor will be upset if it can't see.  So don't 
++# the set of keys the `joe' editor will be upset if it can't see.  So don't
+ # trim those out of the set to be translated to termcap, or various users of
+ # the termcap file will become irate.
+ #
+@@ -147,7 +147,7 @@
+ #
+ # It would be nice to keep f11 and f12 for Emacs use, but a couple of termcap
+ # translations go back over critical if we do this.  As 4.4BSD curses fades
+-# into history and GNU termcap's application base shrinks towards being GNU 
++# into history and GNU termcap's application base shrinks towards being GNU
+ # Emacs only, we'll probably elide out some BSD-only capabilities in order
+ # to buy space for non-essentials Emacs is still using.  Capabilities high
+ # on that hit list: rc, sc, uc.
+@@ -166,7 +166,7 @@
+ #%The \fBcapname\fR is the short name used in the text of the database,
+ #%and is used by a person updating the database.
+ #%Whenever possible, capnames are chosen to be the same as or similar to
+-#%the ANSI X3.64-1979 standard (now superseded by ECMA-48, which uses 
++#%the ANSI X3.64-1979 standard (now superseded by ECMA-48, which uses
+ #%identical or very similar names).  Semantics are also intended to match
+ #%those of the specification.
+ #%
+@@ -826,7 +826,7 @@ gnu_has_meta_key		OTMT	bool	MT	-		-	----E	has meta key
+ # GNU termcap *does* include the following extended capability,  Only the
+ # now-obsolete Ann Arbor terminals used it.
+ #
+-# gnu_change_scroll_region	OTcS	str	cS	-		-	---GE	alternate set scrolling region 
++# gnu_change_scroll_region	OTcS	str	cS	-		-	---GE	alternate set scrolling region
+ #
+ # The following comments describe capnames so ancient that I believe no
+ # software uses them any longer.  Some of these have to go because they
+@@ -887,7 +887,7 @@ return_does_clr_eol		OTxr	bool	xr	-		-	YB---	return clears the line
+ # University of Waterloo termcap extensions (as described in mytinfo).
+ # The `xl' termcap file clashes with a terminfo name; this ambiguity cannot
+ # be resolved by a type check.  The descriptions are guesses from what was
+-# in the mytinfo tables. 
++# in the mytinfo tables.
+ #
+ # key_interrupt_char		OTki	str	ki	-		-	-----	string set by interrupt key (?)
+ # key_kill_char			OTkk	str	kk	-		-	-----	string set by kill key (?)
+@@ -936,7 +936,7 @@ return_does_clr_eol		OTxr	bool	xr	-		-	YB---	return clears the line
+ # Gv	186 \272 M-:	double vertical line
+ #
+ # The compiler will translate the single-line caps and discard the others
+-# (via IGNORE aliases further down).  We don't want to do normal pad 
++# (via IGNORE aliases further down).  We don't want to do normal pad
+ # translation on these, they're often single-character printable ASCII
+ # strings that happen to be numerics.  There's awk code in parametrized.sh
+ # that detects the acs_ prefix and uses it to suppress pad translation.
+@@ -1037,7 +1037,7 @@ memory_unlock			memu	str	mu	-		-	----K	unlock memory
+ # the mapping:
+ #
+ #	box1[0]  = ACS_ULCORNER
+-#	box1[1]  = ACS_HLINE	
++#	box1[1]  = ACS_HLINE
+ #	box1[2]  = ACS_URCORNER
+ #	box1[3]  = ACS_VLINE
+ #	box1[4]  = ACS_LRCORNER
+@@ -1166,19 +1166,19 @@ capalias	BO	mr	AT&T	enter_reverse_mode
+ capalias	CI	vi	AT&T	cursor_invisible
+ capalias	CV	ve	AT&T	cursor_normal
+ capalias	DS	mh	AT&T	enter_dim_mode
+-#capalias	EE	me	AT&T	exit_attribute_mode	
++#capalias	EE	me	AT&T	exit_attribute_mode
+ capalias	FE	LF	AT&T	label_on
+ capalias	FL	LO	AT&T	label_off
+ capalias	XS	mk	AT&T	enter_secure_mode
+ #
+-# We comment out EE because the conflicting XENIX EE is more common in 
++# We comment out EE because the conflicting XENIX EE is more common in
+ # old entries.
+ #
+ # XENIX extensions:
+ #
+ # These are the ones we know how to translate directly:
+ #
+-capalias	EE	mh	XENIX	exit_attribute_mode	
++capalias	EE	mh	XENIX	exit_attribute_mode
+ capalias	GE	ae	XENIX	exit_alt_charset_mode
+ capalias	GS	as	XENIX	enter_alt_charset_mode
+ capalias	CF	vi	XENIX	cursor_invis
+diff --git a/include/Caps.aix4 b/include/Caps.aix4
+index 8fb53c2..7f77b21 100644
+--- a/include/Caps.aix4
++++ b/include/Caps.aix4
+@@ -1,5 +1,5 @@
+ ##############################################################################
+-# Copyright (c) 2001-2011,2015 Free Software Foundation, Inc.                #
++# Copyright (c) 2001-2015,2016 Free Software Foundation, Inc.                #
+ #                                                                            #
+ # Permission is hereby granted, free of charge, to any person obtaining a    #
+ # copy of this software and associated documentation files (the "Software"), #
+@@ -28,13 +28,13 @@
+ #
+ # Author: Thomas Dickey
+ #
+-# $Id: Caps.aix4,v 1.10 2015/04/26 15:25:55 tom Exp $
++# $Id: Caps.aix4,v 1.11 2016/08/13 17:45:50 tom Exp $
+ #
+ # This is an adaptation of ncurses' termcap/terminfo capability table, which
+ # is designed to align with AIX 4.x's terminfo.
+ #
+ # This table is used to generate initializers for tables that drive tic,
+-# infocmp, and the library compilation code used to support the termcap 
++# infocmp, and the library compilation code used to support the termcap
+ # compatibility hack.  It is also used to generate the tabular portion of the
+ # terminfo(5) man page; lines beginning with `#%' are passed through to become
+ # the terminfo table.
+@@ -119,14 +119,14 @@
+ # You'll need to write custom code, probably in postprocess_termcap() or
+ # postprocess_terminfo(), to handle the translation.
+ #
+-# CONTROLLING ENTRY LENGTH 
++# CONTROLLING ENTRY LENGTH
+ #
+ # Notes on specific elisions made to fit translations within 1023 bytes:
+ #
+ # Machines with IBM PC-like keyboards want to be able to define the following
+ # keys: key_npage, key_ppage, key_home, key_ll (which is used for in termcap-
+ # only environments for End or Home-Down), key_dc, and key_ic.  This is also
+-# the set of keys the `joe' editor will be upset if it can't see.  So don't 
++# the set of keys the `joe' editor will be upset if it can't see.  So don't
+ # trim those out of the set to be translated to termcap, or various users of
+ # the termcap file will become irate.
+ #
+@@ -147,7 +147,7 @@
+ #
+ # It would be nice to keep f11 and f12 for Emacs use, but a couple of termcap
+ # translations go back over critical if we do this.  As 4.4BSD curses fades
+-# into history and GNU termcap's application base shrinks towards being GNU 
++# into history and GNU termcap's application base shrinks towards being GNU
+ # Emacs only, we'll probably elide out some BSD-only capabilities in order
+ # to buy space for non-essentials Emacs is still using.  Capabilities high
+ # on that hit list: rc, sc, uc.
+@@ -166,7 +166,7 @@
+ #%The \fBcapname\fR is the short name used in the text of the database,
+ #%and is used by a person updating the database.
+ #%Whenever possible, capnames are chosen to be the same as or similar to
+-#%the ANSI X3.64-1979 standard (now superseded by ECMA-48, which uses 
++#%the ANSI X3.64-1979 standard (now superseded by ECMA-48, which uses
+ #%identical or very similar names).  Semantics are also intended to match
+ #%those of the specification.
+ #%
+@@ -476,7 +476,7 @@ prtr_non			mc5p	str	pO	-		-	-B-G-*	turn on printer for #1 bytes
+ # the mapping:
+ #
+ #	box1[0]  = ACS_ULCORNER
+-#	box1[1]  = ACS_HLINE	
++#	box1[1]  = ACS_HLINE
+ #	box1[2]  = ACS_URCORNER
+ #	box1[3]  = ACS_VLINE
+ #	box1[4]  = ACS_LRCORNER
+@@ -928,7 +928,7 @@ gnu_has_meta_key		OTMT	bool	MT	-		-	----E	has meta key
+ # GNU termcap *does* include the following extended capability,  Only the
+ # now-obsolete Ann Arbor terminals used it.
+ #
+-# gnu_change_scroll_region	OTcS	str	cS	-		-	---GE	alternate set scrolling region 
++# gnu_change_scroll_region	OTcS	str	cS	-		-	---GE	alternate set scrolling region
+ #
+ # The following comments describe capnames so ancient that I believe no
+ # software uses them any longer.  Some of these have to go because they
+@@ -989,7 +989,7 @@ return_does_clr_eol		OTxr	bool	xr	-		-	YB---	return clears the line
+ # University of Waterloo termcap extensions (as described in mytinfo).
+ # The `xl' termcap file clashes with a terminfo name; this ambiguity cannot
+ # be resolved by a type check.  The descriptions are guesses from what was
+-# in the mytinfo tables. 
++# in the mytinfo tables.
+ #
+ # key_interrupt_char		OTki	str	ki	-		-	-----	string set by interrupt key (?)
+ # key_kill_char			OTkk	str	kk	-		-	-----	string set by kill key (?)
+@@ -1038,7 +1038,7 @@ return_does_clr_eol		OTxr	bool	xr	-		-	YB---	return clears the line
+ # Gv	186 \272 M-:	double vertical line
+ #
+ # The compiler will translate the single-line caps and discard the others
+-# (via IGNORE aliases further down).  We don't want to do normal pad 
++# (via IGNORE aliases further down).  We don't want to do normal pad
+ # translation on these, they're often single-character printable ASCII
+ # strings that happen to be numerics.  There's awk code in parametrized.sh
+ # that detects the acs_ prefix and uses it to suppress pad translation.
+@@ -1157,19 +1157,19 @@ capalias	BO	mr	AT&T	enter_reverse_mode
+ capalias	CI	vi	AT&T	cursor_invisible
+ capalias	CV	ve	AT&T	cursor_normal
+ capalias	DS	mh	AT&T	enter_dim_mode
+-#capalias	EE	me	AT&T	exit_attribute_mode	
++#capalias	EE	me	AT&T	exit_attribute_mode
+ capalias	FE	LF	AT&T	label_on
+ capalias	FL	LO	AT&T	label_off
+ capalias	XS	mk	AT&T	enter_secure_mode
+ #
+-# We comment out EE because the conflicting XENIX EE is more common in 
++# We comment out EE because the conflicting XENIX EE is more common in
+ # old entries.
+ #
+ # XENIX extensions:
+ #
+ # These are the ones we know how to translate directly:
+ #
+-capalias	EE	mh	XENIX	exit_attribute_mode	
++capalias	EE	mh	XENIX	exit_attribute_mode
+ capalias	GE	ae	XENIX	exit_alt_charset_mode
+ capalias	GS	as	XENIX	enter_alt_charset_mode
+ capalias	CF	vi	XENIX	cursor_invis
+diff --git a/include/Caps.hpux11 b/include/Caps.hpux11
+index 512aa82..411d8dc 100644
+--- a/include/Caps.hpux11
++++ b/include/Caps.hpux11
+@@ -1,5 +1,5 @@
+ ##############################################################################
+-# Copyright (c) 2002-2011,2015 Free Software Foundation, Inc.                #
++# Copyright (c) 2002-2015,2016 Free Software Foundation, Inc.                #
+ #                                                                            #
+ # Permission is hereby granted, free of charge, to any person obtaining a    #
+ # copy of this software and associated documentation files (the "Software"), #
+@@ -28,13 +28,13 @@
+ #
+ # Author: Thomas Dickey
+ #
+-# $Id: Caps.hpux11,v 1.7 2015/04/26 15:25:55 tom Exp $
++# $Id: Caps.hpux11,v 1.8 2016/08/13 17:45:50 tom Exp $
+ #
+ # This is an adaptation of ncurses' termcap/terminfo capability table, which
+ # is designed to align with HPUX 11.x's terminfo.
+ #
+ # This table is used to generate initializers for tables that drive tic,
+-# infocmp, and the library compilation code used to support the termcap 
++# infocmp, and the library compilation code used to support the termcap
+ # compatibility hack.  It is also used to generate the tabular portion of the
+ # terminfo(5) man page; lines beginning with `#%' are passed through to become
+ # the terminfo table.
+@@ -119,14 +119,14 @@
+ # You'll need to write custom code, probably in postprocess_termcap() or
+ # postprocess_terminfo(), to handle the translation.
+ #
+-# CONTROLLING ENTRY LENGTH 
++# CONTROLLING ENTRY LENGTH
+ #
+ # Notes on specific elisions made to fit translations within 1023 bytes:
+ #
+ # Machines with IBM PC-like keyboards want to be able to define the following
+ # keys: key_npage, key_ppage, key_home, key_ll (which is used for in termcap-
+ # only environments for End or Home-Down), key_dc, and key_ic.  This is also
+-# the set of keys the `joe' editor will be upset if it can't see.  So don't 
++# the set of keys the `joe' editor will be upset if it can't see.  So don't
+ # trim those out of the set to be translated to termcap, or various users of
+ # the termcap file will become irate.
+ #
+@@ -147,7 +147,7 @@
+ #
+ # It would be nice to keep f11 and f12 for Emacs use, but a couple of termcap
+ # translations go back over critical if we do this.  As 4.4BSD curses fades
+-# into history and GNU termcap's application base shrinks towards being GNU 
++# into history and GNU termcap's application base shrinks towards being GNU
+ # Emacs only, we'll probably elide out some BSD-only capabilities in order
+ # to buy space for non-essentials Emacs is still using.  Capabilities high
+ # on that hit list: rc, sc, uc.
+@@ -166,7 +166,7 @@
+ #%The \fBcapname\fR is the short name used in the text of the database,
+ #%and is used by a person updating the database.
+ #%Whenever possible, capnames are chosen to be the same as or similar to
+-#%the ANSI X3.64-1979 standard (now superseded by ECMA-48, which uses 
++#%the ANSI X3.64-1979 standard (now superseded by ECMA-48, which uses
+ #%identical or very similar names).  Semantics are also intended to match
+ #%those of the specification.
+ #%
+@@ -840,7 +840,7 @@ gnu_has_meta_key		OTMT	bool	MT	-		-	----E	has meta key
+ # GNU termcap *does* include the following extended capability,  Only the
+ # now-obsolete Ann Arbor terminals used it.
+ #
+-# gnu_change_scroll_region	OTcS	str	cS	-		-	---GE	alternate set scrolling region 
++# gnu_change_scroll_region	OTcS	str	cS	-		-	---GE	alternate set scrolling region
+ #
+ # The following comments describe capnames so ancient that I believe no
+ # software uses them any longer.  Some of these have to go because they
+@@ -901,7 +901,7 @@ return_does_clr_eol		OTxr	bool	xr	-		-	YB---	return clears the line
+ # University of Waterloo termcap extensions (as described in mytinfo).
+ # The `xl' termcap file clashes with a terminfo name; this ambiguity cannot
+ # be resolved by a type check.  The descriptions are guesses from what was
+-# in the mytinfo tables. 
++# in the mytinfo tables.
+ #
+ # key_interrupt_char		OTki	str	ki	-		-	-----	string set by interrupt key (?)
+ # key_kill_char			OTkk	str	kk	-		-	-----	string set by kill key (?)
+@@ -950,7 +950,7 @@ return_does_clr_eol		OTxr	bool	xr	-		-	YB---	return clears the line
+ # Gv	186 \272 M-:	double vertical line
+ #
+ # The compiler will translate the single-line caps and discard the others
+-# (via IGNORE aliases further down).  We don't want to do normal pad 
++# (via IGNORE aliases further down).  We don't want to do normal pad
+ # translation on these, they're often single-character printable ASCII
+ # strings that happen to be numerics.  There's awk code in parametrized.sh
+ # that detects the acs_ prefix and uses it to suppress pad translation.
+@@ -1051,7 +1051,7 @@ acs_plus			OTGC	str	GC	-		-	-----	single intersection
+ # the mapping:
+ #
+ #	box1[0]  = ACS_ULCORNER
+-#	box1[1]  = ACS_HLINE	
++#	box1[1]  = ACS_HLINE
+ #	box1[2]  = ACS_URCORNER
+ #	box1[3]  = ACS_VLINE
+ #	box1[4]  = ACS_LRCORNER
+@@ -1180,19 +1180,19 @@ capalias	BO	mr	AT&T	enter_reverse_mode
+ capalias	CI	vi	AT&T	cursor_invisible
+ capalias	CV	ve	AT&T	cursor_normal
+ capalias	DS	mh	AT&T	enter_dim_mode
+-#capalias	EE	me	AT&T	exit_attribute_mode	
++#capalias	EE	me	AT&T	exit_attribute_mode
+ capalias	FE	LF	AT&T	label_on
+ capalias	FL	LO	AT&T	label_off
+ capalias	XS	mk	AT&T	enter_secure_mode
+ #
+-# We comment out EE because the conflicting XENIX EE is more common in 
++# We comment out EE because the conflicting XENIX EE is more common in
+ # old entries.
+ #
+ # XENIX extensions:
+ #
+ # These are the ones we know how to translate directly:
+ #
+-capalias	EE	mh	XENIX	exit_attribute_mode	
++capalias	EE	mh	XENIX	exit_attribute_mode
+ capalias	GE	ae	XENIX	exit_alt_charset_mode
+ capalias	GS	as	XENIX	enter_alt_charset_mode
+ capalias	CF	vi	XENIX	cursor_invis
+diff --git a/include/Caps.keys b/include/Caps.keys
+index ebf392b..05a16f7 100644
+--- a/include/Caps.keys
++++ b/include/Caps.keys
+@@ -1,5 +1,5 @@
+ ##############################################################################
+-# Copyright (c) 2001-2013,2015 Free Software Foundation, Inc.                #
++# Copyright (c) 2001-2015,2016 Free Software Foundation, Inc.                #
+ #                                                                            #
+ # Permission is hereby granted, free of charge, to any person obtaining a    #
+ # copy of this software and associated documentation files (the "Software"), #
+@@ -29,14 +29,14 @@
+ # Author: Thomas Dickey
+ #    and: Ilya Zakharevich
+ #
+-# $Id: Caps.keys,v 1.8 2015/04/26 15:25:55 tom Exp $
++# $Id: Caps.keys,v 1.9 2016/08/13 17:45:50 tom Exp $
+ #
+ # This is an adaptation of ncurses' termcap/terminfo capability table, which
+ # is illustrates an experimental extension to describe alt-, shift- and
+ # control-modifiers applied to function and normal keys, as done on IBM pc's.
+ #
+ # This table is used to generate initializers for tables that drive tic,
+-# infocmp, and the library compilation code used to support the termcap 
++# infocmp, and the library compilation code used to support the termcap
+ # compatibility hack.  It is also used to generate the tabular portion of the
+ # terminfo(5) man page; lines beginning with `#%' are passed through to become
+ # the terminfo table.
+@@ -121,14 +121,14 @@
+ # You'll need to write custom code, probably in postprocess_termcap() or
+ # postprocess_terminfo(), to handle the translation.
+ #
+-# CONTROLLING ENTRY LENGTH 
++# CONTROLLING ENTRY LENGTH
+ #
+ # Notes on specific elisions made to fit translations within 1023 bytes:
+ #
+ # Machines with IBM PC-like keyboards want to be able to define the following
+ # keys: key_npage, key_ppage, key_home, key_ll (which is used for in termcap-
+ # only environments for End or Home-Down), key_dc, and key_ic.  This is also
+-# the set of keys the `joe' editor will be upset if it can't see.  So don't 
++# the set of keys the `joe' editor will be upset if it can't see.  So don't
+ # trim those out of the set to be translated to termcap, or various users of
+ # the termcap file will become irate.
+ #
+@@ -149,7 +149,7 @@
+ #
+ # It would be nice to keep f11 and f12 for Emacs use, but a couple of termcap
+ # translations go back over critical if we do this.  As 4.4BSD curses fades
+-# into history and GNU termcap's application base shrinks towards being GNU 
++# into history and GNU termcap's application base shrinks towards being GNU
+ # Emacs only, we'll probably elide out some BSD-only capabilities in order
+ # to buy space for non-essentials Emacs is still using.  Capabilities high
+ # on that hit list: rc, sc, uc.
+@@ -168,7 +168,7 @@
+ #%The \fBcapname\fR is the short name used in the text of the database,
+ #%and is used by a person updating the database.
+ #%Whenever possible, capnames are chosen to be the same as or similar to
+-#%the ANSI X3.64-1979 standard (now superseded by ECMA-48, which uses 
++#%the ANSI X3.64-1979 standard (now superseded by ECMA-48, which uses
+ #%identical or very similar names).  Semantics are also intended to match
+ #%those of the specification.
+ #%
+@@ -916,7 +916,7 @@ gnu_has_meta_key		OTMT	bool	MT	-		-	----E	has meta key
+ # GNU termcap *does* include the following extended capability,  Only the
+ # now-obsolete Ann Arbor terminals used it.
+ #
+-# gnu_change_scroll_region	OTcS	str	cS	-		-	---GE	alternate set scrolling region 
++# gnu_change_scroll_region	OTcS	str	cS	-		-	---GE	alternate set scrolling region
+ #
+ # The following comments describe capnames so ancient that I believe no
+ # software uses them any longer.  Some of these have to go because they
+@@ -977,7 +977,7 @@ return_does_clr_eol		OTxr	bool	xr	-		-	YB---	return clears the line
+ # University of Waterloo termcap extensions (as described in mytinfo).
+ # The `xl' termcap file clashes with a terminfo name; this ambiguity cannot
+ # be resolved by a type check.  The descriptions are guesses from what was
+-# in the mytinfo tables. 
++# in the mytinfo tables.
+ #
+ # key_interrupt_char		OTki	str	ki	-		-	-----	string set by interrupt key (?)
+ # key_kill_char			OTkk	str	kk	-		-	-----	string set by kill key (?)
+@@ -1026,7 +1026,7 @@ return_does_clr_eol		OTxr	bool	xr	-		-	YB---	return clears the line
+ # Gv	186 \272 M-:	double vertical line
+ #
+ # The compiler will translate the single-line caps and discard the others
+-# (via IGNORE aliases further down).  We don't want to do normal pad 
++# (via IGNORE aliases further down).  We don't want to do normal pad
+ # translation on these, they're often single-character printable ASCII
+ # strings that happen to be numerics.  There's awk code in parametrized.sh
+ # that detects the acs_ prefix and uses it to suppress pad translation.
+@@ -1127,7 +1127,7 @@ memory_unlock			memu	str	mu	-		-	----K	unlock memory
+ # the mapping:
+ #
+ #	box1[0]  = ACS_ULCORNER
+-#	box1[1]  = ACS_HLINE	
++#	box1[1]  = ACS_HLINE
+ #	box1[2]  = ACS_URCORNER
+ #	box1[3]  = ACS_VLINE
+ #	box1[4]  = ACS_LRCORNER
+@@ -1256,19 +1256,19 @@ capalias	BO	mr	AT&T	enter_reverse_mode
+ capalias	CI	vi	AT&T	cursor_invisible
+ capalias	CV	ve	AT&T	cursor_normal
+ capalias	DS	mh	AT&T	enter_dim_mode
+-#capalias	EE	me	AT&T	exit_attribute_mode	
++#capalias	EE	me	AT&T	exit_attribute_mode
+ capalias	FE	LF	AT&T	label_on
+ capalias	FL	LO	AT&T	label_off
+ capalias	XS	mk	AT&T	enter_secure_mode
+ #
+-# We comment out EE because the conflicting XENIX EE is more common in 
++# We comment out EE because the conflicting XENIX EE is more common in
+ # old entries.
+ #
+ # XENIX extensions:
+ #
+ # These are the ones we know how to translate directly:
+ #
+-capalias	EE	mh	XENIX	exit_attribute_mode	
++capalias	EE	mh	XENIX	exit_attribute_mode
+ capalias	GE	ae	XENIX	exit_alt_charset_mode
+ capalias	GS	as	XENIX	enter_alt_charset_mode
+ capalias	CF	vi	XENIX	cursor_invis
+diff --git a/include/Caps.osf1r5 b/include/Caps.osf1r5
+index e1bfe0b..a672965 100644
+--- a/include/Caps.osf1r5
++++ b/include/Caps.osf1r5
+@@ -1,5 +1,5 @@
+ ##############################################################################
+-# Copyright (c) 2002-2011,2015 Free Software Foundation, Inc.                #
++# Copyright (c) 2002-2015,2016 Free Software Foundation, Inc.                #
+ #                                                                            #
+ # Permission is hereby granted, free of charge, to any person obtaining a    #
+ # copy of this software and associated documentation files (the "Software"), #
+@@ -28,13 +28,13 @@
+ #
+ # Author: Thomas Dickey
+ #
+-# $Id: Caps.osf1r5,v 1.7 2015/04/26 15:25:55 tom Exp $
++# $Id: Caps.osf1r5,v 1.8 2016/08/13 17:45:50 tom Exp $
+ #
+ # This is an adaptation of ncurses' termcap/terminfo capability table, which
+ # is designed to align with OSF/1 version 5 (Tru64) terminfo.
+ #
+ # This table is used to generate initializers for tables that drive tic,
+-# infocmp, and the library compilation code used to support the termcap 
++# infocmp, and the library compilation code used to support the termcap
+ # compatibility hack.  It is also used to generate the tabular portion of the
+ # terminfo(5) man page; lines beginning with `#%' are passed through to become
+ # the terminfo table.
+@@ -119,14 +119,14 @@
+ # You'll need to write custom code, probably in postprocess_termcap() or
+ # postprocess_terminfo(), to handle the translation.
+ #
+-# CONTROLLING ENTRY LENGTH 
++# CONTROLLING ENTRY LENGTH
+ #
+ # Notes on specific elisions made to fit translations within 1023 bytes:
+ #
+ # Machines with IBM PC-like keyboards want to be able to define the following
+ # keys: key_npage, key_ppage, key_home, key_ll (which is used for in termcap-
+ # only environments for End or Home-Down), key_dc, and key_ic.  This is also
+-# the set of keys the `joe' editor will be upset if it can't see.  So don't 
++# the set of keys the `joe' editor will be upset if it can't see.  So don't
+ # trim those out of the set to be translated to termcap, or various users of
+ # the termcap file will become irate.
+ #
+@@ -147,7 +147,7 @@
+ #
+ # It would be nice to keep f11 and f12 for Emacs use, but a couple of termcap
+ # translations go back over critical if we do this.  As 4.4BSD curses fades
+-# into history and GNU termcap's application base shrinks towards being GNU 
++# into history and GNU termcap's application base shrinks towards being GNU
+ # Emacs only, we'll probably elide out some BSD-only capabilities in order
+ # to buy space for non-essentials Emacs is still using.  Capabilities high
+ # on that hit list: rc, sc, uc.
+@@ -166,7 +166,7 @@
+ #%The \fBcapname\fR is the short name used in the text of the database,
+ #%and is used by a person updating the database.
+ #%Whenever possible, capnames are chosen to be the same as or similar to
+-#%the ANSI X3.64-1979 standard (now superseded by ECMA-48, which uses 
++#%the ANSI X3.64-1979 standard (now superseded by ECMA-48, which uses
+ #%identical or very similar names).  Semantics are also intended to match
+ #%those of the specification.
+ #%
+@@ -834,7 +834,7 @@ gnu_has_meta_key		OTMT	bool	MT	-		-	----E	has meta key
+ # GNU termcap *does* include the following extended capability,  Only the
+ # now-obsolete Ann Arbor terminals used it.
+ #
+-# gnu_change_scroll_region	OTcS	str	cS	-		-	---GE	alternate set scrolling region 
++# gnu_change_scroll_region	OTcS	str	cS	-		-	---GE	alternate set scrolling region
+ #
+ # The following comments describe capnames so ancient that I believe no
+ # software uses them any longer.  Some of these have to go because they
+@@ -895,7 +895,7 @@ return_does_clr_eol		OTxr	bool	xr	-		-	YB---	return clears the line
+ # University of Waterloo termcap extensions (as described in mytinfo).
+ # The `xl' termcap file clashes with a terminfo name; this ambiguity cannot
+ # be resolved by a type check.  The descriptions are guesses from what was
+-# in the mytinfo tables. 
++# in the mytinfo tables.
+ #
+ # key_interrupt_char		OTki	str	ki	-		-	-----	string set by interrupt key (?)
+ # key_kill_char			OTkk	str	kk	-		-	-----	string set by kill key (?)
+@@ -944,7 +944,7 @@ return_does_clr_eol		OTxr	bool	xr	-		-	YB---	return clears the line
+ # Gv	186 \272 M-:	double vertical line
+ #
+ # The compiler will translate the single-line caps and discard the others
+-# (via IGNORE aliases further down).  We don't want to do normal pad 
++# (via IGNORE aliases further down).  We don't want to do normal pad
+ # translation on these, they're often single-character printable ASCII
+ # strings that happen to be numerics.  There's awk code in parametrized.sh
+ # that detects the acs_ prefix and uses it to suppress pad translation.
+@@ -1045,7 +1045,7 @@ memory_unlock			memu	str	mu	-		-	----K	unlock memory
+ # the mapping:
+ #
+ #	box1[0]  = ACS_ULCORNER
+-#	box1[1]  = ACS_HLINE	
++#	box1[1]  = ACS_HLINE
+ #	box1[2]  = ACS_URCORNER
+ #	box1[3]  = ACS_VLINE
+ #	box1[4]  = ACS_LRCORNER
+@@ -1174,19 +1174,19 @@ capalias	BO	mr	AT&T	enter_reverse_mode
+ capalias	CI	vi	AT&T	cursor_invisible
+ capalias	CV	ve	AT&T	cursor_normal
+ capalias	DS	mh	AT&T	enter_dim_mode
+-#capalias	EE	me	AT&T	exit_attribute_mode	
++#capalias	EE	me	AT&T	exit_attribute_mode
+ capalias	FE	LF	AT&T	label_on
+ capalias	FL	LO	AT&T	label_off
+ capalias	XS	mk	AT&T	enter_secure_mode
+ #
+-# We comment out EE because the conflicting XENIX EE is more common in 
++# We comment out EE because the conflicting XENIX EE is more common in
+ # old entries.
+ #
+ # XENIX extensions:
+ #
+ # These are the ones we know how to translate directly:
+ #
+-capalias	EE	mh	XENIX	exit_attribute_mode	
++capalias	EE	mh	XENIX	exit_attribute_mode
+ capalias	GE	ae	XENIX	exit_alt_charset_mode
+ capalias	GS	as	XENIX	enter_alt_charset_mode
+ capalias	CF	vi	XENIX	cursor_invis
+diff --git a/include/Caps.uwin b/include/Caps.uwin
+index b09f612..db6c362 100644
+--- a/include/Caps.uwin
++++ b/include/Caps.uwin
+@@ -1,5 +1,5 @@
+ ##############################################################################
+-# Copyright (c) 2001-2010,2015 Free Software Foundation, Inc.                #
++# Copyright (c) 2001-2015,2016 Free Software Foundation, Inc.                #
+ #                                                                            #
+ # Permission is hereby granted, free of charge, to any person obtaining a    #
+ # copy of this software and associated documentation files (the "Software"), #
+@@ -28,13 +28,13 @@
+ #
+ # Author: Thomas Dickey
+ #
+-# $Id: Caps.uwin,v 1.6 2015/04/26 15:24:21 tom Exp $
++# $Id: Caps.uwin,v 1.7 2016/08/13 17:45:50 tom Exp $
+ #
+ # This is an adaptation of ncurses' termcap/terminfo capability table, which
+ # is designed to align with U/Win's terminfo.
+ #
+ # This table is used to generate initializers for tables that drive tic,
+-# infocmp, and the library compilation code used to support the termcap 
++# infocmp, and the library compilation code used to support the termcap
+ # compatibility hack.  It is also used to generate the tabular portion of the
+ # terminfo(5) man page; lines beginning with `#%' are passed through to become
+ # the terminfo table.
+@@ -119,14 +119,14 @@
+ # You'll need to write custom code, probably in postprocess_termcap() or
+ # postprocess_terminfo(), to handle the translation.
+ #
+-# CONTROLLING ENTRY LENGTH 
++# CONTROLLING ENTRY LENGTH
+ #
+ # Notes on specific elisions made to fit translations within 1023 bytes:
+ #
+ # Machines with IBM PC-like keyboards want to be able to define the following
+ # keys: key_npage, key_ppage, key_home, key_ll (which is used for in termcap-
+ # only environments for End or Home-Down), key_dc, and key_ic.  This is also
+-# the set of keys the `joe' editor will be upset if it can't see.  So don't 
++# the set of keys the `joe' editor will be upset if it can't see.  So don't
+ # trim those out of the set to be translated to termcap, or various users of
+ # the termcap file will become irate.
+ #
+@@ -147,7 +147,7 @@
+ #
+ # It would be nice to keep f11 and f12 for Emacs use, but a couple of termcap
+ # translations go back over critical if we do this.  As 4.4BSD curses fades
+-# into history and GNU termcap's application base shrinks towards being GNU 
++# into history and GNU termcap's application base shrinks towards being GNU
+ # Emacs only, we'll probably elide out some BSD-only capabilities in order
+ # to buy space for non-essentials Emacs is still using.  Capabilities high
+ # on that hit list: rc, sc, uc.
+@@ -166,7 +166,7 @@
+ #%The \fBcapname\fR is the short name used in the text of the database,
+ #%and is used by a person updating the database.
+ #%Whenever possible, capnames are chosen to be the same as or similar to
+-#%the ANSI X3.64-1979 standard (now superseded by ECMA-48, which uses 
++#%the ANSI X3.64-1979 standard (now superseded by ECMA-48, which uses
+ #%identical or very similar names).  Semantics are also intended to match
+ #%those of the specification.
+ #%
+@@ -650,7 +650,7 @@ gnu_has_meta_key		OTMT	bool	MT	-		-	----E	has meta key
+ # GNU termcap *does* include the following extended capability,  Only the
+ # now-obsolete Ann Arbor terminals used it.
+ #
+-# gnu_change_scroll_region	OTcS	str	cS	-		-	---GE	alternate set scrolling region 
++# gnu_change_scroll_region	OTcS	str	cS	-		-	---GE	alternate set scrolling region
+ #
+ # The following comments describe capnames so ancient that I believe no
+ # software uses them any longer.  Some of these have to go because they
+@@ -711,7 +711,7 @@ return_does_clr_eol		OTxr	bool	xr	-		-	YB---	return clears the line
+ # University of Waterloo termcap extensions (as described in mytinfo).
+ # The `xl' termcap file clashes with a terminfo name; this ambiguity cannot
+ # be resolved by a type check.  The descriptions are guesses from what was
+-# in the mytinfo tables. 
++# in the mytinfo tables.
+ #
+ # key_interrupt_char		OTki	str	ki	-		-	-----	string set by interrupt key (?)
+ # key_kill_char			OTkk	str	kk	-		-	-----	string set by kill key (?)
+@@ -760,7 +760,7 @@ return_does_clr_eol		OTxr	bool	xr	-		-	YB---	return clears the line
+ # Gv	186 \272 M-:	double vertical line
+ #
+ # The compiler will translate the single-line caps and discard the others
+-# (via IGNORE aliases further down).  We don't want to do normal pad 
++# (via IGNORE aliases further down).  We don't want to do normal pad
+ # translation on these, they're often single-character printable ASCII
+ # strings that happen to be numerics.  There's awk code in parametrized.sh
+ # that detects the acs_ prefix and uses it to suppress pad translation.
+@@ -861,7 +861,7 @@ memory_unlock			memu	str	mu	-		-	----K	unlock memory
+ # the mapping:
+ #
+ #	box1[0]  = ACS_ULCORNER
+-#	box1[1]  = ACS_HLINE	
++#	box1[1]  = ACS_HLINE
+ #	box1[2]  = ACS_URCORNER
+ #	box1[3]  = ACS_VLINE
+ #	box1[4]  = ACS_LRCORNER
+@@ -990,19 +990,19 @@ capalias	BO	mr	AT&T	enter_reverse_mode
+ capalias	CI	vi	AT&T	cursor_invisible
+ capalias	CV	ve	AT&T	cursor_normal
+ capalias	DS	mh	AT&T	enter_dim_mode
+-#capalias	EE	me	AT&T	exit_attribute_mode	
++#capalias	EE	me	AT&T	exit_attribute_mode
+ capalias	FE	LF	AT&T	label_on
+ capalias	FL	LO	AT&T	label_off
+ capalias	XS	mk	AT&T	enter_secure_mode
+ #
+-# We comment out EE because the conflicting XENIX EE is more common in 
++# We comment out EE because the conflicting XENIX EE is more common in
+ # old entries.
+ #
+ # XENIX extensions:
+ #
+ # These are the ones we know how to translate directly:
+ #
+-capalias	EE	mh	XENIX	exit_attribute_mode	
++capalias	EE	mh	XENIX	exit_attribute_mode
+ capalias	GE	ae	XENIX	exit_alt_charset_mode
+ capalias	GS	as	XENIX	enter_alt_charset_mode
+ capalias	CF	vi	XENIX	cursor_invis
+diff --git a/package/debian-mingw/changelog b/package/debian-mingw/changelog
+index 16bed82..7bb77f7 100644
+--- a/package/debian-mingw/changelog
++++ b/package/debian-mingw/changelog
+@@ -1,8 +1,8 @@
+-ncurses6 (6.0+20160806) unstable; urgency=low
++ncurses6 (6.0+20160813) unstable; urgency=low
+ 
+   * latest weekly patch
+ 
+- -- Thomas E. Dickey <dickey@invisible-island.net>  Sat, 06 Aug 2016 08:01:54 -0400
++ -- Thomas E. Dickey <dickey@invisible-island.net>  Sat, 13 Aug 2016 11:43:19 -0400
+ 
+ ncurses6 (5.9-20131005) unstable; urgency=low
+ 
+diff --git a/package/debian-mingw64/changelog b/package/debian-mingw64/changelog
+index 16bed82..7bb77f7 100644
+--- a/package/debian-mingw64/changelog
++++ b/package/debian-mingw64/changelog
+@@ -1,8 +1,8 @@
+-ncurses6 (6.0+20160806) unstable; urgency=low
++ncurses6 (6.0+20160813) unstable; urgency=low
+ 
+   * latest weekly patch
+ 
+- -- Thomas E. Dickey <dickey@invisible-island.net>  Sat, 06 Aug 2016 08:01:54 -0400
++ -- Thomas E. Dickey <dickey@invisible-island.net>  Sat, 13 Aug 2016 11:43:19 -0400
+ 
+ ncurses6 (5.9-20131005) unstable; urgency=low
+ 
+diff --git a/package/debian/changelog b/package/debian/changelog
+index 6c23883..ccea93f 100644
+--- a/package/debian/changelog
++++ b/package/debian/changelog
+@@ -1,8 +1,8 @@
+-ncurses6 (6.0+20160806) unstable; urgency=low
++ncurses6 (6.0+20160813) unstable; urgency=low
+ 
+   * latest weekly patch
+ 
+- -- Thomas E. Dickey <dickey@invisible-island.net>  Sat, 06 Aug 2016 08:01:54 -0400
++ -- Thomas E. Dickey <dickey@invisible-island.net>  Sat, 13 Aug 2016 11:43:19 -0400
+ 
+ ncurses6 (5.9-20120608) unstable; urgency=low
+ 
+diff --git a/package/mingw-ncurses.nsi b/package/mingw-ncurses.nsi
+index b8b23dd..c07fc91 100644
+--- a/package/mingw-ncurses.nsi
++++ b/package/mingw-ncurses.nsi
+@@ -1,4 +1,4 @@
+-; $Id: mingw-ncurses.nsi,v 1.170 2016/08/06 12:01:54 tom Exp $
++; $Id: mingw-ncurses.nsi,v 1.171 2016/08/13 15:43:19 tom Exp $
+ 
+ ; TODO add examples
+ ; TODO bump ABI to 6
+@@ -10,7 +10,7 @@
+ !define VERSION_MAJOR "6"
+ !define VERSION_MINOR "0"
+ !define VERSION_YYYY  "2016"
+-!define VERSION_MMDD  "0806"
++!define VERSION_MMDD  "0813"
+ !define VERSION_PATCH ${VERSION_YYYY}${VERSION_MMDD}
+ 
+ !define MY_ABI   "5"
+diff --git a/package/mingw-ncurses.spec b/package/mingw-ncurses.spec
+index 567def5..43fd8a9 100644
+--- a/package/mingw-ncurses.spec
++++ b/package/mingw-ncurses.spec
+@@ -3,7 +3,7 @@
+ Summary: shared libraries for terminal handling
+ Name: mingw32-ncurses6
+ Version: 6.0
+-Release: 20160806
++Release: 20160813
+ License: X11
+ Group: Development/Libraries
+ Source: ncurses-%{version}-%{release}.tgz
+diff --git a/package/ncurses.spec b/package/ncurses.spec
+index 2c275ef..687ab7d 100644
+--- a/package/ncurses.spec
++++ b/package/ncurses.spec
+@@ -1,7 +1,7 @@
+ Summary: shared libraries for terminal handling
+ Name: ncurses6
+ Version: 6.0
+-Release: 20160806
++Release: 20160813
+ License: X11
+ Group: Development/Libraries
+ Source: ncurses-%{version}-%{release}.tgz
+-- 
+2.9.1
+

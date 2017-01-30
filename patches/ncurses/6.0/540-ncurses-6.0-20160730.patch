@@ -1,0 +1,1355 @@
+From aa70bf3c762c5b6407bf34812d63c20f7ac8ffdd Mon Sep 17 00:00:00 2001
+From: "Thomas E. Dickey" <dickey@invisible-island.net>
+Date: Sat, 30 Jul 2016 22:26:22 +0000
+Subject: [PATCH 45/50] ncurses 6.0 - patch 20160730
+
++ change tset's initialization to allow it to get settings from the
+  standard input as well as /dev/tty, to be more effective when
+  output or error are redirected.
++ improve discussion of history and portability for tset/reset/tput
+  manual pages.
+---
+ NEWS                             |   9 +-
+ VERSION                          |   2 +-
+ dist.mk                          |   4 +-
+ doc/html/man/captoinfo.1m.html   |   2 +-
+ doc/html/man/clear.1.html        |   2 +-
+ doc/html/man/curs_color.3x.html  |   2 +-
+ doc/html/man/form.3x.html        |   2 +-
+ doc/html/man/infocmp.1m.html     |   2 +-
+ doc/html/man/infotocap.1m.html   |   2 +-
+ doc/html/man/menu.3x.html        |   2 +-
+ doc/html/man/ncurses.3x.html     |   2 +-
+ doc/html/man/panel.3x.html       |   2 +-
+ doc/html/man/tabs.1.html         |   2 +-
+ doc/html/man/terminfo.5.html     |   2 +-
+ doc/html/man/tic.1m.html         |   2 +-
+ doc/html/man/toe.1m.html         |   2 +-
+ doc/html/man/tput.1.html         |  70 +++++++---
+ doc/html/man/tset.1.html         | 279 ++++++++++++++++++++++-----------------
+ man/curs_color.3x                |   8 +-
+ man/tput.1                       |  74 ++++++++---
+ man/tset.1                       |  65 +++++++--
+ package/debian-mingw/changelog   |   4 +-
+ package/debian-mingw64/changelog |   4 +-
+ package/debian/changelog         |   4 +-
+ package/mingw-ncurses.nsi        |   4 +-
+ package/mingw-ncurses.spec       |   2 +-
+ package/ncurses.spec             |   2 +-
+ progs/tset.c                     |  39 ++++--
+ 28 files changed, 384 insertions(+), 212 deletions(-)
+
+diff --git a/NEWS b/NEWS
+index b5c9c73..445cb39 100644
+--- a/NEWS
++++ b/NEWS
+@@ -25,7 +25,7 @@
+ -- sale, use or other dealings in this Software without prior written        --
+ -- authorization.                                                            --
+ -------------------------------------------------------------------------------
+--- $Id: NEWS,v 1.2633 2016/07/24 00:08:45 tom Exp $
++-- $Id: NEWS,v 1.2636 2016/07/30 21:38:22 tom Exp $
+ -------------------------------------------------------------------------------
+ 
+ This is a log of changes that ncurses has gone through since Zeyd started
+@@ -45,6 +45,13 @@ See the AUTHORS file for the corresponding full names.
+ Changes through 1.9.9e did not credit all contributions;
+ it is not possible to add this information.
+ 
++20160730
++	+ change tset's initialization to allow it to get settings from the
++	  standard input as well as /dev/tty, to be more effective when
++	  output or error are redirected.
++	+ improve discussion of history and portability for tset/reset/tput
++	  manual pages.
++
+ 20160723
+ 	+ improve error message from tset/reset when both stderr/stdout are
+ 	  redirected to a file or pipe.
+diff --git a/VERSION b/VERSION
+index a396894..2132550 100644
+--- a/VERSION
++++ b/VERSION
+@@ -1 +1 @@
+-5:0:9	6.0	20160723
++5:0:9	6.0	20160730
+diff --git a/dist.mk b/dist.mk
+index 1aebb5b..5e2384f 100644
+--- a/dist.mk
++++ b/dist.mk
+@@ -25,7 +25,7 @@
+ # use or other dealings in this Software without prior written               #
+ # authorization.                                                             #
+ ##############################################################################
+-# $Id: dist.mk,v 1.1116 2016/07/23 11:56:24 tom Exp $
++# $Id: dist.mk,v 1.1117 2016/07/30 13:19:43 tom Exp $
+ # Makefile for creating ncurses distributions.
+ #
+ # This only needs to be used directly as a makefile by developers, but
+@@ -37,7 +37,7 @@ SHELL = /bin/sh
+ # These define the major/minor/patch versions of ncurses.
+ NCURSES_MAJOR = 6
+ NCURSES_MINOR = 0
+-NCURSES_PATCH = 20160723
++NCURSES_PATCH = 20160730
+ 
+ # We don't append the patch to the version, since this only applies to releases
+ VERSION = $(NCURSES_MAJOR).$(NCURSES_MINOR)
+diff --git a/doc/html/man/captoinfo.1m.html b/doc/html/man/captoinfo.1m.html
+index 3131459..8d9c204 100644
+--- a/doc/html/man/captoinfo.1m.html
++++ b/doc/html/man/captoinfo.1m.html
+@@ -198,7 +198,7 @@
+ </PRE><H2><a name="h2-SEE-ALSO">SEE ALSO</a></H2><PRE>
+        <STRONG><A HREF="infocmp.1m.html">infocmp(1m)</A></STRONG>, <STRONG><A HREF="ncurses.3x.html">curses(3x)</A></STRONG>, <STRONG><A HREF="terminfo.5.html">terminfo(5)</A></STRONG>
+ 
+-       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160723).
++       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160730).
+ 
+ 
+ </PRE><H2><a name="h2-AUTHOR">AUTHOR</a></H2><PRE>
+diff --git a/doc/html/man/clear.1.html b/doc/html/man/clear.1.html
+index c0608ff..92d86c8 100644
+--- a/doc/html/man/clear.1.html
++++ b/doc/html/man/clear.1.html
+@@ -67,7 +67,7 @@
+ </PRE><H2><a name="h2-SEE-ALSO">SEE ALSO</a></H2><PRE>
+        <STRONG><A HREF="tput.1.html">tput(1)</A></STRONG>, <STRONG><A HREF="terminfo.5.html">terminfo(5)</A></STRONG>
+ 
+-       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160723).
++       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160730).
+ 
+ 
+ 
+diff --git a/doc/html/man/curs_color.3x.html b/doc/html/man/curs_color.3x.html
+index db6bfc2..4f6a34b 100644
+--- a/doc/html/man/curs_color.3x.html
++++ b/doc/html/man/curs_color.3x.html
+@@ -26,7 +26,7 @@
+   * sale, use or other dealings in this Software without prior written       *
+   * authorization.                                                           *
+   ****************************************************************************
+-  * @Id: curs_color.3x,v 1.42 2016/07/24 00:02:15 tom Exp @
++  * @Id: curs_color.3x,v 1.43 2016/07/30 15:22:11 tom Exp @
+   * .br
+   * .br
+   * .br
+diff --git a/doc/html/man/form.3x.html b/doc/html/man/form.3x.html
+index 76da891..c7a86ef 100644
+--- a/doc/html/man/form.3x.html
++++ b/doc/html/man/form.3x.html
+@@ -235,7 +235,7 @@
+        <STRONG><A HREF="ncurses.3x.html">curses(3x)</A></STRONG> and related pages whose names begin "form_" for
+        detailed descriptions of the entry points.
+ 
+-       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160723).
++       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160730).
+ 
+ 
+ 
+diff --git a/doc/html/man/infocmp.1m.html b/doc/html/man/infocmp.1m.html
+index dccf241..b99fed4 100644
+--- a/doc/html/man/infocmp.1m.html
++++ b/doc/html/man/infocmp.1m.html
+@@ -475,7 +475,7 @@
+ 
+        http://invisible-island.net/ncurses/tctest.html
+ 
+-       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160723).
++       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160730).
+ 
+ 
+ </PRE><H2><a name="h2-AUTHOR">AUTHOR</a></H2><PRE>
+diff --git a/doc/html/man/infotocap.1m.html b/doc/html/man/infotocap.1m.html
+index 93498d1..a0b5638 100644
+--- a/doc/html/man/infotocap.1m.html
++++ b/doc/html/man/infotocap.1m.html
+@@ -88,7 +88,7 @@
+ </PRE><H2><a name="h2-SEE-ALSO">SEE ALSO</a></H2><PRE>
+        <STRONG><A HREF="ncurses.3x.html">curses(3x)</A></STRONG>, <STRONG><A HREF="tic.1m.html">tic(1m)</A></STRONG>, <STRONG><A HREF="infocmp.1m.html">infocmp(1m)</A></STRONG>, <STRONG><A HREF="terminfo.5.html">terminfo(5)</A></STRONG>
+ 
+-       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160723).
++       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160730).
+ 
+ 
+ </PRE><H2><a name="h2-AUTHOR">AUTHOR</a></H2><PRE>
+diff --git a/doc/html/man/menu.3x.html b/doc/html/man/menu.3x.html
+index 0967b57..469a230 100644
+--- a/doc/html/man/menu.3x.html
++++ b/doc/html/man/menu.3x.html
+@@ -217,7 +217,7 @@
+        <STRONG><A HREF="ncurses.3x.html">curses(3x)</A></STRONG> and related pages whose names begin "menu_" for
+        detailed descriptions of the entry points.
+ 
+-       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160723).
++       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160730).
+ 
+ 
+ 
+diff --git a/doc/html/man/ncurses.3x.html b/doc/html/man/ncurses.3x.html
+index d9d9331..e7c39f3 100644
+--- a/doc/html/man/ncurses.3x.html
++++ b/doc/html/man/ncurses.3x.html
+@@ -60,7 +60,7 @@
+        sonable optimization.  This implementation is "new curses"
+        (ncurses) and is the approved replacement for 4.4BSD clas-
+        sic  curses,  which has been discontinued.  This describes
+-       <STRONG>ncurses</STRONG> version 6.0 (patch 20160723).
++       <STRONG>ncurses</STRONG> version 6.0 (patch 20160730).
+ 
+        The <STRONG>ncurses</STRONG> library emulates the curses library of  System
+        V  Release  4  UNIX,  and  XPG4 (X/Open Portability Guide)
+diff --git a/doc/html/man/panel.3x.html b/doc/html/man/panel.3x.html
+index a291d21..9a9ac9f 100644
+--- a/doc/html/man/panel.3x.html
++++ b/doc/html/man/panel.3x.html
+@@ -209,7 +209,7 @@
+ </PRE><H2><a name="h2-SEE-ALSO">SEE ALSO</a></H2><PRE>
+        <STRONG><A HREF="ncurses.3x.html">curses(3x)</A></STRONG>, <STRONG><A HREF="curs_variables.3x.html">curs_variables(3x)</A></STRONG>,
+ 
+-       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160723).
++       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160730).
+ 
+ 
+ </PRE><H2><a name="h2-AUTHOR">AUTHOR</a></H2><PRE>
+diff --git a/doc/html/man/tabs.1.html b/doc/html/man/tabs.1.html
+index cc155ff..c91682c 100644
+--- a/doc/html/man/tabs.1.html
++++ b/doc/html/man/tabs.1.html
+@@ -164,7 +164,7 @@
+ </PRE><H2><a name="h2-SEE-ALSO">SEE ALSO</a></H2><PRE>
+        <STRONG><A HREF="tset.1.html">tset(1)</A></STRONG>, <STRONG><A HREF="infocmp.1m.html">infocmp(1m)</A></STRONG>, <STRONG><A HREF="ncurses.3x.html">curses(3x)</A></STRONG>, <STRONG><A HREF="terminfo.5.html">terminfo(5)</A></STRONG>.
+ 
+-       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160723).
++       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160730).
+ 
+ 
+ 
+diff --git a/doc/html/man/terminfo.5.html b/doc/html/man/terminfo.5.html
+index cace703..b2be450 100644
+--- a/doc/html/man/terminfo.5.html
++++ b/doc/html/man/terminfo.5.html
+@@ -75,7 +75,7 @@
+        nals by giving a set of capabilities which they  have,  by
+        specifying how to perform screen operations, and by speci-
+        fying padding requirements and  initialization  sequences.
+-       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160723).
++       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160730).
+ 
+        Entries in <EM>terminfo</EM> consist of a sequence of `,' separated
+        fields (embedded commas may be escaped with a backslash or
+diff --git a/doc/html/man/tic.1m.html b/doc/html/man/tic.1m.html
+index 83ff6ae..3c9470c 100644
+--- a/doc/html/man/tic.1m.html
++++ b/doc/html/man/tic.1m.html
+@@ -398,7 +398,7 @@
+        <STRONG><A HREF="infocmp.1m.html">infocmp(1m)</A></STRONG>,    <STRONG><A HREF="captoinfo.1m.html">captoinfo(1m)</A></STRONG>,   <STRONG><A HREF="infotocap.1m.html">infotocap(1m)</A></STRONG>,   <STRONG><A HREF="toe.1m.html">toe(1m)</A></STRONG>,
+        <STRONG><A HREF="ncurses.3x.html">curses(3x)</A></STRONG>, <STRONG><A HREF="term.5.html">term(5)</A></STRONG>.  <STRONG><A HREF="terminfo.5.html">terminfo(5)</A></STRONG>.
+ 
+-       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160723).
++       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160730).
+ 
+ 
+ </PRE><H2><a name="h2-AUTHOR">AUTHOR</a></H2><PRE>
+diff --git a/doc/html/man/toe.1m.html b/doc/html/man/toe.1m.html
+index 4d8a7ea..3a3506e 100644
+--- a/doc/html/man/toe.1m.html
++++ b/doc/html/man/toe.1m.html
+@@ -117,7 +117,7 @@
+        <STRONG><A HREF="tic.1m.html">tic(1m)</A></STRONG>,   <STRONG><A HREF="infocmp.1m.html">infocmp(1m)</A></STRONG>,   <STRONG><A HREF="captoinfo.1m.html">captoinfo(1m)</A></STRONG>,    <STRONG><A HREF="infotocap.1m.html">infotocap(1m)</A></STRONG>,
+        <STRONG><A HREF="ncurses.3x.html">curses(3x)</A></STRONG>, <STRONG><A HREF="terminfo.5.html">terminfo(5)</A></STRONG>.
+ 
+-       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160723).
++       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160730).
+ 
+ 
+ 
+diff --git a/doc/html/man/tput.1.html b/doc/html/man/tput.1.html
+index b151c13..32a8b22 100644
+--- a/doc/html/man/tput.1.html
++++ b/doc/html/man/tput.1.html
+@@ -27,7 +27,7 @@
+   * sale, use or other dealings in this Software without prior written       *
+   * authorization.                                                           *
+   ****************************************************************************
+-  * @Id: tput.1,v 1.36 2016/04/02 23:41:08 tom Exp @
++  * @Id: tput.1,v 1.42 2016/07/30 21:01:09 tom Exp @
+ -->
+ <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN">
+ <HTML>
+@@ -53,6 +53,7 @@
+ 
+ </PRE><H2><a name="h2-SYNOPSIS">SYNOPSIS</a></H2><PRE>
+        <STRONG>tput</STRONG> [<STRONG>-T</STRONG><EM>type</EM>] <EM>capname</EM> [<EM>parameters</EM>]
++       <STRONG>tput</STRONG> [<STRONG>-T</STRONG><EM>type</EM>] <STRONG>clear</STRONG>
+        <STRONG>tput</STRONG> [<STRONG>-T</STRONG><EM>type</EM>] <STRONG>init</STRONG>
+        <STRONG>tput</STRONG> [<STRONG>-T</STRONG><EM>type</EM>] <STRONG>reset</STRONG>
+        <STRONG>tput</STRONG> [<STRONG>-T</STRONG><EM>type</EM>] <STRONG>longname</STRONG>
+@@ -268,7 +269,7 @@
+               tab settings for some terminals, in a format appro-
+               priate   to  be  output  to  the  terminal  (escape
+               sequences that set  margins  and  tabs);  for  more
+-              information, see the "Tabs and Initialization" sec-
++              information,  see the <EM>Tabs</EM> <EM>and</EM> <EM>Initialization</EM>, sec-
+               tion of <STRONG><A HREF="terminfo.5.html">terminfo(5)</A></STRONG>
+ 
+ 
+@@ -324,10 +325,56 @@
+        ---------------------------------------------------------------------
+ 
+ 
++</PRE><H2><a name="h2-HISTORY">HISTORY</a></H2><PRE>
++       The <STRONG>tput</STRONG> command was begun by Bill Joy in 1980.  The  ini-
++       tial version only cleared the screen.
++
++       Keith  Bostic replaced this in 1989 with a new implementa-
++       tion based on the AT&amp;T SystemV  program  <STRONG>tput</STRONG>.   Like  the
++       AT&amp;T  program,  Bostic's  version accepted some parameters
++       named for <EM>terminfo</EM> <EM>capabilities</EM> (<STRONG>clear</STRONG>, <STRONG>init</STRONG>, <STRONG>longname</STRONG> and
++       <STRONG>reset</STRONG>).   However (because he had only termcap available),
++       it accepted <EM>termcap</EM> <EM>names</EM> for other capabilities.
++
++       At the same  time,  Bostic  added  a  shell  script  named
++       "clear", which used <STRONG>tput</STRONG> to clear the screen.
++
++       Both  of  these  appeared in 4.4BSD, becoming the "modern"
++       BSD implementation of <STRONG>tput</STRONG>.
++
++
+ </PRE><H2><a name="h2-PORTABILITY">PORTABILITY</a></H2><PRE>
+-       The <STRONG>longname</STRONG> and <STRONG>-S</STRONG> options, and  the  parameter-substitu-
+-       tion  features  used in the <STRONG>cup</STRONG> example, are not supported
+-       in BSD curses or in AT&amp;T/USL curses before SVr4.
++       This implementation of <STRONG>tput</STRONG> differs from AT&amp;T <STRONG>tput</STRONG> in  two
++       important areas:
++
++       <STRONG>o</STRONG>   tput  writes to the standard output.  That need not be
++           a regular terminal.
++
++           The AT&amp;T implementation's <STRONG>init</STRONG> and <STRONG>reset</STRONG> commands  use
++           the <STRONG>tset</STRONG> source, which manipulates terminal modes.  It
++           successively tries standard  output,  standard  error,
++           standard  input  before falling back to "/dev/tty" and
++           finally just assumes a 1200Bd terminal.  When updating
++           terminal modes, it ignores errors.
++
++       <STRONG>o</STRONG>   AT&amp;T  <STRONG>tput</STRONG> guesses the type of its <EM>capname</EM> operands by
++           seeing if all of the characters are numeric, or not.
++
++           Most implementations which provide support for <EM>capname</EM>
++           operands  use  the <EM>tparm</EM> function to expand parameters
++           in it.  That function expects a mixture of numeric and
++           string  parameters,  requiring <STRONG>tput</STRONG> to know which type
++           to use.
++
++           This implementation uses  a  table  to  determine  the
++           parameter types for the standard <EM>capname</EM> operands, and
++           an internal library function  to  analyze  nonstandard
++           <EM>capname</EM> operands.
++
++       The  <STRONG>longname</STRONG>  and <STRONG>-S</STRONG> options, and the parameter-substitu-
++       tion features used in the <STRONG>cup</STRONG> example, were not  supported
++       in  BSD curses before 4.3reno (1989) or in AT&amp;T/USL curses
++       before SVr4 (1988).
+ 
+        IEEE Std 1003.1/The Open Group  Base Specifications  Issue
+        7  (POSIX.1-2008)  documents  only the operands for <STRONG>clear</STRONG>,
+@@ -368,22 +415,12 @@
+            curses implementation provide  a  <STRONG>tput</STRONG>  utility  which
+            does not provide the <EM>capname</EM> feature.
+ 
+-       Most implementations which provide support for <EM>capname</EM> op-
+-       erands use the <EM>tparm</EM> function to expand parameters in  it.
+-       That  function  expects  a  mixture  of numeric and string
+-       parameters, requiring <STRONG>tput</STRONG> to  know  which  type  to  use.
+-       This implementation uses a table to determine that for the
+-       standard <EM>capname</EM> operands, and an internal  library  func-
+-       tion  to  analyze  nonstandard  <EM>capname</EM>  operands.   Other
+-       implementations may simply guess that an operand  contain-
+-       ing only digits is intended to be a number.
+-
+ 
+ </PRE><H2><a name="h2-SEE-ALSO">SEE ALSO</a></H2><PRE>
+        <STRONG><A HREF="clear.1.html">clear(1)</A></STRONG>,    <STRONG>stty(1)</STRONG>,   <STRONG><A HREF="tabs.1.html">tabs(1)</A></STRONG>,   <STRONG><A HREF="tset.1.html">tset(1)</A></STRONG>,   <STRONG><A HREF="terminfo.5.html">terminfo(5)</A></STRONG>,
+        <STRONG><A HREF="curs_termcap.3x.html">curs_termcap(3x)</A></STRONG>.
+ 
+-       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160723).
++       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160730).
+ 
+ 
+ 
+@@ -404,6 +441,7 @@
+ <li><a href="#h2-FILES">FILES</a></li>
+ <li><a href="#h2-EXIT-CODES">EXIT CODES</a></li>
+ <li><a href="#h2-DIAGNOSTICS">DIAGNOSTICS</a></li>
++<li><a href="#h2-HISTORY">HISTORY</a></li>
+ <li><a href="#h2-PORTABILITY">PORTABILITY</a></li>
+ <li><a href="#h2-SEE-ALSO">SEE ALSO</a></li>
+ </ul>
+diff --git a/doc/html/man/tset.1.html b/doc/html/man/tset.1.html
+index 7eae63c..6cf8124 100644
+--- a/doc/html/man/tset.1.html
++++ b/doc/html/man/tset.1.html
+@@ -26,7 +26,7 @@
+   * sale, use or other dealings in this Software without prior written       *
+   * authorization.                                                           *
+   ****************************************************************************
+-  * @Id: tset.1,v 1.37 2016/05/21 23:36:51 tom Exp @
++  * @Id: tset.1,v 1.42 2016/07/30 21:59:39 tom Exp @
+ -->
+ <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN">
+ <HTML>
+@@ -59,57 +59,74 @@
+ </PRE><H2><a name="h2-DESCRIPTION">DESCRIPTION</a></H2><PRE>
+ 
+ </PRE><H3><a name="h3-tset---initialization">tset - initialization</a></H3><PRE>
+-       <STRONG>Tset</STRONG>  initializes  terminals.   <STRONG>Tset</STRONG>  first determines the
+-       type of terminal that you are using.   This  determination
+-       is done as follows, using the first terminal type found.
++       This program initializes terminals.
++
++       First,  <STRONG>tset</STRONG>  retrieves the current terminal mode settings
++       for your terminal.  It does this by successively testing
++
++       <STRONG>o</STRONG>   the standard error,
++
++       <STRONG>o</STRONG>   standard output,
++
++       <STRONG>o</STRONG>   standard input and
++
++       <STRONG>o</STRONG>   ultimately "/dev/tty"
++
++       to obtain terminal settings.  Having retrieved these  set-
++       tings,  <STRONG>tset</STRONG>  remembers  which file descriptor to use when
++       updating settings.
++
++       Next, <STRONG>tset</STRONG> determines the type of terminal  that  you  are
++       using.   This  determination is done as follows, using the
++       first terminal type found.
+ 
+        1. The <STRONG>terminal</STRONG> argument specified on the command line.
+ 
+        2. The value of the <STRONG>TERM</STRONG> environmental variable.
+ 
+-       3.  (BSD  systems only.) The terminal type associated with
+-       the standard error output device in  the  <EM>/etc/ttys</EM>  file.
+-       (On  System-V-like  UNIXes  and systems using that conven-
++       3. (BSD systems only.) The terminal type  associated  with
++       the  standard  error  output device in the <EM>/etc/ttys</EM> file.
++       (On System-V-like UNIXes and systems  using  that  conven-
+        tion, <EM>getty</EM> does this job by setting <STRONG>TERM</STRONG> according to the
+        type passed to it by <EM>/etc/inittab</EM>.)
+ 
+        4. The default terminal type, "unknown".
+ 
+-       If  the  terminal  type  was not specified on the command-
+-       line, the <STRONG>-m</STRONG> option mappings are  then  applied  (see  the
++       If the terminal type was not  specified  on  the  command-
++       line,  the  <STRONG>-m</STRONG>  option  mappings are then applied (see the
+        section  <STRONG>TERMINAL</STRONG>  <STRONG>TYPE</STRONG>  <STRONG>MAPPING</STRONG>  for  more  information).
+-       Then, if the terminal type begins  with  a  question  mark
++       Then,  if  the  terminal  type begins with a question mark
+        ("?"), the user is prompted for confirmation of the termi-
+-       nal type.   An  empty  response  confirms  the  type,  or,
+-       another  type  can be entered to specify a new type.  Once
+-       the terminal type has been determined, the terminfo  entry
+-       for  the  terminal  is retrieved.  If no terminfo entry is
+-       found for the type, the user is prompted for another  ter-
++       nal  type.   An  empty  response  confirms  the  type, or,
++       another type can be entered to specify a new  type.   Once
++       the  terminal type has been determined, the terminfo entry
++       for the terminal is retrieved.  If no  terminfo  entry  is
++       found  for the type, the user is prompted for another ter-
+        minal type.
+ 
+-       Once  the  terminfo  entry  is retrieved, the window size,
+-       backspace, interrupt and line kill characters (among  many
++       Once the terminfo entry is  retrieved,  the  window  size,
++       backspace,  interrupt and line kill characters (among many
+        other things) are set and the terminal and tab initializa-
+-       tion strings  are  sent  to  the  standard  error  output.
+-       Finally,  if the erase, interrupt and line kill characters
+-       have changed, or are not  set  to  their  default  values,
++       tion  strings  are  sent  to  the  standard  error output.
++       Finally, if the erase, interrupt and line kill  characters
++       have  changed,  or  are  not  set to their default values,
+        their values are displayed to the standard error output.
+ 
+ 
+ </PRE><H3><a name="h3-reset---reinitialization">reset - reinitialization</a></H3><PRE>
+-       When  invoked  as  <STRONG>reset</STRONG>, <STRONG>tset</STRONG> sets cooked and echo modes,
+-       turns off cbreak and raw modes, turns on newline  transla-
+-       tion  and  resets  any  unset  special characters to their
+-       default values before doing  the  terminal  initialization
+-       described  above.   This  is  useful  after a program dies
+-       leaving a terminal in an abnormal state.   Note,  you  may
++       When invoked as <STRONG>reset</STRONG>, <STRONG>tset</STRONG> sets cooked  and  echo  modes,
++       turns  off cbreak and raw modes, turns on newline transla-
++       tion and resets any  unset  special  characters  to  their
++       default  values  before  doing the terminal initialization
++       described above.  This is  useful  after  a  program  dies
++       leaving  a  terminal  in an abnormal state.  Note, you may
+        have to type
+ 
+-           <STRONG>&lt;LF&gt;reset&lt;LF&gt;</STRONG>
++           <EM>&lt;LF&gt;</EM><STRONG>reset</STRONG><EM>&lt;LF&gt;</EM>
+ 
+        (the line-feed character is normally control-J) to get the
+        terminal to work, as carriage-return may no longer work in
+-       the  abnormal  state.   Also,  the terminal will often not
++       the abnormal state.  Also, the  terminal  will  often  not
+        echo the command.
+ 
+ 
+@@ -127,51 +144,51 @@
+ 
+        <STRONG>-k</STRONG>   Set the line kill character to <EM>ch</EM>.
+ 
+-       <STRONG>-m</STRONG>   Specify  a  mapping  from  a port type to a terminal.
++       <STRONG>-m</STRONG>   Specify a mapping from a port  type  to  a  terminal.
+             See the section <STRONG>TERMINAL</STRONG> <STRONG>TYPE</STRONG> <STRONG>MAPPING</STRONG> for more infor-
+             mation.
+ 
+-       <STRONG>-Q</STRONG>   Do  not  display  any values for the erase, interrupt
++       <STRONG>-Q</STRONG>   Do not display any values for  the  erase,  interrupt
+             and line kill characters.  Normally <STRONG>tset</STRONG> displays the
+-            values  for  control characters which differ from the
++            values for control characters which differ  from  the
+             system's default values.
+ 
+-       <STRONG>-q</STRONG>   The terminal type is displayed to the  standard  out-
+-            put,  and the terminal is not initialized in any way.
++       <STRONG>-q</STRONG>   The  terminal  type is displayed to the standard out-
++            put, and the terminal is not initialized in any  way.
+             The option "-" by itself is equivalent but archaic.
+ 
+        <STRONG>-r</STRONG>   Print the terminal type to the standard error output.
+ 
+-       <STRONG>-s</STRONG>   Print the sequence of shell  commands  to  initialize
++       <STRONG>-s</STRONG>   Print  the  sequence  of shell commands to initialize
+             the environment variable <STRONG>TERM</STRONG> to the standard output.
+             See the section <STRONG>SETTING</STRONG> <STRONG>THE</STRONG> <STRONG>ENVIRONMENT</STRONG> for details.
+ 
+        <STRONG>-V</STRONG>   reports the version of ncurses which was used in this
+             program, and exits.
+ 
+-       <STRONG>-w</STRONG>   Resize  the  window  to  match  the  size deduced via
++       <STRONG>-w</STRONG>   Resize the window  to  match  the  size  deduced  via
+             <STRONG>setupterm</STRONG>.   Normally  this  has  no  effect,  unless
+             <STRONG>setupterm</STRONG> is not able to detect the window size.
+ 
+        The arguments for the <STRONG>-e</STRONG>, <STRONG>-i</STRONG>, and <STRONG>-k</STRONG> options may either be
+-       entered as actual characters or by using the  "hat"  nota-
++       entered  as  actual characters or by using the "hat" nota-
+        tion, i.e., control-h may be specified as "^H" or "^h".
+ 
+        If neither <STRONG>-c</STRONG> or <STRONG>-w</STRONG> is given, both options are assumed.
+ 
+ 
+ </PRE><H2><a name="h2-SETTING-THE-ENVIRONMENT">SETTING THE ENVIRONMENT</a></H2><PRE>
+-       It  is  often  desirable  to  enter  the terminal type and
+-       information about the  terminal's  capabilities  into  the
++       It is often desirable  to  enter  the  terminal  type  and
++       information  about  the  terminal's  capabilities into the
+        shell's environment.  This is done using the <STRONG>-s</STRONG> option.
+ 
+        When the <STRONG>-s</STRONG> option is specified, the commands to enter the
+-       information into the shell's environment  are  written  to
+-       the  standard output.  If the <STRONG>SHELL</STRONG> environmental variable
+-       ends in "csh", the commands are for <STRONG>csh</STRONG>,  otherwise,  they
+-       are  for  <STRONG>sh</STRONG>.   Note,  the  <STRONG>csh</STRONG> commands set and unset the
+-       shell variable <STRONG>noglob</STRONG>, leaving it  unset.   The  following
+-       line  in  the <STRONG>.login</STRONG> or <STRONG>.profile</STRONG> files will initialize the
++       information  into  the  shell's environment are written to
++       the standard output.  If the <STRONG>SHELL</STRONG> environmental  variable
++       ends  in  "csh", the commands are for <STRONG>csh</STRONG>, otherwise, they
++       are for <STRONG>sh</STRONG>.  Note, the <STRONG>csh</STRONG>  commands  set  and  unset  the
++       shell  variable  <STRONG>noglob</STRONG>,  leaving it unset.  The following
++       line in the <STRONG>.login</STRONG> or <STRONG>.profile</STRONG> files will  initialize  the
+        environment correctly:
+ 
+            eval `tset -s options ... `
+@@ -180,67 +197,78 @@
+ </PRE><H2><a name="h2-TERMINAL-TYPE-MAPPING">TERMINAL TYPE MAPPING</a></H2><PRE>
+        When the terminal is not hardwired into the system (or the
+        current system information is incorrect) the terminal type
+-       derived from the <EM>/etc/ttys</EM> file or the <STRONG>TERM</STRONG>  environmental
+-       variable  is often something generic like <STRONG>network</STRONG>, <STRONG>dialup</STRONG>,
+-       or <STRONG>unknown</STRONG>.  When <STRONG>tset</STRONG> is used in a startup script  it  is
+-       often  desirable  to provide information about the type of
++       derived  from the <EM>/etc/ttys</EM> file or the <STRONG>TERM</STRONG> environmental
++       variable is often something generic like <STRONG>network</STRONG>,  <STRONG>dialup</STRONG>,
++       or  <STRONG>unknown</STRONG>.   When <STRONG>tset</STRONG> is used in a startup script it is
++       often desirable to provide information about the  type  of
+        terminal used on such ports.
+ 
+-       The purpose of the <STRONG>-m</STRONG> option is to map from  some  set  of
+-       conditions  to  a terminal type, that is, to tell <STRONG>tset</STRONG> "If
+-       I'm on this port at a particular speed, guess that I'm  on
+-       that kind of terminal".
++       The  <STRONG>-m</STRONG> options maps from some set of conditions to a ter-
++       minal type, that is, to tell <STRONG>tset</STRONG> "If I'm on this port  at
++       a  particular speed, guess that I'm on that kind of termi-
++       nal".
+ 
+        The argument to the <STRONG>-m</STRONG> option consists of an optional port
+        type, an optional operator, an optional baud rate specifi-
+-       cation,  an  optional colon (":") character and a terminal
+-       type.  The port type is a string (delimited by either  the
++       cation, an optional colon (":") character and  a  terminal
++       type.   The port type is a string (delimited by either the
+        operator or the colon character).  The operator may be any
+-       combination of "&gt;", "&lt;", "@", and "!"; "&gt;"  means  greater
+-       than,  "&lt;"  means  less  than,  "@" means equal to and "!"
++       combination  of  "&gt;", "&lt;", "@", and "!"; "&gt;" means greater
++       than, "&lt;" means less than, "@"  means  equal  to  and  "!"
+        inverts the sense of the test.  The baud rate is specified
+        as a number and is compared with the speed of the standard
+-       error output (which should be the control terminal).   The
++       error  output (which should be the control terminal).  The
+        terminal type is a string.
+ 
+        If the terminal type is not specified on the command line,
+-       the <STRONG>-m</STRONG> mappings are applied to the terminal type.  If  the
+-       port  type  and  baud rate match the mapping, the terminal
+-       type specified in the mapping replaces the  current  type.
+-       If  more than one mapping is specified, the first applica-
++       the  <STRONG>-m</STRONG> mappings are applied to the terminal type.  If the
++       port type and baud rate match the  mapping,  the  terminal
++       type  specified  in the mapping replaces the current type.
++       If more than one mapping is specified, the first  applica-
+        ble mapping is used.
+ 
+-       For   example,    consider    the    following    mapping:
++       For    example,    consider    the    following   mapping:
+        <STRONG>dialup&gt;9600:vt100</STRONG>.  The port type is dialup , the operator
+-       is &gt;, the baud rate specification is 9600, and the  termi-
++       is  &gt;, the baud rate specification is 9600, and the termi-
+        nal type is vt100.  The result of this mapping is to spec-
+        ify that if the terminal type is <STRONG>dialup</STRONG>, and the baud rate
+-       is  greater  than 9600 baud, a terminal type of <STRONG>vt100</STRONG> will
++       is greater than 9600 baud, a terminal type of  <STRONG>vt100</STRONG>  will
+        be used.
+ 
+        If no baud rate is specified, the terminal type will match
+        any baud rate.  If no port type is specified, the terminal
+-       type  will  match  any  port  type.    For   example,   <STRONG>-m</STRONG>
++       type   will   match   any  port  type.   For  example,  <STRONG>-m</STRONG>
+        <STRONG>dialup:vt100</STRONG>  <STRONG>-m</STRONG>  <STRONG>:?xterm</STRONG>  will  cause  any  dialup  port,
+        regardless of baud rate, to match the terminal type vt100,
+-       and  any  non-dialup  port type to match the terminal type
+-       ?xterm.  Note, because of the leading question  mark,  the
+-       user  will be queried on a default port as to whether they
++       and any non-dialup port type to match  the  terminal  type
++       ?xterm.   Note,  because of the leading question mark, the
++       user will be queried on a default port as to whether  they
+        are actually using an xterm terminal.
+ 
+-       No whitespace characters are permitted in  the  <STRONG>-m</STRONG>  option
+-       argument.   Also,  to avoid problems with meta-characters,
+-       it is suggested that the  entire  <STRONG>-m</STRONG>  option  argument  be
+-       placed  within single quote characters, and that <STRONG>csh</STRONG> users
+-       insert a backslash character ("\") before any  exclamation
++       No  whitespace  characters  are permitted in the <STRONG>-m</STRONG> option
++       argument.  Also, to avoid problems  with  meta-characters,
++       it  is  suggested  that  the  entire <STRONG>-m</STRONG> option argument be
++       placed within single quote characters, and that <STRONG>csh</STRONG>  users
++       insert  a backslash character ("\") before any exclamation
+        marks ("!").
+ 
+ 
+ </PRE><H2><a name="h2-HISTORY">HISTORY</a></H2><PRE>
+-       The  <STRONG>tset</STRONG> command appeared in BSD 3.0.  The <STRONG>ncurses</STRONG> imple-
+-       mentation was lightly adapted from the 4.4BSD sources  for
+-       a terminfo environment by Eric S. Raymond &lt;esr@snark.thyr-
+-       sus.com&gt;.
++       A <STRONG>reset</STRONG> command appeared in 2BSD (1979), written  by  Kurt
++       Shoens.
++
++       A  separate <STRONG>tset</STRONG> command was provided in 2BSD by Eric All-
++       man.  While the oldest published source (from  1979)  pro-
++       vides  both programs, Allman's comments in the 2BSD source
++       code indicate that he began work in October 1977, continu-
++       ing development over the next few years.
++
++       In  1980,  Eric  Allman modified <STRONG>tset</STRONG> to provide a "reset"
++       feature when the program was invoked as <STRONG>reset</STRONG>.
++
++       The <STRONG>ncurses</STRONG> implementation was lightly  adapted  from  the
++       4.4BSD  sources for a terminfo environment by Eric S. Ray-
++       mond &lt;esr@snark.thyrsus.com&gt;.
+ 
+ 
+ </PRE><H2><a name="h2-COMPATIBILITY">COMPATIBILITY</a></H2><PRE>
+@@ -248,75 +276,82 @@
+        Issue 7 (POSIX.1-2008) nor X/Open Curses Issue 7 documents
+        <STRONG>tset</STRONG> or <STRONG>reset</STRONG>.
+ 
+-       The <STRONG>tset</STRONG> utility has been provided  for  backward-compati-
+-       bility  with  BSD  environments (under most modern UNIXes,
+-       <STRONG>/etc/inittab</STRONG> and <STRONG>getty(1)</STRONG> can set <STRONG>TERM</STRONG>  appropriately  for
+-       each  dial-up  line;  this  obviates  what was <STRONG>tset</STRONG>'s most
+-       important use).  This implementation behaves  like  4.4BSD
+-       tset, with a few exceptions specified here.
+-
+-       The  <STRONG>-S</STRONG>  option  of BSD tset no longer works; it prints an
+-       error message to stderr and dies.  The <STRONG>-s</STRONG> option only sets
+-       <STRONG>TERM</STRONG>,  not <STRONG>TERMCAP</STRONG>.  Both of these changes are because the
+-       <STRONG>TERMCAP</STRONG> variable is no longer  supported  under  terminfo-
+-       based <STRONG>ncurses</STRONG>, which makes <STRONG>tset</STRONG> <STRONG>-S</STRONG> useless (we made it die
+-       noisily rather than silently induce lossage).
+-
+-       There was an undocumented  4.4BSD  feature  that  invoking
++       The AT&amp;T <STRONG>tput</STRONG> utility (AIX,  HPUX,  Solaris)  incorporated
++       the  terminal-mode manipulation from <STRONG>tset</STRONG>, presumably with
++       the intention of making <STRONG>tset</STRONG> obsolete.  However,  each  of
++       those systems still provides <STRONG>tset</STRONG>.  In fact, the commonly-
++       used <STRONG>reset</STRONG> utility is always an alias for <STRONG>tset</STRONG>.
++
++       The <STRONG>tset</STRONG> utility provides for backward-compatibility  with
++       BSD  environments  (under most modern UNIXes, <STRONG>/etc/inittab</STRONG>
++       and <STRONG>getty(1)</STRONG> can set <STRONG>TERM</STRONG> appropriately for  each  dial-up
++       line;  this  obviates what was <STRONG>tset</STRONG>'s most important use).
++       This implementation behaves like 4.4BSD <STRONG>tset</STRONG>, with  a  few
++       exceptions specified here.
++
++       A  few  options are different because the <STRONG>TERMCAP</STRONG> variable
++       is no longer supported under terminfo-based <STRONG>ncurses</STRONG>:
++
++       <STRONG>o</STRONG>   The <STRONG>-S</STRONG> option of BSD <STRONG>tset</STRONG> no longer works;  it  prints
++           an error message to the standard error and dies.
++
++       <STRONG>o</STRONG>   The <STRONG>-s</STRONG> option only sets <STRONG>TERM</STRONG>, not <STRONG>TERMCAP</STRONG>.
++
++       There  was  an  undocumented  4.4BSD feature that invoking
+        <STRONG>tset</STRONG> via a link named "TSET" (or via any other name begin-
+-       ning with an upper-case letter) set the  terminal  to  use
++       ning  with  an  upper-case letter) set the terminal to use
+        upper-case only.  This feature has been omitted.
+ 
+-       The  <STRONG>-A</STRONG>,  <STRONG>-E</STRONG>,  <STRONG>-h</STRONG>, <STRONG>-u</STRONG> and <STRONG>-v</STRONG> options were deleted from the
+-       <STRONG>tset</STRONG> utility in 4.4BSD.  None of them were  documented  in
+-       4.3BSD  and  all  are of limited utility at best.  The <STRONG>-a</STRONG>,
++       The <STRONG>-A</STRONG>, <STRONG>-E</STRONG>, <STRONG>-h</STRONG>, <STRONG>-u</STRONG> and <STRONG>-v</STRONG> options were  deleted  from  the
++       <STRONG>tset</STRONG>  utility  in 4.4BSD.  None of them were documented in
++       4.3BSD and all are of limited utility at  best.   The  <STRONG>-a</STRONG>,
+        <STRONG>-d</STRONG>, and <STRONG>-p</STRONG> options are similarly not documented or useful,
+-       but  were retained as they appear to be in widespread use.
+-       It is strongly recommended that any usage of  these  three
+-       options  be changed to use the <STRONG>-m</STRONG> option instead.  The <STRONG>-a</STRONG>,
+-       <STRONG>-d</STRONG>, and <STRONG>-p</STRONG> options are therefore omitted  from  the  usage
++       but were retained as they appear to be in widespread  use.
++       It  is  strongly recommended that any usage of these three
++       options be changed to use the <STRONG>-m</STRONG> option instead.  The  <STRONG>-a</STRONG>,
++       <STRONG>-d</STRONG>,  and  <STRONG>-p</STRONG>  options are therefore omitted from the usage
+        summary above.
+ 
+-       Very  old  systems,  e.g., 3BSD, used a different terminal
+-       driver which was replaced in 4BSD in the early 1980s.   To
+-       accommodate  these older systems, the 4BSD <STRONG>tset</STRONG> provided a
+-       <STRONG>-n</STRONG> option to specify that the new terminal  driver  should
++       Very old systems, e.g., 3BSD, used  a  different  terminal
++       driver  which was replaced in 4BSD in the early 1980s.  To
++       accommodate these older systems, the 4BSD <STRONG>tset</STRONG> provided  a
++       <STRONG>-n</STRONG>  option  to specify that the new terminal driver should
+        be  used.   This  implementation  does  not  provide  that
+        choice.
+ 
+-       It is still permissible to specify  the  <STRONG>-e</STRONG>,  <STRONG>-i</STRONG>,  and  <STRONG>-k</STRONG>
+-       options  without arguments, although it is strongly recom-
+-       mended that such usage be fixed to explicitly specify  the
++       It  is  still  permissible  to  specify the <STRONG>-e</STRONG>, <STRONG>-i</STRONG>, and <STRONG>-k</STRONG>
++       options without arguments, although it is strongly  recom-
++       mended  that such usage be fixed to explicitly specify the
+        character.
+ 
+-       As  of  4.4BSD,  executing <STRONG>tset</STRONG> as <STRONG>reset</STRONG> no longer implies
++       As of 4.4BSD, executing <STRONG>tset</STRONG> as <STRONG>reset</STRONG>  no  longer  implies
+        the <STRONG>-Q</STRONG> option.  Also, the interaction between the - option
+        and the <EM>terminal</EM> argument in some historic implementations
+        of <STRONG>tset</STRONG> has been removed.
+ 
+        The <STRONG>-c</STRONG> and <STRONG>-w</STRONG> options are not found in earlier implementa-
+-       tions.   However,  a  different window size-change feature
++       tions.  However, a different  window  size-change  feature
+        was provided in 4.4BSD.
+ 
+-       <STRONG>o</STRONG>   In 4.4BSD, <STRONG>tset</STRONG> uses the window size from the  termcap
++       <STRONG>o</STRONG>   In  4.4BSD, <STRONG>tset</STRONG> uses the window size from the termcap
+            description to set the window size if <STRONG>tset</STRONG> is not able
+            to obtain the window size from the operating system.
+ 
+-       <STRONG>o</STRONG>   In  ncurses,  <STRONG>tset</STRONG>  obtains  the  window  size   using
++       <STRONG>o</STRONG>   In   ncurses,  <STRONG>tset</STRONG>  obtains  the  window  size  using
+            <STRONG>setupterm</STRONG>, which may be from the operating system, the
+-           <STRONG>LINES</STRONG> and <STRONG>COLUMNS</STRONG> environment variables or the  termi-
++           <STRONG>LINES</STRONG>  and <STRONG>COLUMNS</STRONG> environment variables or the termi-
+            nal description.
+ 
+        Obtaining the window size from the terminal description is
+-       common to both implementations,  but  considered  obsoles-
+-       cent.   Its  only practical use is for hardware terminals.
+-       Generally speaking, a window size would be unset  only  if
++       common  to  both  implementations, but considered obsoles-
++       cent.  Its only practical use is for  hardware  terminals.
++       Generally  speaking,  a window size would be unset only if
+        there were some problem obtaining the value from the oper-
+-       ating system (and <STRONG>setupterm</STRONG> would still fail).   For  that
++       ating  system  (and <STRONG>setupterm</STRONG> would still fail).  For that
+        reason, the <STRONG>LINES</STRONG> and <STRONG>COLUMNS</STRONG> environment variables may be
+-       useful for working  around  window-size  problems.   Those
+-       have  the  drawback  that  if the window is resized, those
+-       variables must be recomputed and reassigned.  To  do  this
++       useful  for  working  around  window-size problems.  Those
++       have the drawback that if the  window  is  resized,  those
++       variables  must  be recomputed and reassigned.  To do this
+        more easily, use the <STRONG><A HREF="resize.1.html">resize(1)</A></STRONG> program.
+ 
+ 
+@@ -327,7 +362,7 @@
+             tells <STRONG>tset</STRONG> whether to initialize <STRONG>TERM</STRONG> using <STRONG>sh</STRONG> or <STRONG>csh</STRONG>
+             syntax.
+ 
+-       TERM Denotes your terminal type.  Each  terminal  type  is
++       TERM Denotes  your  terminal  type.  Each terminal type is
+             distinct, though many are similar.
+ 
+        TERMCAP
+@@ -339,7 +374,7 @@
+ 
+ </PRE><H2><a name="h2-FILES">FILES</a></H2><PRE>
+        /etc/ttys
+-            system port name to terminal  type  mapping  database
++            system  port  name  to terminal type mapping database
+             (BSD versions only).
+ 
+        /usr/share/terminfo
+@@ -350,7 +385,7 @@
+        <STRONG>csh(1)</STRONG>,   <STRONG>sh(1)</STRONG>,   <STRONG>stty(1)</STRONG>,   <STRONG><A HREF="curs_terminfo.3x.html">curs_terminfo(3x)</A></STRONG>,   <STRONG>tty(4)</STRONG>,
+        <STRONG><A HREF="terminfo.5.html">terminfo(5)</A></STRONG>, <STRONG>ttys(5)</STRONG>, <STRONG>environ(7)</STRONG>
+ 
+-       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160723).
++       This describes <STRONG>ncurses</STRONG> version 6.0 (patch 20160730).
+ 
+ 
+ 
+diff --git a/man/curs_color.3x b/man/curs_color.3x
+index bb0a14c..bd4c48e 100644
+--- a/man/curs_color.3x
++++ b/man/curs_color.3x
+@@ -26,7 +26,7 @@
+ .\" authorization.                                                           *
+ .\"***************************************************************************
+ .\"
+-.\" $Id: curs_color.3x,v 1.42 2016/07/24 00:02:15 tom Exp $
++.\" $Id: curs_color.3x,v 1.43 2016/07/30 15:22:11 tom Exp $
+ .TH curs_color 3X ""
+ .ie \n(.g .ds `` \(lq
+ .el       .ds `` ``
+@@ -165,7 +165,7 @@ initializes its internal table representing the
+ red, green and blue components of the color palette.
+ .IP
+ The components depend on whether the terminal uses
+-CGA (aka "ANSI") or
++CGA (aka \*(lqANSI\*(rq) or
+ HLS (i.e., the \fBhls\fP (\fBhue_lightness_saturation\fP) capability is set).
+ The table is initialized first for eight basic colors
+ (black, red, green, yellow, blue, magenta, cyan, and white),
+@@ -299,7 +299,7 @@ The routines \fBcan_change_color()\fR and \fBhas_colors()\fR return \fBTRUE\fR
+ or \fBFALSE\fR.
+ .PP
+ All other routines return the integer \fBERR\fR upon failure and an \fBOK\fR
+-(SVr4 specifies only "an integer value other than \fBERR\fR") upon successful
++(SVr4 specifies only \*(lqan integer value other than \fBERR\fR\*(rq) upon successful
+ completion.
+ .PP
+ X/Open defines no error conditions.
+@@ -345,7 +345,7 @@ The A_BLINK attribute should in theory cause the background to go bright.
+ This often fails to work, and even some cards for which it mostly works
+ (such as the
+ Paradise and compatibles) do the wrong thing when you try to set a bright
+-"yellow" background (you get a blinking yellow foreground instead).
++\*(lqyellow\*(rq background (you get a blinking yellow foreground instead).
+ .bP
+ Color RGB values are not settable.
+ .SH PORTABILITY
+diff --git a/man/tput.1 b/man/tput.1
+index 750051b..46f1966 100644
+--- a/man/tput.1
++++ b/man/tput.1
+@@ -27,10 +27,14 @@
+ .\" authorization.                                                           *
+ .\"***************************************************************************
+ .\"
+-.\" $Id: tput.1,v 1.36 2016/04/02 23:41:08 tom Exp $
++.\" $Id: tput.1,v 1.42 2016/07/30 21:01:09 tom Exp $
+ .TH @TPUT@ 1 ""
+ .ds d @TERMINFO@
+ .ds n 1
++.ie \n(.g .ds `` \(lq
++.el       .ds `` ``
++.ie \n(.g .ds '' \(rq
++.el       .ds '' ''
+ .de bP
+ .IP \(bu 4
+ ..
+@@ -39,6 +43,8 @@
+ .SH SYNOPSIS
+ \fB@TPUT@\fR [\fB\-T\fR\fItype\fR] \fIcapname\fR [\fIparameters\fR]
+ .br
++\fB@TPUT@\fR [\fB\-T\fR\fItype\fR] \fBclear\fR
++.br
+ \fB@TPUT@\fR [\fB\-T\fR\fItype\fR] \fBinit\fR
+ .br
+ \fB@TPUT@\fR [\fB\-T\fR\fItype\fR] \fBreset\fR
+@@ -197,7 +203,7 @@ terminal in the environmental variable \fBTERM\fR.
+ .TP 5
+ \fB@TPUT@ cup 0 0\fR
+ Send the sequence to move the cursor to row \fB0\fR, column \fB0\fR
+-(the upper left corner of the screen, usually known as the "home"
++(the upper left corner of the screen, usually known as the \*(lqhome\*(rq
+ cursor position).
+ .TP 5
+ \fB@TPUT@ clear\fR
+@@ -256,7 +262,8 @@ compiled terminal description database
+ tab settings for some terminals, in a format
+ appropriate to be output to the terminal (escape
+ sequences that set margins and tabs); for more
+-information, see the "Tabs and Initialization"
++information, see the
++.IR "Tabs and Initialization" ,
+ section of \fBterminfo\fR(5)
+ .SH EXIT CODES
+ If the \fB\-S\fR option is used,
+@@ -317,11 +324,54 @@ T}
+ \fB>4\fR	error occurred in \-S
+ =
+ .TE
++.SH HISTORY
++The \fBtput\fP command was begun by Bill Joy in 1980.
++The initial version only cleared the screen.
++.PP
++Keith Bostic replaced this in 1989 with a new implementation
++based on the AT&T SystemV program \fBtput\fP.
++Like the AT&T program, Bostic's version
++accepted some parameters named for \fIterminfo capabilities\fP
++(\fBclear\fP, \fBinit\fP, \fBlongname\fP and \fBreset\fP).
++However (because he had only termcap available),
++it accepted \fItermcap names\fP for other capabilities.
++.PP
++At the same time, Bostic added a shell script named \*(lqclear\*(rq,
++which used \fBtput\fP to clear the screen.
++.PP
++Both of these appeared in 4.4BSD,
++becoming the \*(lqmodern\*(rq BSD implementation of \fBtput\fP.
+ .SH PORTABILITY
+ .PP
++This implementation of \fBtput\fP differs from AT&T \fBtput\fP in
++two important areas:
++.bP
++@TPUT@ writes to the standard output.
++That need not be a regular terminal.
++.IP
++The AT&T implementation's \fBinit\fP and \fBreset\fP commands
++use the \fBtset\fP source, which manipulates terminal modes.
++It successively tries standard output, standard error, standard input
++before falling back to \*(lq/dev/tty\*(rq and finally just assumes
++a 1200Bd terminal.
++When updating terminal modes, it ignores errors.
++.bP
++AT&T \fBtput\fP guesses the type of its \fIcapname\fP operands by seeing if
++all of the characters are numeric, or not.
++.IP
++Most implementations which provide support for \fIcapname\fR operands
++use the \fItparm\fP function to expand parameters in it.
++That function expects a mixture of numeric and string parameters,
++requiring \fB@TPUT@\fP to know which type to use.
++.IP
++This implementation uses a table to determine the parameter types for
++the standard \fIcapname\fR operands, and an internal library
++function to analyze nonstandard \fIcapname\fR operands.
++.PP
+ The \fBlongname\fR and \fB\-S\fR options, and the parameter-substitution
+-features used in the \fBcup\fR example, are not supported in BSD curses or in
+-AT&T/USL curses before SVr4.
++features used in the \fBcup\fR example,
++were not supported in BSD curses before 4.3reno (1989) or in
++AT&T/USL curses before SVr4 (1988).
+ .PP
+ IEEE Std 1003.1/The Open Group  Base Specifications Issue 7 (POSIX.1-2008) 
+ documents only the operands for \fBclear\fP, \fBinit\fP and \fBreset\fP.
+@@ -331,13 +381,13 @@ In this implementation, \fBclear\fP is part of the \fIcapname\fR support.
+ The others (\fBinit\fP and \fBlongname\fP) do not correspond to terminal
+ capabilities.
+ .bP
+-Other implementations of \fB@TPUT@\fP on
++Other implementations of \fBtput\fP on
+ SVr4-based systems such as Solaris, IRIX64 and HPUX
+ as well as others such as AIX and Tru64
+ provide support for \fIcapname\fR operands.
+ .bP
+ A few platforms such as FreeBSD recognize termcap names rather
+-than terminfo capability names in their respective \fB@TPUT@\fP commands.
++than terminfo capability names in their respective \fBtput\fP commands.
+ Since 2010, NetBSD's \fBtput\fP uses terminfo names.
+ Before that, it (like FreeBSD) recognized termcap names.
+ .PP
+@@ -355,16 +405,6 @@ and the terminal capabilities database.
+ While it is certainly possible to write a \fBtput\fP program without using curses,
+ none of the systems which have a curses implementation provide
+ a \fBtput\fP utility which does not provide the \fIcapname\fP feature.
+-.PP
+-Most implementations which provide support for \fIcapname\fR operands
+-use the \fItparm\fP function to expand parameters in it.
+-That function expects a mixture of numeric and string parameters,
+-requiring \fB@TPUT@\fP to know which type to use.
+-This implementation uses a table to determine that for
+-the standard \fIcapname\fR operands, and an internal library
+-function to analyze nonstandard \fIcapname\fR operands.
+-Other implementations may simply guess that an operand containing only digits
+-is intended to be a number.
+ .SH SEE ALSO
+ \fB@CLEAR@\fR(\*n),
+ \fBstty\fR(1),
+diff --git a/man/tset.1 b/man/tset.1
+index 80f66ad..07a2867 100644
+--- a/man/tset.1
++++ b/man/tset.1
+@@ -26,7 +26,7 @@
+ .\" authorization.                                                           *
+ .\"***************************************************************************
+ .\"
+-.\" $Id: tset.1,v 1.37 2016/05/21 23:36:51 tom Exp $
++.\" $Id: tset.1,v 1.42 2016/07/30 21:59:39 tom Exp $
+ .TH @TSET@ 1 ""
+ .ie \n(.g .ds `` \(lq
+ .el       .ds `` ``
+@@ -43,8 +43,25 @@
+ \fB@RESET@\fR [\fB\-IQVcqrsw\fR] [\fB\-\fR] [\fB\-e\fR \fIch\fR] [\fB\-i\fR \fIch\fR] [\fB\-k\fR \fIch\fR] [\fB\-m\fR \fImapping\fR] [\fIterminal\fR]
+ .SH DESCRIPTION
+ .SS tset - initialization
+-\&\fBTset\fR initializes terminals.
+-\fBTset\fR first determines the type of terminal that you are using.
++This program initializes terminals.
++.PP
++First, \fB@TSET@\fR retrieves the current terminal mode settings
++for your terminal.
++It does this by successively testing
++.bP
++the standard error,
++.bP
++standard output,
++.bP
++standard input and
++.bP
++ultimately \*(lq/dev/tty\*(rq
++.PP
++to obtain terminal settings.
++Having retrieved these settings, \fB@TSET@\fP remembers which
++file descriptor to use when updating settings.
++.PP
++Next, \fB@TSET@\fP determines the type of terminal that you are using.
+ This determination is done as follows, using the first terminal type found.
+ .PP
+ 1. The \fBterminal\fR argument specified on the command line.
+@@ -85,7 +102,7 @@ doing the terminal initialization described above.  This is useful
+ after a program dies leaving a terminal in an abnormal state.  Note,
+ you may have to type
+ .sp
+-    \fB<LF>@RESET@<LF>\fR
++    \fI<LF>\fP\fB@RESET@\fP\fI<LF>\fP
+ .sp
+ (the line-feed character is normally control-J) to get the terminal
+ to work, as carriage-return may no longer work in the abnormal state.
+@@ -173,7 +190,7 @@ something generic like \fBnetwork\fR, \fBdialup\fR, or \fBunknown\fR.
+ When \fB@TSET@\fR is used in a startup script it is often desirable to
+ provide information about the type of terminal used on such ports.
+ .PP
+-The purpose of the \fB\-m\fR option is to map
++The \fB\-m\fR options maps
+ from some set of conditions to a terminal type, that is, to
+ tell \fB@TSET@\fR
+ \*(``If I'm on this port at a particular speed,
+@@ -224,7 +241,19 @@ entire \fB\-m\fR option argument be placed within single quote characters,
+ and that \fBcsh\fR users insert a backslash character (\*(``\e\*('') before
+ any exclamation marks (\*(``!\*('').
+ .SH HISTORY
+-The \fB@TSET@\fR command appeared in BSD 3.0.  The \fBncurses\fR implementation
++.PP
++A \fBreset\fP command appeared in 2BSD (1979), written by Kurt Shoens.
++.PP
++A separate \fBtset\fP command was provided in 2BSD by Eric Allman.
++While the oldest published source (from 1979) provides both programs,
++Allman's comments in the 2BSD source code indicate
++that he began work in October 1977,
++continuing development over the next few years.
++.PP
++In 1980, Eric Allman modified \fBtset\fP to provide a \*(lqreset\*(rq
++feature when the program was invoked as \fBreset\fP.
++.PP
++The \fBncurses\fR implementation
+ was lightly adapted from the 4.4BSD sources for a terminfo environment by Eric
+ S. Raymond <esr@snark.thyrsus.com>.
+ .SH COMPATIBILITY
+@@ -233,19 +262,27 @@ Neither IEEE Std 1003.1/The Open Group Base Specifications Issue 7
+ (POSIX.1-2008) nor
+ X/Open Curses Issue 7 documents \fB@TSET@\fP or \fB@RESET@\fP.
+ .PP
+-The \fB@TSET@\fR utility has been provided for backward-compatibility with BSD
++The AT&T \fBtput\fP utility (AIX, HPUX, Solaris)
++incorporated the terminal-mode manipulation from \fBtset\fP,
++presumably with the intention of making \fBtset\fP obsolete.
++However, each of those systems still provides \fBtset\fP.
++In fact, the commonly-used \fBreset\fP utility
++is always an alias for \fBtset\fP.
++.PP
++The \fB@TSET@\fR utility provides for backward-compatibility with BSD
+ environments (under most modern UNIXes, \fB/etc/inittab\fR and \fIgetty\fR(1)
+ can set \fBTERM\fR appropriately for each dial-up line; this obviates what was
+ \fB@TSET@\fR's most important use).  This implementation behaves like 4.4BSD
+-tset, with a few exceptions specified here.
++\fBtset\fP, with a few exceptions specified here.
+ .PP
+-The \fB\-S\fR option of BSD tset no longer works;
+-it prints an error message to stderr and dies.
++A few options are different
++because the \fBTERMCAP\fR variable
++is no longer supported under terminfo-based \fBncurses\fR:
++.bP
++The \fB\-S\fR option of BSD \fBtset\fP no longer works;
++it prints an error message to the standard error and dies.
++.bP
+ The \fB\-s\fR option only sets \fBTERM\fR, not \fBTERMCAP\fP.
+-Both of these changes are because the \fBTERMCAP\fR variable
+-is no longer supported under terminfo-based \fBncurses\fR,
+-which makes \fB@TSET@ \-S\fR useless
+-(we made it die noisily rather than silently induce lossage).
+ .PP
+ There was an undocumented 4.4BSD feature
+ that invoking \fBtset\fP via a link named
+diff --git a/package/debian-mingw/changelog b/package/debian-mingw/changelog
+index 1dd0ce7..8eb0e83 100644
+--- a/package/debian-mingw/changelog
++++ b/package/debian-mingw/changelog
+@@ -1,8 +1,8 @@
+-ncurses6 (6.0+20160723) unstable; urgency=low
++ncurses6 (6.0+20160730) unstable; urgency=low
+ 
+   * latest weekly patch
+ 
+- -- Thomas E. Dickey <dickey@invisible-island.net>  Sat, 23 Jul 2016 07:56:24 -0400
++ -- Thomas E. Dickey <dickey@invisible-island.net>  Sat, 30 Jul 2016 09:19:43 -0400
+ 
+ ncurses6 (5.9-20131005) unstable; urgency=low
+ 
+diff --git a/package/debian-mingw64/changelog b/package/debian-mingw64/changelog
+index 1dd0ce7..8eb0e83 100644
+--- a/package/debian-mingw64/changelog
++++ b/package/debian-mingw64/changelog
+@@ -1,8 +1,8 @@
+-ncurses6 (6.0+20160723) unstable; urgency=low
++ncurses6 (6.0+20160730) unstable; urgency=low
+ 
+   * latest weekly patch
+ 
+- -- Thomas E. Dickey <dickey@invisible-island.net>  Sat, 23 Jul 2016 07:56:24 -0400
++ -- Thomas E. Dickey <dickey@invisible-island.net>  Sat, 30 Jul 2016 09:19:43 -0400
+ 
+ ncurses6 (5.9-20131005) unstable; urgency=low
+ 
+diff --git a/package/debian/changelog b/package/debian/changelog
+index 7945774..849889b 100644
+--- a/package/debian/changelog
++++ b/package/debian/changelog
+@@ -1,8 +1,8 @@
+-ncurses6 (6.0+20160723) unstable; urgency=low
++ncurses6 (6.0+20160730) unstable; urgency=low
+ 
+   * latest weekly patch
+ 
+- -- Thomas E. Dickey <dickey@invisible-island.net>  Sat, 23 Jul 2016 07:56:24 -0400
++ -- Thomas E. Dickey <dickey@invisible-island.net>  Sat, 30 Jul 2016 09:19:43 -0400
+ 
+ ncurses6 (5.9-20120608) unstable; urgency=low
+ 
+diff --git a/package/mingw-ncurses.nsi b/package/mingw-ncurses.nsi
+index 88d2117..8788407 100644
+--- a/package/mingw-ncurses.nsi
++++ b/package/mingw-ncurses.nsi
+@@ -1,4 +1,4 @@
+-; $Id: mingw-ncurses.nsi,v 1.168 2016/07/23 11:56:24 tom Exp $
++; $Id: mingw-ncurses.nsi,v 1.169 2016/07/30 13:19:43 tom Exp $
+ 
+ ; TODO add examples
+ ; TODO bump ABI to 6
+@@ -10,7 +10,7 @@
+ !define VERSION_MAJOR "6"
+ !define VERSION_MINOR "0"
+ !define VERSION_YYYY  "2016"
+-!define VERSION_MMDD  "0723"
++!define VERSION_MMDD  "0730"
+ !define VERSION_PATCH ${VERSION_YYYY}${VERSION_MMDD}
+ 
+ !define MY_ABI   "5"
+diff --git a/package/mingw-ncurses.spec b/package/mingw-ncurses.spec
+index 2b74420..239168c 100644
+--- a/package/mingw-ncurses.spec
++++ b/package/mingw-ncurses.spec
+@@ -3,7 +3,7 @@
+ Summary: shared libraries for terminal handling
+ Name: mingw32-ncurses6
+ Version: 6.0
+-Release: 20160723
++Release: 20160730
+ License: X11
+ Group: Development/Libraries
+ Source: ncurses-%{version}-%{release}.tgz
+diff --git a/package/ncurses.spec b/package/ncurses.spec
+index 83b6ae5..b0eaa3c 100644
+--- a/package/ncurses.spec
++++ b/package/ncurses.spec
+@@ -1,7 +1,7 @@
+ Summary: shared libraries for terminal handling
+ Name: ncurses6
+ Version: 6.0
+-Release: 20160723
++Release: 20160730
+ License: X11
+ Group: Development/Libraries
+ Source: ncurses-%{version}-%{release}.tgz
+diff --git a/progs/tset.c b/progs/tset.c
+index 777fc6f..8417eff 100644
+--- a/progs/tset.c
++++ b/progs/tset.c
+@@ -119,7 +119,7 @@ char *ttyname(int fd);
+ #include <dump_entry.h>
+ #include <transform.h>
+ 
+-MODULE_ID("$Id: tset.c,v 1.99 2016/07/24 00:07:16 tom Exp $")
++MODULE_ID("$Id: tset.c,v 1.100 2016/07/30 21:32:26 tom Exp $")
+ 
+ /*
+  * SCO defines TIOCGSIZE and the corresponding struct.  Other systems (SunOS,
+@@ -154,6 +154,7 @@ static void err(const char *,...) GCC_NORETURN;
+ 
+ const char *_nc_progname = "tset";
+ 
++static int my_fd;
+ static TTY mode, oldmode, original;
+ 
+ static bool opt_c;		/* set control-chars */
+@@ -187,7 +188,7 @@ static void
+ exit_error(void)
+ {
+     if (can_restore)
+-	SET_TTY(STDERR_FILENO, &original);
++	SET_TTY(my_fd, &original);
+     (void) fprintf(stderr, "\n");
+     fflush(stderr);
+     ExitProgram(EXIT_FAILURE);
+@@ -223,6 +224,17 @@ failed(const char *msg)
+     /* NOTREACHED */
+ }
+ 
++static bool
++get_mode(int fd)
++{
++    bool success = TRUE;
++    my_fd = fd;
++    if (GET_TTY(my_fd, &mode) < 0) {
++	success = FALSE;
++    }
++    return success;
++}
++
+ static void
+ cat(char *file)
+ {
+@@ -589,7 +601,7 @@ get_termcap_entry(char *userarg)
+     if ((ttype = getenv("TERM")) != 0)
+ 	goto map;
+ 
+-    if ((ttypath = ttyname(STDERR_FILENO)) != 0) {
++    if ((ttypath = ttyname(my_fd)) != 0) {
+ 	p = _nc_basename(ttypath);
+ #if HAVE_GETTTYNAM
+ 	/*
+@@ -759,9 +771,9 @@ static void
+ reset_mode(void)
+ {
+ #ifdef TERMIOS
+-    tcgetattr(STDERR_FILENO, &mode);
++    tcgetattr(my_fd, &mode);
+ #else
+-    stty(STDERR_FILENO, &mode);
++    stty(my_fd, &mode);
+ #endif
+ 
+ #ifdef TERMIOS
+@@ -879,7 +891,7 @@ reset_mode(void)
+ 	);
+ #endif
+ 
+-    SET_TTY(STDERR_FILENO, &mode);
++    SET_TTY(my_fd, &mode);
+ }
+ 
+ /*
+@@ -1018,7 +1030,7 @@ set_init(void)
+ #ifdef TAB3
+     if (oldmode.c_oflag & (TAB3 | ONLCR | OCRNL | ONLRET)) {
+ 	oldmode.c_oflag &= (TAB3 | ONLCR | OCRNL | ONLRET);
+-	SET_TTY(STDERR_FILENO, &oldmode);
++	SET_TTY(my_fd, &oldmode);
+     }
+ #endif
+     settle = set_tabs();
+@@ -1208,6 +1220,7 @@ main(int argc, char **argv)
+     const char *p;
+     const char *ttype;
+ 
++    my_fd = STDERR_FILENO;
+     obsolete(argv);
+     noinit = noset = quiet = Sflag = sflag = showterm = 0;
+     while ((ch = getopt(argc, argv, "a:cd:e:Ii:k:m:p:qQSrsVw")) != -1) {
+@@ -1279,8 +1292,10 @@ main(int argc, char **argv)
+     /*
+      * stderr is less likely to be redirected than stdout; try that first.
+      */
+-    if (GET_TTY(STDERR_FILENO, &mode) < 0 &&
+-	GET_TTY(STDOUT_FILENO, &mode) < 0) {
++    if (!get_mode(STDERR_FILENO) &&
++	!get_mode(STDOUT_FILENO) &&
++	!get_mode(STDIN_FILENO) &&
++	!get_mode(open("/dev/tty", O_RDWR))) {
+ 	failed("terminal attributes");
+     }
+     can_restore = TRUE;
+@@ -1306,13 +1321,13 @@ main(int argc, char **argv)
+ 	if (opt_w) {
+ 	    STRUCT_WINSIZE win;
+ 	    /* Set window size if not set already */
+-	    (void) ioctl(STDERR_FILENO, IOCTL_GET_WINSIZE, &win);
++	    (void) ioctl(my_fd, IOCTL_GET_WINSIZE, &win);
+ 	    if (WINSIZE_ROWS(win) == 0 &&
+ 		WINSIZE_COLS(win) == 0 &&
+ 		tlines > 0 && tcolumns > 0) {
+ 		WINSIZE_ROWS(win) = (unsigned short) tlines;
+ 		WINSIZE_COLS(win) = (unsigned short) tcolumns;
+-		(void) ioctl(STDERR_FILENO, IOCTL_SET_WINSIZE, &win);
++		(void) ioctl(my_fd, IOCTL_SET_WINSIZE, &win);
+ 	    }
+ 	}
+ #endif
+@@ -1325,7 +1340,7 @@ main(int argc, char **argv)
+ 
+ 	    /* Set the modes if they've changed. */
+ 	    if (memcmp(&mode, &oldmode, sizeof(mode))) {
+-		SET_TTY(STDERR_FILENO, &mode);
++		SET_TTY(my_fd, &mode);
+ 	    }
+ 	}
+     }
+-- 
+2.9.1
+

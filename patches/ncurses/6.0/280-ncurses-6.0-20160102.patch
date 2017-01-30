@@ -1,0 +1,534 @@
+From cea2b8032daa63b0f131fd5793de28b2abdf5471 Mon Sep 17 00:00:00 2001
+From: "Thomas E. Dickey" <dickey@invisible-island.net>
+Date: Sun, 3 Jan 2016 01:50:40 +0000
+Subject: [PATCH 19/50] ncurses 6.0 - patch 20160102
+
++ modify ncurses c/C color test-screens to take advantage of wide
+  screens, reducing the number of lines used for 88- and 256-colors.
++ minor refinement to check versus ncv to ignore two parameters of
+  SGR 38 and 48 when those come from color-capabilities.
+---
+ Ada95/package/debian/copyright        |  4 +--
+ COPYING                               |  4 +--
+ NEWS                                  | 10 +++++--
+ VERSION                               |  2 +-
+ dist.mk                               |  6 ++---
+ package/debian-mingw/changelog        |  4 +--
+ package/debian-mingw/copyright        |  4 +--
+ package/debian-mingw64/changelog      |  4 +--
+ package/debian-mingw64/copyright      |  4 +--
+ package/debian/changelog              |  4 +--
+ package/debian/copyright              |  4 +--
+ package/mingw-ncurses.nsi             |  6 ++---
+ package/mingw-ncurses.spec            |  2 +-
+ package/ncurses.spec                  |  2 +-
+ progs/tic.c                           | 16 ++++++++---
+ test/ncurses.c                        | 51 ++++++++++++++++++++++++++++-------
+ test/package/debian-mingw/copyright   |  4 +--
+ test/package/debian-mingw64/copyright |  4 +--
+ test/package/debian/copyright         |  4 +--
+ 19 files changed, 93 insertions(+), 46 deletions(-)
+
+diff --git a/Ada95/package/debian/copyright b/Ada95/package/debian/copyright
+index b24950a..dfc525d 100644
+--- a/Ada95/package/debian/copyright
++++ b/Ada95/package/debian/copyright
+@@ -4,11 +4,11 @@ Current ncurses maintainer: Thomas Dickey <dickey@invisible-island.net>
+ 
+ -------------------------------------------------------------------------------
+ Files: *
+-Copyright: 1998-2014,2015 Free Software Foundation, Inc.
++Copyright: 1998-2015,2016 Free Software Foundation, Inc.
+ Licence: X11
+ 
+ Files: aclocal.m4 package
+-Copyright: 2010-2014,2015 by Thomas E. Dickey
++Copyright: 2010-2015,2016 by Thomas E. Dickey
+ Licence: X11
+ 
+     Permission is hereby granted, free of charge, to any person obtaining a
+diff --git a/COPYING b/COPYING
+index a9532ce..830a8b5 100644
+--- a/COPYING
++++ b/COPYING
+@@ -1,4 +1,4 @@
+-Copyright (c) 1998-2014,2015 Free Software Foundation, Inc.
++Copyright (c) 1998-2015,2016 Free Software Foundation, Inc.
+ 
+ Permission is hereby granted, free of charge, to any person obtaining a
+ copy of this software and associated documentation files (the
+@@ -25,4 +25,4 @@ sale, use or other dealings in this Software without prior written
+ authorization.
+ 
+ -- vile:txtmode fc=72
+--- $Id: COPYING,v 1.3 2015/01/03 20:12:01 tom Exp $
++-- $Id: COPYING,v 1.4 2016/01/02 20:24:37 tom Exp $
+diff --git a/NEWS b/NEWS
+index c775548..f407576 100644
+--- a/NEWS
++++ b/NEWS
+@@ -1,5 +1,5 @@
+ -------------------------------------------------------------------------------
+--- Copyright (c) 1998-2014,2015 Free Software Foundation, Inc.               --
++-- Copyright (c) 1998-2015,2016 Free Software Foundation, Inc.               --
+ --                                                                           --
+ -- Permission is hereby granted, free of charge, to any person obtaining a   --
+ -- copy of this software and associated documentation files (the             --
+@@ -25,7 +25,7 @@
+ -- sale, use or other dealings in this Software without prior written        --
+ -- authorization.                                                            --
+ -------------------------------------------------------------------------------
+--- $Id: NEWS,v 1.2550 2015/12/27 01:01:41 tom Exp $
++-- $Id: NEWS,v 1.2554 2016/01/03 01:17:55 tom Exp $
+ -------------------------------------------------------------------------------
+ 
+ This is a log of changes that ncurses has gone through since Zeyd started
+@@ -45,6 +45,12 @@ See the AUTHORS file for the corresponding full names.
+ Changes through 1.9.9e did not credit all contributions;
+ it is not possible to add this information.
+ 
++20160102
++	+ modify ncurses c/C color test-screens to take advantage of wide
++	  screens, reducing the number of lines used for 88- and 256-colors.
++	+ minor refinement to check versus ncv to ignore two parameters of
++	  SGR 38 and 48 when those come from color-capabilities.
++
+ 20151226
+ 	+ add check in tic for use of bold, etc., video attributes in the
+ 	  color capabilities, accounting whether the feature is listed in ncv.
+diff --git a/VERSION b/VERSION
+index a73c4e0..ccb1b41 100644
+--- a/VERSION
++++ b/VERSION
+@@ -1 +1 @@
+-5:0:9	6.0	20151226
++5:0:9	6.0	20160102
+diff --git a/dist.mk b/dist.mk
+index 246a077..abac3ac 100644
+--- a/dist.mk
++++ b/dist.mk
+@@ -1,5 +1,5 @@
+ ##############################################################################
+-# Copyright (c) 1998-2014,2015 Free Software Foundation, Inc.                #
++# Copyright (c) 1998-2015,2016 Free Software Foundation, Inc.                #
+ #                                                                            #
+ # Permission is hereby granted, free of charge, to any person obtaining a    #
+ # copy of this software and associated documentation files (the "Software"), #
+@@ -25,7 +25,7 @@
+ # use or other dealings in this Software without prior written               #
+ # authorization.                                                             #
+ ##############################################################################
+-# $Id: dist.mk,v 1.1085 2015/12/26 15:21:12 tom Exp $
++# $Id: dist.mk,v 1.1087 2016/01/02 20:24:37 tom Exp $
+ # Makefile for creating ncurses distributions.
+ #
+ # This only needs to be used directly as a makefile by developers, but
+@@ -37,7 +37,7 @@ SHELL = /bin/sh
+ # These define the major/minor/patch versions of ncurses.
+ NCURSES_MAJOR = 6
+ NCURSES_MINOR = 0
+-NCURSES_PATCH = 20151226
++NCURSES_PATCH = 20160102
+ 
+ # We don't append the patch to the version, since this only applies to releases
+ VERSION = $(NCURSES_MAJOR).$(NCURSES_MINOR)
+diff --git a/package/debian-mingw/changelog b/package/debian-mingw/changelog
+index e5e5325..a33889c 100644
+--- a/package/debian-mingw/changelog
++++ b/package/debian-mingw/changelog
+@@ -1,8 +1,8 @@
+-ncurses6 (6.0+20151226) unstable; urgency=low
++ncurses6 (6.0+20160102) unstable; urgency=low
+ 
+   * latest weekly patch
+ 
+- -- Thomas E. Dickey <dickey@invisible-island.net>  Sat, 26 Dec 2015 10:21:12 -0500
++ -- Thomas E. Dickey <dickey@invisible-island.net>  Sat, 02 Jan 2016 13:42:09 -0500
+ 
+ ncurses6 (5.9-20131005) unstable; urgency=low
+ 
+diff --git a/package/debian-mingw/copyright b/package/debian-mingw/copyright
+index 43cb3e5..abd489d 100644
+--- a/package/debian-mingw/copyright
++++ b/package/debian-mingw/copyright
+@@ -5,11 +5,11 @@ Current ncurses maintainer: Thomas Dickey <dickey@invisible-island.net>
+ 
+ -------------------------------------------------------------------------------
+ Files: *
+-Copyright: 1998-2014,2015 Free Software Foundation, Inc.
++Copyright: 1998-2015,2016 Free Software Foundation, Inc.
+ Licence: X11
+ 
+ Files: aclocal.m4 package
+-Copyright: 1996-2014,2015 by Thomas E. Dickey
++Copyright: 1996-2015,2016 by Thomas E. Dickey
+ Licence: X11
+ 
+ Files: doc/html/NCURSES-Programming-HOWTO.html
+diff --git a/package/debian-mingw64/changelog b/package/debian-mingw64/changelog
+index e5e5325..a33889c 100644
+--- a/package/debian-mingw64/changelog
++++ b/package/debian-mingw64/changelog
+@@ -1,8 +1,8 @@
+-ncurses6 (6.0+20151226) unstable; urgency=low
++ncurses6 (6.0+20160102) unstable; urgency=low
+ 
+   * latest weekly patch
+ 
+- -- Thomas E. Dickey <dickey@invisible-island.net>  Sat, 26 Dec 2015 10:21:12 -0500
++ -- Thomas E. Dickey <dickey@invisible-island.net>  Sat, 02 Jan 2016 13:42:09 -0500
+ 
+ ncurses6 (5.9-20131005) unstable; urgency=low
+ 
+diff --git a/package/debian-mingw64/copyright b/package/debian-mingw64/copyright
+index 43cb3e5..abd489d 100644
+--- a/package/debian-mingw64/copyright
++++ b/package/debian-mingw64/copyright
+@@ -5,11 +5,11 @@ Current ncurses maintainer: Thomas Dickey <dickey@invisible-island.net>
+ 
+ -------------------------------------------------------------------------------
+ Files: *
+-Copyright: 1998-2014,2015 Free Software Foundation, Inc.
++Copyright: 1998-2015,2016 Free Software Foundation, Inc.
+ Licence: X11
+ 
+ Files: aclocal.m4 package
+-Copyright: 1996-2014,2015 by Thomas E. Dickey
++Copyright: 1996-2015,2016 by Thomas E. Dickey
+ Licence: X11
+ 
+ Files: doc/html/NCURSES-Programming-HOWTO.html
+diff --git a/package/debian/changelog b/package/debian/changelog
+index 10c95e5..76982f3 100644
+--- a/package/debian/changelog
++++ b/package/debian/changelog
+@@ -1,8 +1,8 @@
+-ncurses6 (6.0+20151226) unstable; urgency=low
++ncurses6 (6.0+20160102) unstable; urgency=low
+ 
+   * latest weekly patch
+ 
+- -- Thomas E. Dickey <dickey@invisible-island.net>  Sat, 26 Dec 2015 10:21:12 -0500
++ -- Thomas E. Dickey <dickey@invisible-island.net>  Sat, 02 Jan 2016 13:42:09 -0500
+ 
+ ncurses6 (5.9-20120608) unstable; urgency=low
+ 
+diff --git a/package/debian/copyright b/package/debian/copyright
+index 43cb3e5..abd489d 100644
+--- a/package/debian/copyright
++++ b/package/debian/copyright
+@@ -5,11 +5,11 @@ Current ncurses maintainer: Thomas Dickey <dickey@invisible-island.net>
+ 
+ -------------------------------------------------------------------------------
+ Files: *
+-Copyright: 1998-2014,2015 Free Software Foundation, Inc.
++Copyright: 1998-2015,2016 Free Software Foundation, Inc.
+ Licence: X11
+ 
+ Files: aclocal.m4 package
+-Copyright: 1996-2014,2015 by Thomas E. Dickey
++Copyright: 1996-2015,2016 by Thomas E. Dickey
+ Licence: X11
+ 
+ Files: doc/html/NCURSES-Programming-HOWTO.html
+diff --git a/package/mingw-ncurses.nsi b/package/mingw-ncurses.nsi
+index 9155484..a33117a 100644
+--- a/package/mingw-ncurses.nsi
++++ b/package/mingw-ncurses.nsi
+@@ -1,4 +1,4 @@
+-; $Id: mingw-ncurses.nsi,v 1.138 2015/12/26 15:21:12 tom Exp $
++; $Id: mingw-ncurses.nsi,v 1.139 2016/01/02 18:42:09 tom Exp $
+ 
+ ; TODO add examples
+ ; TODO bump ABI to 6
+@@ -9,8 +9,8 @@
+ 
+ !define VERSION_MAJOR "6"
+ !define VERSION_MINOR "0"
+-!define VERSION_YYYY  "2015"
+-!define VERSION_MMDD  "1226"
++!define VERSION_YYYY  "2016"
++!define VERSION_MMDD  "0102"
+ !define VERSION_PATCH ${VERSION_YYYY}${VERSION_MMDD}
+ 
+ !define MY_ABI   "5"
+diff --git a/package/mingw-ncurses.spec b/package/mingw-ncurses.spec
+index e840308..e36094f 100644
+--- a/package/mingw-ncurses.spec
++++ b/package/mingw-ncurses.spec
+@@ -3,7 +3,7 @@
+ Summary: shared libraries for terminal handling
+ Name: mingw32-ncurses6
+ Version: 6.0
+-Release: 20151226
++Release: 20160102
+ License: X11
+ Group: Development/Libraries
+ Source: ncurses-%{version}-%{release}.tgz
+diff --git a/package/ncurses.spec b/package/ncurses.spec
+index 9a58c64..d8d87c7 100644
+--- a/package/ncurses.spec
++++ b/package/ncurses.spec
+@@ -1,7 +1,7 @@
+ Summary: shared libraries for terminal handling
+ Name: ncurses6
+ Version: 6.0
+-Release: 20151226
++Release: 20160102
+ License: X11
+ Group: Development/Libraries
+ Source: ncurses-%{version}-%{release}.tgz
+diff --git a/progs/tic.c b/progs/tic.c
+index 4b3a4c8..1347889 100644
+--- a/progs/tic.c
++++ b/progs/tic.c
+@@ -1,5 +1,5 @@
+ /****************************************************************************
+- * Copyright (c) 1998-2014,2015 Free Software Foundation, Inc.              *
++ * Copyright (c) 1998-2015,2016 Free Software Foundation, Inc.              *
+  *                                                                          *
+  * Permission is hereby granted, free of charge, to any person obtaining a  *
+  * copy of this software and associated documentation files (the            *
+@@ -48,7 +48,7 @@
+ #include <parametrized.h>
+ #include <transform.h>
+ 
+-MODULE_ID("$Id: tic.c,v 1.220 2015/12/27 01:46:01 tom Exp $")
++MODULE_ID("$Id: tic.c,v 1.221 2016/01/02 20:04:37 tom Exp $")
+ 
+ #define STDIN_NAME "<stdin>"
+ 
+@@ -2327,13 +2327,23 @@ check_sgr_param(TERMTYPE *tp, int code, const char *name, char *value)
+ 	if (is_sgr_string(test)) {
+ 	    int param = 0;
+ 	    int count = 0;
++	    int skips = 0;
++	    int color = (value == set_a_foreground ||
++			 value == set_a_background ||
++			 value == set_foreground ||
++			 value == set_background);
+ 	    while (*test != 0) {
+ 		if (isdigit(UChar(*test))) {
+ 		    param = 10 * param + (*test - '0');
+ 		    ++count;
+ 		} else {
+ 		    if (count) {
+-			if (param == code)
++			/*
++			 * Avoid unnecessary warning for xterm 256color codes.
++			 */
++			if (color && (param == 38 || param == 48))
++			    skips = 3;
++			if ((skips-- <= 0) && (param == code))
+ 			    break;
+ 		    }
+ 		    count = 0;
+diff --git a/test/ncurses.c b/test/ncurses.c
+index 9fb47f1..9a90d40 100644
+--- a/test/ncurses.c
++++ b/test/ncurses.c
+@@ -1,5 +1,5 @@
+ /****************************************************************************
+- * Copyright (c) 1998-2014,2015 Free Software Foundation, Inc.              *
++ * Copyright (c) 1998-2015,2016 Free Software Foundation, Inc.              *
+  *                                                                          *
+  * Permission is hereby granted, free of charge, to any person obtaining a  *
+  * copy of this software and associated documentation files (the            *
+@@ -40,7 +40,7 @@ AUTHOR
+    Author: Eric S. Raymond <esr@snark.thyrsus.com> 1993
+            Thomas E. Dickey (beginning revision 1.27 in 1996).
+ 
+-$Id: ncurses.c,v 1.425 2015/11/29 01:26:41 tom Exp $
++$Id: ncurses.c,v 1.429 2016/01/03 01:50:10 tom Exp $
+ 
+ ***************************************************************************/
+ 
+@@ -2185,9 +2185,10 @@ color_test(void)
+     int page_size = (LINES - grid_top);
+     int pairs_max;
+     int colors_max = COLORS;
++    int col_limit;
+     int row_limit;
+     int per_row;
+-    char numbered[80];
++    char *numbered = 0;
+     const char *hello;
+     bool done = FALSE;
+     bool opt_acsc = FALSE;
+@@ -2197,6 +2198,15 @@ color_test(void)
+     bool opt_wide = FALSE;
+     WINDOW *helpwin;
+ 
++    numbered = (char *) calloc((size_t) (COLS + 1), sizeof(char));
++    done = ((COLS < 16) || (numbered == 0));
++
++    /*
++     * Because the number of colors is usually a power of two, we also use
++     * a power of two for the number of colors shown per line (to be tidy).
++     */
++    for (col_limit = 1; col_limit * 2 < COLS; col_limit *= 2) ;
++
+     while (!done) {
+ 	int shown = 0;
+ 
+@@ -2214,11 +2224,11 @@ color_test(void)
+ 	if (opt_wide) {
+ 	    width = 4;
+ 	    hello = "Test";
+-	    per_row = (colors_max > 8) ? 16 : 8;
++	    per_row = (col_limit / ((colors_max > 8) ? 4 : 8));
+ 	} else {
+ 	    width = 8;
+ 	    hello = "Hello";
+-	    per_row = 8;
++	    per_row = (col_limit / 8);
+ 	}
+ 	per_row -= min_colors;
+ 
+@@ -2249,6 +2259,9 @@ color_test(void)
+ 	    int col = (i % per_row + 1) * width;
+ 	    NCURSES_PAIRS_T pair = i;
+ 
++	    if ((i / per_row) > row_limit)
++		break;
++
+ #define InxToFG(i) (NCURSES_COLOR_T) ((i % (colors_max - min_colors)) + min_colors)
+ #define InxToBG(i) (NCURSES_COLOR_T) ((i / (colors_max - min_colors)) + min_colors)
+ 	    if (row >= 0 && move(row, col) != ERR) {
+@@ -2375,6 +2388,8 @@ color_test(void)
+ 
+     erase();
+     endwin();
++
++    free(numbered);
+ }
+ 
+ #if USE_WIDEC_SUPPORT
+@@ -2389,9 +2404,10 @@ wide_color_test(void)
+     int page_size = (LINES - grid_top);
+     int pairs_max = (unsigned short) (-1);
+     int colors_max = COLORS;
++    int col_limit;
+     int row_limit;
+     int per_row;
+-    char numbered[80];
++    char *numbered = 0;
+     const char *hello;
+     bool done = FALSE;
+     bool opt_acsc = FALSE;
+@@ -2400,9 +2416,19 @@ wide_color_test(void)
+     bool opt_wide = FALSE;
+     bool opt_nums = FALSE;
+     bool opt_xchr = FALSE;
+-    wchar_t buffer[80];
++    wchar_t *buffer = 0;
+     WINDOW *helpwin;
+ 
++    numbered = (char *) calloc((size_t) (COLS + 1), sizeof(char));
++    buffer = (wchar_t *) calloc((size_t) (COLS + 1), sizeof(wchar_t));
++    done = ((COLS < 16) || (numbered == 0) || (buffer == 0));
++
++    /*
++     * Because the number of colors is usually a power of two, we also use
++     * a power of two for the number of colors shown per line (to be tidy).
++     */
++    for (col_limit = 1; col_limit * 2 < COLS; col_limit *= 2) ;
++
+     while (!done) {
+ 	int shown = 0;
+ 
+@@ -2416,15 +2442,14 @@ wide_color_test(void)
+ 		pairs_max = COLOR_PAIRS;
+ 	}
+ 
+-	/* this assumes an 80-column line */
+ 	if (opt_wide) {
+ 	    width = 4;
+ 	    hello = "Test";
+-	    per_row = (colors_max > 8) ? 16 : 8;
++	    per_row = (col_limit / ((colors_max > 8) ? 4 : 8));
+ 	} else {
+ 	    width = 8;
+ 	    hello = "Hello";
+-	    per_row = 8;
++	    per_row = (col_limit / 8);
+ 	}
+ 	per_row -= min_colors;
+ 
+@@ -2463,6 +2488,9 @@ wide_color_test(void)
+ 	    int col = (i % per_row + 1) * width;
+ 	    NCURSES_PAIRS_T pair = (NCURSES_PAIRS_T) i;
+ 
++	    if ((i / per_row) > row_limit)
++		break;
++
+ 	    if (row >= 0 && move(row, col) != ERR) {
+ 		init_pair(pair, InxToFG(i), InxToBG(i));
+ 		(void) color_set(pair, NULL);
+@@ -2594,6 +2622,9 @@ wide_color_test(void)
+ 
+     erase();
+     endwin();
++
++    free(numbered);
++    free(buffer);
+ }
+ #endif /* USE_WIDEC_SUPPORT */
+ 
+diff --git a/test/package/debian-mingw/copyright b/test/package/debian-mingw/copyright
+index ea1fdff..f4d29e3 100644
+--- a/test/package/debian-mingw/copyright
++++ b/test/package/debian-mingw/copyright
+@@ -4,11 +4,11 @@ Current ncurses maintainer: Thomas Dickey <dickey@invisible-island.net>
+ 
+ -------------------------------------------------------------------------------
+ Files: *
+-Copyright: 1998-2014,2015 Free Software Foundation, Inc.
++Copyright: 1998-2015,2016 Free Software Foundation, Inc.
+ Licence: X11
+ 
+ Files: aclocal.m4 package
+-Copyright: 2003-2014,2015 by Thomas E. Dickey
++Copyright: 2003-2015,2016 by Thomas E. Dickey
+ Licence: X11
+ 
+     Permission is hereby granted, free of charge, to any person obtaining a
+diff --git a/test/package/debian-mingw64/copyright b/test/package/debian-mingw64/copyright
+index ea1fdff..f4d29e3 100644
+--- a/test/package/debian-mingw64/copyright
++++ b/test/package/debian-mingw64/copyright
+@@ -4,11 +4,11 @@ Current ncurses maintainer: Thomas Dickey <dickey@invisible-island.net>
+ 
+ -------------------------------------------------------------------------------
+ Files: *
+-Copyright: 1998-2014,2015 Free Software Foundation, Inc.
++Copyright: 1998-2015,2016 Free Software Foundation, Inc.
+ Licence: X11
+ 
+ Files: aclocal.m4 package
+-Copyright: 2003-2014,2015 by Thomas E. Dickey
++Copyright: 2003-2015,2016 by Thomas E. Dickey
+ Licence: X11
+ 
+     Permission is hereby granted, free of charge, to any person obtaining a
+diff --git a/test/package/debian/copyright b/test/package/debian/copyright
+index ea1fdff..f4d29e3 100644
+--- a/test/package/debian/copyright
++++ b/test/package/debian/copyright
+@@ -4,11 +4,11 @@ Current ncurses maintainer: Thomas Dickey <dickey@invisible-island.net>
+ 
+ -------------------------------------------------------------------------------
+ Files: *
+-Copyright: 1998-2014,2015 Free Software Foundation, Inc.
++Copyright: 1998-2015,2016 Free Software Foundation, Inc.
+ Licence: X11
+ 
+ Files: aclocal.m4 package
+-Copyright: 2003-2014,2015 by Thomas E. Dickey
++Copyright: 2003-2015,2016 by Thomas E. Dickey
+ Licence: X11
+ 
+     Permission is hereby granted, free of charge, to any person obtaining a
+-- 
+2.9.1
+
