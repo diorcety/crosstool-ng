@@ -1,0 +1,177 @@
+From 1443e72730ebdaf14614e4267dbb065c958debbd Mon Sep 17 00:00:00 2001
+From: Ray Donnelly <mingw.android@gmail.com>
+Date: Sun, 15 Mar 2015 20:17:26 +0000
+Subject: [PATCH] Fix two pthread function typos.
+
+ pthead_mutextattr_init -> pthread_mutexattr_init
+ pthread_mutextattr_settype -> pthread_mutexattr_settype
+
+gold/
+    gold-threads.cc: Fix pthread function typos.
+    po/es.po: Likewise.
+    po/fi.po: Likewise.
+    po/gold.pot: Likewise.
+    po/id.po: Likewise.
+    po/it.po: Likewise.
+    po/vi.po: Likewise.
+---
+ gold/gold-threads.cc | 6 +++---
+ gold/po/es.po        | 8 ++++----
+ gold/po/fi.po        | 8 ++++----
+ gold/po/gold.pot     | 4 ++--
+ gold/po/id.po        | 8 ++++----
+ gold/po/it.po        | 8 ++++----
+ gold/po/vi.po        | 8 ++++----
+ 7 files changed, 25 insertions(+), 25 deletions(-)
+
+diff --git a/gold/gold-threads.cc b/gold/gold-threads.cc
+index b06a908..3470a9a 100644
+--- a/gold/gold-threads.cc
++++ b/gold/gold-threads.cc
+@@ -100,11 +100,11 @@ Lock_impl_threads::Lock_impl_threads()
+   pthread_mutexattr_t attr;
+   int err = pthread_mutexattr_init(&attr);
+   if (err != 0)
+-    gold_fatal(_("pthead_mutextattr_init failed: %s"), strerror(err));
++    gold_fatal(_("pthread_mutexattr_init failed: %s"), strerror(err));
+ #ifdef PTHREAD_MUTEX_ADAPTIVE_NP
+-  err = pthread_mutextattr_settype(&attr, PTHREAD_MUTEX_ADAPTIVE_NP);
++  err = pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_ADAPTIVE_NP);
+   if (err != 0)
+-    gold_fatal(_("pthread_mutextattr_settype failed: %s"), strerror(err));
++    gold_fatal(_("pthread_mutexattr_settype failed: %s"), strerror(err));
+ #endif
+ 
+   err = pthread_mutex_init(&this->mutex_, &attr);
+diff --git a/gold/po/es.po b/gold/po/es.po
+index 2683a2a..bcf8077 100644
+--- a/gold/po/es.po
++++ b/gold/po/es.po
+@@ -502,13 +502,13 @@ msgstr "no se puede abrir %s: %s"
+ 
+ #: gold-threads.cc:103
+ #, c-format
+-msgid "pthead_mutextattr_init failed: %s"
+-msgstr "falló pthread_mutextattr_init: %s"
++msgid "pthread_mutexattr_init failed: %s"
++msgstr "falló pthread_mutexattr_init: %s"
+ 
+ #: gold-threads.cc:107
+ #, c-format
+-msgid "pthread_mutextattr_settype failed: %s"
+-msgstr "falló pthread_mutextattr_settype: %s"
++msgid "pthread_mutexattr_settype failed: %s"
++msgstr "falló pthread_mutexattr_settype: %s"
+ 
+ #: gold-threads.cc:112
+ #, c-format
+diff --git a/gold/po/fi.po b/gold/po/fi.po
+index 59f28eb..0363a4b 100644
+--- a/gold/po/fi.po
++++ b/gold/po/fi.po
+@@ -506,13 +506,13 @@ msgstr "ei voi avata kohdetta %s: %s"
+ 
+ #: gold-threads.cc:103
+ #, c-format
+-msgid "pthead_mutextattr_init failed: %s"
+-msgstr "pthead_mutextattr_init epäonnistui: %s"
++msgid "pthread_mutexattr_init failed: %s"
++msgstr "pthread_mutexattr_init epäonnistui: %s"
+ 
+ #: gold-threads.cc:107
+ #, c-format
+-msgid "pthread_mutextattr_settype failed: %s"
+-msgstr "pthread_mutextattr_settype epäonnistui: %s"
++msgid "pthread_mutexattr_settype failed: %s"
++msgstr "pthread_mutexattr_settype epäonnistui: %s"
+ 
+ #: gold-threads.cc:112
+ #, c-format
+diff --git a/gold/po/gold.pot b/gold/po/gold.pot
+index 6340518..c4bd628 100644
+--- a/gold/po/gold.pot
++++ b/gold/po/gold.pot
+@@ -823,12 +823,12 @@ msgstr ""
+ 
+ #: gold-threads.cc:103
+ #, c-format
+-msgid "pthead_mutextattr_init failed: %s"
++msgid "pthread_mutexattr_init failed: %s"
+ msgstr ""
+ 
+ #: gold-threads.cc:107
+ #, c-format
+-msgid "pthread_mutextattr_settype failed: %s"
++msgid "pthread_mutexattr_settype failed: %s"
+ msgstr ""
+ 
+ #: gold-threads.cc:112
+diff --git a/gold/po/id.po b/gold/po/id.po
+index 1c3b45f..06220ae 100644
+--- a/gold/po/id.po
++++ b/gold/po/id.po
+@@ -394,13 +394,13 @@ msgstr "tidak dapat membuka %s: %s"
+ 
+ #: gold-threads.cc:103
+ #, c-format
+-msgid "pthead_mutextattr_init failed: %s"
+-msgstr "pthead_mutextattr_init gagal: %s"
++msgid "pthread_mutexattr_init failed: %s"
++msgstr "pthread_mutexattr_init gagal: %s"
+ 
+ #: gold-threads.cc:107
+ #, c-format
+-msgid "pthread_mutextattr_settype failed: %s"
+-msgstr "pthread_mutextattr_settype gagal: %s"
++msgid "pthread_mutexattr_settype failed: %s"
++msgstr "pthread_mutexattr_settype gagal: %s"
+ 
+ #: gold-threads.cc:112
+ #, c-format
+diff --git a/gold/po/it.po b/gold/po/it.po
+index 144a1e7..e6b2203 100644
+--- a/gold/po/it.po
++++ b/gold/po/it.po
+@@ -503,13 +503,13 @@ msgstr "impossibile aprire %s: %s"
+ 
+ #: gold-threads.cc:103
+ #, c-format
+-msgid "pthead_mutextattr_init failed: %s"
+-msgstr "pthead_mutextattr_init non riuscita: %s"
++msgid "pthread_mutexattr_init failed: %s"
++msgstr "pthread_mutexattr_init non riuscita: %s"
+ 
+ #: gold-threads.cc:107
+ #, c-format
+-msgid "pthread_mutextattr_settype failed: %s"
+-msgstr "pthread_mutextattr_settype non riuscita: %s"
++msgid "pthread_mutexattr_settype failed: %s"
++msgstr "pthread_mutexattr_settype non riuscita: %s"
+ 
+ #: gold-threads.cc:112
+ #, c-format
+diff --git a/gold/po/vi.po b/gold/po/vi.po
+index fadc16f..94361b3 100644
+--- a/gold/po/vi.po
++++ b/gold/po/vi.po
+@@ -508,13 +508,13 @@ msgstr "không thể mở %s: %s"
+ 
+ #: gold-threads.cc:103
+ #, c-format
+-msgid "pthead_mutextattr_init failed: %s"
+-msgstr "pthead_mutextattr_init bị lỗi: %s"
++msgid "pthread_mutexattr_init failed: %s"
++msgstr "pthread_mutexattr_init bị lỗi: %s"
+ 
+ #: gold-threads.cc:107
+ #, c-format
+-msgid "pthread_mutextattr_settype failed: %s"
+-msgstr "pthread_mutextattr_settype bị lỗi: %s"
++msgid "pthread_mutexattr_settype failed: %s"
++msgstr "pthread_mutexattr_settype bị lỗi: %s"
+ 
+ #: gold-threads.cc:112
+ #, c-format
+-- 
+2.3.0
+
