@@ -176,6 +176,12 @@ config LIBC_GLIBC_V_2_12_1
     prompt "2.12.1 (OBSOLETE)"
     depends on OBSOLETE
 
+# EOL 03/2017 [CentOS5.x]
+config LIBC_GLIBC_V_2_5_1
+    bool
+    prompt "2.5.1"
+    depends on OBSOLETE
+
 endchoice
 
 endif # ! LIBC_GLIBC_CUSTOM
@@ -218,5 +224,6 @@ config LIBC_VERSION
     default "2.13" if LIBC_GLIBC_V_2_13
     default "2.12.2" if LIBC_GLIBC_V_2_12_2
     default "2.12.1" if LIBC_GLIBC_V_2_12_1
+    default "2.5.1" if LIBC_GLIBC_V_2_5_1
 
 endif # ! LIBC_GLIBC_CUSTOM
