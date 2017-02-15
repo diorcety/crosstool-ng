@@ -233,7 +233,7 @@ config KERNEL_V_2_6_33
 # EOL 11/2020 [CentOS6.x]
 config KERNEL_V_2_6_32
     bool
-    prompt "2.6.32.27 (EOL)"
+    prompt "2.6.32.71 (EOL)"
     depends on OBSOLETE
 
 endchoice
@@ -279,6 +279,6 @@ config KERNEL_VERSION
     default "2.6.35.9" if KERNEL_V_2_6_35
     default "2.6.34.7" if KERNEL_V_2_6_34
     default "2.6.33.7" if KERNEL_V_2_6_33
-    default "2.6.32.27" if KERNEL_V_2_6_32
+    default "2.6.32.71" if KERNEL_V_2_6_32
 
 endif # ! KERNEL_LINUX_CUSTOM
