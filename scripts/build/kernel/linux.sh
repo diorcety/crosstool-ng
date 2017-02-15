@@ -57,6 +57,21 @@ do_kernel_headers() {
     case "${CT_ARCH}:${CT_ARCH_BITNESS}" in
         # ARM 64 (aka AArch64) is special
         arm:64) kernel_arch="arm64";;
+
+        # Old kernels have arch/i386, not arch/x86
+        # EOL 03/2017 [CentOS5.x]
+        x86:32)
+          if [  ! -d "${kernel_path}"/arch/x86 \
+               -a -d "${kernel_path}"/arch/i386 ]; then
+              kernel_arch="i386"
+          fi
+          ;;
+        x86:64)
+          if [  ! -d "${kernel_path}"/arch/x86 \
+               -a -d "${kernel_path}"/arch/x86_64 ]; then
+              kernel_arch="x86_64"
+          fi
+          ;;
     esac
 
     CT_DoLog EXTRA "Installing kernel headers"

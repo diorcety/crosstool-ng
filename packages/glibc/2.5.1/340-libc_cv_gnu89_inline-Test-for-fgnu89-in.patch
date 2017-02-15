@@ -1,0 +1,1822 @@
+From b037a293a48718af30d706c2e18c929d0e69a621 Mon Sep 17 00:00:00 2001
+From: Ulrich Drepper <drepper@redhat.com>
+Date: Sat, 17 Mar 2007 17:04:28 +0000
+Subject: [PATCH] * configure.in (libc_cv_gnu89_inline): Test for
+ -fgnu89-inline.
+
+---
+
+diff -urN glibc-2.5.orig/argp/argp.h glibc-2.5/argp/argp.h
+--- glibc-2.5.orig/argp/argp.h	2006-04-22 16:08:26.000000000 +0100
++++ glibc-2.5/argp/argp.h	2016-12-16 10:29:43.531794768 +0000
+@@ -1,5 +1,6 @@
+ /* Hierarchial argument parsing, layered over getopt.
+-   Copyright (C) 1995-1999,2003,2004,2005,2006 Free Software Foundation, Inc.
++   Copyright (C) 1995-1999, 2003, 2004, 2005, 2006, 2007
++   Free Software Foundation, Inc.
+    This file is part of the GNU C Library.
+    Written by Miles Bader <miles@gnu.ai.mit.edu>.
+ 
+@@ -558,7 +559,7 @@
+ # endif
+ 
+ # ifndef ARGP_EI
+-#  define ARGP_EI extern __inline__
++#  define ARGP_EI __extern_inline
+ # endif
+ 
+ ARGP_EI void
+diff -urN glibc-2.5.orig/bits/mathinline.h glibc-2.5/bits/mathinline.h
+--- glibc-2.5.orig/bits/mathinline.h	1997-10-13 04:53:18.000000000 +0100
++++ glibc-2.5/bits/mathinline.h	2016-12-16 10:29:43.531794768 +0000
+@@ -1,6 +1,6 @@
+ /* This file should provide inline versions of math functions.
+ 
+-   Surround GCC-specific parts with #ifdef __GNUC__, and use `extern __inline'.
++   Surround GCC-specific parts with #ifdef __GNUC__, and use `__extern_inline'.
+ 
+    This file should define __MATH_INLINES if functions are actually defined as
+    inlines.  */
+diff -urN glibc-2.5.orig/bits/sigset.h glibc-2.5/bits/sigset.h
+--- glibc-2.5.orig/bits/sigset.h	2001-07-06 05:55:50.000000000 +0100
++++ glibc-2.5/bits/sigset.h	2016-12-16 10:29:43.535128223 +0000
+@@ -1,5 +1,6 @@
+ /* __sig_atomic_t, __sigset_t, and related definitions.  Generic/BSD version.
+-   Copyright (C) 1991, 1992, 1994, 1996, 1997 Free Software Foundation, Inc.
++   Copyright (C) 1991, 1992, 1994, 1996, 1997, 2007
++   Free Software Foundation, Inc.
+    This file is part of the GNU C Library.
+ 
+    The GNU C Library is free software; you can redistribute it and/or
+@@ -38,7 +39,7 @@
+ #define _SIGSET_H_fns 1
+ 
+ #ifndef _EXTERN_INLINE
+-# define _EXTERN_INLINE extern __inline
++# define _EXTERN_INLINE __extern_inline
+ #endif
+ 
+ /* Return a mask that includes SIG only.  The cast to `sigset_t' avoids
+diff -urN glibc-2.5.orig/bits/string.h glibc-2.5/bits/string.h
+--- glibc-2.5.orig/bits/string.h	1997-10-13 04:53:19.000000000 +0100
++++ glibc-2.5/bits/string.h	2016-12-16 10:29:43.535128223 +0000
+@@ -1,6 +1,6 @@
+ /* This file should provide inline versions of string functions.
+ 
+-   Surround GCC-specific parts with #ifdef __GNUC__, and use `extern __inline'.
++   Surround GCC-specific parts with #ifdef __GNUC__, and use `__extern_inline'.
+ 
+    This file should define __STRING_INLINES if functions are actually defined
+    as inlines.  */
+diff -urN glibc-2.5.orig/ChangeLog.rej glibc-2.5/ChangeLog.rej
+--- glibc-2.5.orig/ChangeLog.rej	1970-01-01 01:00:00.000000000 +0100
++++ glibc-2.5/ChangeLog.rej	2016-12-16 10:35:59.840739045 +0000
+@@ -0,0 +1,11 @@
++--- ChangeLog
+++++ ChangeLog
++@@ -1,5 +1,8 @@
++ 2007-03-20  Jakub Jelinek  <jakub@redhat.com>
++ 
+++	* configure.in (libc_cv_gnu89_inline): Only do compile test.
+++	* configure: Rebuilt.
+++
++ 	* soft-fp/double.h (_FP_UNION_D): Use _FP_W_TYPE for frac
++ 	bit-fields.
++ 	* soft-fp/extended.h (_FP_UNION_E): Likewise.
+diff -urN glibc-2.5.orig/config.make.in glibc-2.5/config.make.in
+--- glibc-2.5.orig/config.make.in	2006-07-10 22:43:51.000000000 +0100
++++ glibc-2.5/config.make.in	2016-12-16 10:29:43.535128223 +0000
+@@ -58,6 +58,7 @@
+ enable-check-abi = @enable_check_abi@
+ have-forced-unwind = @libc_cv_forced_unwind@
+ have-fpie = @libc_cv_fpie@
++gnu89-inline-CFLAGS = @libc_cv_gnu89_inline@
+ have-ssp = @libc_cv_ssp@
+ have-selinux = @have_selinux@
+ have-libaudit = @have_libaudit@
+diff -urN glibc-2.5.orig/configure glibc-2.5/configure
+--- glibc-2.5.orig/configure	2006-09-29 21:18:33.000000000 +0100
++++ glibc-2.5/configure	2016-12-16 10:39:08.242763003 +0000
+@@ -313,7 +313,7 @@
+ # include <unistd.h>
+ #endif"
+ 
+-ac_subst_vars='SHELL PATH_SEPARATOR PACKAGE_NAME PACKAGE_TARNAME PACKAGE_VERSION PACKAGE_STRING PACKAGE_BUGREPORT exec_prefix prefix program_transform_name bindir sbindir libexecdir datadir sysconfdir sharedstatedir localstatedir libdir includedir oldincludedir infodir mandir build_alias host_alias target_alias DEFS ECHO_C ECHO_N ECHO_T LIBS with_fp with_cvs enable_check_abi oldest_abi bindnow force_install all_warnings build build_cpu build_vendor build_os host host_cpu host_vendor host_os subdirs add_ons add_on_subdirs base_machine submachine sysnames sysdeps_add_ons INSTALL_PROGRAM INSTALL_SCRIPT INSTALL_DATA LN_S CC CFLAGS LDFLAGS CPPFLAGS ac_ct_CC OBJEXT BUILD_CC cross_compiling CPP CXX CXXFLAGS ac_ct_CXX AR OBJDUMP RANLIB ac_ct_RANLIB MIG AS LD PWD_P MAKE MSGFMT MAKEINFO SED AUTOCONF SYSINCLUDES CXX_SYSINCLUDES libc_cv_gcc_static_libgcc BASH libc_cv_have_bash2 KSH libc_cv_have_ksh AWK PERL INSTALL_INFO BISON VERSIONING libc_cv_asm_protected_directive libc_cv_cc_with_libunwind libc_cv_z_nodelete libc_cv_z_nodlopen libc_cv_z_initfirst libc_cv_z_relro libc_cv_Bgroup libc_cv_libgcc_s_suffix libc_cv_as_needed ASFLAGS_config libc_cv_z_combreloc libc_cv_z_execstack libc_cv_fpie libc_cv_hashstyle fno_unit_at_a_time libc_cv_ssp libc_cv_have_initfini no_whole_archive exceptions LIBGD have_libaudit have_libcap have_selinux EGREP sizeof_long_double libc_cv_gcc_unwind_find_fde uname_sysname uname_release uname_version old_glibc_headers libc_cv_slibdir libc_cv_localedir libc_cv_sysconfdir libc_cv_rootsbindir libc_cv_forced_unwind use_ldconfig ldd_rewrite_script elf xcoff static shared pic_default profile omitfp bounded static_nss nopic_initfini DEFINES mach_interface_list VERSION RELEASE LIBOBJS LTLIBOBJS'
++ac_subst_vars='SHELL PATH_SEPARATOR PACKAGE_NAME PACKAGE_TARNAME PACKAGE_VERSION PACKAGE_STRING PACKAGE_BUGREPORT exec_prefix prefix program_transform_name bindir sbindir libexecdir datadir sysconfdir sharedstatedir localstatedir libdir includedir oldincludedir infodir mandir build_alias host_alias target_alias DEFS ECHO_C ECHO_N ECHO_T LIBS with_fp with_cvs enable_check_abi oldest_abi bindnow force_install all_warnings build build_cpu build_vendor build_os host host_cpu host_vendor host_os subdirs add_ons add_on_subdirs base_machine submachine sysnames sysdeps_add_ons INSTALL_PROGRAM INSTALL_SCRIPT INSTALL_DATA LN_S CC CFLAGS LDFLAGS CPPFLAGS ac_ct_CC OBJEXT BUILD_CC cross_compiling CPP CXX CXXFLAGS ac_ct_CXX AR OBJDUMP RANLIB ac_ct_RANLIB MIG AS LD PWD_P MAKE MSGFMT MAKEINFO SED AUTOCONF SYSINCLUDES CXX_SYSINCLUDES libc_cv_gcc_static_libgcc BASH libc_cv_have_bash2 KSH libc_cv_have_ksh AWK PERL INSTALL_INFO BISON VERSIONING libc_cv_asm_protected_directive libc_cv_cc_with_libunwind libc_cv_z_nodelete libc_cv_z_nodlopen libc_cv_z_initfirst libc_cv_z_relro libc_cv_Bgroup libc_cv_libgcc_s_suffix libc_cv_as_needed ASFLAGS_config libc_cv_z_combreloc libc_cv_z_execstack libc_cv_fpie libc_cv_hashstyle fno_unit_at_a_time libc_cv_ssp libc_cv_gnu89_inline libc_cv_have_initfini no_whole_archive exceptions LIBGD have_libaudit have_libcap have_selinux EGREP sizeof_long_double libc_cv_gcc_unwind_find_fde uname_sysname uname_release uname_version old_glibc_headers libc_cv_slibdir libc_cv_localedir libc_cv_sysconfdir libc_cv_rootsbindir libc_cv_forced_unwind use_ldconfig ldd_rewrite_script elf xcoff static shared pic_default profile omitfp bounded static_nss nopic_initfini DEFINES mach_interface_list VERSION RELEASE LIBOBJS LTLIBOBJS'
+ ac_subst_files=''
+ 
+ # Initialize some variables set by options.
+@@ -5963,6 +5963,42 @@
+ echo "${ECHO_T}$libc_cv_ssp" >&6
+ 
+ 
++echo "$as_me:$LINENO: checking for -fgnu89-inline" >&5
++echo $ECHO_N "checking for -fgnu89-inline... $ECHO_C" >&6
++if test "${libc_cv_gnu89_inline+set}" = set; then
++  echo $ECHO_N "(cached) $ECHO_C" >&6
++else
++  cat > conftest.c <<EOF
++int foo;
++#ifdef __GNUC_GNU_INLINE__
++main () { return 0;}
++#else
++#error
++#endif
++EOF
++if { ac_try='${CC-cc} $CFLAGS $CPPFLAGS -S -std=gnu99 -fgnu89-inline
++			    -o conftest.s conftest.c 1>&5'
++  { (eval echo "$as_me:$LINENO: \"$ac_try\"") >&5
++  (eval $ac_try) 2>&5
++  ac_status=$?
++  echo "$as_me:$LINENO: \$? = $ac_status" >&5
++  (exit $ac_status); }; }
++then
++  libc_cv_gnu89_inline=yes
++else
++  libc_cv_gnu89_inline=no
++fi
++rm -f conftest*
++fi
++echo "$as_me:$LINENO: result: $libc_cv_gnu89_inline" >&5
++echo "${ECHO_T}$libc_cv_gnu89_inline" >&6
++if test $libc_cv_gnu89_inline = yes; then
++  libc_cv_gnu89_inline=-fgnu89-inline
++else
++  libc_cv_gnu89_inline=
++fi
++
++
+ if test $elf != yes; then
+   echo "$as_me:$LINENO: checking for .init and .fini sections" >&5
+ echo $ECHO_N "checking for .init and .fini sections... $ECHO_C" >&6
+@@ -8526,6 +8562,7 @@
+ s,@libc_cv_hashstyle@,$libc_cv_hashstyle,;t t
+ s,@fno_unit_at_a_time@,$fno_unit_at_a_time,;t t
+ s,@libc_cv_ssp@,$libc_cv_ssp,;t t
++s,@libc_cv_gnu89_inline@,$libc_cv_gnu89_inline,;t t
+ s,@libc_cv_have_initfini@,$libc_cv_have_initfini,;t t
+ s,@no_whole_archive@,$no_whole_archive,;t t
+ s,@exceptions@,$exceptions,;t t
+diff -urN glibc-2.5.orig/configure.in glibc-2.5/configure.in
+--- glibc-2.5.orig/configure.in	2006-07-10 22:45:29.000000000 +0100
++++ glibc-2.5/configure.in	2016-12-16 10:35:59.844072477 +0000
+@@ -1641,6 +1641,30 @@
+ rm -f conftest*])
+ AC_SUBST(libc_cv_ssp)
+ 
++AC_CACHE_CHECK(for -fgnu89-inline, libc_cv_gnu89_inline, [dnl
++cat > conftest.c <<EOF
++int foo;
++#ifdef __GNUC_GNU_INLINE__
++main () { return 0;}
++#else
++#error
++#endif
++EOF
++if AC_TRY_COMMAND([${CC-cc} $CFLAGS $CPPFLAGS -S -std=gnu99 -fgnu89-inline
++			    -o conftest.s conftest.c 1>&AS_MESSAGE_LOG_FD])
++then
++  libc_cv_gnu89_inline=yes
++else
++  libc_cv_gnu89_inline=no
++fi
++rm -f conftest*])
++if test $libc_cv_gnu89_inline = yes; then
++  libc_cv_gnu89_inline=-fgnu89-inline
++else
++  libc_cv_gnu89_inline=
++fi
++AC_SUBST(libc_cv_gnu89_inline)
++
+ if test $elf != yes; then
+   AC_CACHE_CHECK(for .init and .fini sections, libc_cv_have_initfini,
+ 		 [AC_TRY_COMPILE(, [asm (".section .init");
+diff -urN glibc-2.5.orig/configure.rej glibc-2.5/configure.rej
+--- glibc-2.5.orig/configure.rej	1970-01-01 01:00:00.000000000 +0100
++++ glibc-2.5/configure.rej	2016-12-16 10:38:06.024368134 +0000
+@@ -0,0 +1,11 @@
++--- configure
+++++ configure
++@@ -313,7 +313,7 @@ ac_includes_default="\
++ # include <unistd.h>
++ #endif"
++ 
++-ac_subst_vars='SHELL PATH_SEPARATOR PACKAGE_NAME PACKAGE_TARNAME PACKAGE_VERSION PACKAGE_STRING PACKAGE_BUGREPORT exec_prefix prefix program_transform_name bindir sbindir libexecdir datadir sysconfdir sharedstatedir localstatedir libdir includedir oldincludedir infodir mandir build_alias host_alias target_alias DEFS ECHO_C ECHO_N ECHO_T LIBS with_fp with_cvs enable_check_abi oldest_abi bindnow force_install all_warnings build build_cpu build_vendor build_os host host_cpu host_vendor host_os subdirs add_ons add_on_subdirs base_machine submachine sysnames sysdeps_add_ons INSTALL_PROGRAM INSTALL_SCRIPT INSTALL_DATA LN_S CC CFLAGS LDFLAGS CPPFLAGS ac_ct_CC OBJEXT BUILD_CC cross_compiling CPP CXX CXXFLAGS ac_ct_CXX AR OBJDUMP RANLIB ac_ct_RANLIB MIG AS LD PWD_P MAKE MSGFMT MAKEINFO SED AUTOCONF SYSINCLUDES CXX_SYSINCLUDES libc_cv_gcc_static_libgcc BASH libc_cv_have_bash2 KSH libc_cv_have_ksh AWK PERL INSTALL_INFO BISON VERSIONING libc_cv_cc_with_libunwind libc_cv_Bgroup libc_cv_libgcc_s_suffix libc_cv_as_needed ASFLAGS_config libc_cv_z_combreloc libc_cv_z_execstack libc_cv_fpie libc_cv_hashstyle fno_unit_at_a_time libc_cv_ssp libc_cv_have_initfini no_whole_archive exceptions LIBGD have_libaudit have_libcap have_selinux EGREP sizeof_long_double libc_cv_gcc_unwind_find_fde uname_sysname uname_release uname_version old_glibc_headers libc_cv_slibdir libc_cv_localedir libc_cv_sysconfdir libc_cv_rootsbindir libc_cv_forced_unwind use_ldconfig ldd_rewrite_script elf xcoff static shared pic_default profile omitfp bounded static_nss nopic_initfini DEFINES mach_interface_list VERSION RELEASE LIBOBJS LTLIBOBJS'
+++ac_subst_vars='SHELL PATH_SEPARATOR PACKAGE_NAME PACKAGE_TARNAME PACKAGE_VERSION PACKAGE_STRING PACKAGE_BUGREPORT exec_prefix prefix program_transform_name bindir sbindir libexecdir datadir sysconfdir sharedstatedir localstatedir libdir includedir oldincludedir infodir mandir build_alias host_alias target_alias DEFS ECHO_C ECHO_N ECHO_T LIBS with_fp with_cvs enable_check_abi oldest_abi bindnow force_install all_warnings build build_cpu build_vendor build_os host host_cpu host_vendor host_os subdirs add_ons add_on_subdirs base_machine submachine sysnames sysdeps_add_ons INSTALL_PROGRAM INSTALL_SCRIPT INSTALL_DATA LN_S CC CFLAGS LDFLAGS CPPFLAGS ac_ct_CC OBJEXT BUILD_CC cross_compiling CPP CXX CXXFLAGS ac_ct_CXX AR OBJDUMP RANLIB ac_ct_RANLIB MIG AS LD PWD_P MAKE MSGFMT MAKEINFO SED AUTOCONF SYSINCLUDES CXX_SYSINCLUDES libc_cv_gcc_static_libgcc BASH libc_cv_have_bash2 KSH libc_cv_have_ksh AWK PERL INSTALL_INFO BISON VERSIONING libc_cv_cc_with_libunwind libc_cv_Bgroup libc_cv_libgcc_s_suffix libc_cv_as_needed ASFLAGS_config libc_cv_z_combreloc libc_cv_z_execstack libc_cv_fpie libc_cv_hashstyle fno_unit_at_a_time libc_cv_ssp libc_cv_gnu89_inline libc_cv_have_initfini no_whole_archive exceptions LIBGD have_libaudit have_libcap have_selinux EGREP sizeof_long_double libc_cv_gcc_unwind_find_fde uname_sysname uname_release uname_version old_glibc_headers libc_cv_slibdir libc_cv_localedir libc_cv_sysconfdir libc_cv_rootsbindir libc_cv_forced_unwind use_ldconfig ldd_rewrite_script elf xcoff static shared pic_default profile omitfp bounded static_nss nopic_initfini DEFINES mach_interface_list VERSION RELEASE LIBOBJS LTLIBOBJS'
++ ac_subst_files=''
++ 
++ # Initialize some variables set by options.
+diff -urN glibc-2.5.orig/ctype/ctype.h glibc-2.5/ctype/ctype.h
+--- glibc-2.5.orig/ctype/ctype.h	2004-09-07 23:23:45.000000000 +0100
++++ glibc-2.5/ctype/ctype.h	2016-12-16 10:29:43.535128223 +0000
+@@ -1,4 +1,4 @@
+-/* Copyright (C) 1991,92,93,95,96,97,98,99,2001,2002,2004
++/* Copyright (C) 1991,92,93,95,96,97,98,99,2001,2002,2004,2007
+    	Free Software Foundation, Inc.
+    This file is part of the GNU C Library.
+ 
+@@ -187,13 +187,13 @@
+ # endif
+ 
+ # ifdef __USE_EXTERN_INLINES
+-extern __inline int
++__extern_inline int
+ __NTH (tolower (int __c))
+ {
+   return __c >= -128 && __c < 256 ? (*__ctype_tolower_loc ())[__c] : __c;
+ }
+ 
+-extern __inline int
++__extern_inline int
+ __NTH (toupper (int __c))
+ {
+   return __c >= -128 && __c < 256 ? (*__ctype_toupper_loc ())[__c] : __c;
+diff -urN glibc-2.5.orig/hurd/hurd/fd.h glibc-2.5/hurd/hurd/fd.h
+--- glibc-2.5.orig/hurd/hurd/fd.h	2006-03-06 07:59:07.000000000 +0000
++++ glibc-2.5/hurd/hurd/fd.h	2016-12-16 10:29:43.535128223 +0000
+@@ -1,5 +1,5 @@
+ /* File descriptors.
+-   Copyright (C) 1993,1994,1995,1996,1997,1998,1999,2000,2001,2002,2006
++   Copyright (C) 1993,1994,1995,1996,1997,1998,1999,2000,2001,2002,2006,2007
+    	Free Software Foundation, Inc.
+    This file is part of the GNU C Library.
+ 
+@@ -52,7 +52,7 @@
+ #include <hurd/signal.h>
+ 
+ #ifndef _HURD_FD_H_EXTERN_INLINE
+-#define _HURD_FD_H_EXTERN_INLINE extern __inline
++#define _HURD_FD_H_EXTERN_INLINE __extern_inline
+ #endif
+ 
+ /* Returns the descriptor cell for FD.  If FD is invalid or unused, return
+diff -urN glibc-2.5.orig/hurd/hurd/port.h glibc-2.5/hurd/hurd/port.h
+--- glibc-2.5.orig/hurd/hurd/port.h	2001-07-06 05:54:47.000000000 +0100
++++ glibc-2.5/hurd/hurd/port.h	2016-12-16 10:29:43.535128223 +0000
+@@ -1,5 +1,6 @@
+ /* Lightweight user references for ports.
+-   Copyright (C) 1993, 1994, 1995, 1997, 1999 Free Software Foundation, Inc.
++   Copyright (C) 1993, 1994, 1995, 1997, 1999, 2007
++   Free Software Foundation, Inc.
+    This file is part of the GNU C Library.
+ 
+    The GNU C Library is free software; you can redistribute it and/or
+@@ -55,7 +56,7 @@
+ 
+ 
+ #ifndef _HURD_PORT_H_EXTERN_INLINE
+-#define _HURD_PORT_H_EXTERN_INLINE extern __inline
++#define _HURD_PORT_H_EXTERN_INLINE __extern_inline
+ #endif
+ 
+ 
+diff -urN glibc-2.5.orig/hurd/hurd/signal.h glibc-2.5/hurd/hurd/signal.h
+--- glibc-2.5.orig/hurd/hurd/signal.h	2002-02-18 20:57:11.000000000 +0000
++++ glibc-2.5/hurd/hurd/signal.h	2016-12-16 10:29:43.535128223 +0000
+@@ -1,5 +1,5 @@
+ /* Implementing POSIX.1 signals under the Hurd.
+-   Copyright (C) 1993,94,95,96,98,99,2002 Free Software Foundation, Inc.
++   Copyright (C) 1993,94,95,96,98,99,2002,2007 Free Software Foundation, Inc.
+    This file is part of the GNU C Library.
+ 
+    The GNU C Library is free software; you can redistribute it and/or
+@@ -126,7 +126,7 @@
+      __attribute__ ((__const__));
+ 
+ #ifndef _HURD_SIGNAL_H_EXTERN_INLINE
+-#define _HURD_SIGNAL_H_EXTERN_INLINE extern __inline
++#define _HURD_SIGNAL_H_EXTERN_INLINE __extern_inline
+ #endif
+ 
+ _HURD_SIGNAL_H_EXTERN_INLINE struct hurd_sigstate *
+diff -urN glibc-2.5.orig/hurd/hurd/threadvar.h glibc-2.5/hurd/hurd/threadvar.h
+--- glibc-2.5.orig/hurd/hurd/threadvar.h	2002-09-02 08:08:53.000000000 +0100
++++ glibc-2.5/hurd/hurd/threadvar.h	2016-12-16 10:29:43.535128223 +0000
+@@ -1,5 +1,5 @@
+ /* Internal per-thread variables for the Hurd.
+-   Copyright (C) 1994,95,97,98,99,2001,02 Free Software Foundation, Inc.
++   Copyright (C) 1994,95,97,98,99,2001,02,06,07 Free Software Foundation, Inc.
+    This file is part of the GNU C Library.
+ 
+    The GNU C Library is free software; you can redistribute it and/or
+@@ -74,7 +74,7 @@
+ 
+ 
+ #ifndef _HURD_THREADVAR_H_EXTERN_INLINE
+-#define _HURD_THREADVAR_H_EXTERN_INLINE extern __inline
++#define _HURD_THREADVAR_H_EXTERN_INLINE __extern_inline
+ #endif
+ 
+ /* Return the location of the value for the per-thread variable with index
+diff -urN glibc-2.5.orig/hurd/hurd/userlink.h glibc-2.5/hurd/hurd/userlink.h
+--- glibc-2.5.orig/hurd/hurd/userlink.h	2001-07-06 05:54:47.000000000 +0100
++++ glibc-2.5/hurd/hurd/userlink.h	2016-12-16 10:29:43.535128223 +0000
+@@ -1,5 +1,5 @@
+ /* Support for chains recording users of a resource; `struct hurd_userlink'.
+-   Copyright (C) 1994, 1995, 1997, 1999 Free Software Foundation, Inc.
++   Copyright (C) 1994, 1995, 1997, 1999, 2007 Free Software Foundation, Inc.
+    This file is part of the GNU C Library.
+ 
+    The GNU C Library is free software; you can redistribute it and/or
+@@ -71,7 +71,7 @@
+ 
+ 
+ #ifndef _HURD_USERLINK_H_EXTERN_INLINE
+-#define _HURD_USERLINK_H_EXTERN_INLINE extern __inline
++#define _HURD_USERLINK_H_EXTERN_INLINE __extern_inline
+ #endif
+ 
+ 
+diff -urN glibc-2.5.orig/hurd/hurd.h glibc-2.5/hurd/hurd.h
+--- glibc-2.5.orig/hurd/hurd.h	2002-01-02 09:52:20.000000000 +0000
++++ glibc-2.5/hurd/hurd.h	2016-12-16 10:29:43.535128223 +0000
+@@ -1,4 +1,5 @@
+-/* Copyright (C) 1993,94,95,96,97,98,99,2001,02 Free Software Foundation, Inc.
++/* Copyright (C) 1993,94,95,96,97,98,99,2001,2002,2007
++   Free Software Foundation, Inc.
+    This file is part of the GNU C Library.
+ 
+    The GNU C Library is free software; you can redistribute it and/or
+@@ -44,7 +45,7 @@
+ #include <errno.h>
+ 
+ #ifndef _HURD_H_EXTERN_INLINE
+-#define _HURD_H_EXTERN_INLINE extern __inline
++#define _HURD_H_EXTERN_INLINE __extern_inline
+ #endif
+ 
+ _HURD_H_EXTERN_INLINE int
+diff -urN glibc-2.5.orig/io/sys/stat.h glibc-2.5/io/sys/stat.h
+--- glibc-2.5.orig/io/sys/stat.h	2006-01-06 12:14:05.000000000 +0000
++++ glibc-2.5/io/sys/stat.h	2016-12-16 10:29:43.535128223 +0000
+@@ -1,4 +1,5 @@
+-/* Copyright (C) 1991,1992,1995-2004,2005,2006 Free Software Foundation, Inc.
++/* Copyright (C) 1991, 1992, 1995-2004, 2005, 2006, 2007
++   Free Software Foundation, Inc.
+    This file is part of the GNU C Library.
+ 
+    The GNU C Library is free software; you can redistribute it and/or
+@@ -430,28 +431,28 @@
+ #if defined __GNUC__ && __GNUC__ >= 2
+ /* Inlined versions of the real stat and mknod functions.  */
+ 
+-extern __inline__ int
++__extern_inline int
+ __NTH (stat (__const char *__path, struct stat *__statbuf))
+ {
+   return __xstat (_STAT_VER, __path, __statbuf);
+ }
+ 
+ # if defined __USE_BSD || defined __USE_XOPEN_EXTENDED
+-extern __inline__ int
++__extern_inline int
+ __NTH (lstat (__const char *__path, struct stat *__statbuf))
+ {
+   return __lxstat (_STAT_VER, __path, __statbuf);
+ }
+ # endif
+ 
+-extern __inline__ int
++__extern_inline int
+ __NTH (fstat (int __fd, struct stat *__statbuf))
+ {
+   return __fxstat (_STAT_VER, __fd, __statbuf);
+ }
+ 
+ # ifdef __USE_ATFILE
+-extern __inline__ int
++__extern_inline int
+ __NTH (fstatat (int __fd, __const char *__filename, struct stat *__statbuf,
+ 		int __flag))
+ {
+@@ -460,7 +461,7 @@
+ # endif
+ 
+ # if defined __USE_MISC || defined __USE_BSD
+-extern __inline__ int
++__extern_inline int
+ __NTH (mknod (__const char *__path, __mode_t __mode, __dev_t __dev))
+ {
+   return __xmknod (_MKNOD_VER, __path, __mode, &__dev);
+@@ -468,7 +469,7 @@
+ # endif
+ 
+ # ifdef __USE_ATFILE
+-extern __inline__ int
++__extern_inline int
+ __NTH (mknodat (int __fd, __const char *__path, __mode_t __mode,
+ 		__dev_t __dev))
+ {
+@@ -479,28 +480,28 @@
+ # if defined __USE_LARGEFILE64 \
+   && (! defined __USE_FILE_OFFSET64 \
+       || (defined __REDIRECT_NTH && defined __OPTIMIZE__))
+-extern __inline__ int
++__extern_inline int
+ __NTH (stat64 (__const char *__path, struct stat64 *__statbuf))
+ {
+   return __xstat64 (_STAT_VER, __path, __statbuf);
+ }
+ 
+ #  if defined __USE_BSD || defined __USE_XOPEN_EXTENDED
+-extern __inline__ int
++__extern_inline int
+ __NTH (lstat64 (__const char *__path, struct stat64 *__statbuf))
+ {
+   return __lxstat64 (_STAT_VER, __path, __statbuf);
+ }
+ #  endif
+ 
+-extern __inline__ int
++__extern_inline int
+ __NTH (fstat64 (int __fd, struct stat64 *__statbuf))
+ {
+   return __fxstat64 (_STAT_VER, __fd, __statbuf);
+ }
+ 
+ #  ifdef __USE_GNU
+-extern __inline__ int
++__extern_inline int
+ __NTH (fstatat64 (int __fd, __const char *__filename, struct stat64 *__statbuf,
+ 		  int __flag))
+ {
+diff -urN glibc-2.5.orig/libio/bits/stdio2.h glibc-2.5/libio/bits/stdio2.h
+--- glibc-2.5.orig/libio/bits/stdio2.h	2005-03-19 00:14:58.000000000 +0000
++++ glibc-2.5/libio/bits/stdio2.h	2016-12-16 10:29:43.538461679 +0000
+@@ -1,5 +1,5 @@
+ /* Checking macros for stdio functions.
+-   Copyright (C) 2004, 2005 Free Software Foundation, Inc.
++   Copyright (C) 2004, 2005, 2007 Free Software Foundation, Inc.
+    This file is part of the GNU C Library.
+ 
+    The GNU C Library is free software; you can redistribute it and/or
+@@ -75,7 +75,7 @@
+ extern char *__gets_chk (char *__str, size_t) __wur;
+ extern char *__REDIRECT (__gets_alias, (char *__str), gets) __wur;
+ 
+-extern __always_inline __wur char *
++__extern_always_inline __wur char *
+ gets (char *__str)
+ {
+   if (__bos (__str) != (size_t) -1)
+@@ -89,7 +89,7 @@
+ 			 (char *__restrict __s, int __n,
+ 			  FILE *__restrict __stream), fgets) __wur;
+ 
+-extern __always_inline __wur char *
++__extern_always_inline __wur char *
+ fgets (char *__restrict __s, int __n, FILE *__restrict __stream)
+ {
+   if (__bos (__s) != (size_t) -1
+@@ -105,7 +105,7 @@
+ 			 (char *__restrict __s, int __n,
+ 			  FILE *__restrict __stream), fgets_unlocked) __wur;
+ 
+-extern __always_inline __wur char *
++__extern_always_inline __wur char *
+ fgets_unlocked (char *__restrict __s, int __n, FILE *__restrict __stream)
+ {
+   if (__bos (__s) != (size_t) -1
+diff -urN glibc-2.5.orig/libio/bits/stdio.h glibc-2.5/libio/bits/stdio.h
+--- glibc-2.5.orig/libio/bits/stdio.h	2004-09-07 23:23:44.000000000 +0100
++++ glibc-2.5/libio/bits/stdio.h	2016-12-16 10:29:43.538461679 +0000
+@@ -1,5 +1,5 @@
+ /* Optimizing macros and inline functions for stdio functions.
+-   Copyright (C) 1998, 2000, 2001, 2004 Free Software Foundation, Inc.
++   Copyright (C) 1998, 2000, 2001, 2004, 2007 Free Software Foundation, Inc.
+    This file is part of the GNU C Library.
+ 
+    The GNU C Library is free software; you can redistribute it and/or
+@@ -24,7 +24,7 @@
+ #ifdef __cplusplus
+ # define __STDIO_INLINE inline
+ #else
+-# define __STDIO_INLINE extern __inline
++# define __STDIO_INLINE __extern_inline
+ #endif
+ 
+ 
+diff -urN glibc-2.5.orig/locale/programs/ld-ctype.c glibc-2.5/locale/programs/ld-ctype.c
+--- glibc-2.5.orig/locale/programs/ld-ctype.c	2006-09-21 04:57:30.000000000 +0100
++++ glibc-2.5/locale/programs/ld-ctype.c	2016-12-16 10:29:43.538461679 +0000
+@@ -1,4 +1,4 @@
+-/* Copyright (C) 1995-2005, 2006 Free Software Foundation, Inc.
++/* Copyright (C) 1995-2006, 2007 Free Software Foundation, Inc.
+    This file is part of the GNU C Library.
+    Contributed by Ulrich Drepper <drepper@gnu.org>, 1995.
+ 
+@@ -1866,6 +1866,9 @@
+   assert (locale != NULL);
+   ctype = locale->categories[LC_CTYPE].ctype;
+ 
++  if (ctype == NULL)
++    return NULL;
++
+   if (ctype->translit != NULL)
+     result = find_translit2 (ctype, charmap, wch);
+ 
+diff -urN glibc-2.5.orig/mach/lock-intern.h glibc-2.5/mach/lock-intern.h
+--- glibc-2.5.orig/mach/lock-intern.h	2001-07-06 05:55:34.000000000 +0100
++++ glibc-2.5/mach/lock-intern.h	2016-12-16 10:29:43.538461679 +0000
+@@ -1,4 +1,4 @@
+-/* Copyright (C) 1994, 1996 Free Software Foundation, Inc.
++/* Copyright (C) 1994, 1996, 2007 Free Software Foundation, Inc.
+    This file is part of the GNU C Library.
+ 
+    The GNU C Library is free software; you can redistribute it and/or
+@@ -22,7 +22,7 @@
+ #include <machine-lock.h>
+ 
+ #ifndef _EXTERN_INLINE
+-#define _EXTERN_INLINE extern __inline
++#define _EXTERN_INLINE __extern_inline
+ #endif
+ 
+ 
+diff -urN glibc-2.5.orig/mach/mach/mig_support.h glibc-2.5/mach/mach/mig_support.h
+--- glibc-2.5.orig/mach/mach/mig_support.h	2001-07-06 05:55:35.000000000 +0100
++++ glibc-2.5/mach/mach/mig_support.h	2016-12-16 10:29:43.538461679 +0000
+@@ -1,4 +1,4 @@
+-/* Copyright (C) 1993,94,97,99,2001 Free Software Foundation, Inc.
++/* Copyright (C) 1993,94,97,99,2001,2007 Free Software Foundation, Inc.
+    This file is part of the GNU C Library.
+ 
+    The GNU C Library is free software; you can redistribute it and/or
+@@ -67,12 +67,12 @@
+ /* Idiocy support function.  */
+ extern vm_size_t mig_strncpy (char *__dst, const char *__src, vm_size_t __len);
+ extern vm_size_t __mig_strncpy (char *__dst, const char *__src, vm_size_t);
+-extern __inline vm_size_t
++__extern_inline vm_size_t
+ __mig_strncpy (char *__dst, const char *__src, vm_size_t __len)
+ {
+   return __stpncpy (__dst, __src, __len) - __dst;
+ }
+-extern __inline vm_size_t
++__extern_inline vm_size_t
+ mig_strncpy (char *__dst, const char *__src, vm_size_t __len)
+ {
+   return __mig_strncpy (__dst, __src, __len);
+diff -urN glibc-2.5.orig/Makeconfig glibc-2.5/Makeconfig
+--- glibc-2.5.orig/Makeconfig	2006-07-10 22:42:27.000000000 +0100
++++ glibc-2.5/Makeconfig	2016-12-16 10:29:43.531794768 +0000
+@@ -1,4 +1,4 @@
+-# Copyright (C) 1991-2003,2004,2005,2006 Free Software Foundation, Inc.
++# Copyright (C) 1991-2003,2004,2005,2006,2007 Free Software Foundation, Inc.
+ # This file is part of the GNU C Library.
+ 
+ # The GNU C Library is free software; you can redistribute it and/or
+@@ -674,7 +674,7 @@
+ 	   $(foreach lib,$(libof-$(basename $(@F))) \
+ 		         $(libof-$(<F)) $(libof-$(@F)),$(CPPFLAGS-$(lib))) \
+ 	   $(CPPFLAGS-$(<F)) $(CPPFLAGS-$(@F)) $(CPPFLAGS-$(basename $(@F)))
+-override CFLAGS	= -std=gnu99 \
++override CFLAGS	= -std=gnu99 $(gnu89-inline-CFLAGS) \
+ 		  $(filter-out %frame-pointer,$(+cflags)) $(+gccwarn-c) \
+ 		  $(sysdep-CFLAGS) $(CFLAGS-$(suffix $@)) $(CFLAGS-$(<F)) \
+ 		  $(CFLAGS-$(@F))
+diff -urN glibc-2.5.orig/math/bits/cmathcalls.h glibc-2.5/math/bits/cmathcalls.h
+--- glibc-2.5.orig/math/bits/cmathcalls.h	2001-07-06 05:55:35.000000000 +0100
++++ glibc-2.5/math/bits/cmathcalls.h	2016-12-16 10:29:43.538461679 +0000
+@@ -1,6 +1,6 @@
+ /* Prototype declarations for complex math functions;
+    helper file for <complex.h>.
+-   Copyright (C) 1997, 1998, 2001 Free Software Foundation, Inc.
++   Copyright (C) 1997, 1998, 2001, 2007 Free Software Foundation, Inc.
+    This file is part of the GNU C Library.
+ 
+    The GNU C Library is free software; you can redistribute it and/or
+@@ -135,21 +135,21 @@
+ #if defined __GNUC__ && !__GNUC_PREREQ (2, 97) && defined __OPTIMIZE__
+ 
+ /* Imaginary part of Z.  */
+-extern __inline _Mdouble_
++__extern_inline _Mdouble_
+ __MATH_PRECNAME(cimag) (_Mdouble_complex_ __z) __THROW
+ {
+   return __imag__ __z;
+ }
+ 
+ /* Real part of Z.  */
+-extern __inline _Mdouble_
++__extern_inline _Mdouble_
+ __MATH_PRECNAME(creal) (_Mdouble_complex_ __z) __THROW
+ {
+   return __real__ __z;
+ }
+ 
+ /* Complex conjugate of Z.  */
+-extern __inline _Mdouble_complex_
++__extern_inline _Mdouble_complex_
+ __MATH_PRECNAME(conj) (_Mdouble_complex_ __z) __THROW
+ {
+   return __extension__ ~__z;
+diff -urN glibc-2.5.orig/misc/sys/cdefs.h glibc-2.5/misc/sys/cdefs.h
+--- glibc-2.5.orig/misc/sys/cdefs.h	2006-01-14 20:14:36.000000000 +0000
++++ glibc-2.5/misc/sys/cdefs.h	2016-12-16 10:29:43.538461679 +0000
+@@ -1,4 +1,4 @@
+-/* Copyright (C) 1992-2001, 2002, 2004, 2005, 2006
++/* Copyright (C) 1992-2001, 2002, 2004, 2005, 2006, 2007
+    Free Software Foundation, Inc.
+    This file is part of the GNU C Library.
+ 
+@@ -279,6 +279,17 @@
+ # define __always_inline __inline
+ #endif
+ 
++/* GCC 4.3 and above with -std=c99 or -std=gnu99 implements ISO C99
++   inline semantics, unless -fgnu89-inline is used.  */
++#ifdef __GNUC_STDC_INLINE__
++# define __extern_inline extern __inline __attribute__ ((__gnu_inline__))
++# define __extern_always_inline \
++  extern __always_inline __attribute__ ((__gnu_inline__))
++#else
++# define __extern_inline extern __inline
++# define __extern_always_inline extern __always_inline
++#endif
++
+ /* It is possible to compile containing GCC extensions even if GCC is
+    run in pedantic mode if the uses are carefully marked using the
+    `__extension__' keyword.  But this is not generally available before
+diff -urN glibc-2.5.orig/nptl/sysdeps/pthread/bits/libc-lock.h glibc-2.5/nptl/sysdeps/pthread/bits/libc-lock.h
+--- glibc-2.5.orig/nptl/sysdeps/pthread/bits/libc-lock.h	2005-04-05 22:33:41.000000000 +0100
++++ glibc-2.5/nptl/sysdeps/pthread/bits/libc-lock.h	2016-12-16 10:29:43.538461679 +0000
+@@ -408,7 +408,7 @@
+ 
+ 
+ /* Normal cleanup handling, based on C cleanup attribute.  */
+-extern __inline void
++__extern_inline void
+ __libc_cleanup_routine (struct __pthread_cleanup_frame *f)
+ {
+   if (f->__do_it)
+diff -urN glibc-2.5.orig/nptl/sysdeps/pthread/pthread.h glibc-2.5/nptl/sysdeps/pthread/pthread.h
+--- glibc-2.5.orig/nptl/sysdeps/pthread/pthread.h	2006-06-05 00:59:07.000000000 +0100
++++ glibc-2.5/nptl/sysdeps/pthread/pthread.h	2016-12-16 10:29:43.538461679 +0000
+@@ -1,4 +1,5 @@
+-/* Copyright (C) 2002, 2003, 2004, 2005, 2006 Free Software Foundation, Inc.
++/* Copyright (C) 2002, 2003, 2004, 2005, 2006, 2007
++   Free Software Foundation, Inc.
+    This file is part of the GNU C Library.
+ 
+    The GNU C Library is free software; you can redistribute it and/or
+@@ -572,7 +573,7 @@
+    function the compiler is free to decide inlining the change when
+    needed or fall back on the copy which must exist somewhere
+    else.  */
+-extern __inline void
++__extern_inline void
+ __pthread_cleanup_routine (struct __pthread_cleanup_frame *__frame)
+ {
+   if (__frame->__do_it)
+@@ -1103,7 +1104,7 @@
+ 
+ #ifdef __USE_EXTERN_INLINES
+ /* Optimizations.  */
+-extern __inline int
++__extern_inline int
+ __NTH (pthread_equal (pthread_t __thread1, pthread_t __thread2))
+ {
+   return __thread1 == __thread2;
+diff -urN glibc-2.5.orig/posix/bits/unistd.h glibc-2.5/posix/bits/unistd.h
+--- glibc-2.5.orig/posix/bits/unistd.h	2006-08-24 07:47:31.000000000 +0100
++++ glibc-2.5/posix/bits/unistd.h	2016-12-16 10:29:43.541795134 +0000
+@@ -1,5 +1,5 @@
+ /* Checking macros for unistd functions.
+-   Copyright (C) 2005, 2006 Free Software Foundation, Inc.
++   Copyright (C) 2005, 2006, 2007 Free Software Foundation, Inc.
+    This file is part of the GNU C Library.
+ 
+    The GNU C Library is free software; you can redistribute it and/or
+@@ -26,7 +26,7 @@
+ extern ssize_t __REDIRECT (__read_alias, (int __fd, void *__buf,
+ 					  size_t __nbytes), read) __wur;
+ 
+-extern __always_inline __wur ssize_t
++__extern_always_inline __wur ssize_t
+ read (int __fd, void *__buf, size_t __nbytes)
+ {
+   if (__bos0 (__buf) != (size_t) -1
+@@ -48,7 +48,7 @@
+ 			    __off64_t __offset), pread64) __wur;
+ 
+ # ifndef __USE_FILE_OFFSET64
+-extern __always_inline __wur ssize_t
++__extern_always_inline __wur ssize_t
+ pread (int __fd, void *__buf, size_t __nbytes, __off_t __offset)
+ {
+   if (__bos0 (__buf) != (size_t) -1
+@@ -57,7 +57,7 @@
+   return __pread_alias (__fd, __buf, __nbytes, __offset);
+ }
+ # else
+-extern __always_inline __wur ssize_t
++__extern_always_inline __wur ssize_t
+ pread (int __fd, void *__buf, size_t __nbytes, __off64_t __offset)
+ {
+   if (__bos0 (__buf) != (size_t) -1
+@@ -68,7 +68,7 @@
+ # endif
+ 
+ # ifdef __USE_LARGEFILE64
+-extern __always_inline __wur ssize_t
++__extern_always_inline __wur ssize_t
+ pread64 (int __fd, void *__buf, size_t __nbytes, __off64_t __offset)
+ {
+   if (__bos0 (__buf) != (size_t) -1
+@@ -89,7 +89,7 @@
+ 				char *__restrict __buf, size_t __len), readlink)
+      __nonnull ((1, 2)) __wur;
+ 
+-extern __always_inline __nonnull ((1, 2)) __wur ssize_t
++__extern_always_inline __nonnull ((1, 2)) __wur ssize_t
+ __NTH (readlink (__const char *__restrict __path, char *__restrict __buf,
+ 		 size_t __len))
+ {
+@@ -111,7 +111,7 @@
+ 			       readlinkat)
+      __nonnull ((2, 3)) __wur;
+ 
+-extern __always_inline __nonnull ((2, 3)) __wur ssize_t
++__extern_always_inline __nonnull ((2, 3)) __wur ssize_t
+ __NTH (readlinkat (int __fd, __const char *__restrict __path,
+ 		   char *__restrict __buf, size_t __len))
+ {
+@@ -127,7 +127,7 @@
+ extern char *__REDIRECT_NTH (__getcwd_alias,
+ 			     (char *__buf, size_t __size), getcwd) __wur;
+ 
+-extern __always_inline __wur char *
++__extern_always_inline __wur char *
+ __NTH (getcwd (char *__buf, size_t __size))
+ {
+   if (__bos (__buf) != (size_t) -1
+@@ -142,7 +142,7 @@
+ extern char *__REDIRECT_NTH (__getwd_alias, (char *__buf), getwd)
+      __nonnull ((1)) __wur;
+ 
+-extern __always_inline __nonnull ((1)) __attribute_deprecated__ __wur char *
++__extern_always_inline __nonnull ((1)) __attribute_deprecated__ __wur char *
+ __NTH (getwd (char *__buf))
+ {
+   if (__bos (__buf) != (size_t) -1)
+@@ -156,7 +156,7 @@
+ extern size_t __REDIRECT_NTH (__confstr_alias, (int __name, char *__buf,
+ 						size_t __len), confstr);
+ 
+-extern __always_inline size_t
++__extern_always_inline size_t
+ __NTH (confstr (int __name, char *__buf, size_t __len))
+ {
+   if (__bos (__buf) != (size_t) -1
+@@ -171,7 +171,7 @@
+ extern int __REDIRECT_NTH (__getgroups_alias, (int __size, __gid_t __list[]),
+ 			   getgroups) __wur;
+ 
+-extern __always_inline int
++__extern_always_inline int
+ __NTH (getgroups (int __size, __gid_t __list[]))
+ {
+   if (__bos (__list) != (size_t) -1
+@@ -188,7 +188,7 @@
+ 					       size_t __buflen), ttyname_r)
+      __nonnull ((2));
+ 
+-extern __always_inline int
++__extern_always_inline int
+ __NTH (ttyname_r (int __fd, char *__buf, size_t __buflen))
+ {
+   if (__bos (__buf) != (size_t) -1
+@@ -204,7 +204,7 @@
+ extern int __REDIRECT (__getlogin_r_alias, (char *__buf, size_t __buflen),
+ 		       getlogin_r) __nonnull ((1));
+ 
+-extern __always_inline int
++__extern_always_inline int
+ getlogin_r (char *__buf, size_t __buflen)
+ {
+   if (__bos (__buf) != (size_t) -1
+@@ -221,7 +221,7 @@
+ extern int __REDIRECT_NTH (__gethostname_alias, (char *__buf, size_t __buflen),
+ 			   gethostname) __nonnull ((1));
+ 
+-extern __always_inline int
++__extern_always_inline int
+ __NTH (gethostname (char *__buf, size_t __buflen))
+ {
+   if (__bos (__buf) != (size_t) -1
+@@ -239,7 +239,7 @@
+ 						   size_t __buflen),
+ 			   getdomainname) __nonnull ((1)) __wur;
+ 
+-extern __always_inline int
++__extern_always_inline int
+ __NTH (getdomainname (char *__buf, size_t __buflen))
+ {
+   if (__bos (__buf) != (size_t) -1
+diff -urN glibc-2.5.orig/socket/bits/socket2.h glibc-2.5/socket/bits/socket2.h
+--- glibc-2.5.orig/socket/bits/socket2.h	2005-08-08 20:00:53.000000000 +0100
++++ glibc-2.5/socket/bits/socket2.h	2016-12-16 10:29:43.541795134 +0000
+@@ -1,5 +1,5 @@
+ /* Checking macros for socket functions.
+-   Copyright (C) 2005 Free Software Foundation, Inc.
++   Copyright (C) 2005, 2007 Free Software Foundation, Inc.
+    This file is part of the GNU C Library.
+ 
+    The GNU C Library is free software; you can redistribute it and/or
+@@ -26,7 +26,7 @@
+ extern ssize_t __REDIRECT (__recv_alias, (int __fd, void *__buf, size_t __n,
+ 					  int __flags), recv);
+ 
+-extern __always_inline ssize_t
++__extern_always_inline ssize_t
+ recv (int __fd, void *__buf, size_t __n, int __flags)
+ {
+   if (__bos0 (__buf) != (size_t) -1
+@@ -44,7 +44,7 @@
+ 			    int __flags, __SOCKADDR_ARG __addr,
+ 			    socklen_t *__restrict __addr_len), recvfrom);
+ 
+-extern __always_inline ssize_t
++__extern_always_inline ssize_t
+ recvfrom (int __fd, void *__restrict __buf, size_t __n, int __flags,
+ 	  __SOCKADDR_ARG __addr, socklen_t *__restrict __addr_len)
+ {
+diff -urN glibc-2.5.orig/stdlib/bits/stdlib.h glibc-2.5/stdlib/bits/stdlib.h
+--- glibc-2.5.orig/stdlib/bits/stdlib.h	2005-08-22 16:06:07.000000000 +0100
++++ glibc-2.5/stdlib/bits/stdlib.h	2016-12-16 10:29:43.541795134 +0000
+@@ -1,5 +1,5 @@
+ /* Checking macros for stdlib functions.
+-   Copyright (C) 2005 Free Software Foundation, Inc.
++   Copyright (C) 2005, 2007 Free Software Foundation, Inc.
+    This file is part of the GNU C Library.
+ 
+    The GNU C Library is free software; you can redistribute it and/or
+@@ -28,7 +28,7 @@
+ 			     (__const char *__restrict __name,
+ 			      char *__restrict __resolved), realpath) __wur;
+ 
+-extern __always_inline __wur char *
++__extern_always_inline __wur char *
+ __NTH (realpath (__const char *__restrict __name, char *__restrict __resolved))
+ {
+   if (__bos (__resolved) != (size_t) -1)
+@@ -44,7 +44,7 @@
+ 					       size_t __buflen), ptsname_r)
+      __nonnull ((2));
+ 
+-extern __always_inline int
++__extern_always_inline int
+ __NTH (ptsname_r (int __fd, char *__buf, size_t __buflen))
+ {
+   if (__bos (__buf) != (size_t) -1
+@@ -59,7 +59,7 @@
+ extern int __REDIRECT_NTH (__wctomb_alias, (char *__s, wchar_t __wchar),
+ 			   wctomb) __wur;
+ 
+-extern __always_inline __wur int
++__extern_always_inline __wur int
+ __NTH (wctomb (char *__s, wchar_t __wchar))
+ {
+   /* We would have to include <limits.h> to get a definition of MB_LEN_MAX.
+@@ -83,7 +83,7 @@
+ 			       __const char *__restrict __src,
+ 			       size_t __len), mbstowcs);
+ 
+-extern __always_inline size_t
++__extern_always_inline size_t
+ __NTH (mbstowcs (wchar_t *__restrict __dst, __const char *__restrict __src,
+ 		 size_t __len))
+ {
+@@ -104,7 +104,7 @@
+ 			       __const wchar_t *__restrict __src,
+ 			       size_t __len), wcstombs);
+ 
+-extern __always_inline size_t
++__extern_always_inline size_t
+ __NTH (wcstombs (char *__restrict __dst, __const wchar_t *__restrict __src,
+ 		 size_t __len))
+ {
+diff -urN glibc-2.5.orig/stdlib/gmp.h glibc-2.5/stdlib/gmp.h
+--- glibc-2.5.orig/stdlib/gmp.h	2002-08-26 23:39:44.000000000 +0100
++++ glibc-2.5/stdlib/gmp.h	2016-12-16 10:29:43.541795134 +0000
+@@ -1,6 +1,6 @@
+ /* gmp.h -- Definitions for GNU multiple precision functions.
+ 
+-Copyright (C) 1991, 1993, 1994, 1995, 1996 Free Software Foundation, Inc.
++Copyright (C) 1991, 1993, 1994, 1995, 1996, 2007 Free Software Foundation, Inc.
+ 
+ This file is part of the GNU MP Library.
+ 
+@@ -21,6 +21,8 @@
+ 
+ #ifndef __GMP_H__
+ 
++#include <features.h>
++
+ #ifndef __GNU_MP__
+ #define __GNU_MP__ 2
+ #define __need_size_t
+@@ -41,7 +43,7 @@
+ 
+ #ifndef _EXTERN_INLINE
+ #ifdef __GNUC__
+-#define _EXTERN_INLINE extern __inline__
++#define _EXTERN_INLINE __extern_inline
+ #else
+ #define _EXTERN_INLINE static
+ #endif
+diff -urN glibc-2.5.orig/stdlib/stdlib.h glibc-2.5/stdlib/stdlib.h
+--- glibc-2.5.orig/stdlib/stdlib.h	2006-01-14 12:08:29.000000000 +0000
++++ glibc-2.5/stdlib/stdlib.h	2016-12-16 10:29:43.541795134 +0000
+@@ -1,4 +1,4 @@
+-/* Copyright (C) 1991-2003,2004,2005,2006 Free Software Foundation, Inc.
++/* Copyright (C) 1991-2003,2004,2005,2006,2007 Free Software Foundation, Inc.
+    This file is part of the GNU C Library.
+ 
+    The GNU C Library is free software; you can redistribute it and/or
+@@ -324,18 +324,18 @@
+ /* Define inline functions which call the internal entry points.  */
+ 
+ __BEGIN_NAMESPACE_STD
+-extern __inline double
++__extern_inline double
+ __NTH (strtod (__const char *__restrict __nptr, char **__restrict __endptr))
+ {
+   return __strtod_internal (__nptr, __endptr, 0);
+ }
+-extern __inline long int
++__extern_inline long int
+ __NTH (strtol (__const char *__restrict __nptr, char **__restrict __endptr,
+ 	       int __base))
+ {
+   return __strtol_internal (__nptr, __endptr, __base, 0);
+ }
+-extern __inline unsigned long int
++__extern_inline unsigned long int
+ __NTH (strtoul (__const char *__restrict __nptr, char **__restrict __endptr,
+ 		int __base))
+ {
+@@ -345,13 +345,13 @@
+ 
+ # ifdef __USE_ISOC99
+ __BEGIN_NAMESPACE_C99
+-extern __inline float
++__extern_inline float
+ __NTH (strtof (__const char *__restrict __nptr, char **__restrict __endptr))
+ {
+   return __strtof_internal (__nptr, __endptr, 0);
+ }
+ #  ifndef __LDBL_COMPAT
+-extern __inline long double
++__extern_inline long double
+ __NTH (strtold (__const char *__restrict __nptr, char **__restrict __endptr))
+ {
+   return __strtold_internal (__nptr, __endptr, 0);
+@@ -361,13 +361,13 @@
+ # endif
+ 
+ # ifdef __USE_BSD
+-__extension__ extern __inline long long int
++__extension__ __extern_inline long long int
+ __NTH (strtoq (__const char *__restrict __nptr, char **__restrict __endptr,
+ 	       int __base))
+ {
+   return __strtoll_internal (__nptr, __endptr, __base, 0);
+ }
+-__extension__ extern __inline unsigned long long int
++__extension__ __extern_inline unsigned long long int
+ __NTH (strtouq (__const char *__restrict __nptr, char **__restrict __endptr,
+ 		int __base))
+ {
+@@ -377,13 +377,13 @@
+ 
+ # if defined __USE_MISC || defined __USE_ISOC99
+ __BEGIN_NAMESPACE_C99
+-__extension__ extern __inline long long int
++__extension__ __extern_inline long long int
+ __NTH (strtoll (__const char *__restrict __nptr, char **__restrict __endptr,
+ 		int __base))
+ {
+   return __strtoll_internal (__nptr, __endptr, __base, 0);
+ }
+-__extension__ extern __inline unsigned long long int
++__extension__ __extern_inline unsigned long long int
+ __NTH (strtoull (__const char * __restrict __nptr, char **__restrict __endptr,
+ 		 int __base))
+ {
+@@ -393,17 +393,17 @@
+ # endif
+ 
+ __BEGIN_NAMESPACE_STD
+-extern __inline double
++__extern_inline double
+ __NTH (atof (__const char *__nptr))
+ {
+   return strtod (__nptr, (char **) NULL);
+ }
+-extern __inline int
++__extern_inline int
+ __NTH (atoi (__const char *__nptr))
+ {
+   return (int) strtol (__nptr, (char **) NULL, 10);
+ }
+-extern __inline long int
++__extern_inline long int
+ __NTH (atol (__const char *__nptr))
+ {
+   return strtol (__nptr, (char **) NULL, 10);
+@@ -412,7 +412,7 @@
+ 
+ # if defined __USE_MISC || defined __USE_ISOC99
+ __BEGIN_NAMESPACE_C99
+-__extension__ extern __inline long long int
++__extension__ __extern_inline long long int
+ __NTH (atoll (__const char *__nptr))
+ {
+   return strtoll (__nptr, (char **) NULL, 10);
+diff -urN glibc-2.5.orig/string/argz.h glibc-2.5/string/argz.h
+--- glibc-2.5.orig/string/argz.h	2004-09-07 23:23:43.000000000 +0100
++++ glibc-2.5/string/argz.h	2016-12-16 10:29:43.541795134 +0000
+@@ -1,5 +1,5 @@
+ /* Routines for dealing with '\0' separated arg vectors.
+-   Copyright (C) 1995,96,97,98,99,2000,2004 Free Software Foundation, Inc.
++   Copyright (C) 1995,96,97,98,99,2000,2004,2007 Free Software Foundation, Inc.
+    This file is part of the GNU C Library.
+ 
+    The GNU C Library is free software; you can redistribute it and/or
+@@ -160,7 +160,7 @@
+ 			__const char *__restrict __entry) __THROW;
+ 
+ #ifdef __USE_EXTERN_INLINES
+-extern inline char *
++__extern_inline char *
+ __NTH (__argz_next (__const char *__argz, size_t __argz_len,
+ 		    __const char *__entry))
+ {
+@@ -174,7 +174,7 @@
+   else
+     return __argz_len > 0 ? (char *) __argz : 0;
+ }
+-extern inline char *
++__extern_inline char *
+ __NTH (argz_next (__const char *__argz, size_t __argz_len,
+ 		  __const char *__entry))
+ {
+diff -urN glibc-2.5.orig/string/bits/string2.h glibc-2.5/string/bits/string2.h
+--- glibc-2.5.orig/string/bits/string2.h	2004-05-28 07:39:13.000000000 +0100
++++ glibc-2.5/string/bits/string2.h	2016-12-16 10:29:43.541795134 +0000
+@@ -1,5 +1,5 @@
+ /* Machine-independant string function optimizations.
+-   Copyright (C) 1997-2003, 2004 Free Software Foundation, Inc.
++   Copyright (C) 1997-2003, 2004, 2007 Free Software Foundation, Inc.
+    This file is part of the GNU C Library.
+    Contributed by Ulrich Drepper <drepper@cygnus.com>, 1997.
+ 
+@@ -43,7 +43,7 @@
+ # ifdef __cplusplus
+ #  define __STRING_INLINE inline
+ # else
+-#  define __STRING_INLINE extern __inline
++#  define __STRING_INLINE __extern_inline
+ # endif
+ #endif
+ 
+diff -urN glibc-2.5.orig/string/bits/string3.h glibc-2.5/string/bits/string3.h
+--- glibc-2.5.orig/string/bits/string3.h	2005-08-08 20:02:31.000000000 +0100
++++ glibc-2.5/string/bits/string3.h	2016-12-16 10:29:43.541795134 +0000
+@@ -1,4 +1,4 @@
+-/* Copyright (C) 2004, 2005 Free Software Foundation, Inc.
++/* Copyright (C) 2004, 2005, 2007 Free Software Foundation, Inc.
+    This file is part of the GNU C Library.
+ 
+    The GNU C Library is free software; you can redistribute it and/or
+@@ -151,7 +151,7 @@
+ 					       __const char *__src,
+ 					       size_t __n), stpncpy);
+ 
+-extern __always_inline char *
++__extern_always_inline char *
+ __NTH (stpncpy (char *__dest, __const char *__src, size_t __n))
+ {
+   if (__bos (__dest) != (size_t) -1
+diff -urN glibc-2.5.orig/sysdeps/alpha/fpu/bits/mathinline.h glibc-2.5/sysdeps/alpha/fpu/bits/mathinline.h
+--- glibc-2.5.orig/sysdeps/alpha/fpu/bits/mathinline.h	2005-02-08 04:37:48.000000000 +0000
++++ glibc-2.5/sysdeps/alpha/fpu/bits/mathinline.h	2016-12-16 10:29:43.541795134 +0000
+@@ -25,7 +25,7 @@
+ #ifdef __cplusplus
+ # define __MATH_INLINE __inline
+ #else
+-# define __MATH_INLINE extern __inline
++# define __MATH_INLINE __extern_inline
+ #endif
+ 
+ #if defined __USE_ISOC99 && defined __GNUC__ && !__GNUC_PREREQ(3,0)
+diff -urN glibc-2.5.orig/sysdeps/generic/inttypes.h glibc-2.5/sysdeps/generic/inttypes.h
+--- glibc-2.5.orig/sysdeps/generic/inttypes.h	2004-09-07 23:23:42.000000000 +0100
++++ glibc-2.5/sysdeps/generic/inttypes.h	2016-12-16 10:29:43.541795134 +0000
+@@ -1,4 +1,4 @@
+-/* Copyright (C) 1997-2001, 2004 Free Software Foundation, Inc.
++/* Copyright (C) 1997-2001, 2004, 2007 Free Software Foundation, Inc.
+    This file is part of the GNU C Library.
+ 
+    The GNU C Library is free software; you can redistribute it and/or
+@@ -330,7 +330,7 @@
+ 				   int __base, int __group) __THROW;
+ #   define __strtol_internal_defined	1
+ #  endif
+-extern __inline intmax_t
++__extern_inline intmax_t
+ __NTH (strtoimax (__const char *__restrict nptr, char **__restrict endptr,
+ 		  int base))
+ {
+@@ -345,7 +345,7 @@
+ 					     int __base, int __group) __THROW;
+ #   define __strtoul_internal_defined	1
+ #  endif
+-extern __inline uintmax_t
++__extern_inline uintmax_t
+ __NTH (strtoumax (__const char *__restrict nptr, char **__restrict endptr,
+ 		  int base))
+ {
+@@ -359,7 +359,7 @@
+ 				   int __base, int __group) __THROW;
+ #   define __wcstol_internal_defined	1
+ #  endif
+-extern __inline intmax_t
++__extern_inline intmax_t
+ __NTH (wcstoimax (__const __gwchar_t *__restrict nptr,
+ 		  __gwchar_t **__restrict endptr, int base))
+ {
+@@ -376,7 +376,7 @@
+ 					     int __base, int __group) __THROW;
+ #   define __wcstoul_internal_defined	1
+ #  endif
+-extern __inline uintmax_t
++__extern_inline uintmax_t
+ __NTH (wcstoumax (__const __gwchar_t *__restrict nptr,
+ 		  __gwchar_t **__restrict endptr, int base))
+ {
+@@ -393,7 +393,7 @@
+ 					 int __base, int __group) __THROW;
+ #   define __strtoll_internal_defined	1
+ #  endif
+-extern __inline intmax_t
++__extern_inline intmax_t
+ __NTH (strtoimax (__const char *__restrict nptr, char **__restrict endptr,
+ 		  int base))
+ {
+@@ -411,7 +411,7 @@
+ 						   int __group) __THROW;
+ #   define __strtoull_internal_defined	1
+ #  endif
+-extern __inline uintmax_t
++__extern_inline uintmax_t
+ __NTH (strtoumax (__const char *__restrict nptr, char **__restrict endptr,
+ 		  int base))
+ {
+@@ -427,7 +427,7 @@
+ 					 int __base, int __group) __THROW;
+ #   define __wcstoll_internal_defined	1
+ #  endif
+-extern __inline intmax_t
++__extern_inline intmax_t
+ __NTH (wcstoimax (__const __gwchar_t *__restrict nptr,
+ 		  __gwchar_t **__restrict endptr, int base))
+ {
+@@ -446,7 +446,7 @@
+ 						   int __group) __THROW;
+ #   define __wcstoull_internal_defined	1
+ #  endif
+-extern __inline uintmax_t
++__extern_inline uintmax_t
+ __NTH (wcstoumax (__const __gwchar_t *__restrict nptr,
+ 		  __gwchar_t **__restrict endptr, int base))
+ {
+diff -urN glibc-2.5.orig/sysdeps/generic/machine-lock.h glibc-2.5/sysdeps/generic/machine-lock.h
+--- glibc-2.5.orig/sysdeps/generic/machine-lock.h	2001-07-06 05:55:49.000000000 +0100
++++ glibc-2.5/sysdeps/generic/machine-lock.h	2016-12-16 10:29:43.541795134 +0000
+@@ -1,5 +1,5 @@
+ /* Machine-specific definition for spin locks.  Stub version.
+-   Copyright (C) 1994, 1997 Free Software Foundation, Inc.
++   Copyright (C) 1994, 1997, 2007 Free Software Foundation, Inc.
+    This file is part of the GNU C Library.
+ 
+    The GNU C Library is free software; you can redistribute it and/or
+@@ -30,7 +30,7 @@
+ 
+ 
+ #ifndef _EXTERN_INLINE
+-#define _EXTERN_INLINE extern __inline
++#define _EXTERN_INLINE __extern_inline
+ #endif
+ 
+ /* Unlock LOCK.  */
+diff -urN glibc-2.5.orig/sysdeps/generic/machine-sp.h glibc-2.5/sysdeps/generic/machine-sp.h
+--- glibc-2.5.orig/sysdeps/generic/machine-sp.h	2001-07-06 05:55:49.000000000 +0100
++++ glibc-2.5/sysdeps/generic/machine-sp.h	2016-12-16 10:29:43.541795134 +0000
+@@ -1,5 +1,5 @@
+ /* Machine-specific function to return the stack pointer.  Stub version.
+-   Copyright (C) 1994, 1997 Free Software Foundation, Inc.
++   Copyright (C) 1994, 1997, 2007 Free Software Foundation, Inc.
+    This file is part of the GNU C Library.
+ 
+    The GNU C Library is free software; you can redistribute it and/or
+@@ -23,7 +23,7 @@
+ /* Return the current stack pointer.  */
+ 
+ #ifndef _EXTERN_INLINE
+-#define _EXTERN_INLINE extern __inline
++#define _EXTERN_INLINE __extern_inline
+ #endif
+ 
+ _EXTERN_INLINE void *
+diff -urN glibc-2.5.orig/sysdeps/i386/fpu/bits/mathinline.h glibc-2.5/sysdeps/i386/fpu/bits/mathinline.h
+--- glibc-2.5.orig/sysdeps/i386/fpu/bits/mathinline.h	2004-09-07 23:23:42.000000000 +0100
++++ glibc-2.5/sysdeps/i386/fpu/bits/mathinline.h	2016-12-16 10:30:25.493308207 +0000
+@@ -1,5 +1,5 @@
+ /* Inline math functions for i387.
+-   Copyright (C) 1995, 1996, 1997, 1998, 1999, 2000, 2001, 2003, 2004
++   Copyright (C) 1995,1996,1997,1998,1999,2000,2001,2003,2004,2006,2007
+    Free Software Foundation, Inc.
+    This file is part of the GNU C Library.
+    Contributed by John C. Bowman <bowman@math.ualberta.ca>, 1995.
+@@ -26,7 +26,7 @@
+ #ifdef __cplusplus
+ # define __MATH_INLINE __inline
+ #else
+-# define __MATH_INLINE extern __inline
++# define __MATH_INLINE __extern_inline
+ #endif
+ 
+ 
+diff -urN glibc-2.5.orig/sysdeps/i386/i486/bits/string.h glibc-2.5/sysdeps/i386/i486/bits/string.h
+--- glibc-2.5.orig/sysdeps/i386/i486/bits/string.h	2004-12-15 20:30:16.000000000 +0000
++++ glibc-2.5/sysdeps/i386/i486/bits/string.h	2016-12-16 10:29:43.541795134 +0000
+@@ -1,5 +1,5 @@
+ /* Optimized, inlined string functions.  i486 version.
+-   Copyright (C) 1997,1998,1999,2000,2001,2002,2003,2004
++   Copyright (C) 1997,1998,1999,2000,2001,2002,2003,2004,2007
+    	Free Software Foundation, Inc.
+    This file is part of the GNU C Library.
+ 
+@@ -35,7 +35,7 @@
+ # ifdef __cplusplus
+ #  define __STRING_INLINE inline
+ # else
+-#  define __STRING_INLINE extern __inline
++#  define __STRING_INLINE __extern_inline
+ # endif
+ #endif
+ 
+diff -urN glibc-2.5.orig/sysdeps/ia64/fpu/bits/mathinline.h glibc-2.5/sysdeps/ia64/fpu/bits/mathinline.h
+--- glibc-2.5.orig/sysdeps/ia64/fpu/bits/mathinline.h	2004-09-08 22:44:02.000000000 +0100
++++ glibc-2.5/sysdeps/ia64/fpu/bits/mathinline.h	2016-12-16 10:29:43.545128590 +0000
+@@ -1,5 +1,5 @@
+ /* Inline math functions for ia64.
+-   Copyright (C) 2004 Free Software Foundation, Inc.
++   Copyright (C) 2004, 2007 Free Software Foundation, Inc.
+    This file is part of the GNU C Library.
+ 
+    The GNU C Library is free software; you can redistribute it and/or
+@@ -24,7 +24,7 @@
+ #ifdef __cplusplus
+ # define __MATH_INLINE __inline
+ #else
+-# define __MATH_INLINE extern __inline
++# define __MATH_INLINE __extern_inline
+ #endif
+ 
+ #if defined __USE_ISOC99 && defined __GNUC__ && __GNUC__ >= 2
+diff -urN glibc-2.5.orig/sysdeps/mach/alpha/machine-lock.h glibc-2.5/sysdeps/mach/alpha/machine-lock.h
+--- glibc-2.5.orig/sysdeps/mach/alpha/machine-lock.h	2003-02-26 00:01:15.000000000 +0000
++++ glibc-2.5/sysdeps/mach/alpha/machine-lock.h	2016-12-16 10:29:43.545128590 +0000
+@@ -1,5 +1,5 @@
+ /* Machine-specific definition for spin locks.  Alpha version.
+-   Copyright (C) 1994, 1997 Free Software Foundation, Inc.
++   Copyright (C) 1994, 1997, 2007 Free Software Foundation, Inc.
+    This file is part of the GNU C Library.
+ 
+    The GNU C Library is free software; you can redistribute it and/or
+@@ -30,7 +30,7 @@
+ 
+ 
+ #ifndef _EXTERN_INLINE
+-#define _EXTERN_INLINE extern __inline
++#define _EXTERN_INLINE __extern_inline
+ #endif
+ 
+ /* Unlock LOCK.  */
+diff -urN glibc-2.5.orig/sysdeps/mach/alpha/machine-sp.h glibc-2.5/sysdeps/mach/alpha/machine-sp.h
+--- glibc-2.5.orig/sysdeps/mach/alpha/machine-sp.h	2001-07-06 05:55:56.000000000 +0100
++++ glibc-2.5/sysdeps/mach/alpha/machine-sp.h	2016-12-16 10:29:43.545128590 +0000
+@@ -1,5 +1,5 @@
+ /* Machine-specific function to return the stack pointer.  Alpha version.
+-   Copyright (C) 1994, 1997 Free Software Foundation, Inc.
++   Copyright (C) 1994, 1997, 2007 Free Software Foundation, Inc.
+    This file is part of the GNU C Library.
+ 
+    The GNU C Library is free software; you can redistribute it and/or
+@@ -23,7 +23,7 @@
+ /* Return the current stack pointer.  */
+ 
+ #ifndef _EXTERN_INLINE
+-#define _EXTERN_INLINE extern __inline
++#define _EXTERN_INLINE __extern_inline
+ #endif
+ 
+ _EXTERN_INLINE void *
+diff -urN glibc-2.5.orig/sysdeps/mach/i386/machine-lock.h glibc-2.5/sysdeps/mach/i386/machine-lock.h
+--- glibc-2.5.orig/sysdeps/mach/i386/machine-lock.h	2001-07-06 05:56:00.000000000 +0100
++++ glibc-2.5/sysdeps/mach/i386/machine-lock.h	2016-12-16 10:29:43.545128590 +0000
+@@ -1,5 +1,5 @@
+ /* Machine-specific definition for spin locks.  i386 version.
+-   Copyright (C) 1994, 1997 Free Software Foundation, Inc.
++   Copyright (C) 1994, 1997, 2007 Free Software Foundation, Inc.
+    This file is part of the GNU C Library.
+ 
+    The GNU C Library is free software; you can redistribute it and/or
+@@ -30,7 +30,7 @@
+ 
+ 
+ #ifndef _EXTERN_INLINE
+-#define _EXTERN_INLINE extern __inline
++#define _EXTERN_INLINE __extern_inline
+ #endif
+ 
+ /* Unlock LOCK.  */
+diff -urN glibc-2.5.orig/sysdeps/mach/powerpc/machine-lock.h glibc-2.5/sysdeps/mach/powerpc/machine-lock.h
+--- glibc-2.5.orig/sysdeps/mach/powerpc/machine-lock.h	2002-02-17 07:13:25.000000000 +0000
++++ glibc-2.5/sysdeps/mach/powerpc/machine-lock.h	2016-12-16 10:29:43.545128590 +0000
+@@ -1,5 +1,5 @@
+ /* Machine-specific definition for spin locks.  PowerPC version.
+-   Copyright (C) 1994,97,2002 Free Software Foundation, Inc.
++   Copyright (C) 1994,97,2002,2007 Free Software Foundation, Inc.
+    This file is part of the GNU C Library.
+ 
+    The GNU C Library is free software; you can redistribute it and/or
+@@ -30,7 +30,7 @@
+ 
+ 
+ #ifndef _EXTERN_INLINE
+-#define _EXTERN_INLINE extern __inline
++#define _EXTERN_INLINE __extern_inline
+ #endif
+ 
+ /* Unlock LOCK.  */
+diff -urN glibc-2.5.orig/sysdeps/mach/powerpc/machine-sp.h glibc-2.5/sysdeps/mach/powerpc/machine-sp.h
+--- glibc-2.5.orig/sysdeps/mach/powerpc/machine-sp.h	2002-08-26 23:39:44.000000000 +0100
++++ glibc-2.5/sysdeps/mach/powerpc/machine-sp.h	2016-12-16 10:29:43.545128590 +0000
+@@ -1,5 +1,5 @@
+ /* Machine-specific function to return the stack pointer.  PowerPC version.
+-   Copyright (C) 2001 Free Software Foundation, Inc.
++   Copyright (C) 2001, 2007 Free Software Foundation, Inc.
+    This file is part of the GNU C Library.
+ 
+    The GNU C Library is free software; you can redistribute it and/or
+@@ -27,7 +27,7 @@
+ # ifdef _HURD_THREADVAR_H_EXTERN_INLINE
+ #  define _EXTERN_INLINE _HURD_THREADVAR_H_EXTERN_INLINE
+ # else
+-#  define _EXTERN_INLINE extern __inline
++#  define _EXTERN_INLINE __extern_inline
+ # endif
+ #endif
+ 
+diff -urN glibc-2.5.orig/sysdeps/powerpc/fpu/bits/mathinline.h glibc-2.5/sysdeps/powerpc/fpu/bits/mathinline.h
+--- glibc-2.5.orig/sysdeps/powerpc/fpu/bits/mathinline.h	2006-04-14 06:43:58.000000000 +0100
++++ glibc-2.5/sysdeps/powerpc/fpu/bits/mathinline.h	2016-12-16 10:29:43.545128590 +0000
+@@ -1,5 +1,5 @@
+ /* Inline math functions for powerpc.
+-   Copyright (C) 1995, 1996, 1997, 1998, 1999, 2000, 2004, 2006
++   Copyright (C) 1995, 1996, 1997, 1998, 1999, 2000, 2004, 2006, 2007
+    Free Software Foundation, Inc.
+    This file is part of the GNU C Library.
+ 
+@@ -25,7 +25,7 @@
+ #ifdef __cplusplus
+ # define __MATH_INLINE __inline
+ #else
+-# define __MATH_INLINE extern __inline
++# define __MATH_INLINE __extern_inline
+ #endif  /* __cplusplus */
+ 
+ #if defined __GNUC__ && !defined _SOFT_FLOAT
+diff -urN glibc-2.5.orig/sysdeps/s390/bits/string.h glibc-2.5/sysdeps/s390/bits/string.h
+--- glibc-2.5.orig/sysdeps/s390/bits/string.h	2005-01-28 21:44:42.000000000 +0000
++++ glibc-2.5/sysdeps/s390/bits/string.h	2016-12-16 10:29:43.545128590 +0000
+@@ -1,5 +1,5 @@
+ /* Optimized, inlined string functions.  S/390 version.
+-   Copyright (C) 2000, 2001 Free Software Foundation, Inc.
++   Copyright (C) 2000, 2001, 2007 Free Software Foundation, Inc.
+    Contributed by Martin Schwidefsky (schwidefsky@de.ibm.com).
+    This file is part of the GNU C Library.
+ 
+@@ -34,7 +34,7 @@
+ # ifdef __cplusplus
+ #  define __STRING_INLINE inline
+ # else
+-#  define __STRING_INLINE extern __inline
++#  define __STRING_INLINE __extern_inline
+ # endif
+ #endif
+ 
+diff -urN glibc-2.5.orig/sysdeps/s390/fpu/bits/mathinline.h glibc-2.5/sysdeps/s390/fpu/bits/mathinline.h
+--- glibc-2.5.orig/sysdeps/s390/fpu/bits/mathinline.h	2006-02-01 03:00:20.000000000 +0000
++++ glibc-2.5/sysdeps/s390/fpu/bits/mathinline.h	2016-12-16 10:29:43.545128590 +0000
+@@ -1,5 +1,5 @@
+ /* Inline math functions for s390.
+-   Copyright (C) 2004 Free Software Foundation, Inc.
++   Copyright (C) 2004, 2007 Free Software Foundation, Inc.
+    This file is part of the GNU C Library.
+ 
+    The GNU C Library is free software; you can redistribute it and/or
+@@ -24,7 +24,7 @@
+ #ifdef __cplusplus
+ # define __MATH_INLINE __inline
+ #else
+-# define __MATH_INLINE extern __inline
++# define __MATH_INLINE __extern_inline
+ #endif
+ 
+ #if (!defined __NO_MATH_INLINES || defined __LIBC_INTERNAL_MATH_INLINES) \
+diff -urN glibc-2.5.orig/sysdeps/sparc/fpu/bits/mathinline.h glibc-2.5/sysdeps/sparc/fpu/bits/mathinline.h
+--- glibc-2.5.orig/sysdeps/sparc/fpu/bits/mathinline.h	2006-01-14 12:09:02.000000000 +0000
++++ glibc-2.5/sysdeps/sparc/fpu/bits/mathinline.h	2016-12-16 10:29:43.545128590 +0000
+@@ -1,5 +1,5 @@
+ /* Inline math functions for SPARC.
+-   Copyright (C) 1999, 2000, 2001, 2002, 2004, 2006
++   Copyright (C) 1999, 2000, 2001, 2002, 2004, 2006, 2007
+    Free Software Foundation, Inc.
+    This file is part of the GNU C Library.
+    Contributed by Jakub Jelinek <jakub@redhat.com>.
+@@ -131,7 +131,7 @@
+ # ifdef __cplusplus
+ #  define __MATH_INLINE __inline
+ # else
+-#  define __MATH_INLINE extern __inline
++#  define __MATH_INLINE __extern_inline
+ # endif  /* __cplusplus */
+ 
+ /* The gcc, version 2.7 or below, has problems with all this inlining
+diff -urN glibc-2.5.orig/sysdeps/unix/bsd/bsd4.4/bits/socket.h glibc-2.5/sysdeps/unix/bsd/bsd4.4/bits/socket.h
+--- glibc-2.5.orig/sysdeps/unix/bsd/bsd4.4/bits/socket.h	2004-09-11 17:28:10.000000000 +0100
++++ glibc-2.5/sysdeps/unix/bsd/bsd4.4/bits/socket.h	2016-12-16 10:29:43.545128590 +0000
+@@ -1,5 +1,5 @@
+ /* System-specific socket constants and types.  4.4 BSD version.
+-   Copyright (C) 1991,92,1994-2002,2004 Free Software Foundation, Inc.
++   Copyright (C) 1991,92,1994-2002,2004,2007 Free Software Foundation, Inc.
+    This file is part of the GNU C Library.
+ 
+    The GNU C Library is free software; you can redistribute it and/or
+@@ -227,7 +227,7 @@
+ 				      struct cmsghdr *__cmsg) __THROW;
+ #ifdef __USE_EXTERN_INLINES
+ # ifndef _EXTERN_INLINE
+-#  define _EXTERN_INLINE extern __inline
++#  define _EXTERN_INLINE __extern_inline
+ # endif
+ _EXTERN_INLINE struct cmsghdr *
+ __NTH (__cmsg_nxthdr (struct msghdr *__mhdr, struct cmsghdr *__cmsg))
+diff -urN glibc-2.5.orig/sysdeps/unix/sysv/linux/bits/sigset.h glibc-2.5/sysdeps/unix/sysv/linux/bits/sigset.h
+--- glibc-2.5.orig/sysdeps/unix/sysv/linux/bits/sigset.h	2001-07-06 05:56:14.000000000 +0100
++++ glibc-2.5/sysdeps/unix/sysv/linux/bits/sigset.h	2016-12-16 10:29:43.545128590 +0000
+@@ -1,5 +1,6 @@
+ /* __sig_atomic_t, __sigset_t, and related definitions.  Linux version.
+-   Copyright (C) 1991, 1992, 1994, 1996, 1997 Free Software Foundation, Inc.
++   Copyright (C) 1991, 1992, 1994, 1996, 1997, 2007
++   Free Software Foundation, Inc.
+    This file is part of the GNU C Library.
+ 
+    The GNU C Library is free software; you can redistribute it and/or
+@@ -43,7 +44,7 @@
+ # define _SIGSET_H_fns 1
+ 
+ # ifndef _EXTERN_INLINE
+-#  define _EXTERN_INLINE extern __inline
++#  define _EXTERN_INLINE __extern_inline
+ # endif
+ 
+ /* Return a mask that includes the bit for SIG only.  */
+diff -urN glibc-2.5.orig/sysdeps/unix/sysv/linux/bits/socket.h glibc-2.5/sysdeps/unix/sysv/linux/bits/socket.h
+--- glibc-2.5.orig/sysdeps/unix/sysv/linux/bits/socket.h	2006-04-02 18:25:37.000000000 +0100
++++ glibc-2.5/sysdeps/unix/sysv/linux/bits/socket.h	2016-12-16 10:29:43.545128590 +0000
+@@ -1,5 +1,6 @@
+ /* System-specific socket constants and types.  Linux version.
+-   Copyright (C) 1991,1992,1994-2001,2004,2006 Free Software Foundation, Inc.
++   Copyright (C) 1991, 1992, 1994-2001, 2004, 2006, 2007
++   Free Software Foundation, Inc.
+    This file is part of the GNU C Library.
+ 
+    The GNU C Library is free software; you can redistribute it and/or
+@@ -264,7 +265,7 @@
+ 				      struct cmsghdr *__cmsg) __THROW;
+ #ifdef __USE_EXTERN_INLINES
+ # ifndef _EXTERN_INLINE
+-#  define _EXTERN_INLINE extern __inline
++#  define _EXTERN_INLINE __extern_inline
+ # endif
+ _EXTERN_INLINE struct cmsghdr *
+ __NTH (__cmsg_nxthdr (struct msghdr *__mhdr, struct cmsghdr *__cmsg))
+diff -urN glibc-2.5.orig/sysdeps/unix/sysv/linux/sys/sysmacros.h glibc-2.5/sysdeps/unix/sysv/linux/sys/sysmacros.h
+--- glibc-2.5.orig/sysdeps/unix/sysv/linux/sys/sysmacros.h	2004-09-07 23:18:59.000000000 +0100
++++ glibc-2.5/sysdeps/unix/sysv/linux/sys/sysmacros.h	2016-12-16 10:29:43.545128590 +0000
+@@ -1,5 +1,6 @@
+ /* Definitions of macros to access `dev_t' values.
+-   Copyright (C) 1996, 1997, 1999, 2003, 2004 Free Software Foundation, Inc.
++   Copyright (C) 1996, 1997, 1999, 2003, 2004, 2007
++   Free Software Foundation, Inc.
+    This file is part of the GNU C Library.
+ 
+    The GNU C Library is free software; you can redistribute it and/or
+@@ -27,30 +28,30 @@
+    they need.  */
+ #ifdef __GLIBC_HAVE_LONG_LONG
+ __extension__
+-extern __inline unsigned int gnu_dev_major (unsigned long long int __dev)
++__extern_inline unsigned int gnu_dev_major (unsigned long long int __dev)
+      __THROW;
+ __extension__
+-extern __inline unsigned int gnu_dev_minor (unsigned long long int __dev)
++__extern_inline unsigned int gnu_dev_minor (unsigned long long int __dev)
+      __THROW;
+ __extension__
+-extern __inline unsigned long long int gnu_dev_makedev (unsigned int __major,
++__extern_inline unsigned long long int gnu_dev_makedev (unsigned int __major,
+ 							unsigned int __minor)
+      __THROW;
+ 
+ # if defined __GNUC__ && __GNUC__ >= 2
+-__extension__ extern __inline unsigned int
++__extension__ __extern_inline unsigned int
+ __NTH (gnu_dev_major (unsigned long long int __dev))
+ {
+   return ((__dev >> 8) & 0xfff) | ((unsigned int) (__dev >> 32) & ~0xfff);
+ }
+ 
+-__extension__ extern __inline unsigned int
++__extension__ __extern_inline unsigned int
+ __NTH (gnu_dev_minor (unsigned long long int __dev))
+ {
+   return (__dev & 0xff) | ((unsigned int) (__dev >> 12) & ~0xff);
+ }
+ 
+-__extension__ extern __inline unsigned long long int
++__extension__ __extern_inline unsigned long long int
+ __NTH (gnu_dev_makedev (unsigned int __major, unsigned int __minor))
+ {
+   return ((__minor & 0xff) | ((__major & 0xfff) << 8)
+diff -urN glibc-2.5.orig/sysdeps/x86_64/fpu/bits/mathinline.h glibc-2.5/sysdeps/x86_64/fpu/bits/mathinline.h
+--- glibc-2.5.orig/sysdeps/x86_64/fpu/bits/mathinline.h	2004-09-07 23:18:59.000000000 +0100
++++ glibc-2.5/sysdeps/x86_64/fpu/bits/mathinline.h	2016-12-16 10:29:43.545128590 +0000
+@@ -1,5 +1,5 @@
+ /* Inline math functions for x86-64.
+-   Copyright (C) 2002, 2003, 2004 Free Software Foundation, Inc.
++   Copyright (C) 2002, 2003, 2004, 2007 Free Software Foundation, Inc.
+    This file is part of the GNU C Library.
+    Contributed by Andreas Jaeger <aj@suse.de>, 2002.
+ 
+@@ -25,7 +25,7 @@
+ #ifdef __cplusplus
+ # define __MATH_INLINE __inline
+ #else
+-# define __MATH_INLINE extern __inline
++# define __MATH_INLINE __extern_inline
+ #endif
+ 
+ 
+diff -urN glibc-2.5.orig/wcsmbs/bits/wchar2.h glibc-2.5/wcsmbs/bits/wchar2.h
+--- glibc-2.5.orig/wcsmbs/bits/wchar2.h	2006-01-14 12:09:47.000000000 +0000
++++ glibc-2.5/wcsmbs/bits/wchar2.h	2016-12-16 10:29:43.545128590 +0000
+@@ -1,5 +1,5 @@
+ /* Checking macros for wchar functions.
+-   Copyright (C) 2005, 2006 Free Software Foundation, Inc.
++   Copyright (C) 2005, 2006, 2007 Free Software Foundation, Inc.
+    This file is part of the GNU C Library.
+ 
+    The GNU C Library is free software; you can redistribute it and/or
+@@ -30,7 +30,7 @@
+ 				 __const wchar_t *__restrict __s2, size_t __n),
+ 				wmemcpy);
+ 
+-extern __always_inline wchar_t *
++__extern_always_inline wchar_t *
+ __NTH (wmemcpy (wchar_t *__restrict __s1, __const wchar_t *__restrict __s2,
+ 		size_t __n))
+ {
+@@ -46,7 +46,7 @@
+ 						   __const wchar_t *__s2,
+ 						   size_t __n), wmemmove);
+ 
+-extern __always_inline wchar_t *
++__extern_always_inline wchar_t *
+ __NTH (wmemmove (wchar_t *__restrict __s1, __const wchar_t *__restrict __s2,
+ 		 size_t __n))
+ {
+@@ -65,7 +65,7 @@
+ 				 __const wchar_t *__restrict __s2,
+ 				 size_t __n), wmempcpy);
+ 
+-extern __always_inline wchar_t *
++__extern_always_inline wchar_t *
+ __NTH (wmempcpy (wchar_t *__restrict __s1, __const wchar_t *__restrict __s2,
+ 		 size_t __n))
+ {
+@@ -81,7 +81,7 @@
+ extern wchar_t *__REDIRECT_NTH (__wmemset_alias, (wchar_t *__s, wchar_t __c,
+ 						  size_t __n), wmemset);
+ 
+-extern __always_inline wchar_t *
++__extern_always_inline wchar_t *
+ __NTH (wmemset (wchar_t *__restrict __s, wchar_t __c, size_t __n))
+ {
+   if (__bos0 (__s) != (size_t) -1)
+@@ -97,7 +97,7 @@
+ 				(wchar_t *__restrict __dest,
+ 				 __const wchar_t *__restrict __src), wcscpy);
+ 
+-extern __always_inline wchar_t *
++__extern_always_inline wchar_t *
+ __NTH (wcscpy (wchar_t *__dest, __const wchar_t *__src))
+ {
+   if (__bos (__dest) != (size_t) -1)
+@@ -112,7 +112,7 @@
+ 						 __const wchar_t *__src),
+ 				wcpcpy);
+ 
+-extern __always_inline wchar_t *
++__extern_always_inline wchar_t *
+ __NTH (wcpcpy (wchar_t *__dest, __const wchar_t *__src))
+ {
+   if (__bos (__dest) != (size_t) -1)
+@@ -129,7 +129,7 @@
+ 				 __const wchar_t *__restrict __src,
+ 				 size_t __n), wcsncpy);
+ 
+-extern __always_inline wchar_t *
++__extern_always_inline wchar_t *
+ __NTH (wcsncpy (wchar_t *__dest, __const wchar_t *__src, size_t __n))
+ {
+   if (__bos (__dest) != (size_t) -1
+@@ -148,7 +148,7 @@
+ 				 __const wchar_t *__restrict __src,
+ 				 size_t __n), wcpncpy);
+ 
+-extern __always_inline wchar_t *
++__extern_always_inline wchar_t *
+ __NTH (wcpncpy (wchar_t *__dest, __const wchar_t *__src, size_t __n))
+ {
+   if (__bos (__dest) != (size_t) -1
+@@ -166,7 +166,7 @@
+ 				(wchar_t *__restrict __dest,
+ 				 __const wchar_t *__restrict __src), wcscat);
+ 
+-extern __always_inline wchar_t *
++__extern_always_inline wchar_t *
+ __NTH (wcscat (wchar_t *__dest, __const wchar_t *__src))
+ {
+   if (__bos (__dest) != (size_t) -1)
+@@ -183,7 +183,7 @@
+ 				 __const wchar_t *__restrict __src,
+ 				 size_t __n), wcsncat);
+ 
+-extern __always_inline wchar_t *
++__extern_always_inline wchar_t *
+ __NTH (wcsncat (wchar_t *__dest, __const wchar_t *__src, size_t __n))
+ {
+   if (__bos (__dest) != (size_t) -1)
+@@ -246,7 +246,7 @@
+ 			    (wchar_t *__restrict __s, int __n,
+ 			     __FILE *__restrict __stream), fgetws) __wur;
+ 
+-extern __always_inline __wur wchar_t *
++__extern_always_inline __wur wchar_t *
+ fgetws (wchar_t *__restrict __s, int __n, __FILE *__restrict __stream)
+ {
+   if (__bos (__s) != (size_t) -1
+@@ -264,7 +264,7 @@
+ 			     __FILE *__restrict __stream), fgetws_unlocked)
+   __wur;
+ 
+-extern __always_inline __wur wchar_t *
++__extern_always_inline __wur wchar_t *
+ fgetws_unlocked (wchar_t *__restrict __s, int __n, __FILE *__restrict __stream)
+ {
+   if (__bos (__s) != (size_t) -1
+@@ -281,7 +281,7 @@
+ 			      (char *__restrict __s, wchar_t __wchar,
+ 			       mbstate_t *__restrict __ps), wcrtomb) __wur;
+ 
+-extern __always_inline __wur size_t
++__extern_always_inline __wur size_t
+ __NTH (wcrtomb (char *__s, wchar_t __wchar, mbstate_t *__ps))
+ {
+   /* We would have to include <limits.h> to get a definition of MB_LEN_MAX.
+@@ -307,7 +307,7 @@
+ 			       size_t __len, mbstate_t *__restrict __ps),
+ 			      mbsrtowcs);
+ 
+-extern __always_inline size_t
++__extern_always_inline size_t
+ __NTH (mbsrtowcs (wchar_t *__restrict __dst, __const char **__restrict __src,
+ 		  size_t __len, mbstate_t *__restrict __ps))
+ {
+@@ -330,7 +330,7 @@
+ 			       size_t __len, mbstate_t *__restrict __ps),
+ 			      wcsrtombs);
+ 
+-extern __always_inline size_t
++__extern_always_inline size_t
+ __NTH (wcsrtombs (char *__restrict __dst, __const wchar_t **__restrict __src,
+ 		  size_t __len, mbstate_t *__restrict __ps))
+ {
+@@ -352,7 +352,7 @@
+ 			       size_t __len, mbstate_t *__restrict __ps),
+ 			      mbsnrtowcs);
+ 
+-extern __always_inline size_t
++__extern_always_inline size_t
+ __NTH (mbsnrtowcs (wchar_t *__restrict __dst, __const char **__restrict __src,
+ 		   size_t __nmc, size_t __len, mbstate_t *__restrict __ps))
+ {
+@@ -376,7 +376,7 @@
+ 			       size_t __nwc, size_t __len,
+ 			       mbstate_t *__restrict __ps), wcsnrtombs);
+ 
+-extern __always_inline size_t
++__extern_always_inline size_t
+ __NTH (wcsnrtombs (char *__restrict __dst, __const wchar_t **__restrict __src,
+ 		   size_t __nwc, size_t __len, mbstate_t *__restrict __ps))
+ {
+diff -urN glibc-2.5.orig/wcsmbs/wchar.h glibc-2.5/wcsmbs/wchar.h
+--- glibc-2.5.orig/wcsmbs/wchar.h	2006-09-27 16:56:30.000000000 +0100
++++ glibc-2.5/wcsmbs/wchar.h	2016-12-16 10:29:43.545128590 +0000
+@@ -326,19 +326,19 @@
+    locales must use ASCII encoding for the values in the ASCII range
+    and because the wchar_t encoding is always ISO 10646.  */
+ extern wint_t __btowc_alias (int __c) __asm ("btowc");
+-extern __inline wint_t
++__extern_inline wint_t
+ __NTH (btowc (int __c))
+ { return (__builtin_constant_p (__c) && __c >= '\0' && __c <= '\x7f'
+ 	  ? (wint_t) __c : __btowc_alias (__c)); }
+ 
+ extern int __wctob_alias (wint_t __c) __asm ("wctob");
+-extern __inline int
++__extern_inline int
+ __NTH (wctob (wint_t __wc))
+ { return (__builtin_constant_p (__wc) && __wc >= L'\0' && __wc <= L'\x7f'
+ 	  ? (int) __wc : __wctob_alias (__wc)); }
+ # endif
+ 
+-extern __inline size_t
++__extern_inline size_t
+ __NTH (mbrlen (__const char *__restrict __s, size_t __n,
+ 	       mbstate_t *__restrict __ps))
+ { return (__ps != NULL
+@@ -548,38 +548,38 @@
+ /* Define inline functions which call the internal entry points.  */
+ __BEGIN_NAMESPACE_C99
+ 
+-extern __inline double
++__extern_inline double
+ __NTH (wcstod (__const wchar_t *__restrict __nptr,
+ 	       wchar_t **__restrict __endptr))
+ { return __wcstod_internal (__nptr, __endptr, 0); }
+-extern __inline long int
++__extern_inline long int
+ __NTH (wcstol (__const wchar_t *__restrict __nptr,
+ 	       wchar_t **__restrict __endptr, int __base))
+ { return __wcstol_internal (__nptr, __endptr, __base, 0); }
+-extern __inline unsigned long int
++__extern_inline unsigned long int
+ __NTH (wcstoul (__const wchar_t *__restrict __nptr,
+ 		wchar_t **__restrict __endptr, int __base))
+ { return __wcstoul_internal (__nptr, __endptr, __base, 0); }
+ __END_NAMESPACE_C99
+ 
+ # ifdef __USE_GNU
+-extern __inline float
++__extern_inline float
+ __NTH (wcstof (__const wchar_t *__restrict __nptr,
+ 	       wchar_t **__restrict __endptr))
+ { return __wcstof_internal (__nptr, __endptr, 0); }
+ #  ifndef __LDBL_COMPAT
+-extern __inline long double
++__extern_inline long double
+ __NTH (wcstold (__const wchar_t *__restrict __nptr,
+ 		wchar_t **__restrict __endptr))
+ { return __wcstold_internal (__nptr, __endptr, 0); }
+ #  endif
+ __extension__
+-extern __inline long long int
++__extern_inline long long int
+ __NTH (wcstoq (__const wchar_t *__restrict __nptr,
+ 	       wchar_t **__restrict __endptr, int __base))
+ { return __wcstoll_internal (__nptr, __endptr, __base, 0); }
+ __extension__
+-extern __inline unsigned long long int
++__extern_inline unsigned long long int
+ __NTH (wcstouq (__const wchar_t *__restrict __nptr,
+ 		wchar_t **__restrict __endptr, int __base))
+ { return __wcstoull_internal (__nptr, __endptr, __base, 0); }
