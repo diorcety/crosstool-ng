@@ -240,6 +240,12 @@ config KERNEL_V_2_6_32
     prompt "2.6.32.71 (EOL)"
     depends on OBSOLETE
 
+# EOL 03/2017 [CentOS5.x]
+config KERNEL_V_2_6_18
+    bool
+    prompt "2.6.18"
+    depends on OBSOLETE
+
 endchoice
 
 config KERNEL_VERSION
@@ -285,5 +291,6 @@ config KERNEL_VERSION
     default "2.6.34.7" if KERNEL_V_2_6_34
     default "2.6.33.7" if KERNEL_V_2_6_33
     default "2.6.32.71" if KERNEL_V_2_6_32
+    default "2.6.18" if KERNEL_V_2_6_18
 
 endif # ! KERNEL_LINUX_CUSTOM
