@@ -188,6 +188,11 @@ config KERNEL_V_3_3
     prompt "3.3.8 (EOL)"
     depends on OBSOLETE
 
+# imx351uc
+config KERNEL_V_3_2_43
+    bool
+    prompt "3.2.43"
+
 # EOL 04/2017 [Ubuntu12.04]
 config KERNEL_V_3_2
     bool
@@ -285,6 +290,7 @@ config KERNEL_VERSION
     default "3.5.7" if KERNEL_V_3_5
     default "3.4.113" if KERNEL_V_3_4
     default "3.3.8" if KERNEL_V_3_3
+    default "3.2.43" if KERNEL_V_3_2_43
     default "3.2.88" if KERNEL_V_3_2
     default "3.1.10" if KERNEL_V_3_1
     default "3.0.101" if KERNEL_V_3_0
