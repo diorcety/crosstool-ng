@@ -176,7 +176,7 @@ config BINUTILS_GOLD_SUPPORT
     default y
     depends on BINUTILS_HAS_GOLD
     depends on BINUTILS_GOLD_SUPPORTS_ARCH
-    depends on ! STATIC_TOOLCHAIN
+#    depends on ! STATIC_TOOLCHAIN
 
 config BINUTILS_HAS_PLUGINS
     bool
