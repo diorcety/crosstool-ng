@@ -1,0 +1,249 @@
+diff -urN a/ChangeLog b/ChangeLog
+--- a/ChangeLog	2014-04-27 01:15:47.515654200 +0100
++++ b/ChangeLog	2014-04-27 01:16:51.834333000 +0100
+@@ -1,3 +1,8 @@
++2014-01-22  Ray Donnelly  <mingw.android@gmail.com>
++
++        * Rename .oS to .oSTATIC so that builds can be done on file
++        systems that are not both case sensitive and case preserving.
++
+ 2013-01-25  Thomas Schwinge  <thomas@codesourcery.com>
+ 
+         * configure.in (AC_PROG_CPP): New definition.
+diff -urN a/extra-lib.mk b/extra-lib.mk
+--- a/extra-lib.mk	2012-05-26 18:46:57.000000000 +0100
++++ b/extra-lib.mk	2014-04-27 01:16:51.848333800 +0100
+@@ -13,7 +13,7 @@
+ 
+ ifneq (,$($(lib)-static-only-routines))
+ ifneq (,$(filter yes%,$(build-shared)$($(lib).so-version)))
+-object-suffixes-$(lib) += $(filter-out $($(lib)-inhibit-o),.oS)
++object-suffixes-$(lib) += $(filter-out $($(lib)-inhibit-o),.oSTATIC)
+ endif
+ endif
+ 
+@@ -31,7 +31,7 @@
+ 
+ # Add each flavor of library to the lists of things to build and install.
+ install-lib += $(foreach o,$(object-suffixes-$(lib)),$(lib:lib%=$(libtype$o)))
+-extra-objs += $(foreach o,$(filter-out .os .oS,$(object-suffixes-$(lib))),\
++extra-objs += $(foreach o,$(filter-out .os .oSTATIC,$(object-suffixes-$(lib))),\
+ 			$(patsubst %,%$o,$(filter-out \
+ 					   $($(lib)-shared-only-routines),\
+ 					   $(all-$(lib)-routines))))
+@@ -59,7 +59,7 @@
+ 
+ 
+ # Use o-iterator.mk to generate a rule for each flavor of library.
+-ifneq (,$(filter-out .os .oS,$(object-suffixes-$(lib))))
++ifneq (,$(filter-out .os .oSTATIC,$(object-suffixes-$(lib))))
+ define o-iterator-doit
+ $(objpfx)$(patsubst %,$(libtype$o),$(lib:lib%=%)): \
+   $(patsubst %,$(objpfx)%$o,\
+@@ -67,7 +67,7 @@
+ 			  $(all-$(lib)-routines))); \
+ 	$$(build-extra-lib)
+ endef
+-object-suffixes-left = $(filter-out .os .oS,$(object-suffixes-$(lib)))
++object-suffixes-left = $(filter-out .os .oSTATIC,$(object-suffixes-$(lib)))
+ include $(patsubst %,$(..)o-iterator.mk,$(object-suffixes-left))
+ endif
+ 
+@@ -79,9 +79,9 @@
+ 	$(build-extra-lib)
+ endif
+ 
+-ifneq (,$(filter .oS,$(object-suffixes-$(lib))))
+-$(objpfx)$(patsubst %,$(libtype.oS),$(lib:lib%=%)): \
+-  $(patsubst %,$(objpfx)%.oS,\
++ifneq (,$(filter .oSTATIC,$(object-suffixes-$(lib))))
++$(objpfx)$(patsubst %,$(libtype.oSTATIC),$(lib:lib%=%)): \
++  $(patsubst %,$(objpfx)%.oSTATIC,\
+ 	     $(filter $($(lib)-static-only-routines),\
+ 		      $(all-$(lib)-routines)))
+ 	$(build-extra-lib)
+diff -urN a/Makeconfig b/Makeconfig
+--- a/Makeconfig	2014-04-27 01:14:41.831897300 +0100
++++ b/Makeconfig	2014-04-27 01:16:51.850333900 +0100
+@@ -485,7 +485,7 @@
+ # run the linked programs.
+ link-libc-before-gnulib = -Wl,-rpath-link=$(rpath-link) \
+ 	    $(common-objpfx)libc.so$(libc.so-version) \
+-	    $(common-objpfx)$(patsubst %,$(libtype.oS),c) \
++	    $(common-objpfx)$(patsubst %,$(libtype.oSTATIC),c) \
+ 	    $(as-needed) $(common-objpfx)elf/ld.so $(no-as-needed)
+ link-libc = $(link-libc-before-gnulib) $(gnulib)
+ link-libc-tests = $(link-libc-before-gnulib) $(gnulib-tests)
+@@ -747,7 +747,7 @@
+ # The compilation rules use $(CPPFLAGS-${SUFFIX}) and $(CFLAGS-${SUFFIX})
+ # to pass different flags for each flavor.
+ libtypes = $(foreach o,$(object-suffixes-for-libc),$(libtype$o))
+-all-object-suffixes := .o .os .op .og .ob .oS
++all-object-suffixes := .o .os .op .og .ob .oSTATIC
+ object-suffixes :=
+ CPPFLAGS-.o = $(pic-default)
+ CFLAGS-.o = $(filter %frame-pointer,$(+cflags))
+@@ -798,14 +798,14 @@
+ 
+ ifeq (yes,$(build-shared))
+ # Build special library that contains the static-only routines for libc.
+-object-suffixes-for-libc += .oS
++object-suffixes-for-libc += .oSTATIC
+ 
+ # Must build the routines as PIC, though, because they can end up in (users')
+ # shared objects.  We don't want to use CFLAGS-os because users may, for
+ # example, make that processor-specific.
+-CFLAGS-.oS = $(CFLAGS-.o) $(PIC-ccflag)
+-CPPFLAGS-.oS = $(CPPFLAGS-.o) -DPIC -DLIBC_NONSHARED=1
+-libtype.oS = lib%_nonshared.a
++CFLAGS-.oSTATIC = $(CFLAGS-.o) $(PIC-ccflag)
++CPPFLAGS-.oSTATIC = $(CPPFLAGS-.o) -DPIC -DLIBC_NONSHARED=1
++libtype.oSTATIC = lib%_nonshared.a
+ endif
+ 
+ # The assembler can generate debug information too.
+diff -urN a/Makerules b/Makerules
+--- a/Makerules	2014-04-27 01:16:27.333931700 +0100
++++ b/Makerules	2014-04-27 01:18:18.610296300 +0100
+@@ -162,14 +162,14 @@
+ # We only generate these in the top-level makefile, to avoid any weirdness
+ # from subdir-specific makefile tweaks creeping in on an update.
+ $(common-objpfx)%.make: $(..)%.make.c $(..)Makerules $(common-before-compile)
+-	rm -f $@T $@.dT
++	rm -f $@T $@.dTEMP
+ 	(echo '# Generated from $*.make.c by Makerules.'; \
+ 	 $(CC) $(CFLAGS) $(CPPFLAGS) -E -DASSEMBLER $< \
+-	       -MD -MP -MT '$$(common-objpfx)$*.make' -MF $@.dT \
++	       -MD -MP -MT '$$(common-objpfx)$*.make' -MF $@.dTEMP \
+ 	 | sed -n '/@@@/{s/@@@[	 ]*\(.*\)@@@/\1/;s/[	 ]*$$//p;}'; \
+ 	 echo 'common-generated += $(@F)'; \
+-	 sed $(sed-remove-objpfx) $(sed-remove-dotdot) $@.dT; \
+-	 rm -f $@.dT) > $@T
++	 sed $(sed-remove-objpfx) $(sed-remove-dotdot) $@.dTEMP; \
++	 rm -f $@.dTEMP) > $@T
+ 	mv -f $@T $@
+ endif
+ 
+@@ -354,7 +354,7 @@
+ # eglibc: endif # $(versioning) = yes
+ endif # sysd-sorted-done
+ 
+-# Generate .dT files as we compile.
++# Generate .dTEMP files as we compile.
+ compile-mkdep-flags = -MD -MP -MF $@.dt -MT $@
+ compile-command.S = $(compile.S) $(OUTPUT_OPTION) $(compile-mkdep-flags)
+ compile-command.c = $(compile.c) $(OUTPUT_OPTION) $(compile-mkdep-flags)
+@@ -453,7 +453,7 @@
+ # Bounded pointer thunks are only built for *.ob
+ elide-bp-thunks = $(addprefix $(bppfx),$(bp-thunks))
+ 
+-elide-routines.oS += $(filter-out $(static-only-routines),\
++elide-routines.oSTATIC += $(filter-out $(static-only-routines),\
+ 				  $(routines) $(aux) $(sysdep_routines)) \
+ 		     $(elide-bp-thunks)
+ elide-routines.os += $(static-only-routines) $(elide-bp-thunks)
+@@ -687,7 +687,7 @@
+ 
+ +depfiles := $(sources:.c=.d) \
+ 	     $(patsubst %.o,%.d,$(filter %.o,$(extra-objs:.os=.o))) \
+-	     $(patsubst %.oS,%.d,$(filter %.oS,$(extra-objs))) \
++	     $(patsubst %.oSTATIC,%.d,$(filter %.oSTATIC,$(extra-objs))) \
+ 	     $(patsubst %.o,%.d,$(filter %.o,$(extra-test-objs:.os=.o))) \
+ 	     $(addsuffix .d,$(tests) $(xtests) $(test-srcs))
+ ifeq ($(build-programs),yes)
+@@ -995,7 +995,7 @@
+ install: $(inst_libdir)/libc.so
+ $(inst_libdir)/libc.so: $(common-objpfx)format.lds \
+ 			$(common-objpfx)libc.so$(libc.so-version) \
+-			$(inst_libdir)/$(patsubst %,$(libtype.oS),\
++			$(inst_libdir)/$(patsubst %,$(libtype.oSTATIC),\
+ 						  $(libprefix)$(libc-name)) \
+ 			$(+force)
+ 	(echo '/* GNU ld script';\
+@@ -1003,7 +1003,7 @@
+ 	 echo '   the static library, so try that secondarily.  */';\
+ 	 cat $<; \
+ 	 echo 'GROUP ( $(slibdir)/libc.so$(libc.so-version)' \
+-	      '$(libdir)/$(patsubst %,$(libtype.oS),$(libprefix)$(libc-name))'\
++	      '$(libdir)/$(patsubst %,$(libtype.oSTATIC),$(libprefix)$(libc-name))'\
+ 	      ' AS_NEEDED (' $(slibdir)/$(rtld-installed-name) ') )' \
+ 	) > $@.new
+ 	mv -f $@.new $@
+diff -urN a/nptl/Makefile b/nptl/Makefile
+--- a/nptl/Makefile	2012-06-22 16:11:15.000000000 +0100
++++ b/nptl/Makefile	2014-04-27 01:16:51.855334200 +0100
+@@ -391,7 +391,7 @@
+ 
+ $(inst_libdir)/libpthread.so: $(common-objpfx)format.lds \
+ 			      $(objpfx)libpthread.so$(libpthread.so-version) \
+-			      $(inst_libdir)/$(patsubst %,$(libtype.oS),\
++			      $(inst_libdir)/$(patsubst %,$(libtype.oSTATIC),\
+ 							$(libprefix)pthread) \
+ 			      $(+force)
+ 	(echo '/* GNU ld script';\
+@@ -399,7 +399,7 @@
+ 	 echo '   the static library, so try that secondarily.  */';\
+ 	 cat $<; \
+ 	 echo 'GROUP ( $(slibdir)/libpthread.so$(libpthread.so-version)' \
+-	      '$(libdir)/$(patsubst %,$(libtype.oS),$(libprefix)pthread)'\
++	      '$(libdir)/$(patsubst %,$(libtype.oSTATIC),$(libprefix)pthread)'\
+ 	      ')' \
+ 	) > $@.new
+ 	mv -f $@.new $@
+diff -urN a/sysdeps/i386/i686/Makefile b/sysdeps/i386/i686/Makefile
+--- a/sysdeps/i386/i686/Makefile	2010-03-13 18:20:12.000000000 +0000
++++ b/sysdeps/i386/i686/Makefile	2014-04-27 01:16:51.857334300 +0100
+@@ -16,12 +16,12 @@
+ CFLAGS-.op += -Wa,-mtune=i686
+ CFLAGS-.og += -Wa,-mtune=i686
+ CFLAGS-.ob += -Wa,-mtune=i686
+-CFLAGS-.oS += -Wa,-mtune=i686
++CFLAGS-.oSTATIC += -Wa,-mtune=i686
+ 
+ ASFLAGS-.o += -Wa,-mtune=i686
+ ASFLAGS-.os += -Wa,-mtune=i686
+ ASFLAGS-.op += -Wa,-mtune=i686
+ ASFLAGS-.og += -Wa,-mtune=i686
+ ASFLAGS-.ob += -Wa,-mtune=i686
+-ASFLAGS-.oS += -Wa,-mtune=i686
++ASFLAGS-.oSTATIC += -Wa,-mtune=i686
+ endif
+diff -urN a/sysdeps/ieee754/ldbl-opt/Makefile b/sysdeps/ieee754/ldbl-opt/Makefile
+--- a/sysdeps/ieee754/ldbl-opt/Makefile	2012-05-26 18:46:57.000000000 +0100
++++ b/sysdeps/ieee754/ldbl-opt/Makefile	2014-04-27 01:17:09.282331000 +0100
+@@ -49,6 +49,6 @@
+ libnldbl-routines = $(libnldbl-calls:%=nldbl-%)
+ libnldbl-inhibit-o = $(object-suffixes)
+ libnldbl-static-only-routines = $(libnldbl-routines)
+-extra-objs += $(addsuffix .oS, $(libnldbl-routines))
++extra-objs += $(addsuffix .oSTATIC, $(libnldbl-routines))
+ 
+ endif
+diff -urN a/sysdeps/sparc/sparc32/sparcv9/Makefile b/sysdeps/sparc/sparc32/sparcv9/Makefile
+--- a/sysdeps/sparc/sparc32/sparcv9/Makefile	2012-03-21 20:25:11.000000000 +0000
++++ b/sysdeps/sparc/sparc32/sparcv9/Makefile	2014-04-27 01:16:51.858334400 +0100
+@@ -11,12 +11,12 @@
+ ASFLAGS-.op += -Wa,-Av9d
+ ASFLAGS-.og += -Wa,-Av9d
+ ASFLAGS-.ob += -Wa,-Av9d
+-ASFLAGS-.oS += -Wa,-Av9d
++ASFLAGS-.oSTATIC += -Wa,-Av9d
+ else
+ ASFLAGS-.o += -Wa,-Av9a
+ ASFLAGS-.os += -Wa,-Av9a
+ ASFLAGS-.op += -Wa,-Av9a
+ ASFLAGS-.og += -Wa,-Av9a
+ ASFLAGS-.ob += -Wa,-Av9a
+-ASFLAGS-.oS += -Wa,-Av9a
++ASFLAGS-.oSTATIC += -Wa,-Av9a
+ endif
+diff -urN a/sysdeps/sparc/sparc64/Makefile b/sysdeps/sparc/sparc64/Makefile
+--- a/sysdeps/sparc/sparc64/Makefile	2012-03-21 20:25:11.000000000 +0000
++++ b/sysdeps/sparc/sparc64/Makefile	2014-04-27 01:17:17.436797400 +0100
+@@ -13,5 +13,5 @@
+ ASFLAGS-.op += -Wa,-Av9d
+ ASFLAGS-.og += -Wa,-Av9d
+ ASFLAGS-.ob += -Wa,-Av9d
+-ASFLAGS-.oS += -Wa,-Av9d
++ASFLAGS-.oSTATIC += -Wa,-Av9d
+ endif
