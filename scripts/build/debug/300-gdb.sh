@@ -190,6 +190,10 @@ do_debug_gdb_build() {
             native_extra_config+=("--with-curses")
         fi
 
+        if [ "${CT_GDB_NATIVE_STATIC}" = "y" ]; then
+            native_extra_config+=("--disable-gdbserver")
+        fi
+
         # Target libexpat resides in sysroot and does not have
         # any dependencies, so just passing '-lexpat' to gcc is enough.
         #
