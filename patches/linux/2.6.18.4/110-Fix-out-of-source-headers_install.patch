@@ -1,0 +1,30 @@
+diff -urN linux-2.6.18.4-redhat/Makefile linux-2.6.18.4/Makefile
+--- linux-2.6.18.4-redhat/Makefile	2017-04-17 14:41:29.000000000 +0100
++++ linux-2.6.18.4/Makefile	2017-04-17 14:42:17.000000000 +0100
+@@ -907,7 +907,7 @@
+ 
+ PHONY += headers_install
+ headers_install: include/linux/version.h
+-	@if [ ! -r include/asm-$(ARCH)/Kbuild ]; then \
++	@if [ ! -r $(srctree)/include/asm-$(ARCH)/Kbuild ]; then \
+ 	  echo '*** Error: Headers not exportable for this architecture ($(ARCH))'; \
+ 	  exit 1 ; fi
+ 	$(Q)unifdef -Ux /dev/null
+@@ -1092,7 +1092,7 @@
+ 	@echo  '  cscope	  - Generate cscope index'
+ 	@echo  '  kernelrelease	  - Output the release version string'
+ 	@echo  '  kernelversion	  - Output the version stored in Makefile'
+-	@if [ -r include/asm-$(ARCH)/Kbuild ]; then \
++	@if [ -r $(srctree)/include/asm-$(ARCH)/Kbuild ]; then \
+ 	 echo  '  headers_install - Install sanitised kernel headers to INSTALL_HDR_PATH'; \
+ 	 fi
+ 	@echo  '                    (default: $(INSTALL_HDR_PATH))'
+@@ -1100,7 +1100,7 @@
+ 	@echo  'Static analysers'
+ 	@echo  '  checkstack      - Generate a list of stack hogs'
+ 	@echo  '  namespacecheck  - Name space analysis on compiled kernel'
+-	@if [ -r include/asm-$(ARCH)/Kbuild ]; then \
++	@if [ -r $(srctree)/include/asm-$(ARCH)/Kbuild ]; then \
+ 	 echo  '  headers_check   - Sanity check on exported headers'; \
+ 	 fi
+ 	@echo  ''
