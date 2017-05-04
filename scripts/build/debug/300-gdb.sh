@@ -155,6 +155,7 @@ do_debug_gdb_build() {
             --prefix="${CT_PREFIX_DIR}"                 \
             --with-build-sysroot="${CT_SYSROOT_DIR}"    \
             --with-sysroot="${CT_SYSROOT_DIR}"          \
+            --with-guile=no                             \
             --disable-werror                            \
             "${cross_extra_config[@]}"                  \
             "${CT_GDB_CROSS_EXTRA_CONFIG_ARRAY[@]}"
@@ -285,6 +286,7 @@ do_debug_gdb_build() {
             --without-x                                 \
             --disable-sim                               \
             --disable-werror                            \
+            --with-guile=no                             \
             --without-included-gettext                  \
             --without-develop                           \
             "${native_extra_config[@]}"
