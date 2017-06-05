@@ -1,0 +1,11 @@
+diff -urN linux-2.6.18.4.orig/include/linux/random.h linux-2.6.18.4/include/linux/random.h
+--- linux-2.6.18.4.orig/include/linux/random.h	2017-06-05 19:22:26.572389810 +0100
++++ linux-2.6.18.4/include/linux/random.h	2017-06-05 19:24:02.758708744 +0100
+@@ -7,6 +7,7 @@
+ #ifndef _LINUX_RANDOM_H
+ #define _LINUX_RANDOM_H
+ 
++#include <linux/types.h>
+ #include <linux/ioctl.h>
+ 
+ /* ioctl()'s for the random number generator */
