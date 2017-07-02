@@ -1,0 +1,161 @@
+From d7e64365fea8d9223a233487de1e1d6e3d21c553 Mon Sep 17 00:00:00 2001
+From: Siddhesh Poyarekar <siddhesh@sourceware.org>
+Date: Fri, 24 Jun 2016 01:58:44 +0530
+Subject: [PATCH] Avoid attempt for runtime checks if all environments are
+ defined
+
+getconf has the capability to do a runtime check for environment
+support in cases where there is optional support for an environment
+(_POSIX_V7_ILP32_OFF32 on x86_64 for example) and this is indicated by
+not defining the _POSIX_V7_ILP32_OFF32 macro, which results in getconf
+doing an additional execve of _POSIX_V7_ILP32_OFF32 in the
+$GETCONF_DIR.
+
+The default bits/environments.h however does not leave any environment
+macros undefined, which means that no such additional execve is
+needed.  gcc trunk catches this as a build failure since it finds that
+the code block inside switch(specs[i].num) is not reachable.  Avoid
+this error by not bothering about the additional exec (and looking in
+specific environments) when all environments are defined.
+
+Tested on aarch64.
+
+	* posix/getconf.c: Define ALL_ENVIRONMENTS_DEFINED if all
+	environment macros are defined.
+	(main): Avoid execve if ALL_ENVIRONMENTS_DEFINED is defined.
+---
+ ChangeLog       |  6 +++++
+ posix/getconf.c | 84 ++++++++++++++++++++++++++++++++++++++++-----------------
+ 2 files changed, 66 insertions(+), 24 deletions(-)
+
+diff --git a/posix/getconf.c b/posix/getconf.c
+index 3e03396ea7..5a65df83ee 100644
+--- a/posix/getconf.c
++++ b/posix/getconf.c
+@@ -29,6 +29,23 @@
+ #define NEED_SPEC_ARRAY 1
+ #include <posix-conf-vars.h>
+ 
++/* If all of the environments are defined in environments.h, then we don't need
++   to bother with doing a runtime check for a specific environment.  */
++#if (defined _SC_V6_ILP32_OFF32 \
++     && defined _SC_V7_LPBIG_OFFBIG \
++     && defined _SC_XBS5_LP64_OFF64 \
++     && defined _SC_V6_LP64_OFF64 \
++     && defined _SC_V7_ILP32_OFFBIG \
++     && defined _SC_V6_LPBIG_OFFBIG \
++     && defined _SC_V7_LP64_OFF64 \
++     && defined _SC_V7_ILP32_OFF32 \
++     && defined _SC_XBS5_LPBIG_OFFBIG \
++     && defined _SC_XBS5_ILP32_OFFBIG \
++     && defined _SC_V6_ILP32_OFFBIG \
++     && defined _SC_XBS5_ILP32_OFF32)
++# define ALL_ENVIRONMENTS_DEFINED 1
++#endif
++
+ struct conf
+   {
+     const char *name;
+@@ -488,6 +505,24 @@ environment SPEC.\n\n"));
+       return 0;
+     }
+ 
++#ifdef ALL_ENVIRONMENTS_DEFINED
++  if (argc > 1 && strncmp (argv[1], "-v", 2) == 0)
++    {
++      if (argv[1][2] == '\0')
++	{
++	  if (argc < 3)
++	    usage ();
++
++	  argv += 2;
++	  argc -= 2;
++	}
++      else
++	{
++	  argv += 1;
++	  argc += 1;
++	}
++    }
++#else
+   const char *getconf_dir = getenv ("GETCONF_DIR") ?: GETCONF_DIR;
+   size_t getconf_dirlen = strlen (getconf_dir);
+ 
+@@ -538,42 +573,42 @@ environment SPEC.\n\n"));
+ 
+       switch (specs[i].num)
+ 	{
+-#ifndef _XBS5_ILP32_OFF32
++# ifndef _XBS5_ILP32_OFF32
+ 	  case _SC_XBS5_ILP32_OFF32:
+-#endif
+-#ifndef _XBS5_ILP32_OFFBIG
++# endif
++# ifndef _XBS5_ILP32_OFFBIG
+ 	  case _SC_XBS5_ILP32_OFFBIG:
+-#endif
+-#ifndef _XBS5_LP64_OFF64
++# endif
++# ifndef _XBS5_LP64_OFF64
+ 	  case _SC_XBS5_LP64_OFF64:
+-#endif
+-#ifndef _XBS5_LPBIG_OFFBIG
++# endif
++# ifndef _XBS5_LPBIG_OFFBIG
+ 	  case _SC_XBS5_LPBIG_OFFBIG:
+-#endif
+-#ifndef _POSIX_V6_ILP32_OFF32
++# endif
++# ifndef _POSIX_V6_ILP32_OFF32
+ 	  case _SC_V6_ILP32_OFF32:
+-#endif
+-#ifndef _POSIX_V6_ILP32_OFFBIG
++# endif
++# ifndef _POSIX_V6_ILP32_OFFBIG
+ 	  case _SC_V6_ILP32_OFFBIG:
+-#endif
+-#ifndef _POSIX_V6_LP64_OFF64
++# endif
++# ifndef _POSIX_V6_LP64_OFF64
+ 	  case _SC_V6_LP64_OFF64:
+-#endif
+-#ifndef _POSIX_V6_LPBIG_OFFBIG
++# endif
++# ifndef _POSIX_V6_LPBIG_OFFBIG
+ 	  case _SC_V6_LPBIG_OFFBIG:
+-#endif
+-#ifndef _POSIX_V7_ILP32_OFF32
++# endif
++# ifndef _POSIX_V7_ILP32_OFF32
+ 	  case _SC_V7_ILP32_OFF32:
+-#endif
+-#ifndef _POSIX_V7_ILP32_OFFBIG
++# endif
++# ifndef _POSIX_V7_ILP32_OFFBIG
+ 	  case _SC_V7_ILP32_OFFBIG:
+-#endif
+-#ifndef _POSIX_V7_LP64_OFF64
++# endif
++# ifndef _POSIX_V7_LP64_OFF64
+ 	  case _SC_V7_LP64_OFF64:
+-#endif
+-#ifndef _POSIX_V7_LPBIG_OFFBIG
++# endif
++# ifndef _POSIX_V7_LPBIG_OFFBIG
+ 	  case _SC_V7_LPBIG_OFFBIG:
+-#endif
++# endif
+ 	    {
+ 	      const char *args[argc + 3];
+ 	      size_t spec_len = strlen (spec);
+@@ -592,6 +627,7 @@ environment SPEC.\n\n"));
+ 	    break;
+ 	}
+     }
++#endif
+ 
+   if (argc > 1 && strcmp (argv[1], "-a") == 0)
+     {
+-- 
+2.13.0
+
