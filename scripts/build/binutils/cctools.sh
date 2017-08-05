@@ -7,11 +7,11 @@ CT_DYLD_VERSION=210.2.3
 
 do_binutils_get() {
     CT_GetFile "cctools-${CT_BINUTILS_VERSION}" \
-               http://opensource.apple.com/tarballs/cctools/
+               http://opensource.apple.com/tarballs/cctools
     CT_GetFile "ld64-${CT_LD64_VERSION}" \
-               http://opensource.apple.com/tarballs/ld64/
+               http://opensource.apple.com/tarballs/ld64
     CT_GetFile "dyld-${CT_DYLD_VERSION}" \
-               http://opensource.apple.com/tarballs/dyld/
+               http://opensource.apple.com/tarballs/dyld
 }
 
 do_binutils_extract() {
