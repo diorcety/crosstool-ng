@@ -11,7 +11,7 @@ CLANG_URL=http://llvm.org/releases
 CLANG_GIT_URL=http://llvm.org/git/
 CT_CLANG_FULLNAME=
 # Comment this out to fetch from the internet.
-CT_LOCAL_LLVM_GIT_PATH=file:///f/upstreams/llvm
+# CT_LOCAL_LLVM_GIT_PATH=file:///f/upstreams/llvm
 
 if [ "${CT_CC_CLANG_V_3_1}" = "y" ]; then
     CLANG_SUFFIX=".src"

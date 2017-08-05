@@ -18,7 +18,7 @@ LLVM_URL=http://llvm.org/releases
 CT_LLVM_FULLNAME=
 CT_COMPILER_RT_FULLNAME=
 # Comment this out to fetch from the internet.
-CT_LOCAL_LLVM_GIT_PATH=file:///f/upstreams/llvm
+# CT_LOCAL_LLVM_GIT_PATH=file:///f/upstreams/llvm
 
 if [ "${CT_LLVM_V_3_1}" = "y" ]; then
     LLVM_SUFFIX=".src"
