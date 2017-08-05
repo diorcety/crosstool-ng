@@ -7,7 +7,7 @@ do_gcc_get() {
     local linaro_version
     local linaro_series
     local linaro_base_url="http://launchpad.net/gcc-linaro"
-    local apple_base_url="http://opensource.apple.com/tarballs/gcc/"
+    local apple_base_url="http://opensource.apple.com/tarballs/gcc"
 
     if [ "${CT_CC_GCC_CUSTOM}" = "y" ]; then
         CT_GetCustom "gcc" "${CT_CC_GCC_VERSION}" "${CT_CC_GCC_CUSTOM_LOCATION}"

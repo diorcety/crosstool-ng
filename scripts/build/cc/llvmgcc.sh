@@ -24,8 +24,8 @@ do_llvmgcc_get() {
     # gcc-3.3.3 lives in releases/gcc-3.3.3, while gcc-2.95.* isn't in a
     # subdirectory! You bastard!
     CT_GetFile "${CC_LLVMGCC_FULLNAME}"                              \
-               "http://www.opensource.apple.com/tarballs/llvmgcc42/" \
-               "http://llvm.org/releases/${CT_CC_LLVMGCC_VERSION}/"
+               "http://www.opensource.apple.com/tarballs/llvmgcc42" \
+               "http://llvm.org/releases/${CT_CC_LLVMGCC_VERSION}"
 
 }
 
