@@ -116,6 +116,9 @@ do_libuuid_utillinux_backend() {
         --disable-makeinstall-chown                                       \
         "${extra_config[@]}"                                              \
 
+    # Workaround a race condition
+    make lib/dirpaths.h
+
     CT_Pushd libuuid
     CT_DoLog EXTRA "Building libuuid(utillinux)"
     CT_DoExecLog ALL make ${JOBSFLAGS}
@@ -160,6 +163,9 @@ do_libuuid_e2fsprogslibs_backend() {
         --build=${CT_BUILD}                                                      \
         --disable-uuidd                                                          \
         "${extra_config[@]}"                                                     \
+
+    # Workaround a race condition
+    make lib/dirpaths.h
 
     CT_Pushd lib/uuid
     CT_DoLog EXTRA "Building libuuid(e2fsprogslibs)"
