@@ -73,6 +73,11 @@ choice
 # Don't remove next line
 # CT_INSERT_VERSION_BELOW
 
+config CC_GCC_V_7_2_0
+    bool
+    prompt "7.2.0"
+    select CC_GCC_7
+
 config CC_GCC_V_7_1_0
     bool
     prompt "7.1.0"
@@ -196,6 +201,7 @@ config CC_GCC_VERSION
     string
 # Don't remove next line
 # CT_INSERT_VERSION_STRING_BELOW
+    default "7.2.0" if CC_GCC_V_7_2_0
     default "7.1.0" if CC_GCC_V_7_1_0
     default "linaro-6.3-2017.05" if CC_GCC_V_linaro_6_3
     default "6.3.0" if CC_GCC_V_6_3_0
