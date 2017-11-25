@@ -1,0 +1,37 @@
+#
+# Needs to go upstream.
+#
+# 2013-09-13  Carlos O'Donell  <carlos@redhat.com>
+#
+#	* manual/crypt.tex (Cryptographic Functions): Using SunRPC and
+#	AUTH_DES will prevent FIPS 140-2 compliance. Add cindex for
+#	AUTH_DES and FIPS 140-2.
+#	(DES Encryption): Add cindex FIPS 46-3.
+#
+--- glibc-2.17-c758a686/manual/crypt.texi	2013-09-13 03:02:40.891987663 -0400
++++ glibc-2.17-c758a686/manual/crypt.texi	2013-09-13 03:04:02.082380415 -0400
+@@ -30,8 +30,15 @@
+ and the other based on the Data Encryption Standard (DES) that is
+ compatible with Unix systems.
+ 
++@cindex AUTH_DES
++@cindex FIPS 140-2
+ It also provides support for Secure RPC, and some library functions that
+-can be used to perform normal DES encryption.
++can be used to perform normal DES encryption. The use of DES when
++using @code{AUTH_DES} in Secure RPC for authentication as provided by
++@theglibc{} is not FIPS 140-2 compliant nor is any other use of DES
++within @theglibc{}. It is recommended that Secure RPC should not be used
++for systems that need to be FIPS 140-2 compliant since all forms of
++supported authentication use normal DES.
+ 
+ @menu
+ * Legal Problems::              This software can get you locked up, or worse.
+@@ -203,6 +210,7 @@
+ @node DES Encryption
+ @section DES Encryption
+ 
++@cindex FIPS 46-3
+ The Data Encryption Standard is described in the US Government Federal
+ Information Processing Standards (FIPS) 46-3 published by the National
+ Institute of Standards and Technology.  The DES has been very thoroughly

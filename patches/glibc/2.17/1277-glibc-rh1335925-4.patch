@@ -1,0 +1,143 @@
+Backport of this upstream commit, with ports/ readded to the path.
+
+commit 2b1d7148e3664eeb177ae2fc91bf282d75da7623
+Author: Szabolcs Nagy <nsz@port70.net>
+Date:   Mon Jul 6 12:46:43 2015 +0100
+
+    [AArch64] make setcontext etc functions consistent with the kernel
+    
+    since
+    https://sourceware.org/ml/libc-alpha/2014-04/msg00006.html
+    setcontext etc is no longer tied to the kernel use of ucontext.
+    
+    in that patch the ucontext reserved space is not used consistently
+    with the kernel abi: the d8,d9 pair is saved in the slot of q8.
+    
+    this is ok (*context functions work together), but probably not
+    desirable (ucontexts created by the kernel and getcontext are
+    subtly different).
+    
+    the fix just replaces dN with qN in the save/restore code, which
+    does a bit more than needed (saves/restores the top half of qN that
+    is not callee saved), but this should not be an issue (and avoids
+    having to deal with endianness).
+    
+    (kernel fpsimd context layout: the first 64bit contains 0x210 the fpsimd
+    context size and 0x46508001 the FPSIMD_MAGIC, the second 64bit is for
+    fpsr and fpcr, and the rest is the 128bit q0..q31 registers).
+    
+    given d8=8.1, d9=9.1,... d15=15.1, the context created by getcontext is
+    
+    current:
+    
+    (gdb) x/40xg ctx.uc_mcontext.__reserved
+    0x410df0 <ctx+464>:     0x0000021046508001      0x0000000000000000
+    0x410e00 <ctx+480>:     0x0000000000000000      0x0000000000000000
+    0x410e10 <ctx+496>:     0x0000000000000000      0x0000000000000000
+    0x410e20 <ctx+512>:     0x0000000000000000      0x0000000000000000
+    0x410e30 <ctx+528>:     0x0000000000000000      0x0000000000000000
+    0x410e40 <ctx+544>:     0x0000000000000000      0x0000000000000000
+    0x410e50 <ctx+560>:     0x0000000000000000      0x0000000000000000
+    0x410e60 <ctx+576>:     0x0000000000000000      0x0000000000000000
+    0x410e70 <ctx+592>:     0x0000000000000000      0x0000000000000000
+    0x410e80 <ctx+608>:     0x4020333333333333      0x4022333333333333
+    0x410e90 <ctx+624>:     0x0000000000000000      0x0000000000000000
+    0x410ea0 <ctx+640>:     0x4024333333333333      0x4026333333333333
+    0x410eb0 <ctx+656>:     0x0000000000000000      0x0000000000000000
+    0x410ec0 <ctx+672>:     0x4028333333333333      0x402a333333333333
+    0x410ed0 <ctx+688>:     0x0000000000000000      0x0000000000000000
+    0x410ee0 <ctx+704>:     0x402c333333333333      0x402e333333333333
+    0x410ef0 <ctx+720>:     0x0000000000000000      0x0000000000000000
+    0x410f00 <ctx+736>:     0x0000000000000000      0x0000000000000000
+    0x410f10 <ctx+752>:     0x0000000000000000      0x0000000000000000
+    0x410f20 <ctx+768>:     0x0000000000000000      0x0000000000000000
+    
+    fixed:
+    
+    (gdb) x/40xg ctx.uc_mcontext.__reserved
+    0x410d70 <ctx+464>:     0x0000021046508001      0x0000000000000000
+    0x410d80 <ctx+480>:     0x0000000000000000      0x0000000000000000
+    0x410d90 <ctx+496>:     0x0000000000000000      0x0000000000000000
+    0x410da0 <ctx+512>:     0x0000000000000000      0x0000000000000000
+    0x410db0 <ctx+528>:     0x0000000000000000      0x0000000000000000
+    0x410dc0 <ctx+544>:     0x0000000000000000      0x0000000000000000
+    0x410dd0 <ctx+560>:     0x0000000000000000      0x0000000000000000
+    0x410de0 <ctx+576>:     0x0000000000000000      0x0000000000000000
+    0x410df0 <ctx+592>:     0x0000000000000000      0x0000000000000000
+    0x410e00 <ctx+608>:     0x4020333333333333      0x0000000000000000
+    0x410e10 <ctx+624>:     0x4022333333333333      0x0000000000000000
+    0x410e20 <ctx+640>:     0x4024333333333333      0x0000000000000000
+    0x410e30 <ctx+656>:     0x4026333333333333      0x0000000000000000
+    0x410e40 <ctx+672>:     0x4028333333333333      0x0000000000000000
+    0x410e50 <ctx+688>:     0x402a333333333333      0x0000000000000000
+    0x410e60 <ctx+704>:     0x402c333333333333      0x0000000000000000
+    0x410e70 <ctx+720>:     0x402e333333333333      0x0000000000000000
+    0x410e80 <ctx+736>:     0x0000000000000000      0x0000000000000000
+    0x410e90 <ctx+752>:     0x0000000000000000      0x0000000000000000
+    0x410ea0 <ctx+768>:     0x0000000000000000      0x0000000000000000
+    
+    2015-07-06  Szabolcs Nagy  <szabolcs.nagy@arm.com>
+    
+    	* sysdeps/unix/sysv/linux/aarch64/getcontext.S (__getcontext): Use q
+    	registers instead of d ones so the layout is kernel abi compatible.
+    	* sysdeps/unix/sysv/linux/aarch64/setcontext.S (__setcontext): Likewise.
+    	* sysdeps/unix/sysv/linux/aarch64/swapcontext.S (__swapcontext):
+    	Likewise.# Please enter the commit message for your changes. Lines starting
+
+diff --git a/ports/sysdeps/unix/sysv/linux/aarch64/getcontext.S b/ports/sysdeps/unix/sysv/linux/aarch64/getcontext.S
+index adf8037..b72436f 100644
+--- a/ports/sysdeps/unix/sysv/linux/aarch64/getcontext.S
++++ b/ports/sysdeps/unix/sysv/linux/aarch64/getcontext.S
+@@ -69,10 +69,10 @@ ENTRY(__getcontext)
+ 
+ 	/* Fill in the FP SIMD context.  */
+ 	add	x3, x2, #oV0 + 8 * SZVREG
+-	stp	 d8,  d9, [x3], # 2 * SZVREG
+-	stp	d10, d11, [x3], # 2 * SZVREG
+-	stp	d12, d13, [x3], # 2 * SZVREG
+-	stp	d14, d15, [x3], # 2 * SZVREG
++	stp	 q8,  q9, [x3], # 2 * SZVREG
++	stp	q10, q11, [x3], # 2 * SZVREG
++	stp	q12, q13, [x3], # 2 * SZVREG
++	stp	q14, q15, [x3], # 2 * SZVREG
+ 
+ 	add	x3, x2, oFPSR
+ 
+diff --git a/ports/sysdeps/unix/sysv/linux/aarch64/setcontext.S b/ports/sysdeps/unix/sysv/linux/aarch64/setcontext.S
+index ae67581..8d926f7 100644
+--- a/ports/sysdeps/unix/sysv/linux/aarch64/setcontext.S
++++ b/ports/sysdeps/unix/sysv/linux/aarch64/setcontext.S
+@@ -97,10 +97,10 @@ ENTRY (__setcontext)
+ 
+ 	/* Restore the FP SIMD context.  */
+ 	add	x3, x2, #oV0 + 8 * SZVREG
+-	ldp	 d8,  d9, [x3], #2 * SZVREG
+-	ldp	d10, d11, [x3], #2 * SZVREG
+-	ldp	d12, d13, [x3], #2 * SZVREG
+-	ldp	d14, d15, [x3], #2 * SZVREG
++	ldp	 q8,  q9, [x3], #2 * SZVREG
++	ldp	q10, q11, [x3], #2 * SZVREG
++	ldp	q12, q13, [x3], #2 * SZVREG
++	ldp	q14, q15, [x3], #2 * SZVREG
+ 
+ 	add	x3, x2, oFPSR
+ 
+diff --git a/ports/sysdeps/unix/sysv/linux/aarch64/swapcontext.S b/ports/sysdeps/unix/sysv/linux/aarch64/swapcontext.S
+index f62fc11..05ad8d3 100644
+--- a/ports/sysdeps/unix/sysv/linux/aarch64/swapcontext.S
++++ b/ports/sysdeps/unix/sysv/linux/aarch64/swapcontext.S
+@@ -54,10 +54,10 @@ ENTRY(__swapcontext)
+ 
+ 	/* Fill in the FP SIMD context.  */
+ 	add	x3, x2, #oV0 + 8 * SZVREG
+-	stp	 d8,  d9, [x3], #2 * SZVREG
+-	stp	d10, d11, [x3], #2 * SZVREG
+-	stp	d12, d13, [x3], #2 * SZVREG
+-	stp	d14, d15, [x3], #2 * SZVREG
++	stp	 q8,  q9, [x3], #2 * SZVREG
++	stp	q10, q11, [x3], #2 * SZVREG
++	stp	q12, q13, [x3], #2 * SZVREG
++	stp	q14, q15, [x3], #2 * SZVREG
+ 
+ 	add	x3, x2, #oFPSR
+ 

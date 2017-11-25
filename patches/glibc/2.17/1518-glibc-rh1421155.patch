@@ -1,0 +1,2278 @@
+Full backports of the following patches:
+
+commit b97eb2bdb1ed72982a7821c3078be591051cef59
+Author: H.J. Lu <hjl.tools@gmail.com>
+Date:   Mon Mar 16 14:58:43 2015 -0700
+
+    Preserve bound registers in _dl_runtime_resolve
+    
+    We need to add a BND prefix before indirect branch at the end of
+    _dl_runtime_resolve to preserve bound registers.
+
+commit ddd85a65b6e3d6ec1e756c1f78559f99a2c943ca
+Author: H.J. Lu <hjl.tools@gmail.com>
+Date:   Tue Jul 7 05:23:24 2015 -0700
+
+    Add and use sysdeps/i386/link-defines.sym
+    
+    Define macros for fields in La_i86_regs and La_i86_retval and use them
+    in dl-trampoline.S, instead of hardcoded values.
+
+commit 14c5cbabc2d11004ab223ae5eae761ddf83ef99e
+Author: Igor Zamyatin <igor.zamyatin@intel.com>
+Date:   Thu Jul 9 06:50:12 2015 -0700
+
+    Preserve bound registers for pointer pass/return
+    
+    We need to save/restore bound registers and add a BND prefix before
+    branches in _dl_runtime_profile so that bound registers for pointer
+    pass and return are preserved when LD_AUDIT is used.
+
+
+commit f3dcae82d54e5097e18e1d6ef4ff55c2ea4e621e
+Author: H.J. Lu <hjl.tools@gmail.com>
+Date:   Tue Aug 25 04:33:54 2015 -0700
+
+    Save and restore vector registers in x86-64 ld.so
+    
+    This patch adds SSE, AVX and AVX512 versions of _dl_runtime_resolve
+    and _dl_runtime_profile, which save and restore the first 8 vector
+    registers used for parameter passing.  elf_machine_runtime_setup
+    selects the proper _dl_runtime_resolve or _dl_runtime_profile based
+    on _dl_x86_cpu_features.  It avoids race condition caused by
+    FOREIGN_CALL macros, which are only used for x86-64.
+    
+    Performance impact of saving and restoring 8 vector registers are
+    negligible on Nehalem, Sandy Bridge, Ivy Bridge and Haswell when
+    ld.so is optimized with SSE2.
+
+commit fb0f7a6755c1bfaec38f490fbfcaa39a66ee3604
+Author: H.J. Lu <hjl.tools@gmail.com>
+Date:   Tue Sep 6 08:50:55 2016 -0700
+
+    X86-64: Add _dl_runtime_resolve_avx[512]_{opt|slow} [BZ #20508]
+    
+    There is transition penalty when SSE instructions are mixed with 256-bit
+    AVX or 512-bit AVX512 load instructions.  Since _dl_runtime_resolve_avx
+    and _dl_runtime_profile_avx512 save/restore 256-bit YMM/512-bit ZMM
+    registers, there is transition penalty when SSE instructions are used
+    with lazy binding on AVX and AVX512 processors.
+    
+    To avoid SSE transition penalty, if only the lower 128 bits of the first
+    8 vector registers are non-zero, we can preserve %xmm0 - %xmm7 registers
+    with the zero upper bits.
+    
+    For AVX and AVX512 processors which support XGETBV with ECX == 1, we can
+    use XGETBV with ECX == 1 to check if the upper 128 bits of YMM registers
+    or the upper 256 bits of ZMM registers are zero.  We can restore only the
+    non-zero portion of vector registers with AVX/AVX512 load instructions
+    which will zero-extend upper bits of vector registers.
+    
+    This patch adds _dl_runtime_resolve_sse_vex which saves and restores
+    XMM registers with 128-bit AVX store/load instructions.  It is used to
+    preserve YMM/ZMM registers when only the lower 128 bits are non-zero.
+    _dl_runtime_resolve_avx_opt and _dl_runtime_resolve_avx512_opt are added
+    and used on AVX/AVX512 processors supporting XGETBV with ECX == 1 so
+    that we store and load only the non-zero portion of vector registers.
+    This avoids SSE transition penalty caused by _dl_runtime_resolve_avx and
+    _dl_runtime_profile_avx512 when only the lower 128 bits of vector
+    registers are used.
+    
+    _dl_runtime_resolve_avx_slow is added and used for AVX processors which
+    don't support XGETBV with ECX == 1.  Since there is no SSE transition
+    penalty on AVX512 processors which don't support XGETBV with ECX == 1,
+    _dl_runtime_resolve_avx512_slow isn't provided.
+
+commit 3403a17fea8ccef7dc5f99553a13231acf838744
+Author: H.J. Lu <hjl.tools@gmail.com>
+Date:   Thu Feb 9 12:19:44 2017 -0800
+
+    x86-64: Verify that _dl_runtime_resolve preserves vector registers
+    
+    On x86-64, _dl_runtime_resolve must preserve the first 8 vector
+    registers.  Add 3 _dl_runtime_resolve tests to verify that SSE,
+    AVX and AVX512 registers are preserved.
+
+commit c15f8eb50cea7ad1a4ccece6e0982bf426d52c00
+Author: H.J. Lu <hjl.tools@gmail.com>
+Date:   Tue Mar 21 10:59:31 2017 -0700
+
+    x86-64: Improve branch predication in _dl_runtime_resolve_avx512_opt [BZ #21258]
+    
+    On Skylake server, _dl_runtime_resolve_avx512_opt is used to preserve
+    the first 8 vector registers.  The code layout is
+    
+      if only %xmm0 - %xmm7 registers are used
+         preserve %xmm0 - %xmm7 registers
+      if only %ymm0 - %ymm7 registers are used
+         preserve %ymm0 - %ymm7 registers
+      preserve %zmm0 - %zmm7 registers
+    
+    Branch predication always executes the fallthrough code path to preserve
+    %zmm0 - %zmm7 registers speculatively, even though only %xmm0 - %xmm7
+    registers are used.  This leads to lower CPU frequency on Skylake
+    server.  This patch changes the fallthrough code path to preserve
+    %xmm0 - %xmm7 registers instead:
+    
+      if whole %zmm0 - %zmm7 registers are used
+        preserve %zmm0 - %zmm7 registers
+      if only %ymm0 - %ymm7 registers are used
+         preserve %ymm0 - %ymm7 registers
+      preserve %xmm0 - %xmm7 registers
+
+    Tested on Skylake server.
+    
+            [BZ #21258]
+            * sysdeps/x86_64/dl-trampoline.S (_dl_runtime_resolve_opt):
+            Define only if _dl_runtime_resolve is defined to
+            _dl_runtime_resolve_sse_vex.
+            * sysdeps/x86_64/dl-trampoline.h (_dl_runtime_resolve_opt):
+            Fallthrough to _dl_runtime_resolve_sse_vex.
+
+Index: glibc-2.17-c758a686/nptl/sysdeps/x86_64/tcb-offsets.sym
+===================================================================
+--- glibc-2.17-c758a686.orig/nptl/sysdeps/x86_64/tcb-offsets.sym
++++ glibc-2.17-c758a686/nptl/sysdeps/x86_64/tcb-offsets.sym
+@@ -15,7 +15,6 @@ VGETCPU_CACHE_OFFSET	offsetof (tcbhead_t
+ #ifndef __ASSUME_PRIVATE_FUTEX
+ PRIVATE_FUTEX		offsetof (tcbhead_t, private_futex)
+ #endif
+-RTLD_SAVESPACE_SSE	offsetof (tcbhead_t, rtld_savespace_sse)
+ 
+ -- Not strictly offsets, but these values are also used in the TCB.
+ TCB_CANCELSTATE_BITMASK	 CANCELSTATE_BITMASK
+Index: glibc-2.17-c758a686/nptl/sysdeps/x86_64/tls.h
+===================================================================
+--- glibc-2.17-c758a686.orig/nptl/sysdeps/x86_64/tls.h
++++ glibc-2.17-c758a686/nptl/sysdeps/x86_64/tls.h
+@@ -67,12 +67,13 @@ typedef struct
+ # else
+   int __unused1;
+ # endif
+-  int rtld_must_xmm_save;
++  int __glibc_unused1;
+   /* Reservation of some values for the TM ABI.  */
+   void *__private_tm[5];
+   long int __unused2;
+-  /* Have space for the post-AVX register size.  */
+-  __128bits rtld_savespace_sse[8][4] __attribute__ ((aligned (32)));
++  /* Must be kept even if it is no longer used by glibc since programs,
++     like AddressSanitizer, depend on the size of tcbhead_t.  */
++  __128bits __glibc_unused2[8][4] __attribute__ ((aligned (32)));
+ 
+   void *__padding[8];
+ } tcbhead_t;
+@@ -380,41 +381,6 @@ typedef struct
+ # define THREAD_GSCOPE_WAIT() \
+   GL(dl_wait_lookup_done) ()
+ 
+-
+-# ifdef SHARED
+-/* Defined in dl-trampoline.S.  */
+-extern void _dl_x86_64_save_sse (void);
+-extern void _dl_x86_64_restore_sse (void);
+-
+-# define RTLD_CHECK_FOREIGN_CALL \
+-  (THREAD_GETMEM (THREAD_SELF, header.rtld_must_xmm_save) != 0)
+-
+-/* NB: Don't use the xchg operation because that would imply a lock
+-   prefix which is expensive and unnecessary.  The cache line is also
+-   not contested at all.  */
+-#  define RTLD_ENABLE_FOREIGN_CALL \
+-  int old_rtld_must_xmm_save = THREAD_GETMEM (THREAD_SELF,		      \
+-					      header.rtld_must_xmm_save);     \
+-  THREAD_SETMEM (THREAD_SELF, header.rtld_must_xmm_save, 1)
+-
+-#  define RTLD_PREPARE_FOREIGN_CALL \
+-  do if (THREAD_GETMEM (THREAD_SELF, header.rtld_must_xmm_save))	      \
+-    {									      \
+-      _dl_x86_64_save_sse ();						      \
+-      THREAD_SETMEM (THREAD_SELF, header.rtld_must_xmm_save, 0);	      \
+-    }									      \
+-  while (0)
+-
+-#  define RTLD_FINALIZE_FOREIGN_CALL \
+-  do {									      \
+-    if (THREAD_GETMEM (THREAD_SELF, header.rtld_must_xmm_save) == 0)	      \
+-      _dl_x86_64_restore_sse ();					      \
+-    THREAD_SETMEM (THREAD_SELF, header.rtld_must_xmm_save,		      \
+-		   old_rtld_must_xmm_save);				      \
+-  } while (0)
+-# endif
+-
+-
+ #endif /* __ASSEMBLER__ */
+ 
+ #endif	/* tls.h */
+Index: glibc-2.17-c758a686/sysdeps/i386/Makefile
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/i386/Makefile
++++ glibc-2.17-c758a686/sysdeps/i386/Makefile
+@@ -33,6 +33,7 @@ sysdep-CFLAGS += -mpreferred-stack-bound
+ else
+ ifeq ($(subdir),csu)
+ sysdep-CFLAGS += -mpreferred-stack-boundary=4
++gen-as-const-headers += link-defines.sym
+ else
+ # Likewise, any function which calls user callbacks
+ uses-callbacks += -mpreferred-stack-boundary=4
+Index: glibc-2.17-c758a686/sysdeps/i386/configure
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/i386/configure
++++ glibc-2.17-c758a686/sysdeps/i386/configure
+@@ -179,5 +179,32 @@ fi
+ { $as_echo "$as_me:${as_lineno-$LINENO}: result: $libc_cv_cc_novzeroupper" >&5
+ $as_echo "$libc_cv_cc_novzeroupper" >&6; }
+ 
++{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for Intel MPX support" >&5
++$as_echo_n "checking for Intel MPX support... " >&6; }
++if ${libc_cv_asm_mpx+:} false; then :
++  $as_echo_n "(cached) " >&6
++else
++  cat > conftest.s <<\EOF
++        bndmov %bnd0,(%esp)
++EOF
++if { ac_try='${CC-cc} -c $ASFLAGS conftest.s 1>&5'
++  { { eval echo "\"\$as_me\":${as_lineno-$LINENO}: \"$ac_try\""; } >&5
++  (eval $ac_try) 2>&5
++  ac_status=$?
++  $as_echo "$as_me:${as_lineno-$LINENO}: \$? = $ac_status" >&5
++  test $ac_status = 0; }; }; then
++  libc_cv_asm_mpx=yes
++else
++  libc_cv_asm_mpx=no
++fi
++rm -f conftest*
++fi
++{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $libc_cv_asm_mpx" >&5
++$as_echo "$libc_cv_asm_mpx" >&6; }
++if test $libc_cv_asm_mpx == yes; then
++  $as_echo "#define HAVE_MPX_SUPPORT 1" >>confdefs.h
++
++fi
++
+ $as_echo "#define PI_STATIC_AND_HIDDEN 1" >>confdefs.h
+ 
+Index: glibc-2.17-c758a686/sysdeps/i386/configure.in
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/i386/configure.in
++++ glibc-2.17-c758a686/sysdeps/i386/configure.in
+@@ -53,6 +53,21 @@ LIBC_TRY_CC_OPTION([-mno-vzeroupper],
+ 		   [libc_cv_cc_novzeroupper=no])
+ ])
+ 
++dnl Check whether asm supports Intel MPX
++AC_CACHE_CHECK(for Intel MPX support, libc_cv_asm_mpx, [dnl
++cat > conftest.s <<\EOF
++        bndmov %bnd0,(%esp)
++EOF
++if AC_TRY_COMMAND(${CC-cc} -c $ASFLAGS conftest.s 1>&AS_MESSAGE_LOG_FD); then
++  libc_cv_asm_mpx=yes
++else
++  libc_cv_asm_mpx=no
++fi
++rm -f conftest*])
++if test $libc_cv_asm_mpx == yes; then
++  AC_DEFINE(HAVE_MPX_SUPPORT)
++fi
++
+ dnl It is always possible to access static and hidden symbols in an
+ dnl position independent way.
+ AC_DEFINE(PI_STATIC_AND_HIDDEN)
+Index: glibc-2.17-c758a686/sysdeps/i386/dl-trampoline.S
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/i386/dl-trampoline.S
++++ glibc-2.17-c758a686/sysdeps/i386/dl-trampoline.S
+@@ -17,6 +17,13 @@
+    <http://www.gnu.org/licenses/>.  */
+ 
+ #include <sysdep.h>
++#include <link-defines.h>
++
++#ifdef HAVE_MPX_SUPPORT
++# define PRESERVE_BND_REGS_PREFIX bnd
++#else
++# define PRESERVE_BND_REGS_PREFIX .byte 0xf2
++#endif
+ 
+ 	.text
+ 	.globl _dl_runtime_resolve
+@@ -161,24 +168,47 @@ _dl_runtime_profile:
+ 	    +4      free
+ 	   %esp     free
+ 	*/
+-	subl $20, %esp
+-	cfi_adjust_cfa_offset (20)
+-	movl %eax, (%esp)
+-	movl %edx, 4(%esp)
+-	fstpt 8(%esp)
+-	fstpt 20(%esp)
++#if LONG_DOUBLE_SIZE != 12
++# error "long double size must be 12 bytes"
++#endif
++	# Allocate space for La_i86_retval and subtract 12 free bytes.
++	subl $(LRV_SIZE - 12), %esp
++	cfi_adjust_cfa_offset (LRV_SIZE - 12)
++	movl %eax, LRV_EAX_OFFSET(%esp)
++	movl %edx, LRV_EDX_OFFSET(%esp)
++	fstpt LRV_ST0_OFFSET(%esp)
++	fstpt LRV_ST1_OFFSET(%esp)
++#ifdef HAVE_MPX_SUPPORT
++	bndmov %bnd0, LRV_BND0_OFFSET(%esp)
++	bndmov %bnd1, LRV_BND1_OFFSET(%esp)
++#else
++	.byte 0x66,0x0f,0x1b,0x44,0x24,LRV_BND0_OFFSET
++	.byte 0x66,0x0f,0x1b,0x4c,0x24,LRV_BND1_OFFSET
++#endif
+ 	pushl %esp
+ 	cfi_adjust_cfa_offset (4)
+-	leal 36(%esp), %ecx
+-	movl 56(%esp), %eax
+-	movl 60(%esp), %edx
++	# Address of La_i86_regs area.
++	leal (LRV_SIZE + 4)(%esp), %ecx
++	# PLT2
++	movl (LRV_SIZE + 4 + LR_SIZE)(%esp), %eax
++	# PLT1
++	movl (LRV_SIZE + 4 + LR_SIZE + 4)(%esp), %edx
+ 	call _dl_call_pltexit
+-	movl (%esp), %eax
+-	movl 4(%esp), %edx
+-	fldt 20(%esp)
+-	fldt 8(%esp)
+-	addl $60, %esp
+-	cfi_adjust_cfa_offset (-60)
++	movl LRV_EAX_OFFSET(%esp), %eax
++	movl LRV_EDX_OFFSET(%esp), %edx
++	fldt LRV_ST1_OFFSET(%esp)
++	fldt LRV_ST0_OFFSET(%esp)
++#ifdef HAVE_MPX_SUPPORT
++	bndmov LRV_BND0_OFFSET(%esp), %bnd0
++	bndmov LRV_BND1_OFFSET(%esp), %bnd1
++#else
++	.byte 0x66,0x0f,0x1a,0x44,0x24,LRV_BND0_OFFSET
++	.byte 0x66,0x0f,0x1a,0x4c,0x24,LRV_BND1_OFFSET
++#endif
++	# Restore stack before return.
++	addl $(LRV_SIZE + 4 + LR_SIZE + 4), %esp
++	cfi_adjust_cfa_offset (-(LRV_SIZE + 4 + LR_SIZE + 4))
++	PRESERVE_BND_REGS_PREFIX
+ 	ret
+ 	cfi_endproc
+ 	.size _dl_runtime_profile, .-_dl_runtime_profile
+Index: glibc-2.17-c758a686/sysdeps/i386/link-defines.sym
+===================================================================
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/i386/link-defines.sym
+@@ -0,0 +1,20 @@
++#include "link.h"
++#include <stddef.h>
++
++--
++LONG_DOUBLE_SIZE	sizeof (long double)
++
++LR_SIZE			sizeof (struct La_i86_regs)
++LR_EDX_OFFSET		offsetof (struct La_i86_regs, lr_edx)
++LR_ECX_OFFSET		offsetof (struct La_i86_regs, lr_ecx)
++LR_EAX_OFFSET		offsetof (struct La_i86_regs, lr_eax)
++LR_EBP_OFFSET		offsetof (struct La_i86_regs, lr_ebp)
++LR_ESP_OFFSET		offsetof (struct La_i86_regs, lr_esp)
++
++LRV_SIZE		sizeof (struct La_i86_retval)
++LRV_EAX_OFFSET		offsetof (struct La_i86_retval, lrv_eax)
++LRV_EDX_OFFSET		offsetof (struct La_i86_retval, lrv_edx)
++LRV_ST0_OFFSET		offsetof (struct La_i86_retval, lrv_st0)
++LRV_ST1_OFFSET		offsetof (struct La_i86_retval, lrv_st1)
++LRV_BND0_OFFSET		offsetof (struct La_i86_retval, lrv_bnd0)
++LRV_BND1_OFFSET		offsetof (struct La_i86_retval, lrv_bnd1)
+Index: glibc-2.17-c758a686/sysdeps/x86/bits/link.h
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/x86/bits/link.h
++++ glibc-2.17-c758a686/sysdeps/x86/bits/link.h
+@@ -38,6 +38,8 @@ typedef struct La_i86_retval
+   uint32_t lrv_edx;
+   long double lrv_st0;
+   long double lrv_st1;
++  uint64_t lrv_bnd0;
++  uint64_t lrv_bnd1;
+ } La_i86_retval;
+ 
+ 
+Index: glibc-2.17-c758a686/sysdeps/x86/cpu-features.c
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/x86/cpu-features.c
++++ glibc-2.17-c758a686/sysdeps/x86/cpu-features.c
+@@ -130,6 +130,20 @@ init_cpu_features (struct cpu_features *
+ 	      break;
+ 	    }
+ 	}
++
++      /* To avoid SSE transition penalty, use _dl_runtime_resolve_slow.
++         If XGETBV suports ECX == 1, use _dl_runtime_resolve_opt.  */
++      cpu_features->feature[index_Use_dl_runtime_resolve_slow]
++	|= bit_Use_dl_runtime_resolve_slow;
++      if (cpu_features->max_cpuid >= 0xd)
++	{
++	  unsigned int eax;
++
++	  __cpuid_count (0xd, 1, eax, ebx, ecx, edx);
++	  if ((eax & (1 << 2)) != 0)
++	    cpu_features->feature[index_Use_dl_runtime_resolve_opt]
++	      |= bit_Use_dl_runtime_resolve_opt;
++	}
+     }
+   /* This spells out "AuthenticAMD".  */
+   else if (ebx == 0x68747541 && ecx == 0x444d4163 && edx == 0x69746e65)
+Index: glibc-2.17-c758a686/sysdeps/x86/cpu-features.h
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/x86/cpu-features.h
++++ glibc-2.17-c758a686/sysdeps/x86/cpu-features.h
+@@ -34,6 +34,9 @@
+ #define bit_AVX512DQ_Usable		(1 << 13)
+ #define bit_Prefer_MAP_32BIT_EXEC	(1 << 16)
+ #define bit_Prefer_No_VZEROUPPER	(1 << 17)
++#define bit_Use_dl_runtime_resolve_opt	(1 << 20)
++#define bit_Use_dl_runtime_resolve_slow	(1 << 21)
++
+ 
+ /* CPUID Feature flags.  */
+ 
+@@ -95,6 +98,9 @@
+ # define index_AVX512DQ_Usable		FEATURE_INDEX_1*FEATURE_SIZE
+ # define index_Prefer_MAP_32BIT_EXEC	FEATURE_INDEX_1*FEATURE_SIZE
+ # define index_Prefer_No_VZEROUPPER	FEATURE_INDEX_1*FEATURE_SIZE
++# define index_Use_dl_runtime_resolve_opt FEATURE_INDEX_1*FEATURE_SIZE
++# define index_Use_dl_runtime_resolve_slow FEATURE_INDEX_1*FEATURE_SIZE
++
+ 
+ # if defined (_LIBC) && !IS_IN (nonlib)
+ #  ifdef __x86_64__
+@@ -273,6 +279,8 @@ extern const struct cpu_features *__get_
+ # define index_AVX512DQ_Usable		FEATURE_INDEX_1
+ # define index_Prefer_MAP_32BIT_EXEC	FEATURE_INDEX_1
+ # define index_Prefer_No_VZEROUPPER     FEATURE_INDEX_1
++# define index_Use_dl_runtime_resolve_opt FEATURE_INDEX_1
++# define index_Use_dl_runtime_resolve_slow FEATURE_INDEX_1
+ 
+ #endif	/* !__ASSEMBLER__ */
+ 
+Index: glibc-2.17-c758a686/sysdeps/x86_64/Makefile
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/x86_64/Makefile
++++ glibc-2.17-c758a686/sysdeps/x86_64/Makefile
+@@ -21,6 +21,11 @@ endif
+ ifeq ($(subdir),elf)
+ sysdep-dl-routines += tlsdesc dl-tlsdesc
+ 
++tests += ifuncmain8
++modules-names += ifuncmod8
++
++$(objpfx)ifuncmain8: $(objpfx)ifuncmod8.so
++
+ tests += tst-quad1 tst-quad2
+ modules-names += tst-quadmod1 tst-quadmod2
+ 
+@@ -34,18 +39,32 @@ tests-pie += $(quad-pie-test)
+ $(objpfx)tst-quad1pie: $(objpfx)tst-quadmod1pie.o
+ $(objpfx)tst-quad2pie: $(objpfx)tst-quadmod2pie.o
+ 
++tests += tst-sse tst-avx tst-avx512
++test-extras += tst-avx-aux tst-avx512-aux
++extra-test-objs += tst-avx-aux.o tst-avx512-aux.o
++
+ tests += tst-audit10
+-modules-names += tst-auditmod10a tst-auditmod10b
++modules-names += tst-auditmod10a tst-auditmod10b \
++		 tst-ssemod tst-avxmod tst-avx512mod
+ 
+ $(objpfx)tst-audit10: $(objpfx)tst-auditmod10a.so
+ $(objpfx)tst-audit10.out: $(objpfx)tst-auditmod10b.so
+ tst-audit10-ENV = LD_AUDIT=$(objpfx)tst-auditmod10b.so
+ 
++$(objpfx)tst-sse: $(objpfx)tst-ssemod.so
++$(objpfx)tst-avx: $(objpfx)tst-avx-aux.o $(objpfx)tst-avxmod.so
++$(objpfx)tst-avx512: $(objpfx)tst-avx512-aux.o $(objpfx)tst-avx512mod.so
++
++CFLAGS-tst-avx-aux.c += $(AVX-CFLAGS)
++CFLAGS-tst-avxmod.c += $(AVX-CFLAGS)
++
+ ifeq (yes,$(config-cflags-avx512))
+ AVX512-CFLAGS = -mavx512f
+ CFLAGS-tst-audit10.c += $(AVX512-CFLAGS)
+ CFLAGS-tst-auditmod10a.c += $(AVX512-CFLAGS)
+ CFLAGS-tst-auditmod10b.c += $(AVX512-CFLAGS)
++CFLAGS-tst-avx512-aux.c += $(AVX512-CFLAGS)
++CFLAGS-tst-avx512mod.c += $(AVX512-CFLAGS)
+ endif
+ endif
+ 
+Index: glibc-2.17-c758a686/sysdeps/x86_64/dl-machine.h
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/x86_64/dl-machine.h
++++ glibc-2.17-c758a686/sysdeps/x86_64/dl-machine.h
+@@ -66,8 +66,15 @@ static inline int __attribute__ ((unused
+ elf_machine_runtime_setup (struct link_map *l, int lazy, int profile)
+ {
+   Elf64_Addr *got;
+-  extern void _dl_runtime_resolve (ElfW(Word)) attribute_hidden;
+-  extern void _dl_runtime_profile (ElfW(Word)) attribute_hidden;
++  extern void _dl_runtime_resolve_sse (ElfW(Word)) attribute_hidden;
++  extern void _dl_runtime_resolve_avx (ElfW(Word)) attribute_hidden;
++  extern void _dl_runtime_resolve_avx_slow (ElfW(Word)) attribute_hidden;
++  extern void _dl_runtime_resolve_avx_opt (ElfW(Word)) attribute_hidden;
++  extern void _dl_runtime_resolve_avx512 (ElfW(Word)) attribute_hidden;
++  extern void _dl_runtime_resolve_avx512_opt (ElfW(Word)) attribute_hidden;
++  extern void _dl_runtime_profile_sse (ElfW(Word)) attribute_hidden;
++  extern void _dl_runtime_profile_avx (ElfW(Word)) attribute_hidden;
++  extern void _dl_runtime_profile_avx512 (ElfW(Word)) attribute_hidden;
+ 
+   if (l->l_info[DT_JMPREL] && lazy)
+     {
+@@ -95,7 +102,12 @@ elf_machine_runtime_setup (struct link_m
+ 	 end in this function.  */
+       if (__builtin_expect (profile, 0))
+ 	{
+-	  *(ElfW(Addr) *) (got + 2) = (ElfW(Addr)) &_dl_runtime_profile;
++	  if (HAS_ARCH_FEATURE (AVX512F_Usable))
++	    *(ElfW(Addr) *) (got + 2) = (ElfW(Addr)) &_dl_runtime_profile_avx512;
++	  else if (HAS_ARCH_FEATURE (AVX_Usable))
++	    *(ElfW(Addr) *) (got + 2) = (ElfW(Addr)) &_dl_runtime_profile_avx;
++	  else
++	    *(ElfW(Addr) *) (got + 2) = (ElfW(Addr)) &_dl_runtime_profile_sse;
+ 
+ 	  if (GLRO(dl_profile) != NULL
+ 	      && _dl_name_match_p (GLRO(dl_profile), l))
+@@ -104,9 +116,34 @@ elf_machine_runtime_setup (struct link_m
+ 	    GL(dl_profile_map) = l;
+ 	}
+       else
+-	/* This function will get called to fix up the GOT entry indicated by
+-	   the offset on the stack, and then jump to the resolved address.  */
+-	*(ElfW(Addr) *) (got + 2) = (ElfW(Addr)) &_dl_runtime_resolve;
++	{
++	  /* This function will get called to fix up the GOT entry
++	     indicated by the offset on the stack, and then jump to
++	     the resolved address.  */
++	  if (HAS_ARCH_FEATURE (AVX512F_Usable))
++	    {
++	      if (HAS_ARCH_FEATURE (Use_dl_runtime_resolve_opt))
++		*(ElfW(Addr) *) (got + 2)
++		  = (ElfW(Addr)) &_dl_runtime_resolve_avx512_opt;
++	      else
++		*(ElfW(Addr) *) (got + 2)
++		  = (ElfW(Addr)) &_dl_runtime_resolve_avx512;
++	    }
++	  else if (HAS_ARCH_FEATURE (AVX_Usable))
++	    {
++	      if (HAS_ARCH_FEATURE (Use_dl_runtime_resolve_opt))
++		*(ElfW(Addr) *) (got + 2)
++		  = (ElfW(Addr)) &_dl_runtime_resolve_avx_opt;
++	      else if (HAS_ARCH_FEATURE (Use_dl_runtime_resolve_slow))
++		*(ElfW(Addr) *) (got + 2)
++		  = (ElfW(Addr)) &_dl_runtime_resolve_avx_slow;
++	      else
++		*(ElfW(Addr) *) (got + 2)
++		  = (ElfW(Addr)) &_dl_runtime_resolve_avx;
++	    }
++	  else
++	    *(ElfW(Addr) *) (got + 2) = (ElfW(Addr)) &_dl_runtime_resolve_sse;
++	}
+     }
+ 
+   if (l->l_info[ADDRIDX (DT_TLSDESC_GOT)] && lazy)
+Index: glibc-2.17-c758a686/sysdeps/x86_64/dl-trampoline.S
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/x86_64/dl-trampoline.S
++++ glibc-2.17-c758a686/sysdeps/x86_64/dl-trampoline.S
+@@ -18,28 +18,52 @@
+ 
+ #include <config.h>
+ #include <sysdep.h>
++#include <cpu-features.h>
+ #include <link-defines.h>
+ 
+-#if (RTLD_SAVESPACE_SSE % 32) != 0
+-# error RTLD_SAVESPACE_SSE must be aligned to 32 bytes
++#ifndef DL_STACK_ALIGNMENT
++/* Due to GCC bug:
++
++   https://gcc.gnu.org/bugzilla/show_bug.cgi?id=58066
++
++   __tls_get_addr may be called with 8-byte stack alignment.  Although
++   this bug has been fixed in GCC 4.9.4, 5.3 and 6, we can't assume
++   that stack will be always aligned at 16 bytes.  We use unaligned
++   16-byte move to load and store SSE registers, which has no penalty
++   on modern processors if stack is 16-byte aligned.  */
++# define DL_STACK_ALIGNMENT 8
+ #endif
+ 
++#ifndef DL_RUNIME_UNALIGNED_VEC_SIZE
++/* The maximum size of unaligned vector load and store.  */
++# define DL_RUNIME_UNALIGNED_VEC_SIZE 16
++#endif
++
++/* True if _dl_runtime_resolve should align stack to VEC_SIZE bytes.  */
++#define DL_RUNIME_RESOLVE_REALIGN_STACK \
++  (VEC_SIZE > DL_STACK_ALIGNMENT \
++   && VEC_SIZE > DL_RUNIME_UNALIGNED_VEC_SIZE)
++
++/* Align vector register save area to 16 bytes.  */
++#define REGISTER_SAVE_VEC_OFF	0
++
+ /* Area on stack to save and restore registers used for parameter
+    passing when calling _dl_fixup.  */
+ #ifdef __ILP32__
+-/* X32 saves RCX, RDX, RSI, RDI, R8 and R9 plus RAX.  */
+-# define REGISTER_SAVE_AREA	(8 * 7)
+-# define REGISTER_SAVE_RAX	0
++# define REGISTER_SAVE_RAX	(REGISTER_SAVE_VEC_OFF + VEC_SIZE * 8)
++# define PRESERVE_BND_REGS_PREFIX
+ #else
+-/* X86-64 saves RCX, RDX, RSI, RDI, R8 and R9 plus RAX as well as BND0,
+-   BND1, BND2, BND3.  */
+-# define REGISTER_SAVE_AREA	(8 * 7 + 16 * 4)
+ /* Align bound register save area to 16 bytes.  */
+-# define REGISTER_SAVE_BND0	0
++# define REGISTER_SAVE_BND0	(REGISTER_SAVE_VEC_OFF + VEC_SIZE * 8)
+ # define REGISTER_SAVE_BND1	(REGISTER_SAVE_BND0 + 16)
+ # define REGISTER_SAVE_BND2	(REGISTER_SAVE_BND1 + 16)
+ # define REGISTER_SAVE_BND3	(REGISTER_SAVE_BND2 + 16)
+ # define REGISTER_SAVE_RAX	(REGISTER_SAVE_BND3 + 16)
++# ifdef HAVE_MPX_SUPPORT
++#  define PRESERVE_BND_REGS_PREFIX bnd
++# else
++#  define PRESERVE_BND_REGS_PREFIX .byte 0xf2
++# endif
+ #endif
+ #define REGISTER_SAVE_RCX	(REGISTER_SAVE_RAX + 8)
+ #define REGISTER_SAVE_RDX	(REGISTER_SAVE_RCX + 8)
+@@ -48,376 +72,71 @@
+ #define REGISTER_SAVE_R8	(REGISTER_SAVE_RDI + 8)
+ #define REGISTER_SAVE_R9	(REGISTER_SAVE_R8 + 8)
+ 
+-	.text
+-	.globl _dl_runtime_resolve
+-	.type _dl_runtime_resolve, @function
+-	.align 16
+-	cfi_startproc
+-_dl_runtime_resolve:
+-	cfi_adjust_cfa_offset(16) # Incorporate PLT
+-	subq $REGISTER_SAVE_AREA,%rsp
+-	cfi_adjust_cfa_offset(REGISTER_SAVE_AREA)
+-	# Preserve registers otherwise clobbered.
+-	movq %rax, REGISTER_SAVE_RAX(%rsp)
+-	movq %rcx, REGISTER_SAVE_RCX(%rsp)
+-	movq %rdx, REGISTER_SAVE_RDX(%rsp)
+-	movq %rsi, REGISTER_SAVE_RSI(%rsp)
+-	movq %rdi, REGISTER_SAVE_RDI(%rsp)
+-	movq %r8, REGISTER_SAVE_R8(%rsp)
+-	movq %r9, REGISTER_SAVE_R9(%rsp)
+-#ifndef __ILP32__
+-	# We also have to preserve bound registers.  These are nops if
+-	# Intel MPX isn't available or disabled.
+-# ifdef HAVE_MPX_SUPPORT
+-	bndmov %bnd0, REGISTER_SAVE_BND0(%rsp)
+-	bndmov %bnd1, REGISTER_SAVE_BND1(%rsp)
+-	bndmov %bnd2, REGISTER_SAVE_BND2(%rsp)
+-	bndmov %bnd3, REGISTER_SAVE_BND3(%rsp)
+-# else
+-	.byte 0x66,0x0f,0x1b,0x44,0x24,REGISTER_SAVE_BND0
+-	.byte 0x66,0x0f,0x1b,0x4c,0x24,REGISTER_SAVE_BND1
+-	.byte 0x66,0x0f,0x1b,0x54,0x24,REGISTER_SAVE_BND2
+-	.byte 0x66,0x0f,0x1b,0x5c,0x24,REGISTER_SAVE_BND3
+-# endif
+-#endif
+-	# Copy args pushed by PLT in register.
+-	# %rdi: link_map, %rsi: reloc_index
+-	movq (REGISTER_SAVE_AREA + 8)(%rsp), %rsi
+-	movq REGISTER_SAVE_AREA(%rsp), %rdi
+-	call _dl_fixup		# Call resolver.
+-	movq %rax, %r11		# Save return value
+-#ifndef __ILP32__
+-	# Restore bound registers.  These are nops if Intel MPX isn't
+-	# avaiable or disabled.
+-# ifdef HAVE_MPX_SUPPORT
+-	bndmov REGISTER_SAVE_BND3(%rsp), %bnd3
+-	bndmov REGISTER_SAVE_BND2(%rsp), %bnd2
+-	bndmov REGISTER_SAVE_BND1(%rsp), %bnd1
+-	bndmov REGISTER_SAVE_BND0(%rsp), %bnd0
+-# else
+-	.byte 0x66,0x0f,0x1a,0x5c,0x24,REGISTER_SAVE_BND3
+-	.byte 0x66,0x0f,0x1a,0x54,0x24,REGISTER_SAVE_BND2
+-	.byte 0x66,0x0f,0x1a,0x4c,0x24,REGISTER_SAVE_BND1
+-	.byte 0x66,0x0f,0x1a,0x44,0x24,REGISTER_SAVE_BND0
+-# endif
++#define VEC_SIZE		64
++#define VMOVA			vmovdqa64
++#if DL_RUNIME_RESOLVE_REALIGN_STACK || VEC_SIZE <= DL_STACK_ALIGNMENT
++# define VMOV			vmovdqa64
++#else
++# define VMOV			vmovdqu64
+ #endif
+-	# Get register content back.
+-	movq REGISTER_SAVE_R9(%rsp), %r9
+-	movq REGISTER_SAVE_R8(%rsp), %r8
+-	movq REGISTER_SAVE_RDI(%rsp), %rdi
+-	movq REGISTER_SAVE_RSI(%rsp), %rsi
+-	movq REGISTER_SAVE_RDX(%rsp), %rdx
+-	movq REGISTER_SAVE_RCX(%rsp), %rcx
+-	movq REGISTER_SAVE_RAX(%rsp), %rax
+-	# Adjust stack(PLT did 2 pushes)
+-	addq $(REGISTER_SAVE_AREA + 16), %rsp
+-	cfi_adjust_cfa_offset(-(REGISTER_SAVE_AREA + 16))
+-	jmp *%r11		# Jump to function address.
+-	cfi_endproc
+-	.size _dl_runtime_resolve, .-_dl_runtime_resolve
+-
+-
+-#ifndef PROF
+-	.globl _dl_runtime_profile
+-	.type _dl_runtime_profile, @function
+-	.align 16
+-	cfi_startproc
+-
+-_dl_runtime_profile:
+-	cfi_adjust_cfa_offset(16) # Incorporate PLT
+-	/* The La_x86_64_regs data structure pointed to by the
+-	   fourth paramater must be 16-byte aligned.  This must
+-	   be explicitly enforced.  We have the set up a dynamically
+-	   sized stack frame.  %rbx points to the top half which
+-	   has a fixed size and preserves the original stack pointer.  */
+-
+-	subq $32, %rsp		# Allocate the local storage.
+-	cfi_adjust_cfa_offset(32)
+-	movq %rbx, (%rsp)
+-	cfi_rel_offset(%rbx, 0)
+-
+-	/* On the stack:
+-		56(%rbx)	parameter #1
+-		48(%rbx)	return address
+-
+-		40(%rbx)	reloc index
+-		32(%rbx)	link_map
+-
+-		24(%rbx)	La_x86_64_regs pointer
+-		16(%rbx)	framesize
+-		 8(%rbx)	rax
+-		  (%rbx)	rbx
+-	*/
+-
+-	movq %rax, 8(%rsp)
+-	movq %rsp, %rbx
+-	cfi_def_cfa_register(%rbx)
+-
+-	/* Actively align the La_x86_64_regs structure.  */
+-	andq $0xfffffffffffffff0, %rsp
+-# if defined HAVE_AVX_SUPPORT || defined HAVE_AVX512_ASM_SUPPORT
+-	/* sizeof(La_x86_64_regs).  Need extra space for 8 SSE registers
+-	   to detect if any xmm0-xmm7 registers are changed by audit
+-	   module.  */
+-	subq $(LR_SIZE + XMM_SIZE*8), %rsp
+-# else
+-	subq $LR_SIZE, %rsp		# sizeof(La_x86_64_regs)
+-# endif
+-	movq %rsp, 24(%rbx)
+-
+-	/* Fill the La_x86_64_regs structure.  */
+-	movq %rdx, LR_RDX_OFFSET(%rsp)
+-	movq %r8,  LR_R8_OFFSET(%rsp)
+-	movq %r9,  LR_R9_OFFSET(%rsp)
+-	movq %rcx, LR_RCX_OFFSET(%rsp)
+-	movq %rsi, LR_RSI_OFFSET(%rsp)
+-	movq %rdi, LR_RDI_OFFSET(%rsp)
+-	movq %rbp, LR_RBP_OFFSET(%rsp)
+-
+-	leaq 48(%rbx), %rax
+-	movq %rax, LR_RSP_OFFSET(%rsp)
+-
+-	/* We always store the XMM registers even if AVX is available.
+-	   This is to provide backward binary compatility for existing
+-	   audit modules.  */
+-	movaps %xmm0,		   (LR_XMM_OFFSET)(%rsp)
+-	movaps %xmm1, (LR_XMM_OFFSET +   XMM_SIZE)(%rsp)
+-	movaps %xmm2, (LR_XMM_OFFSET + XMM_SIZE*2)(%rsp)
+-	movaps %xmm3, (LR_XMM_OFFSET + XMM_SIZE*3)(%rsp)
+-	movaps %xmm4, (LR_XMM_OFFSET + XMM_SIZE*4)(%rsp)
+-	movaps %xmm5, (LR_XMM_OFFSET + XMM_SIZE*5)(%rsp)
+-	movaps %xmm6, (LR_XMM_OFFSET + XMM_SIZE*6)(%rsp)
+-	movaps %xmm7, (LR_XMM_OFFSET + XMM_SIZE*7)(%rsp)
+-
+-# ifndef __ILP32__
+-#  ifdef HAVE_MPX_SUPPORT
+-	bndmov %bnd0, 		   (LR_BND_OFFSET)(%rsp)  # Preserve bound
+-	bndmov %bnd1, (LR_BND_OFFSET +   BND_SIZE)(%rsp)  # registers. Nops if
+-	bndmov %bnd2, (LR_BND_OFFSET + BND_SIZE*2)(%rsp)  # MPX not available
+-	bndmov %bnd3, (LR_BND_OFFSET + BND_SIZE*3)(%rsp)  # or disabled.
+-#  else
+-	.byte 0x66,0x0f,0x1b,0x84,0x24;.long (LR_BND_OFFSET)
+-	.byte 0x66,0x0f,0x1b,0x8c,0x24;.long (LR_BND_OFFSET + BND_SIZE)
+-	.byte 0x66,0x0f,0x1b,0x84,0x24;.long (LR_BND_OFFSET + BND_SIZE*2)
+-	.byte 0x66,0x0f,0x1b,0x8c,0x24;.long (LR_BND_OFFSET + BND_SIZE*3)
+-#  endif
+-# endif
+-
+-# if defined HAVE_AVX_SUPPORT || defined HAVE_AVX512_ASM_SUPPORT
+-	.data
+-L(have_avx):
+-	.zero 4
+-	.size L(have_avx), 4
+-	.previous
+-
+-	cmpl	$0, L(have_avx)(%rip)
+-	jne	L(defined)
+-	movq	%rbx, %r11		# Save rbx
+-	movl	$1, %eax
+-	cpuid
+-	movq	%r11,%rbx		# Restore rbx
+-	xorl	%eax, %eax
+-	// AVX and XSAVE supported?
+-	andl	$((1 << 28) | (1 << 27)), %ecx
+-	cmpl	$((1 << 28) | (1 << 27)), %ecx
+-	jne	10f
+-#  ifdef HAVE_AVX512_ASM_SUPPORT
+-	// AVX512 supported in processor?
+-	movq	%rbx, %r11		# Save rbx
+-	xorl	%ecx, %ecx
+-	mov	$0x7, %eax
+-	cpuid
+-	andl	$(1 << 16), %ebx
+-#  endif
+-	xorl	%ecx, %ecx
+-	// Get XFEATURE_ENABLED_MASK
+-	xgetbv
+-#  ifdef HAVE_AVX512_ASM_SUPPORT
+-	test	%ebx, %ebx
+-	movq	%r11, %rbx		# Restore rbx
+-	je	20f
+-	// Verify that XCR0[7:5] = '111b' and
+-	// XCR0[2:1] = '11b' which means
+-	// that zmm state is enabled
+-	andl	$0xe6, %eax
+-	cmpl	$0xe6, %eax
+-	jne	20f
+-	movl	%eax, L(have_avx)(%rip)
+-L(avx512):
+-#   define RESTORE_AVX
+-#   define VMOV    vmovdqu64
+-#   define VEC(i)  zmm##i
+-#   define MORE_CODE
+-#   include "dl-trampoline.h"
+-#   undef VMOV
+-#   undef VEC
+-#   undef RESTORE_AVX
+-#  endif
+-20:	andl	$0x6, %eax
+-10:	subl	$0x5, %eax
+-	movl	%eax, L(have_avx)(%rip)
+-	cmpl	$0, %eax
+-
+-L(defined):
+-	js	L(no_avx)
+-#  ifdef HAVE_AVX512_ASM_SUPPORT
+-	cmpl	$0xe6, L(have_avx)(%rip)
+-	je	L(avx512)
+-#  endif
+-
+-#  define RESTORE_AVX
+-#  define VMOV    vmovdqu
+-#  define VEC(i)  ymm##i
+-#  define MORE_CODE
+-#  include "dl-trampoline.h"
+-
+-	.align 16
+-L(no_avx):
+-# endif
+-
+-# undef RESTORE_AVX
+-# include "dl-trampoline.h"
+-
+-	cfi_endproc
+-	.size _dl_runtime_profile, .-_dl_runtime_profile
++#define VEC(i)			zmm##i
++#define _dl_runtime_resolve	_dl_runtime_resolve_avx512
++#define _dl_runtime_profile	_dl_runtime_profile_avx512
++#define RESTORE_AVX
++#include "dl-trampoline.h"
++#undef _dl_runtime_resolve
++#undef _dl_runtime_profile
++#undef VEC
++#undef VMOV
++#undef VMOVA
++#undef VEC_SIZE
++
++#define VEC_SIZE		32
++#define VMOVA			vmovdqa
++#if DL_RUNIME_RESOLVE_REALIGN_STACK || VEC_SIZE <= DL_STACK_ALIGNMENT
++# define VMOV			vmovdqa
++#else
++# define VMOV			vmovdqu
+ #endif
+-
+-
+-#ifdef SHARED
+-	.globl _dl_x86_64_save_sse
+-	.type _dl_x86_64_save_sse, @function
+-	.align 16
+-	cfi_startproc
+-_dl_x86_64_save_sse:
+-# if defined HAVE_AVX_SUPPORT || defined HAVE_AVX512_ASM_SUPPORT
+-	cmpl	$0, L(have_avx)(%rip)
+-	jne	L(defined_5)
+-	movq	%rbx, %r11		# Save rbx
+-	movl	$1, %eax
+-	cpuid
+-	movq	%r11,%rbx		# Restore rbx
+-	xorl	%eax, %eax
+-	// AVX and XSAVE supported?
+-	andl	$((1 << 28) | (1 << 27)), %ecx
+-	cmpl	$((1 << 28) | (1 << 27)), %ecx
+-	jne	1f
+-#  ifdef HAVE_AVX512_ASM_SUPPORT
+-	// AVX512 supported in a processor?
+-	movq	%rbx, %r11              # Save rbx
+-	xorl	%ecx,%ecx
+-	mov	$0x7,%eax
+-	cpuid
+-	andl	$(1 << 16), %ebx
+-#  endif
+-	xorl	%ecx, %ecx
+-	// Get XFEATURE_ENABLED_MASK
+-	xgetbv
+-#  ifdef HAVE_AVX512_ASM_SUPPORT
+-	test	%ebx, %ebx
+-	movq	%r11, %rbx		# Restore rbx
+-	je	2f
+-	// Verify that XCR0[7:5] = '111b' and
+-	// XCR0[2:1] = '11b' which means
+-	// that zmm state is enabled
+-	andl	$0xe6, %eax
+-	movl	%eax, L(have_avx)(%rip)
+-	cmpl	$0xe6, %eax
+-	je	L(avx512_5)
+-#  endif
+-
+-2:	andl	$0x6, %eax
+-1:	subl	$0x5, %eax
+-	movl	%eax, L(have_avx)(%rip)
+-	cmpl	$0, %eax
+-
+-L(defined_5):
+-	js	L(no_avx5)
+-#  ifdef HAVE_AVX512_ASM_SUPPORT
+-	cmpl	$0xe6, L(have_avx)(%rip)
+-	je	L(avx512_5)
+-#  endif
+-
+-	vmovdqa %ymm0, %fs:RTLD_SAVESPACE_SSE+0*YMM_SIZE
+-	vmovdqa %ymm1, %fs:RTLD_SAVESPACE_SSE+1*YMM_SIZE
+-	vmovdqa %ymm2, %fs:RTLD_SAVESPACE_SSE+2*YMM_SIZE
+-	vmovdqa %ymm3, %fs:RTLD_SAVESPACE_SSE+3*YMM_SIZE
+-	vmovdqa %ymm4, %fs:RTLD_SAVESPACE_SSE+4*YMM_SIZE
+-	vmovdqa %ymm5, %fs:RTLD_SAVESPACE_SSE+5*YMM_SIZE
+-	vmovdqa %ymm6, %fs:RTLD_SAVESPACE_SSE+6*YMM_SIZE
+-	vmovdqa %ymm7, %fs:RTLD_SAVESPACE_SSE+7*YMM_SIZE
+-	ret
+-#  ifdef HAVE_AVX512_ASM_SUPPORT
+-L(avx512_5):
+-	vmovdqu64 %zmm0, %fs:RTLD_SAVESPACE_SSE+0*ZMM_SIZE
+-	vmovdqu64 %zmm1, %fs:RTLD_SAVESPACE_SSE+1*ZMM_SIZE
+-	vmovdqu64 %zmm2, %fs:RTLD_SAVESPACE_SSE+2*ZMM_SIZE
+-	vmovdqu64 %zmm3, %fs:RTLD_SAVESPACE_SSE+3*ZMM_SIZE
+-	vmovdqu64 %zmm4, %fs:RTLD_SAVESPACE_SSE+4*ZMM_SIZE
+-	vmovdqu64 %zmm5, %fs:RTLD_SAVESPACE_SSE+5*ZMM_SIZE
+-	vmovdqu64 %zmm6, %fs:RTLD_SAVESPACE_SSE+6*ZMM_SIZE
+-	vmovdqu64 %zmm7, %fs:RTLD_SAVESPACE_SSE+7*ZMM_SIZE
+-	ret
+-#  endif
+-L(no_avx5):
+-# endif
+-	movdqa	%xmm0, %fs:RTLD_SAVESPACE_SSE+0*XMM_SIZE
+-	movdqa	%xmm1, %fs:RTLD_SAVESPACE_SSE+1*XMM_SIZE
+-	movdqa	%xmm2, %fs:RTLD_SAVESPACE_SSE+2*XMM_SIZE
+-	movdqa	%xmm3, %fs:RTLD_SAVESPACE_SSE+3*XMM_SIZE
+-	movdqa	%xmm4, %fs:RTLD_SAVESPACE_SSE+4*XMM_SIZE
+-	movdqa	%xmm5, %fs:RTLD_SAVESPACE_SSE+5*XMM_SIZE
+-	movdqa	%xmm6, %fs:RTLD_SAVESPACE_SSE+6*XMM_SIZE
+-	movdqa	%xmm7, %fs:RTLD_SAVESPACE_SSE+7*XMM_SIZE
+-	ret
+-	cfi_endproc
+-	.size _dl_x86_64_save_sse, .-_dl_x86_64_save_sse
+-
+-
+-	.globl _dl_x86_64_restore_sse
+-	.type _dl_x86_64_restore_sse, @function
+-	.align 16
+-	cfi_startproc
+-_dl_x86_64_restore_sse:
+-# if defined HAVE_AVX_SUPPORT || defined HAVE_AVX512_ASM_SUPPORT
+-	cmpl	$0, L(have_avx)(%rip)
+-	js	L(no_avx6)
+-#  ifdef HAVE_AVX512_ASM_SUPPORT
+-	cmpl	$0xe6, L(have_avx)(%rip)
+-	je	L(avx512_6)
+-#  endif
+-
+-	vmovdqa %fs:RTLD_SAVESPACE_SSE+0*YMM_SIZE, %ymm0
+-	vmovdqa %fs:RTLD_SAVESPACE_SSE+1*YMM_SIZE, %ymm1
+-	vmovdqa %fs:RTLD_SAVESPACE_SSE+2*YMM_SIZE, %ymm2
+-	vmovdqa %fs:RTLD_SAVESPACE_SSE+3*YMM_SIZE, %ymm3
+-	vmovdqa %fs:RTLD_SAVESPACE_SSE+4*YMM_SIZE, %ymm4
+-	vmovdqa %fs:RTLD_SAVESPACE_SSE+5*YMM_SIZE, %ymm5
+-	vmovdqa %fs:RTLD_SAVESPACE_SSE+6*YMM_SIZE, %ymm6
+-	vmovdqa %fs:RTLD_SAVESPACE_SSE+7*YMM_SIZE, %ymm7
+-	ret
+-#  ifdef HAVE_AVX512_ASM_SUPPORT
+-L(avx512_6):
+-	vmovdqu64 %fs:RTLD_SAVESPACE_SSE+0*ZMM_SIZE, %zmm0
+-	vmovdqu64 %fs:RTLD_SAVESPACE_SSE+1*ZMM_SIZE, %zmm1
+-	vmovdqu64 %fs:RTLD_SAVESPACE_SSE+2*ZMM_SIZE, %zmm2
+-	vmovdqu64 %fs:RTLD_SAVESPACE_SSE+3*ZMM_SIZE, %zmm3
+-	vmovdqu64 %fs:RTLD_SAVESPACE_SSE+4*ZMM_SIZE, %zmm4
+-	vmovdqu64 %fs:RTLD_SAVESPACE_SSE+5*ZMM_SIZE, %zmm5
+-	vmovdqu64 %fs:RTLD_SAVESPACE_SSE+6*ZMM_SIZE, %zmm6
+-	vmovdqu64 %fs:RTLD_SAVESPACE_SSE+7*ZMM_SIZE, %zmm7
+-	ret
+-#  endif
+-L(no_avx6):
+-# endif
+-	movdqa	%fs:RTLD_SAVESPACE_SSE+0*XMM_SIZE, %xmm0
+-	movdqa	%fs:RTLD_SAVESPACE_SSE+1*XMM_SIZE, %xmm1
+-	movdqa	%fs:RTLD_SAVESPACE_SSE+2*XMM_SIZE, %xmm2
+-	movdqa	%fs:RTLD_SAVESPACE_SSE+3*XMM_SIZE, %xmm3
+-	movdqa	%fs:RTLD_SAVESPACE_SSE+4*XMM_SIZE, %xmm4
+-	movdqa	%fs:RTLD_SAVESPACE_SSE+5*XMM_SIZE, %xmm5
+-	movdqa	%fs:RTLD_SAVESPACE_SSE+6*XMM_SIZE, %xmm6
+-	movdqa	%fs:RTLD_SAVESPACE_SSE+7*XMM_SIZE, %xmm7
+-	ret
+-	cfi_endproc
+-	.size _dl_x86_64_restore_sse, .-_dl_x86_64_restore_sse
++#define VEC(i)			ymm##i
++#define _dl_runtime_resolve	_dl_runtime_resolve_avx
++#define _dl_runtime_resolve_opt	_dl_runtime_resolve_avx_opt
++#define _dl_runtime_profile	_dl_runtime_profile_avx
++#include "dl-trampoline.h"
++#undef _dl_runtime_resolve
++#undef _dl_runtime_resolve_opt
++#undef _dl_runtime_profile
++#undef VEC
++#undef VMOV
++#undef VMOVA
++#undef VEC_SIZE
++
++/* movaps/movups is 1-byte shorter.  */
++#define VEC_SIZE		16
++#define VMOVA			movaps
++#if DL_RUNIME_RESOLVE_REALIGN_STACK || VEC_SIZE <= DL_STACK_ALIGNMENT
++# define VMOV			movaps
++#else
++# define VMOV			movups
++ #endif
++#define VEC(i)			xmm##i
++#define _dl_runtime_resolve	_dl_runtime_resolve_sse
++#define _dl_runtime_profile	_dl_runtime_profile_sse
++#undef RESTORE_AVX
++#include "dl-trampoline.h"
++#undef _dl_runtime_resolve
++#undef _dl_runtime_profile
++#undef VMOV
++#undef VMOVA
++
++/* Used by _dl_runtime_resolve_avx_opt/_dl_runtime_resolve_avx512_opt
++   to preserve the full vector registers with zero upper bits.  */
++#define VMOVA			vmovdqa
++#if DL_RUNTIME_RESOLVE_REALIGN_STACK || VEC_SIZE <= DL_STACK_ALIGNMENT
++# define VMOV			vmovdqa
++#else
++# define VMOV			vmovdqu
+ #endif
++#define _dl_runtime_resolve	_dl_runtime_resolve_sse_vex
++#define _dl_runtime_resolve_opt	_dl_runtime_resolve_avx512_opt
++#include "dl-trampoline.h"
+Index: glibc-2.17-c758a686/sysdeps/x86_64/dl-trampoline.h
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/x86_64/dl-trampoline.h
++++ glibc-2.17-c758a686/sysdeps/x86_64/dl-trampoline.h
+@@ -1,6 +1,5 @@
+-/* Partial PLT profile trampoline to save and restore x86-64 vector
+-   registers.
+-   Copyright (C) 2009, 2011 Free Software Foundation, Inc.
++/* PLT trampolines.  x86-64 version.
++   Copyright (C) 2009-2015 Free Software Foundation, Inc.
+    This file is part of the GNU C Library.
+ 
+    The GNU C Library is free software; you can redistribute it and/or
+@@ -17,16 +16,355 @@
+    License along with the GNU C Library; if not, see
+    <http://www.gnu.org/licenses/>.  */
+ 
+-#ifdef RESTORE_AVX
++#undef REGISTER_SAVE_AREA_RAW
++#ifdef __ILP32__
++/* X32 saves RCX, RDX, RSI, RDI, R8 and R9 plus RAX as well as VEC0 to
++   VEC7.  */
++# define REGISTER_SAVE_AREA_RAW	(8 * 7 + VEC_SIZE * 8)
++#else
++/* X86-64 saves RCX, RDX, RSI, RDI, R8 and R9 plus RAX as well as
++   BND0, BND1, BND2, BND3 and VEC0 to VEC7. */
++# define REGISTER_SAVE_AREA_RAW	(8 * 7 + 16 * 4 + VEC_SIZE * 8)
++#endif
++
++#undef REGISTER_SAVE_AREA
++#undef LOCAL_STORAGE_AREA
++#undef BASE
++#if DL_RUNIME_RESOLVE_REALIGN_STACK
++# define REGISTER_SAVE_AREA	(REGISTER_SAVE_AREA_RAW + 8)
++/* Local stack area before jumping to function address: RBX.  */
++# define LOCAL_STORAGE_AREA	8
++# define BASE			rbx
++# if (REGISTER_SAVE_AREA % VEC_SIZE) != 0
++#  error REGISTER_SAVE_AREA must be multples of VEC_SIZE
++# endif
++#else
++# define REGISTER_SAVE_AREA	REGISTER_SAVE_AREA_RAW
++/* Local stack area before jumping to function address:  All saved
++   registers.  */
++# define LOCAL_STORAGE_AREA	REGISTER_SAVE_AREA
++# define BASE			rsp
++# if (REGISTER_SAVE_AREA % 16) != 8
++#  error REGISTER_SAVE_AREA must be odd multples of 8
++# endif
++#endif
++
++	.text
++#ifdef _dl_runtime_resolve_opt
++/* Use the smallest vector registers to preserve the full YMM/ZMM
++   registers to avoid SSE transition penalty.  */
++
++# if VEC_SIZE == 32
++/* Check if the upper 128 bits in %ymm0 - %ymm7 registers are non-zero
++   and preserve %xmm0 - %xmm7 registers with the zero upper bits.  Since
++   there is no SSE transition penalty on AVX512 processors which don't
++   support XGETBV with ECX == 1, _dl_runtime_resolve_avx512_slow isn't
++   provided.   */
++	.globl _dl_runtime_resolve_avx_slow
++	.hidden _dl_runtime_resolve_avx_slow
++	.type _dl_runtime_resolve_avx_slow, @function
++	.align 16
++_dl_runtime_resolve_avx_slow:
++	cfi_startproc
++	cfi_adjust_cfa_offset(16) # Incorporate PLT
++	vorpd %ymm0, %ymm1, %ymm8
++	vorpd %ymm2, %ymm3, %ymm9
++	vorpd %ymm4, %ymm5, %ymm10
++	vorpd %ymm6, %ymm7, %ymm11
++	vorpd %ymm8, %ymm9, %ymm9
++	vorpd %ymm10, %ymm11, %ymm10
++	vpcmpeqd %xmm8, %xmm8, %xmm8
++	vorpd %ymm9, %ymm10, %ymm10
++	vptest %ymm10, %ymm8
++	# Preserve %ymm0 - %ymm7 registers if the upper 128 bits of any
++	# %ymm0 - %ymm7 registers aren't zero.
++	PRESERVE_BND_REGS_PREFIX
++	jnc _dl_runtime_resolve_avx
++	# Use vzeroupper to avoid SSE transition penalty.
++	vzeroupper
++	# Preserve %xmm0 - %xmm7 registers with the zero upper 128 bits
++	# when the upper 128 bits of %ymm0 - %ymm7 registers are zero.
++	PRESERVE_BND_REGS_PREFIX
++	jmp _dl_runtime_resolve_sse_vex
++	cfi_adjust_cfa_offset(-16) # Restore PLT adjustment
++	cfi_endproc
++	.size _dl_runtime_resolve_avx_slow, .-_dl_runtime_resolve_avx_slow
++# endif
++
++/* Use XGETBV with ECX == 1 to check which bits in vector registers are
++   non-zero and only preserve the non-zero lower bits with zero upper
++   bits.  */
++	.globl _dl_runtime_resolve_opt
++	.hidden _dl_runtime_resolve_opt
++	.type _dl_runtime_resolve_opt, @function
++	.align 16
++_dl_runtime_resolve_opt:
++	cfi_startproc
++	cfi_adjust_cfa_offset(16) # Incorporate PLT
++	pushq %rax
++	cfi_adjust_cfa_offset(8)
++	cfi_rel_offset(%rax, 0)
++	pushq %rcx
++	cfi_adjust_cfa_offset(8)
++	cfi_rel_offset(%rcx, 0)
++	pushq %rdx
++	cfi_adjust_cfa_offset(8)
++	cfi_rel_offset(%rdx, 0)
++	movl $1, %ecx
++	xgetbv
++	movl %eax, %r11d
++	popq %rdx
++	cfi_adjust_cfa_offset(-8)
++	cfi_restore (%rdx)
++	popq %rcx
++	cfi_adjust_cfa_offset(-8)
++	cfi_restore (%rcx)
++	popq %rax
++	cfi_adjust_cfa_offset(-8)
++	cfi_restore (%rax)
++# if VEC_SIZE == 32
++	# For YMM registers, check if YMM state is in use.
++	andl $bit_YMM_state, %r11d
++	# Preserve %xmm0 - %xmm7 registers with the zero upper 128 bits if
++	# YMM state isn't in use.
++	PRESERVE_BND_REGS_PREFIX
++	jz _dl_runtime_resolve_sse_vex
++# elif VEC_SIZE == 16
++	# For ZMM registers, check if YMM state and ZMM state are in
++	# use.
++	andl $(bit_YMM_state | bit_ZMM0_15_state), %r11d
++	cmpl $bit_YMM_state, %r11d
++	# Preserve %zmm0 - %zmm7 registers if ZMM state is in use.
++	PRESERVE_BND_REGS_PREFIX
++	jg _dl_runtime_resolve_avx512
++	# Preserve %ymm0 - %ymm7 registers with the zero upper 256 bits if
++	# ZMM state isn't in use.
++	PRESERVE_BND_REGS_PREFIX
++	je _dl_runtime_resolve_avx
++	# Preserve %xmm0 - %xmm7 registers with the zero upper 384 bits if
++	# neither YMM state nor ZMM state are in use.
++# else
++#  error Unsupported VEC_SIZE!
++# endif
++	cfi_adjust_cfa_offset(-16) # Restore PLT adjustment
++	cfi_endproc
++	.size _dl_runtime_resolve_opt, .-_dl_runtime_resolve_opt
++#endif
++	.globl _dl_runtime_resolve
++	.hidden _dl_runtime_resolve
++	.type _dl_runtime_resolve, @function
++	.align 16
++	cfi_startproc
++_dl_runtime_resolve:
++	cfi_adjust_cfa_offset(16) # Incorporate PLT
++#if DL_RUNIME_RESOLVE_REALIGN_STACK
++# if LOCAL_STORAGE_AREA != 8
++#  error LOCAL_STORAGE_AREA must be 8
++# endif
++	pushq %rbx			# push subtracts stack by 8.
++	cfi_adjust_cfa_offset(8)
++	cfi_rel_offset(%rbx, 0)
++	mov %RSP_LP, %RBX_LP
++	cfi_def_cfa_register(%rbx)
++	and $-VEC_SIZE, %RSP_LP
++#endif
++	sub $REGISTER_SAVE_AREA, %RSP_LP
++	cfi_adjust_cfa_offset(REGISTER_SAVE_AREA)
++	# Preserve registers otherwise clobbered.
++	movq %rax, REGISTER_SAVE_RAX(%rsp)
++	movq %rcx, REGISTER_SAVE_RCX(%rsp)
++	movq %rdx, REGISTER_SAVE_RDX(%rsp)
++	movq %rsi, REGISTER_SAVE_RSI(%rsp)
++	movq %rdi, REGISTER_SAVE_RDI(%rsp)
++	movq %r8, REGISTER_SAVE_R8(%rsp)
++	movq %r9, REGISTER_SAVE_R9(%rsp)
++	VMOV %VEC(0), (REGISTER_SAVE_VEC_OFF)(%rsp)
++	VMOV %VEC(1), (REGISTER_SAVE_VEC_OFF + VEC_SIZE)(%rsp)
++	VMOV %VEC(2), (REGISTER_SAVE_VEC_OFF + VEC_SIZE * 2)(%rsp)
++	VMOV %VEC(3), (REGISTER_SAVE_VEC_OFF + VEC_SIZE * 3)(%rsp)
++	VMOV %VEC(4), (REGISTER_SAVE_VEC_OFF + VEC_SIZE * 4)(%rsp)
++	VMOV %VEC(5), (REGISTER_SAVE_VEC_OFF + VEC_SIZE * 5)(%rsp)
++	VMOV %VEC(6), (REGISTER_SAVE_VEC_OFF + VEC_SIZE * 6)(%rsp)
++	VMOV %VEC(7), (REGISTER_SAVE_VEC_OFF + VEC_SIZE * 7)(%rsp)
++#ifndef __ILP32__
++	# We also have to preserve bound registers.  These are nops if
++	# Intel MPX isn't available or disabled.
++# ifdef HAVE_MPX_SUPPORT
++	bndmov %bnd0, REGISTER_SAVE_BND0(%rsp)
++	bndmov %bnd1, REGISTER_SAVE_BND1(%rsp)
++	bndmov %bnd2, REGISTER_SAVE_BND2(%rsp)
++	bndmov %bnd3, REGISTER_SAVE_BND3(%rsp)
++# else
++#  if REGISTER_SAVE_BND0 == 0
++	.byte 0x66,0x0f,0x1b,0x04,0x24
++#  else
++	.byte 0x66,0x0f,0x1b,0x44,0x24,REGISTER_SAVE_BND0
++#  endif
++	.byte 0x66,0x0f,0x1b,0x4c,0x24,REGISTER_SAVE_BND1
++	.byte 0x66,0x0f,0x1b,0x54,0x24,REGISTER_SAVE_BND2
++	.byte 0x66,0x0f,0x1b,0x5c,0x24,REGISTER_SAVE_BND3
++# endif
++#endif
++	# Copy args pushed by PLT in register.
++	# %rdi: link_map, %rsi: reloc_index
++	mov (LOCAL_STORAGE_AREA + 8)(%BASE), %RSI_LP
++	mov LOCAL_STORAGE_AREA(%BASE), %RDI_LP
++	call _dl_fixup		# Call resolver.
++	mov %RAX_LP, %R11_LP	# Save return value
++#ifndef __ILP32__
++	# Restore bound registers.  These are nops if Intel MPX isn't
++	# avaiable or disabled.
++# ifdef HAVE_MPX_SUPPORT
++	bndmov REGISTER_SAVE_BND3(%rsp), %bnd3
++	bndmov REGISTER_SAVE_BND2(%rsp), %bnd2
++	bndmov REGISTER_SAVE_BND1(%rsp), %bnd1
++	bndmov REGISTER_SAVE_BND0(%rsp), %bnd0
++# else
++	.byte 0x66,0x0f,0x1a,0x5c,0x24,REGISTER_SAVE_BND3
++	.byte 0x66,0x0f,0x1a,0x54,0x24,REGISTER_SAVE_BND2
++	.byte 0x66,0x0f,0x1a,0x4c,0x24,REGISTER_SAVE_BND1
++#  if REGISTER_SAVE_BND0 == 0
++	.byte 0x66,0x0f,0x1a,0x04,0x24
++#  else
++	.byte 0x66,0x0f,0x1a,0x44,0x24,REGISTER_SAVE_BND0
++#  endif
++# endif
++#endif
++	# Get register content back.
++	movq REGISTER_SAVE_R9(%rsp), %r9
++	movq REGISTER_SAVE_R8(%rsp), %r8
++	movq REGISTER_SAVE_RDI(%rsp), %rdi
++	movq REGISTER_SAVE_RSI(%rsp), %rsi
++	movq REGISTER_SAVE_RDX(%rsp), %rdx
++	movq REGISTER_SAVE_RCX(%rsp), %rcx
++	movq REGISTER_SAVE_RAX(%rsp), %rax
++	VMOV (REGISTER_SAVE_VEC_OFF)(%rsp), %VEC(0)
++	VMOV (REGISTER_SAVE_VEC_OFF + VEC_SIZE)(%rsp), %VEC(1)
++	VMOV (REGISTER_SAVE_VEC_OFF + VEC_SIZE * 2)(%rsp), %VEC(2)
++	VMOV (REGISTER_SAVE_VEC_OFF + VEC_SIZE * 3)(%rsp), %VEC(3)
++	VMOV (REGISTER_SAVE_VEC_OFF + VEC_SIZE * 4)(%rsp), %VEC(4)
++	VMOV (REGISTER_SAVE_VEC_OFF + VEC_SIZE * 5)(%rsp), %VEC(5)
++	VMOV (REGISTER_SAVE_VEC_OFF + VEC_SIZE * 6)(%rsp), %VEC(6)
++	VMOV (REGISTER_SAVE_VEC_OFF + VEC_SIZE * 7)(%rsp), %VEC(7)
++#if DL_RUNIME_RESOLVE_REALIGN_STACK
++	mov %RBX_LP, %RSP_LP
++	cfi_def_cfa_register(%rsp)
++	movq (%rsp), %rbx
++	cfi_restore(%rbx)
++#endif
++	# Adjust stack(PLT did 2 pushes)
++	add $(LOCAL_STORAGE_AREA + 16), %RSP_LP
++	cfi_adjust_cfa_offset(-(LOCAL_STORAGE_AREA + 16))
++	# Preserve bound registers.
++	PRESERVE_BND_REGS_PREFIX
++	jmp *%r11		# Jump to function address.
++	cfi_endproc
++	.size _dl_runtime_resolve, .-_dl_runtime_resolve
++
++
++/* To preserve %xmm0 - %xmm7 registers, dl-trampoline.h is included
++   twice, for _dl_runtime_resolve_sse and _dl_runtime_resolve_sse_vex.
++   But we don't need another _dl_runtime_profile for XMM registers.  */
++#if !defined PROF && defined _dl_runtime_profile
++# if (LR_VECTOR_OFFSET % VEC_SIZE) != 0
++#  error LR_VECTOR_OFFSET must be multples of VEC_SIZE
++# endif
++
++	.globl _dl_runtime_profile
++	.hidden _dl_runtime_profile
++	.type _dl_runtime_profile, @function
++	.align 16
++_dl_runtime_profile:
++	cfi_startproc
++	cfi_adjust_cfa_offset(16) # Incorporate PLT
++	/* The La_x86_64_regs data structure pointed to by the
++	   fourth paramater must be VEC_SIZE-byte aligned.  This must
++	   be explicitly enforced.  We have the set up a dynamically
++	   sized stack frame.  %rbx points to the top half which
++	   has a fixed size and preserves the original stack pointer.  */
++
++	sub $32, %RSP_LP	# Allocate the local storage.
++	cfi_adjust_cfa_offset(32)
++	movq %rbx, (%rsp)
++	cfi_rel_offset(%rbx, 0)
++
++	/* On the stack:
++		56(%rbx)	parameter #1
++		48(%rbx)	return address
++
++		40(%rbx)	reloc index
++		32(%rbx)	link_map
++
++		24(%rbx)	La_x86_64_regs pointer
++		16(%rbx)	framesize
++		 8(%rbx)	rax
++		  (%rbx)	rbx
++	*/
++
++	movq %rax, 8(%rsp)
++	mov %RSP_LP, %RBX_LP
++	cfi_def_cfa_register(%rbx)
++
++	/* Actively align the La_x86_64_regs structure.  */
++	and $-VEC_SIZE, %RSP_LP
++# if defined HAVE_AVX_SUPPORT || defined HAVE_AVX512_ASM_SUPPORT
++	/* sizeof(La_x86_64_regs).  Need extra space for 8 SSE registers
++	   to detect if any xmm0-xmm7 registers are changed by audit
++	   module.  */
++	sub $(LR_SIZE + XMM_SIZE*8), %RSP_LP
++# else
++	sub $LR_SIZE, %RSP_LP		# sizeof(La_x86_64_regs)
++# endif
++	movq %rsp, 24(%rbx)
++
++	/* Fill the La_x86_64_regs structure.  */
++	movq %rdx, LR_RDX_OFFSET(%rsp)
++	movq %r8,  LR_R8_OFFSET(%rsp)
++	movq %r9,  LR_R9_OFFSET(%rsp)
++	movq %rcx, LR_RCX_OFFSET(%rsp)
++	movq %rsi, LR_RSI_OFFSET(%rsp)
++	movq %rdi, LR_RDI_OFFSET(%rsp)
++	movq %rbp, LR_RBP_OFFSET(%rsp)
++
++	lea 48(%rbx), %RAX_LP
++	movq %rax, LR_RSP_OFFSET(%rsp)
++
++	/* We always store the XMM registers even if AVX is available.
++	   This is to provide backward binary compatibility for existing
++	   audit modules.  */
++	movaps %xmm0,		   (LR_XMM_OFFSET)(%rsp)
++	movaps %xmm1, (LR_XMM_OFFSET +   XMM_SIZE)(%rsp)
++	movaps %xmm2, (LR_XMM_OFFSET + XMM_SIZE*2)(%rsp)
++	movaps %xmm3, (LR_XMM_OFFSET + XMM_SIZE*3)(%rsp)
++	movaps %xmm4, (LR_XMM_OFFSET + XMM_SIZE*4)(%rsp)
++	movaps %xmm5, (LR_XMM_OFFSET + XMM_SIZE*5)(%rsp)
++	movaps %xmm6, (LR_XMM_OFFSET + XMM_SIZE*6)(%rsp)
++	movaps %xmm7, (LR_XMM_OFFSET + XMM_SIZE*7)(%rsp)
++
++# ifndef __ILP32__
++#  ifdef HAVE_MPX_SUPPORT
++	bndmov %bnd0, 		   (LR_BND_OFFSET)(%rsp)  # Preserve bound
++	bndmov %bnd1, (LR_BND_OFFSET +   BND_SIZE)(%rsp)  # registers. Nops if
++	bndmov %bnd2, (LR_BND_OFFSET + BND_SIZE*2)(%rsp)  # MPX not available
++	bndmov %bnd3, (LR_BND_OFFSET + BND_SIZE*3)(%rsp)  # or disabled.
++#  else
++	.byte 0x66,0x0f,0x1b,0x84,0x24;.long (LR_BND_OFFSET)
++	.byte 0x66,0x0f,0x1b,0x8c,0x24;.long (LR_BND_OFFSET + BND_SIZE)
++	.byte 0x66,0x0f,0x1b,0x94,0x24;.long (LR_BND_OFFSET + BND_SIZE*2)
++	.byte 0x66,0x0f,0x1b,0x9c,0x24;.long (LR_BND_OFFSET + BND_SIZE*3)
++#  endif
++# endif
++
++# ifdef RESTORE_AVX
+ 	/* This is to support AVX audit modules.  */
+-	VMOV %VEC(0),		      (LR_VECTOR_OFFSET)(%rsp)
+-	VMOV %VEC(1), (LR_VECTOR_OFFSET +   VECTOR_SIZE)(%rsp)
+-	VMOV %VEC(2), (LR_VECTOR_OFFSET + VECTOR_SIZE*2)(%rsp)
+-	VMOV %VEC(3), (LR_VECTOR_OFFSET + VECTOR_SIZE*3)(%rsp)
+-	VMOV %VEC(4), (LR_VECTOR_OFFSET + VECTOR_SIZE*4)(%rsp)
+-	VMOV %VEC(5), (LR_VECTOR_OFFSET + VECTOR_SIZE*5)(%rsp)
+-	VMOV %VEC(6), (LR_VECTOR_OFFSET + VECTOR_SIZE*6)(%rsp)
+-	VMOV %VEC(7), (LR_VECTOR_OFFSET + VECTOR_SIZE*7)(%rsp)
++	VMOVA %VEC(0),		      (LR_VECTOR_OFFSET)(%rsp)
++	VMOVA %VEC(1), (LR_VECTOR_OFFSET +   VECTOR_SIZE)(%rsp)
++	VMOVA %VEC(2), (LR_VECTOR_OFFSET + VECTOR_SIZE*2)(%rsp)
++	VMOVA %VEC(3), (LR_VECTOR_OFFSET + VECTOR_SIZE*3)(%rsp)
++	VMOVA %VEC(4), (LR_VECTOR_OFFSET + VECTOR_SIZE*4)(%rsp)
++	VMOVA %VEC(5), (LR_VECTOR_OFFSET + VECTOR_SIZE*5)(%rsp)
++	VMOVA %VEC(6), (LR_VECTOR_OFFSET + VECTOR_SIZE*6)(%rsp)
++	VMOVA %VEC(7), (LR_VECTOR_OFFSET + VECTOR_SIZE*7)(%rsp)
+ 
+ 	/* Save xmm0-xmm7 registers to detect if any of them are
+ 	   changed by audit module.  */
+@@ -38,7 +376,7 @@
+ 	vmovdqa %xmm5, (LR_SIZE + XMM_SIZE*5)(%rsp)
+ 	vmovdqa %xmm6, (LR_SIZE + XMM_SIZE*6)(%rsp)
+ 	vmovdqa %xmm7, (LR_SIZE + XMM_SIZE*7)(%rsp)
+-#endif
++# endif
+ 
+ 	mov %RSP_LP, %RCX_LP	# La_x86_64_regs pointer to %rcx.
+ 	mov 48(%rbx), %RDX_LP	# Load return address if needed.
+@@ -63,21 +401,7 @@
+ 	movaps (LR_XMM_OFFSET + XMM_SIZE*6)(%rsp), %xmm6
+ 	movaps (LR_XMM_OFFSET + XMM_SIZE*7)(%rsp), %xmm7
+ 
+-#ifndef __ILP32__
+-# ifdef HAVE_MPX_SUPPORT
+-	bndmov 		    (LR_BND_OFFSET)(%rsp), %bnd0  # Restore bound
+-	bndmov (LR_BND_OFFSET +   BND_SIZE)(%rsp), %bnd1  # registers.
+-	bndmov (LR_BND_OFFSET + BND_SIZE*2)(%rsp), %bnd2
+-	bndmov (LR_BND_OFFSET + BND_SIZE*3)(%rsp), %bnd3
+-# else
+-	.byte 0x66,0x0f,0x1a,0x84,0x24;.long (LR_BND_OFFSET)
+-	.byte 0x66,0x0f,0x1a,0x8c,0x24;.long (LR_BND_OFFSET + BND_SIZE)
+-	.byte 0x66,0x0f,0x1a,0x94,0x24;.long (LR_BND_OFFSET + BND_SIZE*2)
+-	.byte 0x66,0x0f,0x1a,0x9c,0x24;.long (LR_BND_OFFSET + BND_SIZE*3)
+-# endif
+-#endif
+-
+-#ifdef RESTORE_AVX
++# ifdef RESTORE_AVX
+ 	/* Check if any xmm0-xmm7 registers are changed by audit
+ 	   module.  */
+ 	vpcmpeqq (LR_SIZE)(%rsp), %xmm0, %xmm8
+@@ -86,7 +410,7 @@
+ 	je 2f
+ 	vmovdqa	%xmm0, (LR_VECTOR_OFFSET)(%rsp)
+ 	jmp 1f
+-2:	VMOV (LR_VECTOR_OFFSET)(%rsp), %VEC(0)
++2:	VMOVA (LR_VECTOR_OFFSET)(%rsp), %VEC(0)
+ 	vmovdqa	%xmm0, (LR_XMM_OFFSET)(%rsp)
+ 
+ 1:	vpcmpeqq (LR_SIZE + XMM_SIZE)(%rsp), %xmm1, %xmm8
+@@ -95,7 +419,7 @@
+ 	je 2f
+ 	vmovdqa	%xmm1, (LR_VECTOR_OFFSET + VECTOR_SIZE)(%rsp)
+ 	jmp 1f
+-2:	VMOV (LR_VECTOR_OFFSET + VECTOR_SIZE)(%rsp), %VEC(1)
++2:	VMOVA (LR_VECTOR_OFFSET + VECTOR_SIZE)(%rsp), %VEC(1)
+ 	vmovdqa	%xmm1, (LR_XMM_OFFSET + XMM_SIZE)(%rsp)
+ 
+ 1:	vpcmpeqq (LR_SIZE + XMM_SIZE*2)(%rsp), %xmm2, %xmm8
+@@ -104,7 +428,7 @@
+ 	je 2f
+ 	vmovdqa	%xmm2, (LR_VECTOR_OFFSET + VECTOR_SIZE*2)(%rsp)
+ 	jmp 1f
+-2:	VMOV (LR_VECTOR_OFFSET + VECTOR_SIZE*2)(%rsp), %VEC(2)
++2:	VMOVA (LR_VECTOR_OFFSET + VECTOR_SIZE*2)(%rsp), %VEC(2)
+ 	vmovdqa	%xmm2, (LR_XMM_OFFSET + XMM_SIZE*2)(%rsp)
+ 
+ 1:	vpcmpeqq (LR_SIZE + XMM_SIZE*3)(%rsp), %xmm3, %xmm8
+@@ -113,7 +437,7 @@
+ 	je 2f
+ 	vmovdqa	%xmm3, (LR_VECTOR_OFFSET + VECTOR_SIZE*3)(%rsp)
+ 	jmp 1f
+-2:	VMOV (LR_VECTOR_OFFSET + VECTOR_SIZE*3)(%rsp), %VEC(3)
++2:	VMOVA (LR_VECTOR_OFFSET + VECTOR_SIZE*3)(%rsp), %VEC(3)
+ 	vmovdqa	%xmm3, (LR_XMM_OFFSET + XMM_SIZE*3)(%rsp)
+ 
+ 1:	vpcmpeqq (LR_SIZE + XMM_SIZE*4)(%rsp), %xmm4, %xmm8
+@@ -122,7 +446,7 @@
+ 	je 2f
+ 	vmovdqa	%xmm4, (LR_VECTOR_OFFSET + VECTOR_SIZE*4)(%rsp)
+ 	jmp 1f
+-2:	VMOV (LR_VECTOR_OFFSET + VECTOR_SIZE*4)(%rsp), %VEC(4)
++2:	VMOVA (LR_VECTOR_OFFSET + VECTOR_SIZE*4)(%rsp), %VEC(4)
+ 	vmovdqa	%xmm4, (LR_XMM_OFFSET + XMM_SIZE*4)(%rsp)
+ 
+ 1:	vpcmpeqq (LR_SIZE + XMM_SIZE*5)(%rsp), %xmm5, %xmm8
+@@ -131,7 +455,7 @@
+ 	je 2f
+ 	vmovdqa	%xmm5, (LR_VECTOR_OFFSET + VECTOR_SIZE*5)(%rsp)
+ 	jmp 1f
+-2:	VMOV (LR_VECTOR_OFFSET + VECTOR_SIZE*5)(%rsp), %VEC(5)
++2:	VMOVA (LR_VECTOR_OFFSET + VECTOR_SIZE*5)(%rsp), %VEC(5)
+ 	vmovdqa	%xmm5, (LR_XMM_OFFSET + XMM_SIZE*5)(%rsp)
+ 
+ 1:	vpcmpeqq (LR_SIZE + XMM_SIZE*6)(%rsp), %xmm6, %xmm8
+@@ -140,7 +464,7 @@
+ 	je 2f
+ 	vmovdqa	%xmm6, (LR_VECTOR_OFFSET + VECTOR_SIZE*6)(%rsp)
+ 	jmp 1f
+-2:	VMOV (LR_VECTOR_OFFSET + VECTOR_SIZE*6)(%rsp), %VEC(6)
++2:	VMOVA (LR_VECTOR_OFFSET + VECTOR_SIZE*6)(%rsp), %VEC(6)
+ 	vmovdqa	%xmm6, (LR_XMM_OFFSET + XMM_SIZE*6)(%rsp)
+ 
+ 1:	vpcmpeqq (LR_SIZE + XMM_SIZE*7)(%rsp), %xmm7, %xmm8
+@@ -149,13 +473,29 @@
+ 	je 2f
+ 	vmovdqa	%xmm7, (LR_VECTOR_OFFSET + VECTOR_SIZE*7)(%rsp)
+ 	jmp 1f
+-2:	VMOV (LR_VECTOR_OFFSET + VECTOR_SIZE*7)(%rsp), %VEC(7)
++2:	VMOVA (LR_VECTOR_OFFSET + VECTOR_SIZE*7)(%rsp), %VEC(7)
+ 	vmovdqa	%xmm7, (LR_XMM_OFFSET + XMM_SIZE*7)(%rsp)
+ 
+ 1:
+-#endif
++# endif
++
++# ifndef __ILP32__
++#  ifdef HAVE_MPX_SUPPORT
++	bndmov              (LR_BND_OFFSET)(%rsp), %bnd0  # Restore bound
++	bndmov (LR_BND_OFFSET +   BND_SIZE)(%rsp), %bnd1  # registers.
++	bndmov (LR_BND_OFFSET + BND_SIZE*2)(%rsp), %bnd2
++	bndmov (LR_BND_OFFSET + BND_SIZE*3)(%rsp), %bnd3
++#  else
++	.byte 0x66,0x0f,0x1a,0x84,0x24;.long (LR_BND_OFFSET)
++	.byte 0x66,0x0f,0x1a,0x8c,0x24;.long (LR_BND_OFFSET + BND_SIZE)
++	.byte 0x66,0x0f,0x1a,0x94,0x24;.long (LR_BND_OFFSET + BND_SIZE*2)
++	.byte 0x66,0x0f,0x1a,0x9c,0x24;.long (LR_BND_OFFSET + BND_SIZE*3)
++#  endif
++# endif
++
+ 	mov  16(%rbx), %R10_LP	# Anything in framesize?
+ 	test %R10_LP, %R10_LP
++	PRESERVE_BND_REGS_PREFIX
+ 	jns 3f
+ 
+ 	/* There's nothing in the frame size, so there
+@@ -166,14 +506,15 @@
+ 	movq LR_RSI_OFFSET(%rsp), %rsi
+ 	movq LR_RDI_OFFSET(%rsp), %rdi
+ 
+-	movq %rbx, %rsp
++	mov %RBX_LP, %RSP_LP
+ 	movq (%rsp), %rbx
+-	cfi_restore(rbx)
++	cfi_restore(%rbx)
+ 	cfi_def_cfa_register(%rsp)
+ 
+-	addq $48, %rsp		# Adjust the stack to the return value
++	add $48, %RSP_LP	# Adjust the stack to the return value
+ 				# (eats the reloc index and link_map)
+ 	cfi_adjust_cfa_offset(-48)
++	PRESERVE_BND_REGS_PREFIX
+ 	jmp *%r11		# Jump to function address.
+ 
+ 3:
+@@ -186,13 +527,13 @@
+ 	   temporary buffer of the size specified by the 'framesize'
+ 	   returned from _dl_profile_fixup */
+ 
+-	leaq LR_RSP_OFFSET(%rbx), %rsi	# stack
+-	addq $8, %r10
+-	andq $0xfffffffffffffff0, %r10
+-	movq %r10, %rcx
+-	subq %r10, %rsp
+-	movq %rsp, %rdi
+-	shrq $3, %rcx
++	lea LR_RSP_OFFSET(%rbx), %RSI_LP # stack
++	add $8, %R10_LP
++	and $-16, %R10_LP
++	mov %R10_LP, %RCX_LP
++	sub %R10_LP, %RSP_LP
++	mov %RSP_LP, %RDI_LP
++	shr $3, %RCX_LP
+ 	rep
+ 	movsq
+ 
+@@ -200,23 +541,24 @@
+ 	movq 32(%rdi), %rsi
+ 	movq 40(%rdi), %rdi
+ 
++	PRESERVE_BND_REGS_PREFIX
+ 	call *%r11
+ 
+-	mov 24(%rbx), %rsp	# Drop the copied stack content
++	mov 24(%rbx), %RSP_LP	# Drop the copied stack content
+ 
+ 	/* Now we have to prepare the La_x86_64_retval structure for the
+ 	   _dl_call_pltexit.  The La_x86_64_regs is being pointed by rsp now,
+ 	   so we just need to allocate the sizeof(La_x86_64_retval) space on
+ 	   the stack, since the alignment has already been taken care of. */
+-#ifdef RESTORE_AVX
++# ifdef RESTORE_AVX
+ 	/* sizeof(La_x86_64_retval).  Need extra space for 2 SSE
+ 	   registers to detect if xmm0/xmm1 registers are changed
+ 	   by audit module.  */
+-	subq $(LRV_SIZE + XMM_SIZE*2), %rsp
+-#else
+-	subq $LRV_SIZE, %rsp	# sizeof(La_x86_64_retval)
+-#endif
+-	movq %rsp, %rcx		# La_x86_64_retval argument to %rcx.
++	sub $(LRV_SIZE + XMM_SIZE*2), %RSP_LP
++# else
++	sub $LRV_SIZE, %RSP_LP	# sizeof(La_x86_64_retval)
++# endif
++	mov %RSP_LP, %RCX_LP	# La_x86_64_retval argument to %rcx.
+ 
+ 	/* Fill in the La_x86_64_retval structure.  */
+ 	movq %rax, LRV_RAX_OFFSET(%rcx)
+@@ -225,26 +567,26 @@
+ 	movaps %xmm0, LRV_XMM0_OFFSET(%rcx)
+ 	movaps %xmm1, LRV_XMM1_OFFSET(%rcx)
+ 
+-#ifdef RESTORE_AVX
++# ifdef RESTORE_AVX
+ 	/* This is to support AVX audit modules.  */
+-	VMOV %VEC(0), LRV_VECTOR0_OFFSET(%rcx)
+-	VMOV %VEC(1), LRV_VECTOR1_OFFSET(%rcx)
++	VMOVA %VEC(0), LRV_VECTOR0_OFFSET(%rcx)
++	VMOVA %VEC(1), LRV_VECTOR1_OFFSET(%rcx)
+ 
+ 	/* Save xmm0/xmm1 registers to detect if they are changed
+ 	   by audit module.  */
+ 	vmovdqa %xmm0,		  (LRV_SIZE)(%rcx)
+ 	vmovdqa %xmm1, (LRV_SIZE + XMM_SIZE)(%rcx)
+-#endif
++# endif
+ 
+-#ifndef __ILP32__
+-# ifdef HAVE_MPX_SUPPORT
++# ifndef __ILP32__
++#  ifdef HAVE_MPX_SUPPORT
+ 	bndmov %bnd0, LRV_BND0_OFFSET(%rcx)  # Preserve returned bounds.
+ 	bndmov %bnd1, LRV_BND1_OFFSET(%rcx)
+-# else
++#  else
+ 	.byte  0x66,0x0f,0x1b,0x81;.long (LRV_BND0_OFFSET)
+ 	.byte  0x66,0x0f,0x1b,0x89;.long (LRV_BND1_OFFSET)
++#  endif
+ # endif
+-#endif
+ 
+ 	fstpt LRV_ST0_OFFSET(%rcx)
+ 	fstpt LRV_ST1_OFFSET(%rcx)
+@@ -261,49 +603,47 @@
+ 	movaps LRV_XMM0_OFFSET(%rsp), %xmm0
+ 	movaps LRV_XMM1_OFFSET(%rsp), %xmm1
+ 
+-#ifdef RESTORE_AVX
++# ifdef RESTORE_AVX
+ 	/* Check if xmm0/xmm1 registers are changed by audit module.  */
+ 	vpcmpeqq (LRV_SIZE)(%rsp), %xmm0, %xmm2
+ 	vpmovmskb %xmm2, %esi
+ 	cmpl $0xffff, %esi
+ 	jne 1f
+-	VMOV LRV_VECTOR0_OFFSET(%rsp), %VEC(0)
++	VMOVA LRV_VECTOR0_OFFSET(%rsp), %VEC(0)
+ 
+ 1:	vpcmpeqq (LRV_SIZE + XMM_SIZE)(%rsp), %xmm1, %xmm2
+ 	vpmovmskb %xmm2, %esi
+ 	cmpl $0xffff, %esi
+ 	jne 1f
+-	VMOV LRV_VECTOR1_OFFSET(%rsp), %VEC(1)
++	VMOVA LRV_VECTOR1_OFFSET(%rsp), %VEC(1)
+ 
+ 1:
+-#endif
++# endif
+ 
+-#ifndef __ILP32__
+-# ifdef HAVE_MPX_SUPPORT
+-	bndmov LRV_BND0_OFFSET(%rcx), %bnd0  # Restore bound registers.
+-	bndmov LRV_BND1_OFFSET(%rcx), %bnd1
+-# else
+-	.byte  0x66,0x0f,0x1a,0x81;.long (LRV_BND0_OFFSET)
+-	.byte  0x66,0x0f,0x1a,0x89;.long (LRV_BND1_OFFSET)
++# ifndef __ILP32__
++#  ifdef HAVE_MPX_SUPPORT
++	bndmov LRV_BND0_OFFSET(%rsp), %bnd0  # Restore bound registers.
++	bndmov LRV_BND1_OFFSET(%rsp), %bnd1
++#  else
++	.byte  0x66,0x0f,0x1a,0x84,0x24;.long (LRV_BND0_OFFSET)
++	.byte  0x66,0x0f,0x1a,0x8c,0x24;.long (LRV_BND1_OFFSET)
++#  endif
+ # endif
+-#endif
+ 
+ 	fldt LRV_ST1_OFFSET(%rsp)
+ 	fldt LRV_ST0_OFFSET(%rsp)
+ 
+-	movq %rbx, %rsp
++	mov %RBX_LP, %RSP_LP
+ 	movq (%rsp), %rbx
+-	cfi_restore(rbx)
++	cfi_restore(%rbx)
+ 	cfi_def_cfa_register(%rsp)
+ 
+-	addq $48, %rsp		# Adjust the stack to the return value
++	add $48, %RSP_LP	# Adjust the stack to the return value
+ 				# (eats the reloc index and link_map)
+ 	cfi_adjust_cfa_offset(-48)
++	PRESERVE_BND_REGS_PREFIX
+ 	retq
+ 
+-#ifdef MORE_CODE
+-	cfi_adjust_cfa_offset(48)
+-	cfi_rel_offset(%rbx, 0)
+-	cfi_def_cfa_register(%rbx)
+-# undef MORE_CODE
++	cfi_endproc
++	.size _dl_runtime_profile, .-_dl_runtime_profile
+ #endif
+Index: glibc-2.17-c758a686/sysdeps/x86_64/ifuncmain8.c
+===================================================================
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/x86_64/ifuncmain8.c
+@@ -0,0 +1,32 @@
++/* Test IFUNC selector with floating-point parameters.
++   Copyright (C) 2015 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <stdlib.h>
++
++extern float foo (float);
++
++static int
++do_test (void)
++{
++  if (foo (2) != 3)
++    abort ();
++  return 0;
++}
++
++#define TEST_FUNCTION do_test ()
++#include "../test-skeleton.c"
+Index: glibc-2.17-c758a686/sysdeps/x86_64/ifuncmod8.c
+===================================================================
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/x86_64/ifuncmod8.c
+@@ -0,0 +1,36 @@
++/* Test IFUNC selector with floating-point parameters.
++   Copyright (C) 2015 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <emmintrin.h>
++
++void * foo_ifunc (void) __asm__ ("foo");
++__asm__(".type foo, %gnu_indirect_function");
++
++static float
++foo_impl (float x)
++{
++  return x + 1;
++}
++
++void *
++foo_ifunc (void)
++{
++  __m128i xmm = _mm_set1_epi32 (-1);
++  asm volatile ("movdqa %0, %%xmm0" : : "x" (xmm) : "xmm0" );
++  return foo_impl;
++}
+Index: glibc-2.17-c758a686/sysdeps/x86_64/tst-avx-aux.c
+===================================================================
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/x86_64/tst-avx-aux.c
+@@ -0,0 +1,47 @@
++/* Test case for preserved AVX registers in dynamic linker, -mavx part.
++   Copyright (C) 2017 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <immintrin.h>
++#include <stdlib.h>
++#include <string.h>
++
++int
++tst_avx_aux (void)
++{
++#ifdef __AVX__
++  extern __m256i avx_test (__m256i, __m256i, __m256i, __m256i,
++			   __m256i, __m256i, __m256i, __m256i);
++
++  __m256i ymm0 = _mm256_set1_epi32 (0);
++  __m256i ymm1 = _mm256_set1_epi32 (1);
++  __m256i ymm2 = _mm256_set1_epi32 (2);
++  __m256i ymm3 = _mm256_set1_epi32 (3);
++  __m256i ymm4 = _mm256_set1_epi32 (4);
++  __m256i ymm5 = _mm256_set1_epi32 (5);
++  __m256i ymm6 = _mm256_set1_epi32 (6);
++  __m256i ymm7 = _mm256_set1_epi32 (7);
++  __m256i ret = avx_test (ymm0, ymm1, ymm2, ymm3,
++			  ymm4, ymm5, ymm6, ymm7);
++  ymm0 =  _mm256_set1_epi32 (0x12349876);
++  if (memcmp (&ymm0, &ret, sizeof (ret)))
++    abort ();
++  return 0;
++#else  /* __AVX__ */
++  return 77;
++#endif  /* __AVX__ */
++}
+Index: glibc-2.17-c758a686/sysdeps/x86_64/tst-avx.c
+===================================================================
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/x86_64/tst-avx.c
+@@ -0,0 +1,49 @@
++/* Test case for preserved AVX registers in dynamic linker.
++   Copyright (C) 2017 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <cpuid.h>
++
++int tst_avx_aux (void);
++
++static int
++avx_enabled (void)
++{
++  unsigned int eax, ebx, ecx, edx;
++
++  if (__get_cpuid (1, &eax, &ebx, &ecx, &edx) == 0
++      || (ecx & (bit_AVX | bit_OSXSAVE)) != (bit_AVX | bit_OSXSAVE))
++    return 0;
++
++  /* Check the OS has AVX and SSE saving enabled.  */
++  asm ("xgetbv" : "=a" (eax), "=d" (edx) : "c" (0));
++
++  return (eax & 6) == 6;
++}
++
++static int
++do_test (void)
++{
++  /* Run AVX test only if AVX is supported.  */
++  if (avx_enabled ())
++    return tst_avx_aux ();
++  else
++    return 77;
++}
++
++#define TEST_FUNCTION do_test ()
++#include "../../test-skeleton.c"
+Index: glibc-2.17-c758a686/sysdeps/x86_64/tst-avx512-aux.c
+===================================================================
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/x86_64/tst-avx512-aux.c
+@@ -0,0 +1,48 @@
++/* Test case for preserved AVX512 registers in dynamic linker,
++   -mavx512 part.
++   Copyright (C) 2017 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <immintrin.h>
++#include <stdlib.h>
++#include <string.h>
++
++int
++tst_avx512_aux (void)
++{
++#ifdef __AVX512F__
++  extern __m512i avx512_test (__m512i, __m512i, __m512i, __m512i,
++			      __m512i, __m512i, __m512i, __m512i);
++
++  __m512i zmm0 = _mm512_set1_epi32 (0);
++  __m512i zmm1 = _mm512_set1_epi32 (1);
++  __m512i zmm2 = _mm512_set1_epi32 (2);
++  __m512i zmm3 = _mm512_set1_epi32 (3);
++  __m512i zmm4 = _mm512_set1_epi32 (4);
++  __m512i zmm5 = _mm512_set1_epi32 (5);
++  __m512i zmm6 = _mm512_set1_epi32 (6);
++  __m512i zmm7 = _mm512_set1_epi32 (7);
++  __m512i ret = avx512_test (zmm0, zmm1, zmm2, zmm3,
++			     zmm4, zmm5, zmm6, zmm7);
++  zmm0 =  _mm512_set1_epi32 (0x12349876);
++  if (memcmp (&zmm0, &ret, sizeof (ret)))
++    abort ();
++  return 0;
++#else  /* __AVX512F__ */
++  return 77;
++#endif  /* __AVX512F__ */
++}
+Index: glibc-2.17-c758a686/sysdeps/x86_64/tst-avx512.c
+===================================================================
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/x86_64/tst-avx512.c
+@@ -0,0 +1,57 @@
++/* Test case for preserved AVX512 registers in dynamic linker.
++   Copyright (C) 2017 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <cpuid.h>
++
++int tst_avx512_aux (void);
++
++static int
++avx512_enabled (void)
++{
++#ifdef bit_AVX512F
++  unsigned int eax, ebx, ecx, edx;
++
++  if (__get_cpuid (1, &eax, &ebx, &ecx, &edx) == 0
++      || (ecx & (bit_AVX | bit_OSXSAVE)) != (bit_AVX | bit_OSXSAVE))
++    return 0;
++
++  __cpuid_count (7, 0, eax, ebx, ecx, edx);
++  if (!(ebx & bit_AVX512F))
++    return 0;
++
++  asm ("xgetbv" : "=a" (eax), "=d" (edx) : "c" (0));
++
++  /* Verify that ZMM, YMM and XMM states are enabled.  */
++  return (eax & 0xe6) == 0xe6;
++#else
++  return 0;
++#endif
++}
++
++static int
++do_test (void)
++{
++  /* Run AVX512 test only if AVX512 is supported.  */
++  if (avx512_enabled ())
++    return tst_avx512_aux ();
++  else
++    return 77;
++}
++
++#define TEST_FUNCTION do_test ()
++#include "../../test-skeleton.c"
+Index: glibc-2.17-c758a686/sysdeps/x86_64/tst-avx512mod.c
+===================================================================
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/x86_64/tst-avx512mod.c
+@@ -0,0 +1,48 @@
++/* Test case for x86-64 preserved AVX512 registers in dynamic linker.  */
++
++#ifdef __AVX512F__
++#include <stdlib.h>
++#include <string.h>
++#include <immintrin.h>
++
++__m512i
++avx512_test (__m512i x0, __m512i x1, __m512i x2, __m512i x3,
++	     __m512i x4, __m512i x5, __m512i x6, __m512i x7)
++{
++  __m512i zmm;
++
++  zmm = _mm512_set1_epi32 (0);
++  if (memcmp (&zmm, &x0, sizeof (zmm)))
++    abort ();
++
++  zmm = _mm512_set1_epi32 (1);
++  if (memcmp (&zmm, &x1, sizeof (zmm)))
++    abort ();
++
++  zmm = _mm512_set1_epi32 (2);
++  if (memcmp (&zmm, &x2, sizeof (zmm)))
++    abort ();
++
++  zmm = _mm512_set1_epi32 (3);
++  if (memcmp (&zmm, &x3, sizeof (zmm)))
++    abort ();
++
++  zmm = _mm512_set1_epi32 (4);
++  if (memcmp (&zmm, &x4, sizeof (zmm)))
++    abort ();
++
++  zmm = _mm512_set1_epi32 (5);
++  if (memcmp (&zmm, &x5, sizeof (zmm)))
++    abort ();
++
++  zmm = _mm512_set1_epi32 (6);
++  if (memcmp (&zmm, &x6, sizeof (zmm)))
++    abort ();
++
++  zmm = _mm512_set1_epi32 (7);
++  if (memcmp (&zmm, &x7, sizeof (zmm)))
++    abort ();
++
++  return _mm512_set1_epi32 (0x12349876);
++}
++#endif
+Index: glibc-2.17-c758a686/sysdeps/x86_64/tst-ssemod.c
+===================================================================
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/x86_64/tst-ssemod.c
+@@ -0,0 +1,46 @@
++/* Test case for x86-64 preserved SSE registers in dynamic linker.  */
++
++#include <stdlib.h>
++#include <string.h>
++#include <immintrin.h>
++
++__m128i
++sse_test (__m128i x0, __m128i x1, __m128i x2, __m128i x3,
++	  __m128i x4, __m128i x5, __m128i x6, __m128i x7)
++{
++  __m128i xmm;
++
++  xmm = _mm_set1_epi32 (0);
++  if (memcmp (&xmm, &x0, sizeof (xmm)))
++    abort ();
++
++  xmm = _mm_set1_epi32 (1);
++  if (memcmp (&xmm, &x1, sizeof (xmm)))
++    abort ();
++
++  xmm = _mm_set1_epi32 (2);
++  if (memcmp (&xmm, &x2, sizeof (xmm)))
++    abort ();
++
++  xmm = _mm_set1_epi32 (3);
++  if (memcmp (&xmm, &x3, sizeof (xmm)))
++    abort ();
++
++  xmm = _mm_set1_epi32 (4);
++  if (memcmp (&xmm, &x4, sizeof (xmm)))
++    abort ();
++
++  xmm = _mm_set1_epi32 (5);
++  if (memcmp (&xmm, &x5, sizeof (xmm)))
++    abort ();
++
++  xmm = _mm_set1_epi32 (6);
++  if (memcmp (&xmm, &x6, sizeof (xmm)))
++    abort ();
++
++  xmm = _mm_set1_epi32 (7);
++  if (memcmp (&xmm, &x7, sizeof (xmm)))
++    abort ();
++
++  return _mm_set1_epi32 (0x12349876);
++}
+Index: glibc-2.17-c758a686/sysdeps/x86_64/tst-sse.c
+===================================================================
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/x86_64/tst-sse.c
+@@ -0,0 +1,46 @@
++/* Test case for preserved SSE registers in dynamic linker.
++   Copyright (C) 2017 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <immintrin.h>
++#include <stdlib.h>
++#include <string.h>
++
++extern __m128i sse_test (__m128i, __m128i, __m128i, __m128i,
++                        __m128i, __m128i, __m128i, __m128i);
++
++static int
++do_test (void)
++{
++  __m128i xmm0 = _mm_set1_epi32 (0);
++  __m128i xmm1 = _mm_set1_epi32 (1);
++  __m128i xmm2 = _mm_set1_epi32 (2);
++  __m128i xmm3 = _mm_set1_epi32 (3);
++  __m128i xmm4 = _mm_set1_epi32 (4);
++  __m128i xmm5 = _mm_set1_epi32 (5);
++  __m128i xmm6 = _mm_set1_epi32 (6);
++  __m128i xmm7 = _mm_set1_epi32 (7);
++  __m128i ret = sse_test (xmm0, xmm1, xmm2, xmm3,
++                         xmm4, xmm5, xmm6, xmm7);
++  xmm0 =  _mm_set1_epi32 (0x12349876);
++  if (memcmp (&xmm0, &ret, sizeof (ret)))
++    abort ();
++  return 0;
++}
++
++#define TEST_FUNCTION do_test ()
++#include "../../test-skeleton.c"
+Index: glibc-2.17-c758a686/sysdeps/x86_64/tst-avxmod.c
+===================================================================
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/x86_64/tst-avxmod.c
+@@ -0,0 +1,49 @@
++
++/* Test case for x86-64 preserved AVX registers in dynamic linker.  */
++
++#ifdef __AVX__
++#include <stdlib.h>
++#include <string.h>
++#include <immintrin.h>
++
++__m256i
++avx_test (__m256i x0, __m256i x1, __m256i x2, __m256i x3,
++	  __m256i x4, __m256i x5, __m256i x6, __m256i x7)
++{
++  __m256i ymm;
++
++  ymm = _mm256_set1_epi32 (0);
++  if (memcmp (&ymm, &x0, sizeof (ymm)))
++    abort ();
++
++  ymm = _mm256_set1_epi32 (1);
++  if (memcmp (&ymm, &x1, sizeof (ymm)))
++    abort ();
++
++  ymm = _mm256_set1_epi32 (2);
++  if (memcmp (&ymm, &x2, sizeof (ymm)))
++    abort ();
++
++  ymm = _mm256_set1_epi32 (3);
++  if (memcmp (&ymm, &x3, sizeof (ymm)))
++    abort ();
++
++  ymm = _mm256_set1_epi32 (4);
++  if (memcmp (&ymm, &x4, sizeof (ymm)))
++    abort ();
++
++  ymm = _mm256_set1_epi32 (5);
++  if (memcmp (&ymm, &x5, sizeof (ymm)))
++    abort ();
++
++  ymm = _mm256_set1_epi32 (6);
++  if (memcmp (&ymm, &x6, sizeof (ymm)))
++    abort ();
++
++  ymm = _mm256_set1_epi32 (7);
++  if (memcmp (&ymm, &x7, sizeof (ymm)))
++    abort ();
++
++  return _mm256_set1_epi32 (0x12349876);
++}
++#endif

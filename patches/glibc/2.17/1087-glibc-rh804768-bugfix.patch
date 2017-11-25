@@ -1,0 +1,657 @@
+#Contains the following patches from upstream:
+#
+#commit c3e94a953347ecf361ab400111dbb1a62505c7fe
+#Author: Andreas Krebbel <krebbel@linux.vnet.ibm.com>
+#Date:   Tue Mar 5 08:15:33 2013 +0100
+#
+#	S/390: Fix rt_sigprocmask syscall invocation in get/set/swapcontext.
+#
+#****commit e21d7aa71c0700b6611bd55881b862ac73c5cd5b
+#Author: Andreas Krebbel <krebbel@linux.vnet.ibm.com>
+#Date:   Thu Feb 21 09:47:55 2013 +0100
+#
+#	S/390: Fix _dl_runtime_profile for 32 bit.
+#
+#****commit f78b5caa6ece23ce86f6cabac8edf3ecd6850473
+#Author: Andreas Krebbel <krebbel@linux.vnet.ibm.com>
+#Date:   Mon Feb 18 10:29:40 2013 +0100
+#
+#	S/390: Fix _dl_runtime_profile
+#
+#
+#****commit bc101e2652728d8a6e8ece7c637e095618546a95
+#Author: Andreas Krebbel <krebbel@linux.vnet.ibm.com>
+#Date:   Wed Jan 23 10:00:24 2013 +0100
+#
+#	S/390: Fix setjmp/longjmp FPR save/restore
+#
+#****commit 5c95f7b66be2e59cf26f3c29cfab7657880bd76d
+#Author: Heiko Carstens <heiko.carstens@de.ibm.com>
+#Date:   Tue Apr 23 08:53:44 2013 +0200
+#
+#	S/390: Change struct statfs[64] member types to unsigned values
+
+diff -Nru glibc-2.17-c758a686/sysdeps/s390/bits/setjmp.h glibc-2.17-c758a686/sysdeps/s390/bits/setjmp.h
+--- glibc-2.17-c758a686/sysdeps/s390/bits/setjmp.h	2012-12-24 22:02:13.000000000 -0500
++++ glibc-2.17-c758a686/sysdeps/s390/bits/setjmp.h	2013-08-23 12:33:20.597299428 -0400
+@@ -34,7 +34,7 @@ typedef struct __s390_jmp_buf
+   long int __gregs[10];
+ 
+ # if __WORDSIZE == 64
+-  /* We save fpu registers 1, 3, 5 and 7.  */
++  /* We save fpu registers f8 - f15.  */
+   long __fpregs[8];
+ # else
+   /* We save fpu registers 4 and 6.  */
+diff -Nru glibc-2.17-c758a686/sysdeps/s390/s390-32/dl-trampoline.S glibc-2.17-c758a686/sysdeps/s390/s390-32/dl-trampoline.S
+--- glibc-2.17-c758a686/sysdeps/s390/s390-32/dl-trampoline.S	2012-12-24 22:02:13.000000000 -0500
++++ glibc-2.17-c758a686/sysdeps/s390/s390-32/dl-trampoline.S	2013-08-23 12:33:20.593298453 -0400
+@@ -95,16 +95,16 @@ _dl_runtime_profile:
+ 	lr     %r1,%r2			# function addr returned in r2
+ 	icm    %r0,15,20(%r12)		# load & test framesize
+ 	jnm    2f
++
+ 	lm     %r2,%r6,32(%r12)
+ 	ld     %f0,56(%r12)
+ 	ld     %f2,64(%r12)
+-	basr   %r14,%r1			# call resolved function
+-1:	lr     %r15,%r12		# remove stack frame
++	lr     %r15,%r12		# remove stack frame
+ 	cfi_def_cfa_register (15)
+ 	l      %r14,16(%r15)		# restore registers
+ 	l      %r12,12(%r15)
+-	l      %r6,8(%r15)
+-	br     %r14
++	br     %r1			# tail-call to the resolved function
++
+ 	cfi_def_cfa_register (12)
+ 2:	jz     4f			# framesize == 0 ?
+ 	ahi    %r0,7			# align framesize to 8
+@@ -131,7 +131,13 @@ _dl_runtime_profile:
+ 	la     %r4,32(%r12)		# pointer to struct La_s390_32_regs
+ 	la     %r5,72(%r12)		# pointer to struct La_s390_32_retval
+ 	basr   %r14,%r1			# call _dl_call_pltexit
+-	j      1b
++
++	lr     %r15,%r12		# remove stack frame
++	cfi_def_cfa_register (15)
++	l      %r14,16(%r15)		# restore registers
++	l      %r12,12(%r15)
++	br     %r14
++
+ 6:	.long  _dl_profile_fixup - 0b
+ 7:	.long  _dl_call_pltexit - 5b
+ 	cfi_endproc
+diff -Nru glibc-2.17-c758a686/sysdeps/s390/s390-64/dl-trampoline.S glibc-2.17-c758a686/sysdeps/s390/s390-64/dl-trampoline.S
+--- glibc-2.17-c758a686/sysdeps/s390/s390-64/dl-trampoline.S	2012-12-24 22:02:13.000000000 -0500
++++ glibc-2.17-c758a686/sysdeps/s390/s390-64/dl-trampoline.S	2013-08-23 12:46:11.478239405 -0400
+@@ -1,4 +1,4 @@
+-/* PLT trampolines.  s390 version.
++/* PLT trampolines.  s390x version.
+    Copyright (C) 2005 Free Software Foundation, Inc.
+    This file is part of the GNU C Library.
+ 
+@@ -20,8 +20,8 @@
+  * with the following linkage:
+  *   r2 - r6 : parameter registers
+  *   f0, f2, f4, f6 : floating point parameter registers
+- *   24(r15), 28(r15) : PLT arguments PLT1, PLT2
+- *   96(r15) : additional stack parameters
++ *   48(r15), 56(r15) : PLT arguments PLT1, PLT2
++ *   160(r15) : additional stack parameters
+  * The normal clobber rules for function calls apply:
+  *   r0 - r5 : call clobbered
+  *   r6 - r13 :	 call saved
+@@ -39,21 +39,21 @@
+ 	cfi_startproc
+ 	.align 16
+ _dl_runtime_resolve:
+-	stmg   2,5,64(15)	# save registers
+-	stg    14,96(15)
++	stmg   %r2,%r5,64(15)	# save call-clobbered argument registers
++	stg    %r14,96(15)
+ 	cfi_offset (r14, -64)
+-	lgr    0,15		# create stack frame
+-	aghi   15,-160
++	lgr    %r0,%r15
++	aghi   %r15,-160	# create stack frame
+ 	cfi_adjust_cfa_offset (160)
+-	stg    0,0(15)
+-	lmg    2,3,208(15)	# load args saved by PLT
+-	brasl  14,_dl_fixup	# call fixup
+-	lgr    1,2		# function addr returned in r2
+-	aghi   15,160		# remove stack frame
++	stg    %r0,0(%r15)      # write backchain
++	lmg    %r2,%r3,208(%r15)# load args saved by PLT
++	brasl  %r14,_dl_fixup	# call fixup
++	lgr    %r1,%r2		# function addr returned in r2
++	aghi   %r15,160		# remove stack frame
+ 	cfi_adjust_cfa_offset (-160)
+-	lg     14,96(15)	# restore registers
+-	lmg    2,5,64(15)
+-	br     1
++	lg     %r14,96(15)	# restore registers
++	lmg    %r2,%r5,64(15)
++	br     %r1
+ 	cfi_endproc
+ 	.size _dl_runtime_resolve, .-_dl_runtime_resolve
+ 
+@@ -64,13 +64,12 @@ _dl_runtime_resolve:
+ 	cfi_startproc
+ 	.align 16
+ _dl_runtime_profile:
+-	stmg   %r2,%r6,64(%r15)		# save registers
+-	std    %f0,104(%r15)
+-	std    %f2,112(%r15)
++	stmg   %r2,%r6,64(%r15)		# save call-clobbered arg regs
++	std    %f0,104(%r15)		# + r6 needed as arg for
++	std    %f2,112(%r15)		#  _dl_profile_fixup
+ 	std    %f4,120(%r15)
+ 	std    %f6,128(%r15)
+-	stg    %r6,16(%r15)
+-	stg    %r12,24(%r15)
++	stg    %r12,24(%r15)		# r12 is used as backup of r15
+ 	stg    %r14,32(%r15)
+ 	cfi_offset (r6, -96)
+ 	cfi_offset (f0, -56)
+@@ -79,10 +78,10 @@ _dl_runtime_profile:
+ 	cfi_offset (f6, -32)
+ 	cfi_offset (r12, -136)
+ 	cfi_offset (r14, -128)
+-	lgr    %r12,%r15		# create stack frame
++	lgr    %r12,%r15		# backup stack pointer
+ 	cfi_def_cfa_register (12)
+-	aghi   %r15,-160
+-	stg    %r12,0(%r15)
++	aghi   %r15,-160		# create stack frame
++	stg    %r12,0(%r15)		# save backchain
+ 	lmg    %r2,%r3,48(%r12)		# load arguments saved by PLT
+ 	lgr    %r4,%r14			# return address as third parameter
+ 	la     %r5,64(%r12)		# pointer to struct La_s390_32_regs
+@@ -92,18 +91,19 @@ _dl_runtime_profile:
+ 	lg     %r0,40(%r12)		# load framesize
+ 	ltgr   %r0,%r0
+ 	jnm    1f
+-	lmg    %r2,%r6,64(%r12)
+-	ld     %f0,104(%r12)
+-	ld     %f2,112(%r12)
++
++	lmg    %r2,%r6,64(%r12)		# framesize < 0 means no pltexit call
++	ld     %f0,104(%r12)		# so we can do a tail call without
++	ld     %f2,112(%r12)		# copying the arg overflow area
+ 	ld     %f4,120(%r12)
+ 	ld     %f6,128(%r12)
+-	basr   %r14,%r1			# call resolved function
+-0:	lgr    %r15,%r12		# remove stack frame
++
++	lgr    %r15,%r12		# remove stack frame
+ 	cfi_def_cfa_register (15)
+ 	lg     %r14,32(%r15)		# restore registers
+ 	lg     %r12,24(%r15)
+-	lg     %r6,16(%r15)
+-	br     %r14
++	br     %r1			# tail-call to resolved function
++
+ 	cfi_def_cfa_register (12)
+ 1:	jz     4f			# framesize == 0 ?
+ 	aghi   %r0,7			# align framesize to 8
+@@ -118,7 +118,7 @@ _dl_runtime_profile:
+ 	la     %r3,8(%r3)
+ 	brctg  %r0,3b
+ 4:	lmg    %r2,%r6,64(%r12)		# load register parameters
+-	ld     %f0,104(%r12)
++	ld     %f0,104(%r12)            # restore call-clobbered arg regs
+ 	ld     %f2,112(%r12)
+ 	ld     %f4,120(%r12)
+ 	ld     %f6,128(%r12)
+@@ -129,7 +129,13 @@ _dl_runtime_profile:
+ 	la     %r4,32(%r12)		# pointer to struct La_s390_32_regs
+ 	la     %r5,72(%r12)		# pointer to struct La_s390_32_retval
+ 	brasl  %r14,_dl_call_pltexit
+-	j      0b
++
++	lgr    %r15,%r12		# remove stack frame
++	cfi_def_cfa_register (15)
++	lg     %r14,32(%r15)		# restore registers
++	lg     %r12,24(%r15)
++	br     %r14
++
+ 	cfi_endproc
+ 	.size _dl_runtime_profile, .-_dl_runtime_profile
+ #endif
+diff -Nru glibc-2.17-c758a686/sysdeps/s390/s390-64/__longjmp.c glibc-2.17-c758a686/sysdeps/s390/s390-64/__longjmp.c
+--- glibc-2.17-c758a686/sysdeps/s390/s390-64/__longjmp.c	2012-12-24 22:02:13.000000000 -0500
++++ glibc-2.17-c758a686/sysdeps/s390/s390-64/__longjmp.c	2013-08-23 12:33:20.597299428 -0400
+@@ -42,10 +42,14 @@ __longjmp (__jmp_buf env, int val)
+   register void *r1 __asm ("%r1") = (void *) env;
+ #endif
+   /* Restore registers and jump back.  */
+-  asm volatile ("ld   %%f7,104(%1)\n\t"
+-		"ld   %%f5,96(%1)\n\t"
+-		"ld   %%f3,88(%1)\n\t"
+-		"ld   %%f1,80(%1)\n\t"
++  asm volatile ("ld    %%f8,80(%1)\n\t"
++		"ld    %%f9,88(%1)\n\t"
++		"ld    %%f10,96(%1)\n\t"
++		"ld    %%f11,104(%1)\n\t"
++		"ld    %%f12,112(%1)\n\t"
++		"ld    %%f13,120(%1)\n\t"
++		"ld    %%f14,128(%1)\n\t"
++		"ld    %%f15,136(%1)\n\t"
+ #ifdef PTR_DEMANGLE
+ 		"lmg  %%r6,%%r13,0(%1)\n\t"
+ 		"lmg  %%r4,%%r5,64(%1)\n\t"
+diff -Nru glibc-2.17-c758a686/sysdeps/s390/s390-64/setjmp.S glibc-2.17-c758a686/sysdeps/s390/s390-64/setjmp.S
+--- glibc-2.17-c758a686/sysdeps/s390/s390-64/setjmp.S	2012-12-24 22:02:13.000000000 -0500
++++ glibc-2.17-c758a686/sysdeps/s390/s390-64/setjmp.S	2013-08-23 12:33:20.598300448 -0400
+@@ -55,10 +55,14 @@ ENTRY(__sigsetjmp)
+ #else
+         stmg   %r6,%r15,0(%r2)      /* Store registers in jmp_buf.  */
+ #endif
+-	std    %f1,80(%r2)
+-	std    %f3,88(%r2)
+-	std    %f5,96(%r2)
+-	std    %f7,104(%r2)
++	std    %f8,80(%r2)
++	std    %f9,88(%r2)
++	std    %f10,96(%r2)
++	std    %f11,104(%r2)
++	std    %f12,112(%r2)
++	std    %f13,120(%r2)
++	std    %f14,128(%r2)
++	std    %f15,136(%r2)
+ #if defined NOT_IN_libc && defined IS_IN_rtld
+ 	/* In ld.so we never save the signal mask.  */
+ 	lghi   %r2,0
+diff -Nru glibc-2.17-c758a686/sysdeps/unix/sysv/linux/s390/bits/statfs.h glibc-2.17-c758a686/sysdeps/unix/sysv/linux/s390/bits/statfs.h
+--- glibc-2.17-c758a686/sysdeps/unix/sysv/linux/s390/bits/statfs.h	2012-12-24 22:02:13.000000000 -0500
++++ glibc-2.17-c758a686/sysdeps/unix/sysv/linux/s390/bits/statfs.h	2013-08-23 12:33:20.601180842 -0400
+@@ -23,8 +23,8 @@
+ 
+ struct statfs
+   {
+-    int f_type;
+-    int f_bsize;
++    unsigned int f_type;
++    unsigned int f_bsize;
+ #ifndef __USE_FILE_OFFSET64
+     __fsblkcnt_t f_blocks;
+     __fsblkcnt_t f_bfree;
+@@ -39,27 +39,27 @@ struct statfs
+     __fsfilcnt64_t f_ffree;
+ #endif
+     __fsid_t f_fsid;
+-    int f_namelen;
+-    int f_frsize;
+-    int f_flags;
+-    int f_spare[4];
++    unsigned int f_namelen;
++    unsigned int f_frsize;
++    unsigned int f_flags;
++    unsigned int f_spare[4];
+   };
+ 
+ #ifdef __USE_LARGEFILE64
+ struct statfs64
+   {
+-    int f_type;
+-    int f_bsize;
++    unsigned int f_type;
++    unsigned int f_bsize;
+     __fsblkcnt64_t f_blocks;
+     __fsblkcnt64_t f_bfree;
+     __fsblkcnt64_t f_bavail;
+     __fsfilcnt64_t f_files;
+     __fsfilcnt64_t f_ffree;
+     __fsid_t f_fsid;
+-    int f_namelen;
+-    int f_frsize;
+-    int f_flags;
+-    int f_spare[4];
++    unsigned int f_namelen;
++    unsigned int f_frsize;
++    unsigned int f_flags;
++    unsigned int f_spare[4];
+   };
+ #endif
+ 
+diff -Nru glibc-2.17-c758a686/sysdeps/unix/sysv/linux/s390/s390-32/getcontext.S glibc-2.17-c758a686/sysdeps/unix/sysv/linux/s390/s390-32/getcontext.S
+--- glibc-2.17-c758a686/sysdeps/unix/sysv/linux/s390/s390-32/getcontext.S	2012-12-24 22:02:13.000000000 -0500
++++ glibc-2.17-c758a686/sysdeps/unix/sysv/linux/s390/s390-32/getcontext.S	2013-08-23 12:33:20.588297827 -0400
+@@ -31,41 +31,42 @@
+   other than the PRESERVED state.  */
+ 
+ ENTRY(__getcontext)
+-	lr      %r5,%r2
++	lr      %r1,%r2
+ 
+ 	/* sigprocmask (SIG_BLOCK, NULL, &sc->sc_mask).  */
+ 	la      %r2,SIG_BLOCK
+ 	slr	%r3,%r3
+-	la	%r4,SC_MASK(%r5)
++	la	%r4,SC_MASK(%r1)
++	lhi	%r5,_NSIG8
+ 	svc	SYS_ify(rt_sigprocmask)
+ 
+ 	/* Store fpu context.  */
+-	stfpc   SC_FPC(%r5)
+-	std     %f0,SC_FPRS(%r5)
+-	std     %f1,SC_FPRS+8(%r5)
+-	std     %f2,SC_FPRS+16(%r5)
+-	std     %f3,SC_FPRS+24(%r5)
+-	std     %f4,SC_FPRS+32(%r5)
+-	std     %f5,SC_FPRS+40(%r5)
+-	std     %f6,SC_FPRS+48(%r5)
+-	std     %f7,SC_FPRS+56(%r5)
+-	std     %f8,SC_FPRS+64(%r5)
+-	std     %f9,SC_FPRS+72(%r5)
+-	std     %f10,SC_FPRS+80(%r5)
+-	std     %f11,SC_FPRS+88(%r5)
+-	std     %f12,SC_FPRS+96(%r5)
+-	std     %f13,SC_FPRS+104(%r5)
+-	std     %f14,SC_FPRS+112(%r5)
+-	std     %f15,SC_FPRS+120(%r5)
++	stfpc   SC_FPC(%r1)
++	std     %f0,SC_FPRS(%r1)
++	std     %f1,SC_FPRS+8(%r1)
++	std     %f2,SC_FPRS+16(%r1)
++	std     %f3,SC_FPRS+24(%r1)
++	std     %f4,SC_FPRS+32(%r1)
++	std     %f5,SC_FPRS+40(%r1)
++	std     %f6,SC_FPRS+48(%r1)
++	std     %f7,SC_FPRS+56(%r1)
++	std     %f8,SC_FPRS+64(%r1)
++	std     %f9,SC_FPRS+72(%r1)
++	std     %f10,SC_FPRS+80(%r1)
++	std     %f11,SC_FPRS+88(%r1)
++	std     %f12,SC_FPRS+96(%r1)
++	std     %f13,SC_FPRS+104(%r1)
++	std     %f14,SC_FPRS+112(%r1)
++	std     %f15,SC_FPRS+120(%r1)
+ 
+ 	/* Set __getcontext return value to 0.  */
+ 	slr     %r2,%r2
+ 
+ 	/* Store access registers.  */
+-	stam    %a0,%a15,SC_ACRS(%r5)
++	stam    %a0,%a15,SC_ACRS(%r1)
+ 
+ 	/* Store general purpose registers.  */
+-	stm     %r0,%r15,SC_GPRS(%r5)
++	stm     %r0,%r15,SC_GPRS(%r1)
+ 
+ 	/* Return.  */
+ 	br	%r14
+diff -Nru glibc-2.17-c758a686/sysdeps/unix/sysv/linux/s390/s390-32/setcontext.S glibc-2.17-c758a686/sysdeps/unix/sysv/linux/s390/s390-32/setcontext.S
+--- glibc-2.17-c758a686/sysdeps/unix/sysv/linux/s390/s390-32/setcontext.S	2012-12-24 22:02:13.000000000 -0500
++++ glibc-2.17-c758a686/sysdeps/unix/sysv/linux/s390/s390-32/setcontext.S	2013-08-23 12:33:20.588297827 -0400
+@@ -31,38 +31,39 @@
+   other than the PRESERVED state.  */
+ 
+ ENTRY(__setcontext)
+-	lr	%r5,%r2
++	lr	%r1,%r2
+ 
+ 	/* sigprocmask (SIG_SETMASK, &sc->sc_mask, NULL).  */
+ 	la      %r2,SIG_BLOCK
+-	la	%r3,SC_MASK(%r5)
++	la	%r3,SC_MASK(%r1)
+ 	slr	%r4,%r4
++	lhi	%r5,_NSIG8
+ 	svc	SYS_ify(rt_sigprocmask)
+ 
+ 	/* Load fpu context.  */
+-	lfpc	SC_FPC(%r5)
+-	ld	%f0,SC_FPRS(%r5)
+-	ld      %f1,SC_FPRS+8(%r5)
+-	ld      %f2,SC_FPRS+16(%r5)
+-	ld      %f3,SC_FPRS+24(%r5)
+-	ld      %f4,SC_FPRS+32(%r5)
+-	ld      %f5,SC_FPRS+40(%r5)
+-	ld      %f6,SC_FPRS+48(%r5)
+-	ld      %f7,SC_FPRS+56(%r5)
+-	ld      %f8,SC_FPRS+64(%r5)
+-	ld      %f9,SC_FPRS+72(%r5)
+-	ld      %f10,SC_FPRS+80(%r5)
+-	ld      %f11,SC_FPRS+88(%r5)
+-	ld      %f12,SC_FPRS+96(%r5)
+-	ld      %f13,SC_FPRS+104(%r5)
+-	ld      %f14,SC_FPRS+112(%r5)
+-	ld      %f15,SC_FPRS+120(%r5)
++	lfpc	SC_FPC(%r1)
++	ld	%f0,SC_FPRS(%r1)
++	ld      %f1,SC_FPRS+8(%r1)
++	ld      %f2,SC_FPRS+16(%r1)
++	ld      %f3,SC_FPRS+24(%r1)
++	ld      %f4,SC_FPRS+32(%r1)
++	ld      %f5,SC_FPRS+40(%r1)
++	ld      %f6,SC_FPRS+48(%r1)
++	ld      %f7,SC_FPRS+56(%r1)
++	ld      %f8,SC_FPRS+64(%r1)
++	ld      %f9,SC_FPRS+72(%r1)
++	ld      %f10,SC_FPRS+80(%r1)
++	ld      %f11,SC_FPRS+88(%r1)
++	ld      %f12,SC_FPRS+96(%r1)
++	ld      %f13,SC_FPRS+104(%r1)
++	ld      %f14,SC_FPRS+112(%r1)
++	ld      %f15,SC_FPRS+120(%r1)
+  
+ 	/* Don't touch %a0, used for thread purposes.  */
+-	lam	%a1,%a15,SC_ACRS+4(%r5)
++	lam	%a1,%a15,SC_ACRS+4(%r1)
+ 
+ 	/* Load general purpose registers.  */
+-	lm	%r0,%r15,SC_GPRS(%r5)
++	lm	%r0,%r15,SC_GPRS(%r1)
+ 
+ 	/* Return.  */
+ 	br	%r14
+diff -Nru glibc-2.17-c758a686/sysdeps/unix/sysv/linux/s390/s390-32/swapcontext.S glibc-2.17-c758a686/sysdeps/unix/sysv/linux/s390/s390-32/swapcontext.S
+--- glibc-2.17-c758a686/sysdeps/unix/sysv/linux/s390/s390-32/swapcontext.S	2012-12-24 22:02:13.000000000 -0500
++++ glibc-2.17-c758a686/sysdeps/unix/sysv/linux/s390/s390-32/swapcontext.S	2013-08-23 12:33:20.589298155 -0400
+@@ -34,12 +34,13 @@
+ 
+ ENTRY(__swapcontext)
+ 	lr	%r1,%r2
+-	lr      %r5,%r3
++	lr      %r0,%r3
+ 
+ 	/* sigprocmask (SIG_BLOCK, NULL, &sc->sc_mask).  */
+ 	la      %r2,SIG_BLOCK
+ 	slr	%r3,%r3
+ 	la	%r4,SC_MASK(%r1)
++	lhi	%r5,_NSIG8
+ 	svc	SYS_ify(rt_sigprocmask)
+ 
+ 	/* Store fpu context.  */
+@@ -72,11 +73,14 @@ ENTRY(__swapcontext)
+ 	
+ 	/* sigprocmask (SIG_SETMASK, &sc->sc_mask, NULL).  */
+ 	la      %r2,SIG_BLOCK
++	lr	%r5,%r0
+ 	la	%r3,SC_MASK(%r5)
+ 	slr	%r4,%r4
++	lhi	%r5,_NSIG8
+ 	svc	SYS_ify(rt_sigprocmask)
+ 
+ 	/* Load fpu context.  */
++	lr	%r5,%r0
+ 	lfpc	SC_FPC(%r5)
+ 	ld	%f0,SC_FPRS(%r5)
+ 	ld      %f1,SC_FPRS+8(%r5)
+diff -Nru glibc-2.17-c758a686/sysdeps/unix/sysv/linux/s390/s390-64/getcontext.S glibc-2.17-c758a686/sysdeps/unix/sysv/linux/s390/s390-64/getcontext.S
+--- glibc-2.17-c758a686/sysdeps/unix/sysv/linux/s390/s390-64/getcontext.S	2012-12-24 22:02:13.000000000 -0500
++++ glibc-2.17-c758a686/sysdeps/unix/sysv/linux/s390/s390-64/getcontext.S	2013-08-23 12:33:20.590298812 -0400
+@@ -31,41 +31,42 @@
+   other than the PRESERVED state.  */
+ 
+ ENTRY(__getcontext)
+-	lgr     %r5,%r2
++	lgr     %r1,%r2
+ 
+ 	/* sigprocmask (SIG_BLOCK, NULL, &sc->sc_mask).  */
+ 	la      %r2,SIG_BLOCK
+ 	slgr	%r3,%r3
+-	la	%r4,SC_MASK(%r5)
++	la	%r4,SC_MASK(%r1)
++	lghi	%r5,_NSIG8
+ 	svc	SYS_ify(rt_sigprocmask)
+ 
+ 	/* Store fpu context.  */
+-	stfpc   SC_FPC(%r5)
+-	std     %f0,SC_FPRS(%r5)
+-	std     %f1,SC_FPRS+8(%r5)
+-	std     %f2,SC_FPRS+16(%r5)
+-	std     %f3,SC_FPRS+24(%r5)
+-	std     %f4,SC_FPRS+32(%r5)
+-	std     %f5,SC_FPRS+40(%r5)
+-	std     %f6,SC_FPRS+48(%r5)
+-	std     %f7,SC_FPRS+56(%r5)
+-	std     %f8,SC_FPRS+64(%r5)
+-	std     %f9,SC_FPRS+72(%r5)
+-	std     %f10,SC_FPRS+80(%r5)
+-	std     %f11,SC_FPRS+88(%r5)
+-	std     %f12,SC_FPRS+96(%r5)
+-	std     %f13,SC_FPRS+104(%r5)
+-	std     %f14,SC_FPRS+112(%r5)
+-	std     %f15,SC_FPRS+120(%r5)
++	stfpc   SC_FPC(%r1)
++	std     %f0,SC_FPRS(%r1)
++	std     %f1,SC_FPRS+8(%r1)
++	std     %f2,SC_FPRS+16(%r1)
++	std     %f3,SC_FPRS+24(%r1)
++	std     %f4,SC_FPRS+32(%r1)
++	std     %f5,SC_FPRS+40(%r1)
++	std     %f6,SC_FPRS+48(%r1)
++	std     %f7,SC_FPRS+56(%r1)
++	std     %f8,SC_FPRS+64(%r1)
++	std     %f9,SC_FPRS+72(%r1)
++	std     %f10,SC_FPRS+80(%r1)
++	std     %f11,SC_FPRS+88(%r1)
++	std     %f12,SC_FPRS+96(%r1)
++	std     %f13,SC_FPRS+104(%r1)
++	std     %f14,SC_FPRS+112(%r1)
++	std     %f15,SC_FPRS+120(%r1)
+ 
+ 	/* Set __getcontext return value to 0.  */
+ 	slgr    %r2,%r2
+ 
+ 	/* Store access registers.  */
+-	stam    %a0,%a15,SC_ACRS(%r5)
++	stam    %a0,%a15,SC_ACRS(%r1)
+ 
+ 	/* Store general purpose registers.  */
+-	stmg    %r0,%r15,SC_GPRS(%r5)
++	stmg    %r0,%r15,SC_GPRS(%r1)
+ 
+ 	/* Return.  */
+ 	br	%r14
+diff -Nru glibc-2.17-c758a686/sysdeps/unix/sysv/linux/s390/s390-64/setcontext.S glibc-2.17-c758a686/sysdeps/unix/sysv/linux/s390/s390-64/setcontext.S
+--- glibc-2.17-c758a686/sysdeps/unix/sysv/linux/s390/s390-64/setcontext.S	2012-12-24 22:02:13.000000000 -0500
++++ glibc-2.17-c758a686/sysdeps/unix/sysv/linux/s390/s390-64/setcontext.S	2013-08-23 12:33:20.591298098 -0400
+@@ -31,38 +31,39 @@
+   other than the PRESERVED state.  */
+ 
+ ENTRY(__setcontext)
+-	lgr	%r5,%r2
++	lgr	%r1,%r2
+ 
+ 	/* sigprocmask (SIG_SETMASK, &sc->sc_mask, NULL).  */
+ 	la      %r2,SIG_BLOCK
+-	la	%r3,SC_MASK(%r5)
++	la	%r3,SC_MASK(%r1)
+ 	slgr	%r4,%r4
++	lghi	%r5,_NSIG8
+ 	svc	SYS_ify(rt_sigprocmask)
+ 
+ 	/* Load fpu context.  */
+-	lfpc	SC_FPC(%r5)
+-	ld	%f0,SC_FPRS(%r5)
+-	ld      %f1,SC_FPRS+8(%r5)
+-	ld      %f2,SC_FPRS+16(%r5)
+-	ld      %f3,SC_FPRS+24(%r5)
+-	ld      %f4,SC_FPRS+32(%r5)
+-	ld      %f5,SC_FPRS+40(%r5)
+-	ld      %f6,SC_FPRS+48(%r5)
+-	ld      %f7,SC_FPRS+56(%r5)
+-	ld      %f8,SC_FPRS+64(%r5)
+-	ld      %f9,SC_FPRS+72(%r5)
+-	ld      %f10,SC_FPRS+80(%r5)
+-	ld      %f11,SC_FPRS+88(%r5)
+-	ld      %f12,SC_FPRS+96(%r5)
+-	ld      %f13,SC_FPRS+104(%r5)
+-	ld      %f14,SC_FPRS+112(%r5)
+-	ld      %f15,SC_FPRS+120(%r5)
++	lfpc	SC_FPC(%r1)
++	ld	%f0,SC_FPRS(%r1)
++	ld      %f1,SC_FPRS+8(%r1)
++	ld      %f2,SC_FPRS+16(%r1)
++	ld      %f3,SC_FPRS+24(%r1)
++	ld      %f4,SC_FPRS+32(%r1)
++	ld      %f5,SC_FPRS+40(%r1)
++	ld      %f6,SC_FPRS+48(%r1)
++	ld      %f7,SC_FPRS+56(%r1)
++	ld      %f8,SC_FPRS+64(%r1)
++	ld      %f9,SC_FPRS+72(%r1)
++	ld      %f10,SC_FPRS+80(%r1)
++	ld      %f11,SC_FPRS+88(%r1)
++	ld      %f12,SC_FPRS+96(%r1)
++	ld      %f13,SC_FPRS+104(%r1)
++	ld      %f14,SC_FPRS+112(%r1)
++	ld      %f15,SC_FPRS+120(%r1)
+ 
+ 	/* Don't touch %a0 and %a1, used for thread purposes.  */
+-	lam     %a2,%a15,SC_ACRS+8(%r5)
++	lam     %a2,%a15,SC_ACRS+8(%r1)
+  
+ 	/* Load general purpose registers.  */
+-	lmg	%r0,%r15,SC_GPRS(%r5)
++	lmg	%r0,%r15,SC_GPRS(%r1)
+ 
+ 	/* Return.  */
+ 	br	%r14
+diff -Nru glibc-2.17-c758a686/sysdeps/unix/sysv/linux/s390/s390-64/swapcontext.S glibc-2.17-c758a686/sysdeps/unix/sysv/linux/s390/s390-64/swapcontext.S
+--- glibc-2.17-c758a686/sysdeps/unix/sysv/linux/s390/s390-64/swapcontext.S	2012-12-24 22:02:13.000000000 -0500
++++ glibc-2.17-c758a686/sysdeps/unix/sysv/linux/s390/s390-64/swapcontext.S	2013-08-23 12:33:20.591298098 -0400
+@@ -34,12 +34,13 @@
+ 
+ ENTRY(__swapcontext)
+ 	lgr	%r1,%r2
+-	lgr      %r5,%r3
++	lgr     %r0,%r3
+ 
+ 	/* sigprocmask (SIG_BLOCK, NULL, &sc->sc_mask).  */
+ 	la      %r2,SIG_BLOCK
+ 	slgr	%r3,%r3
+ 	la	%r4,SC_MASK(%r1)
++	lghi	%r5,_NSIG8
+ 	svc	SYS_ify(rt_sigprocmask)
+ 
+ 	/* Store fpu context.  */
+@@ -72,11 +73,14 @@ ENTRY(__swapcontext)
+ 
+ 	/* sigprocmask (SIG_SETMASK, &sc->sc_mask, NULL).  */
+ 	la      %r2,SIG_BLOCK
++	lgr	%r5,%r0
+ 	la	%r3,SC_MASK(%r5)
++	lghi	%r5,_NSIG8
+ 	slgr	%r4,%r4
+ 	svc	SYS_ify(rt_sigprocmask)
+ 
+ 	/* Load fpu context.  */
++	lgr	%r5,%r0
+ 	lfpc	SC_FPC(%r5)
+ 	ld	%f0,SC_FPRS(%r5)
+ 	ld      %f1,SC_FPRS+8(%r5)
+diff -Nru glibc-2.17-c758a686/sysdeps/unix/sysv/linux/s390/ucontext_i.sym glibc-2.17-c758a686/sysdeps/unix/sysv/linux/s390/ucontext_i.sym
+--- glibc-2.17-c758a686/sysdeps/unix/sysv/linux/s390/ucontext_i.sym	2012-12-24 22:02:13.000000000 -0500
++++ glibc-2.17-c758a686/sysdeps/unix/sysv/linux/s390/ucontext_i.sym	2013-08-23 12:33:20.591298098 -0400
+@@ -8,6 +8,8 @@ SIG_BLOCK
+ SIG_UNBLOCK
+ SIG_SETMASK
+ 
++_NSIG8          (_NSIG / 8)
++
+ #define ucontext(member)	offsetof (ucontext_t, member)
+ #define mcontext(member)	ucontext (uc_mcontext.member)
+ 

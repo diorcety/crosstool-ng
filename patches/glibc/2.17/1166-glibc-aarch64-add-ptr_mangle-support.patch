@@ -1,0 +1,233 @@
+commit 9188b6818a3d1a6e6d89bf10fa4aea27a591494c
+Author: Venkataramanan Kumar <venkataramanan.kumar@linaro.org>
+Date:   Wed Jan 1 17:47:14 2014 +0000
+
+    [AArch64] Pointer mangling support for AArch64.
+
+diff --git glibc-2.17-c758a686/ports/sysdeps/aarch64/__longjmp.S glibc-2.17-c758a686/ports/sysdeps/aarch64/__longjmp.S
+index 250f2af..2d38bbf 100644
+--- glibc-2.17-c758a686/ports/sysdeps/aarch64/__longjmp.S
++++ glibc-2.17-c758a686/ports/sysdeps/aarch64/__longjmp.S
+@@ -50,8 +50,12 @@ ENTRY (__longjmp)
+ 	ldp	x23, x24, [x0, #JB_X23<<3]
+ 	ldp	x25, x26, [x0, #JB_X25<<3]
+ 	ldp	x27, x28, [x0, #JB_X27<<3]
++#ifdef PTR_DEMANGLE
++	ldp	x29,  x4, [x0, #JB_X29<<3]
++	PTR_DEMANGLE (x30, x4, x3, x2)
++#else
+ 	ldp	x29, x30, [x0, #JB_X29<<3]
+-
++#endif
+ 	ldp	 d8,  d9, [x0, #JB_D8<<3]
+ 	ldp	d10, d11, [x0, #JB_D10<<3]
+ 	ldp	d12, d13, [x0, #JB_D12<<3]
+@@ -87,8 +91,12 @@ ENTRY (__longjmp)
+ 	cfi_same_value(d13)
+ 	cfi_same_value(d14)
+ 	cfi_same_value(d15)
+-
+-	ldr	x5,  [x0, #JB_SP<<3]
++#ifdef PTR_DEMANGLE
++	ldr	x4, [x0, #JB_SP<<3]
++	PTR_DEMANGLE (x5, x4, x3, x2)
++#else
++	ldr	x5, [x0, #JB_SP<<3]
++#endif
+ 	mov	sp, x5
+ 	cmp	x1, #0
+ 	mov	x0, #1
+diff --git glibc-2.17-c758a686/ports/sysdeps/aarch64/jmpbuf-offsets.h glibc-2.17-c758a686/ports/sysdeps/aarch64/jmpbuf-offsets.h
+index 84c2ccc..bcf2afa 100644
+--- glibc-2.17-c758a686/ports/sysdeps/aarch64/jmpbuf-offsets.h
++++ glibc-2.17-c758a686/ports/sysdeps/aarch64/jmpbuf-offsets.h
+@@ -39,6 +39,22 @@
+ #define JB_D14		 20
+ #define JB_D15		 21
+ 
++#ifndef  __ASSEMBLER__
++#include <setjmp.h>
++#include <stdint.h>
++#include <sysdep.h>
++
++static inline uintptr_t __attribute__ ((unused))
++_jmpbuf_sp (__jmp_buf jmpbuf)
++{
++  uintptr_t sp = jmpbuf[JB_SP];
++#ifdef PTR_DEMANGLE
++  PTR_DEMANGLE (sp);
++#endif
++  return sp;
++}
++#endif
++
+ /* Helper for generic ____longjmp_chk(). */
+ #define JB_FRAME_ADDRESS(buf) \
+-  ((void *) (buf[JB_SP]))
++  ((void *) _jmpbuf_sp (buf))
+diff --git glibc-2.17-c758a686/ports/sysdeps/aarch64/jmpbuf-unwind.h glibc-2.17-c758a686/ports/sysdeps/aarch64/jmpbuf-unwind.h
+index 22c6c2b..39a5dc2 100644
+--- glibc-2.17-c758a686/ports/sysdeps/aarch64/jmpbuf-unwind.h
++++ glibc-2.17-c758a686/ports/sysdeps/aarch64/jmpbuf-unwind.h
+@@ -29,16 +29,6 @@
+ #define _JMPBUF_CFA_UNWINDS_ADJ(jmpbuf, context, adj) \
+   _JMPBUF_UNWINDS_ADJ (jmpbuf, (void *) _Unwind_GetCFA (context), adj)
+ 
+-static inline uintptr_t __attribute__ ((unused))
+-_jmpbuf_sp (__jmp_buf jmpbuf)
+-{
+-  uintptr_t sp = jmpbuf[JB_SP];
+-#ifdef PTR_DEMANGLE
+-  PTR_DEMANGLE (sp);
+-#endif
+-  return sp;
+-}
+-
+ #define _JMPBUF_UNWINDS_ADJ(_jmpbuf, _address, _adj) \
+   ((uintptr_t) (_address) - (_adj) < _jmpbuf_sp (_jmpbuf) - (_adj))
+ 
+diff --git glibc-2.17-c758a686/ports/sysdeps/aarch64/setjmp.S glibc-2.17-c758a686/ports/sysdeps/aarch64/setjmp.S
+index cb94e01..5822abd 100644
+--- glibc-2.17-c758a686/ports/sysdeps/aarch64/setjmp.S
++++ glibc-2.17-c758a686/ports/sysdeps/aarch64/setjmp.S
+@@ -39,13 +39,25 @@ ENTRY (__sigsetjmp)
+ 	stp	x23, x24, [x0, #JB_X23<<3]
+ 	stp	x25, x26, [x0, #JB_X25<<3]
+ 	stp	x27, x28, [x0, #JB_X27<<3]
++
++#ifdef PTR_MANGLE
++	PTR_MANGLE (x4, x30, x3, x2)
++	stp	x29,  x4, [x0, #JB_X29<<3]
++#else
+ 	stp	x29, x30, [x0, #JB_X29<<3]
++#endif
+ 	stp	 d8,  d9, [x0, #JB_D8<<3]
+ 	stp	d10, d11, [x0, #JB_D10<<3]
+ 	stp	d12, d13, [x0, #JB_D12<<3]
+ 	stp	d14, d15, [x0, #JB_D14<<3]
++#ifdef PTR_MANGLE
++	mov	x4, sp
++	PTR_MANGLE (x5, x4, x3, x2)
++	str	x5, [x0, #JB_SP<<3]
++#else
+ 	mov	x2,  sp
+ 	str	x2,  [x0, #JB_SP<<3]
++#endif
+ #if defined NOT_IN_libc && defined IS_IN_rtld
+ 	/* In ld.so we never save the signal mask */
+ 	mov	w0, #0
+diff --git glibc-2.17-c758a686/ports/sysdeps/aarch64/sysdep.h glibc-2.17-c758a686/ports/sysdeps/aarch64/sysdep.h
+index 0dd597a..7169ba7 100644
+--- glibc-2.17-c758a686/ports/sysdeps/aarch64/sysdep.h
++++ glibc-2.17-c758a686/ports/sysdeps/aarch64/sysdep.h
+@@ -78,6 +78,17 @@
+ # define L(name)         .L##name
+ #endif
+ 
++/* Load or store to/from a pc-relative EXPR into/from R, using T.  */
++#define LDST_PCREL(OP, R, T, EXPR)  \
++	adrp	T, EXPR;	    \
++	OP	R, [T, #:lo12:EXPR];\
++
++/* Load or store to/from a got-relative EXPR into/from R, using T.  */
++#define LDST_GLOBAL(OP, R, T, EXPR)     \
++	adrp	T, :got:EXPR;		\
++	ldr	T, [T, #:got_lo12:EXPR];\
++	OP	R, [T];
++
+ /* Since C identifiers are not normally prefixed with an underscore
+    on this system, the asm identifier `syscall_error' intrudes on the
+    C name space.  Make sure we use an innocuous name.  */
+diff --git glibc-2.17-c758a686/ports/sysdeps/unix/sysv/linux/aarch64/sysdep.h glibc-2.17-c758a686/ports/sysdeps/unix/sysv/linux/aarch64/sysdep.h
+index f3f0ada..5ccf1da 100644
+--- glibc-2.17-c758a686/ports/sysdeps/unix/sysv/linux/aarch64/sysdep.h
++++ glibc-2.17-c758a686/ports/sysdeps/unix/sysv/linux/aarch64/sysdep.h
+@@ -371,8 +371,44 @@ __local_syscall_error:						\
+ 
+ #endif	/* __ASSEMBLER__ */
+ 
+-/* Pointer mangling is not yet supported for AArch64.  */
+-#define PTR_MANGLE(var) (void) (var)
+-#define PTR_DEMANGLE(var) (void) (var)
++/* Pointer mangling is supported for AArch64.  */
++#if (defined NOT_IN_libc && defined IS_IN_rtld) || \
++  (!defined SHARED && (!defined NOT_IN_libc || defined IS_IN_libpthread))
++# ifdef __ASSEMBLER__
++#  define PTR_MANGLE(dst, src, guard, tmp)                                \
++  LDST_PCREL (ldr, guard, tmp, C_SYMBOL_NAME(__pointer_chk_guard_local)); \
++  PTR_MANGLE2 (dst, src, guard)
++/* Use PTR_MANGLE2 for efficiency if guard is already loaded.  */
++#  define PTR_MANGLE2(dst, src, guard)\
++  eor dst, src, guard
++#  define PTR_DEMANGLE(dst, src, guard, tmp)\
++  PTR_MANGLE (dst, src, guard, tmp)
++#  define PTR_DEMANGLE2(dst, src, guard)\
++  PTR_MANGLE2 (dst, src, guard)
++# else
++extern uintptr_t __pointer_chk_guard_local attribute_relro attribute_hidden;
++#  define PTR_MANGLE(var) \
++  (var) = (__typeof (var)) ((uintptr_t) (var) ^ __pointer_chk_guard_local)
++#  define PTR_DEMANGLE(var)     PTR_MANGLE (var)
++# endif
++#else
++# ifdef __ASSEMBLER__
++#  define PTR_MANGLE(dst, src, guard, tmp)                             \
++  LDST_GLOBAL (ldr, guard, tmp, C_SYMBOL_NAME(__pointer_chk_guard));   \
++  PTR_MANGLE2 (dst, src, guard)
++/* Use PTR_MANGLE2 for efficiency if guard is already loaded.  */
++#  define PTR_MANGLE2(dst, src, guard)\
++  eor dst, src, guard
++#  define PTR_DEMANGLE(dst, src, guard, tmp)\
++  PTR_MANGLE (dst, src, guard, tmp)
++#  define PTR_DEMANGLE2(dst, src, guard)\
++  PTR_MANGLE2 (dst, src, guard)
++# else
++extern uintptr_t __pointer_chk_guard attribute_relro;
++#  define PTR_MANGLE(var) \
++  (var) = (__typeof (var)) ((uintptr_t) (var) ^ __pointer_chk_guard)
++#  define PTR_DEMANGLE(var) PTR_MANGLE (var)
++# endif
++#endif
+ 
+ #endif /* linux/aarch64/sysdep.h */
+commit 0b1f8e35640f5b3f7af11764ade3ff060211c309
+Author: Carlos O'Donell <carlos@redhat.com>
+Date:   Mon Sep 23 01:44:38 2013 -0400
+
+    BZ #15754: Fix test case for ARM.
+    
+    Statically built binaries use __pointer_chk_guard_local,
+    while dynamically built binaries use __pointer_chk_guard.
+    Provide the right definition depending on the test case
+    we are building.
+
+diff --git glibc-2.17-c758a686/elf/Makefile glibc-2.17-c758a686/elf/Makefile
+index cb8da93..27d249b 100644
+--- glibc-2.17-c758a686/elf/Makefile
++++ glibc-2.17-c758a686/elf/Makefile
+@@ -1019,6 +1019,9 @@ tst-stackguard1-ARGS = --command "$(host-test-program-cmd) --child"
+ tst-stackguard1-static-ARGS = --command "$(objpfx)tst-stackguard1-static --child"
+ 
+ tst-ptrguard1-ARGS = --command "$(host-built-program-cmd) --child"
++# When built statically, the pointer guard interface uses
++# __pointer_chk_guard_local.
++CFLAGS-tst-ptrguard1-static.c = -DPTRGUARD_LOCAL
+ tst-ptrguard1-static-ARGS = --command "$(objpfx)tst-ptrguard1-static --child"
+ 
+ $(objpfx)tst-leaks1: $(libdl)
+diff --git glibc-2.17-c758a686/sysdeps/generic/stackguard-macros.h glibc-2.17-c758a686/sysdeps/generic/stackguard-macros.h
+index 4fa3d96..b4a6b23 100644
+--- glibc-2.17-c758a686/sysdeps/generic/stackguard-macros.h
++++ glibc-2.17-c758a686/sysdeps/generic/stackguard-macros.h
+@@ -3,5 +3,10 @@
+ extern uintptr_t __stack_chk_guard;
+ #define STACK_CHK_GUARD __stack_chk_guard
+ 
++#ifdef PTRGUARD_LOCAL
+ extern uintptr_t __pointer_chk_guard_local;
+-#define POINTER_CHK_GUARD __pointer_chk_guard_local
++# define POINTER_CHK_GUARD __pointer_chk_guard_local
++#else
++extern uintptr_t __pointer_chk_guard;
++# define POINTER_CHK_GUARD __pointer_chk_guard
++#endif

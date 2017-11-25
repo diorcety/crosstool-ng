@@ -1,0 +1,104 @@
+#
+# commit f8e3e9f31bfd71641418897228fa1732170b69cc
+# Author: Alan Modra <amodra@gmail.com>
+# Date:   Thu Oct 3 13:51:52 2013 +0930
+# 
+#     Correct little-endian relocation of UADDR64,32,16.
+# 
+#         * sysdeps/powerpc/powerpc32/dl-machine.c (__process_machine_rela):
+#         Correct handling of unaligned relocs for little-endian.
+#         * sysdeps/powerpc/powerpc64/dl-machine.h (elf_machine_rela): Likewise.
+# 
+diff -urN glibc-2.17-c758a686/sysdeps/powerpc/powerpc32/dl-machine.c glibc-2.17-c758a686/sysdeps/powerpc/powerpc32/dl-machine.c
+--- glibc-2.17-c758a686/sysdeps/powerpc/powerpc32/dl-machine.c	2012-12-24 22:02:13.000000000 -0500
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc32/dl-machine.c	2014-11-11 18:51:36.140570654 -0500
+@@ -423,6 +423,12 @@
+ 			Elf32_Addr const finaladdr,
+ 			int rinfo)
+ {
++  union unaligned
++    {
++      unsigned u2 __attribute__ ((mode (HI)));
++      unsigned u4 __attribute__ ((mode (SI)));
++    } __attribute__((__packed__));
++
+   switch (rinfo)
+     {
+     case R_PPC_NONE:
+@@ -439,10 +445,7 @@
+       return;
+ 
+     case R_PPC_UADDR32:
+-      ((char *) reloc_addr)[0] = finaladdr >> 24;
+-      ((char *) reloc_addr)[1] = finaladdr >> 16;
+-      ((char *) reloc_addr)[2] = finaladdr >> 8;
+-      ((char *) reloc_addr)[3] = finaladdr;
++      ((union unaligned *) reloc_addr)->u4 = finaladdr;
+       break;
+ 
+     case R_PPC_ADDR24:
+@@ -460,8 +463,7 @@
+     case R_PPC_UADDR16:
+       if (__builtin_expect (finaladdr > 0x7fff && finaladdr < 0xffff8000, 0))
+ 	_dl_reloc_overflow (map,  "R_PPC_UADDR16", reloc_addr, refsym);
+-      ((char *) reloc_addr)[0] = finaladdr >> 8;
+-      ((char *) reloc_addr)[1] = finaladdr;
++      ((union unaligned *) reloc_addr)->u2 = finaladdr;
+       break;
+ 
+     case R_PPC_ADDR16_LO:
+diff -urN glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/dl-machine.h glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/dl-machine.h
+--- glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/dl-machine.h	2012-12-24 22:02:13.000000000 -0500
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/dl-machine.h	2014-11-11 18:51:36.141570651 -0500
+@@ -561,6 +561,12 @@
+   Elf64_Addr *const reloc_addr = reloc_addr_arg;
+   const int r_type = ELF64_R_TYPE (reloc->r_info);
+   const Elf64_Sym *const refsym = sym;
++  union unaligned
++    {
++      unsigned u2 __attribute__ ((mode (HI)));
++      unsigned u4 __attribute__ ((mode (SI)));
++      unsigned u8 __attribute__ ((mode (DI)));
++    } __attribute__((__packed__));
+ 
+   if (r_type == R_PPC64_RELATIVE)
+     {
+@@ -742,23 +748,11 @@
+       return;
+ 
+     case R_PPC64_UADDR64:
+-      /* We are big-endian.  */
+-      ((char *) reloc_addr_arg)[0] = (value >> 56) & 0xff;
+-      ((char *) reloc_addr_arg)[1] = (value >> 48) & 0xff;
+-      ((char *) reloc_addr_arg)[2] = (value >> 40) & 0xff;
+-      ((char *) reloc_addr_arg)[3] = (value >> 32) & 0xff;
+-      ((char *) reloc_addr_arg)[4] = (value >> 24) & 0xff;
+-      ((char *) reloc_addr_arg)[5] = (value >> 16) & 0xff;
+-      ((char *) reloc_addr_arg)[6] = (value >> 8) & 0xff;
+-      ((char *) reloc_addr_arg)[7] = (value >> 0) & 0xff;
++      ((union unaligned *) reloc_addr)->u8 = value;
+       return;
+ 
+     case R_PPC64_UADDR32:
+-      /* We are big-endian.  */
+-      ((char *) reloc_addr_arg)[0] = (value >> 24) & 0xff;
+-      ((char *) reloc_addr_arg)[1] = (value >> 16) & 0xff;
+-      ((char *) reloc_addr_arg)[2] = (value >> 8) & 0xff;
+-      ((char *) reloc_addr_arg)[3] = (value >> 0) & 0xff;
++      ((union unaligned *) reloc_addr)->u4 = value;
+       return;
+ 
+     case R_PPC64_ADDR32:
+@@ -782,10 +776,8 @@
+     case R_PPC64_UADDR16:
+       if (dont_expect ((value + 0x8000) >= 0x10000))
+ 	_dl_reloc_overflow (map, "R_PPC64_UADDR16", reloc_addr, refsym);
+-      /* We are big-endian.  */
+-      ((char *) reloc_addr_arg)[0] = (value >> 8) & 0xff;
+-      ((char *) reloc_addr_arg)[1] = (value >> 0) & 0xff;
+-      break;
++      ((union unaligned *) reloc_addr)->u2 = value;
++      return;
+ 
+     case R_PPC64_ADDR16_DS:
+       if (dont_expect ((value + 0x8000) >= 0x10000 || (value & 3) != 0))

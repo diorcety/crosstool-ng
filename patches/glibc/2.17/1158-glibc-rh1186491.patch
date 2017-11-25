@@ -1,0 +1,29 @@
+--- glibc-2.17-c758a686/math/libm-test.inc	2015-01-22 10:53:11.015331338 -0500
++++ glibc-2.17-c758a686/math/libm-test.inc	2015-01-26 16:46:24.631769811 -0500
+@@ -521,7 +521,7 @@
+ }
+ 
+ 
+-static void
++static void __attribute__ ((noinline))
+ check_float_internal (const char *test_name, FLOAT computed, FLOAT expected,
+ 		      FLOAT max_ulp, int xfail, int exceptions,
+ 		      FLOAT *curr_max_error)
+@@ -610,7 +610,7 @@
+ }
+ 
+ 
+-static void
++static void __attribute__ ((noinline))
+ check_float (const char *test_name, FLOAT computed, FLOAT expected,
+ 	     FLOAT max_ulp, int xfail, int exceptions)
+ {
+@@ -619,7 +619,7 @@
+ }
+ 
+ 
+-static void
++static void __attribute__ ((noinline))
+ check_complex (const char *test_name, __complex__ FLOAT computed,
+ 	       __complex__ FLOAT expected,
+ 	       __complex__ FLOAT max_ulp, __complex__ int xfail,

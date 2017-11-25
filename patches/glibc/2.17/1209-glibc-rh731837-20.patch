@@ -1,0 +1,75 @@
+From 18284d83fcce6440cd6610beff72e2ae475f835d Mon Sep 17 00:00:00 2001
+From: Rajalakshmi Srinivasaraghavan <raji@linux.vnet.ibm.com>
+Date: Wed, 30 Jul 2014 10:34:08 -0500
+Subject: [PATCH] PowerPC: fpu multiarch support for PowerPC64
+
+commit 69bbc63d883c2bc9938fc7b8a3b28794de0e26cc
+Author: Adhemerval Zanella <azanella@linux.vnet.ibm.com>
+Date:   Fri Dec 13 14:58:02 2013 -0500
+
+    PowerPC: Adjust multiarch Implies for PowerPC64
+
+    This patch adds Implies files on multiarch folder for POWER chips so
+    multirach is enabled when building with --with-cpu and powerN
+    option.
+---
+ sysdeps/powerpc/powerpc64/power5+/fpu/multiarch/Implies | 1 +
+ sysdeps/powerpc/powerpc64/power5/fpu/multiarch/Implies  | 1 +
+ sysdeps/powerpc/powerpc64/power6/fpu/multiarch/Implies  | 1 +
+ sysdeps/powerpc/powerpc64/power6x/fpu/multiarch/Implies | 1 +
+ sysdeps/powerpc/powerpc64/power7/fpu/multiarch/Implies  | 1 +
+ sysdeps/unix/sysv/linux/powerpc/powerpc64/fpu/Implies   | 2 --
+ 6 files changed, 5 insertions(+), 2 deletions(-)
+ create mode 100644 sysdeps/powerpc/powerpc64/power5+/fpu/multiarch/Implies
+ create mode 100644 sysdeps/powerpc/powerpc64/power5/fpu/multiarch/Implies
+ create mode 100644 sysdeps/powerpc/powerpc64/power6/fpu/multiarch/Implies
+ create mode 100644 sysdeps/powerpc/powerpc64/power6x/fpu/multiarch/Implies
+ create mode 100644 sysdeps/powerpc/powerpc64/power7/fpu/multiarch/Implies
+ delete mode 100644 sysdeps/unix/sysv/linux/powerpc/powerpc64/fpu/Implies
+
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/power5+/fpu/multiarch/Implies glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/power5+/fpu/multiarch/Implies
+new file mode 100644
+index 0000000..c0e6784
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/power5+/fpu/multiarch/Implies
+@@ -0,0 +1 @@
++powerpc/powerpc64/power5/fpu/multiarch
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/power5/fpu/multiarch/Implies glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/power5/fpu/multiarch/Implies
+new file mode 100644
+index 0000000..3740d05
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/power5/fpu/multiarch/Implies
+@@ -0,0 +1 @@
++powerpc/powerpc64/power4/fpu/multiarch
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/power6/fpu/multiarch/Implies glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/power6/fpu/multiarch/Implies
+new file mode 100644
+index 0000000..fca8a4e
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/power6/fpu/multiarch/Implies
+@@ -0,0 +1 @@
++powerpc/powerpc64/power5+/fpu/multiarch
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/power6x/fpu/multiarch/Implies glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/power6x/fpu/multiarch/Implies
+new file mode 100644
+index 0000000..410d289
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/power6x/fpu/multiarch/Implies
+@@ -0,0 +1 @@
++powerpc/powerpc64/power6/fpu/multiarch
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/power7/fpu/multiarch/Implies glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/power7/fpu/multiarch/Implies
+new file mode 100644
+index 0000000..410d289
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/power7/fpu/multiarch/Implies
+@@ -0,0 +1 @@
++powerpc/powerpc64/power6/fpu/multiarch
+diff --git glibc-2.17-c758a686/sysdeps/unix/sysv/linux/powerpc/powerpc64/fpu/Implies glibc-2.17-c758a686/sysdeps/unix/sysv/linux/powerpc/powerpc64/fpu/Implies
+deleted file mode 100644
+index 6243d2e..0000000
+--- glibc-2.17-c758a686/sysdeps/unix/sysv/linux/powerpc/powerpc64/fpu/Implies
++++ /dev/null
+@@ -1,2 +0,0 @@
+-# Override ldbl-opt with powerpc64 specific routines.
+-powerpc/powerpc64/fpu
+-- 
+1.8.3.1
+

@@ -1,0 +1,399 @@
+From be1d5d1d239883daea876f39e804d87ca028fe2c Mon Sep 17 00:00:00 2001
+From: Rajalakshmi Srinivasaraghavan <raji@linux.vnet.ibm.com>
+Date: Wed, 30 Jul 2014 07:33:06 -0500
+Subject: [PATCH] PowerPC: multiarch wcschr for PowerPC64
+
+commit 16fd2ae37cce401aad580d3d6ffae825827231ae
+Author: Adhemerval Zanella <azanella@linux.vnet.ibm.com>
+Date:   Fri Dec 13 14:51:36 2013 -0500
+
+Added the following files apart from original commit.
+sysdeps/powerpc/powerpc32/power4/multiarch/wcschr-power6.c
+sysdeps/powerpc/powerpc32/power4/multiarch/wcschr-power7.c
+sysdeps/powerpc/powerpc32/power4/multiarch/wcschr-ppc32.c
+sysdeps/powerpc/powerpc64/power6/wcschr.c
+sysdeps/powerpc/power6/wcschr.c
+---
+ sysdeps/powerpc/power6/wcschr.c                    | 89 ++++++++++++++++++++++
+ .../powerpc32/power4/multiarch/wcschr-power6.c     | 26 +++++++
+ .../powerpc32/power4/multiarch/wcschr-power7.c     | 26 +++++++
+ .../powerpc32/power4/multiarch/wcschr-ppc32.c      | 31 ++++++++
+ sysdeps/powerpc/powerpc64/multiarch/Makefile       |  5 +-
+ .../powerpc/powerpc64/multiarch/ifunc-impl-list.c  | 11 +++
+ .../powerpc/powerpc64/multiarch/wcschr-power6.c    | 19 +++++
+ .../powerpc/powerpc64/multiarch/wcschr-power7.c    | 19 +++++
+ sysdeps/powerpc/powerpc64/multiarch/wcschr-ppc64.c | 18 +++++
+ sysdeps/powerpc/powerpc64/multiarch/wcschr.c       | 38 +++++++++
+ sysdeps/powerpc/powerpc64/power6/wcschr.c          |  2 +-
+ 11 files changed, 282 insertions(+), 2 deletions(-)
+ create mode 100644 sysdeps/powerpc/power6/wcschr.c
+ create mode 100644 sysdeps/powerpc/powerpc32/power4/multiarch/wcschr-power6.c
+ create mode 100644 sysdeps/powerpc/powerpc32/power4/multiarch/wcschr-power7.c
+ create mode 100644 sysdeps/powerpc/powerpc32/power4/multiarch/wcschr-ppc32.c
+ create mode 100644 sysdeps/powerpc/powerpc64/multiarch/wcschr-power6.c
+ create mode 100644 sysdeps/powerpc/powerpc64/multiarch/wcschr-power7.c
+ create mode 100644 sysdeps/powerpc/powerpc64/multiarch/wcschr-ppc64.c
+ create mode 100644 sysdeps/powerpc/powerpc64/multiarch/wcschr.c
+
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/power6/wcschr.c glibc-2.17-c758a686/sysdeps/powerpc/power6/wcschr.c
+new file mode 100644
+index 0000000..7045677
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/power6/wcschr.c
+@@ -0,0 +1,89 @@
++/* wcschr.c - Wide Character Search for POWER6+.
++   Copyright (C) 2012-2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; see the file COPYING.LIB.  If
++   not, see <http://www.gnu.org/licenses/>.  */
++
++#include <wchar.h>
++
++#ifndef WCSCHR
++# define WCSCHR wcschr
++#endif
++
++/* Find the first occurrence of WC in WCS.  */
++wchar_t *
++WCSCHR (const wchar_t *wcs, const wchar_t wc)
++{
++  const wchar_t *wcs2 = wcs + 1;
++
++  if (*wcs == wc)
++    return (wchar_t *) wcs;
++  if (*wcs == L'\0')
++    return NULL;
++
++  do
++    {
++      wcs += 2;
++
++      if (*wcs2 == wc)
++        return (wchar_t *) wcs2;
++      if (*wcs2 == L'\0')
++        return NULL;
++       wcs2 += 2;
++
++      if (*wcs == wc)
++        return (wchar_t *) wcs;
++      if (*wcs == L'\0')
++        return NULL;
++      wcs += 2;
++
++      if (*wcs2 == wc)
++        return (wchar_t *) wcs2;
++      if (*wcs2 == L'\0')
++        return NULL;
++      wcs2 += 2;
++
++      if (*wcs == wc)
++        return (wchar_t *) wcs;
++      if (*wcs == L'\0')
++        return NULL;
++      wcs += 2;
++
++      if (*wcs2 == wc)
++        return (wchar_t *) wcs2;
++      if (*wcs2 == L'\0')
++        return NULL;
++      wcs2 += 2;
++
++      if (*wcs == wc)
++        return (wchar_t *) wcs;
++      if (*wcs == L'\0')
++        return NULL;
++      wcs += 2;
++
++      if (*wcs2 == wc)
++        return (wchar_t *) wcs2;
++      if (*wcs2 == L'\0')
++        return NULL;
++      wcs2 += 2;
++
++      if (*wcs == wc)
++        return (wchar_t *) wcs;
++    }
++  while (*wcs != L'\0');
++
++  return NULL;
++}
++libc_hidden_def (wcschr)
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc32/power4/multiarch/wcschr-power6.c glibc-2.17-c758a686/sysdeps/powerpc/powerpc32/power4/multiarch/wcschr-power6.c
+new file mode 100644
+index 0000000..7c648d8
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc32/power4/multiarch/wcschr-power6.c
+@@ -0,0 +1,26 @@
++/* wcschr.c - Wide Character Search for powerpc32/power6.
++   Copyright (C) 2013-2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; see the file COPYING.LIB.  If
++   not, see <http://www.gnu.org/licenses/>.  */
++
++#include <wchar.h>
++
++#define WCSCHR __wcschr_power6
++
++#undef libc_hidden_def
++#define libc_hidden_def(name)
++
++#include <sysdeps/powerpc/power6/wcschr.c>
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc32/power4/multiarch/wcschr-power7.c glibc-2.17-c758a686/sysdeps/powerpc/powerpc32/power4/multiarch/wcschr-power7.c
+new file mode 100644
+index 0000000..e561ced
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc32/power4/multiarch/wcschr-power7.c
+@@ -0,0 +1,26 @@
++/* wcschr.c - Wide Character Search for powerpc32/power7.
++   Copyright (C) 2013-2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; see the file COPYING.LIB.  If
++   not, see <http://www.gnu.org/licenses/>.  */
++
++#include <wchar.h>
++
++#define WCSCHR __wcschr_power7
++
++#undef libc_hidden_def
++#define libc_hidden_def(name)
++
++#include <sysdeps/powerpc/power6/wcschr.c>
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc32/power4/multiarch/wcschr-ppc32.c glibc-2.17-c758a686/sysdeps/powerpc/powerpc32/power4/multiarch/wcschr-ppc32.c
+new file mode 100644
+index 0000000..a42f70c
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc32/power4/multiarch/wcschr-ppc32.c
+@@ -0,0 +1,31 @@
++/* Copyright (C) 2013-2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <wchar.h>
++
++#ifndef NOT_IN_libc
++# ifdef SHARED
++#   undef libc_hidden_def
++#   define libc_hidden_def(name)  \
++    __hidden_ver1 (__wcschr_ppc, __GI_wcschr, __wcschr_ppc);
++# endif
++# define WCSCHR  __wcschr_ppc
++#endif
++
++extern __typeof (wcschr) __wcschr_ppc;
++
++#include <wcsmbs/wcschr.c>
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/Makefile glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/Makefile
+index 15b86bd..ff3b8cf 100644
+--- glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/Makefile
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/Makefile
+@@ -9,8 +9,11 @@ sysdep_routines += memcpy-power7 memcpy-a2 memcpy-power6 memcpy-cell \
+                   strnlen-ppc64 strcasecmp-power7 strcasecmp_l-power7 \
+                   strncase-power7 strncase_l-power7 strncmp-power7 \
+                   strncmp-power4 strncmp-ppc64 strchr-power7 strchr-ppc64 \
+-                  strchrnul-power7 strchrnul-ppc64
++                  strchrnul-power7 strchrnul-ppc64 wcschr-power7 \
++                  wcschr-power6 wcschr-ppc64
+ 
+ CFLAGS-strncase-power7.c += -mcpu=power7 -funroll-loops
+ CFLAGS-strncase_l-power7.c += -mcpu=power7 -funroll-loops
++CFLAGS-wcschr-power7.c += -mcpu=power7
++CFLAGS-wcschr-power6.c += -mcpu=power6
+ endif
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/ifunc-impl-list.c glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/ifunc-impl-list.c
+index 9e3b89d..cc932c9 100644
+--- glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/ifunc-impl-list.c
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/ifunc-impl-list.c
+@@ -191,5 +191,16 @@ __libc_ifunc_impl_list (const char *name, struct libc_ifunc_impl *array,
+              IFUNC_IMPL_ADD (array, i, strncasecmp_l, 1,
+                              __strncasecmp_l_ppc))
+ 
++  /* Support sysdeps/powerpc/powerpc64/multiarch/wcschr.c.  */
++  IFUNC_IMPL (i, name, wcschr,
++             IFUNC_IMPL_ADD (array, i, wcschr,
++                             hwcap & PPC_FEATURE_HAS_VSX,
++                             __wcschr_power7)
++             IFUNC_IMPL_ADD (array, i, wcschr,
++                             hwcap & PPC_FEATURE_ARCH_2_05,
++                             __wcschr_power6)
++             IFUNC_IMPL_ADD (array, i, wcschr, 1,
++                             __wcschr_ppc))
++
+   return i;
+ }
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/wcschr-power6.c glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/wcschr-power6.c
+new file mode 100644
+index 0000000..21d965a
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/wcschr-power6.c
+@@ -0,0 +1,19 @@
++/* wcschr.c - Wide Character Search for powerpc64/power6.
++   Copyright (C) 2013-2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; see the file COPYING.LIB.  If
++   not, see <http://www.gnu.org/licenses/>.  */
++
++#include <sysdeps/powerpc/powerpc32/power4/multiarch/wcschr-power6.c>
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/wcschr-power7.c glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/wcschr-power7.c
+new file mode 100644
+index 0000000..3407219
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/wcschr-power7.c
+@@ -0,0 +1,19 @@
++/* wcschr.c - Wide Character Search for powerpc64/power7.
++   Copyright (C) 2013-2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; see the file COPYING.LIB.  If
++   not, see <http://www.gnu.org/licenses/>.  */
++
++#include <sysdeps/powerpc/powerpc32/power4/multiarch/wcschr-power7.c>
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/wcschr-ppc64.c glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/wcschr-ppc64.c
+new file mode 100644
+index 0000000..3f1f368
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/wcschr-ppc64.c
+@@ -0,0 +1,18 @@
++/* Copyright (C) 2013-2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <sysdeps/powerpc/powerpc32/power4/multiarch/wcschr-ppc32.c>
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/wcschr.c glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/wcschr.c
+new file mode 100644
+index 0000000..216d2bc
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/wcschr.c
+@@ -0,0 +1,38 @@
++/* Multiple versions of wcschr
++   Copyright (C) 2013-2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#ifndef NOT_IN_libc
++# include <wchar.h>
++# include <shlib-compat.h>
++# include "init-arch.h"
++
++extern __typeof (wcschr) __wcschr_ppc attribute_hidden;
++extern __typeof (wcschr) __wcschr_power6 attribute_hidden;
++extern __typeof (wcschr) __wcschr_power7 attribute_hidden;
++
++libc_ifunc (wcschr,
++	     (hwcap & PPC_FEATURE_HAS_VSX)
++             ? __wcschr_power7 :
++	       (hwcap & PPC_FEATURE_ARCH_2_05)
++	       ? __wcschr_power6
++             : __wcschr_ppc);
++#else
++#undef libc_hidden_def
++#define libc_hidden_def(a)
++#include <wcsmbs/wcschr.c>
++#endif
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/power6/wcschr.c glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/power6/wcschr.c
+index 9136c02..ae04a13 100644
+--- glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/power6/wcschr.c
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/power6/wcschr.c
+@@ -1 +1 @@
+-#include "../../powerpc32/power6/wcschr.c"
++#include <sysdeps/powerpc/power6/wcschr.c>
+-- 
+1.8.3.1
+

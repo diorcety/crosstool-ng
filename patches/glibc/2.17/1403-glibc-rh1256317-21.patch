@@ -1,0 +1,509 @@
+commit eb72478a286e0104f5636d21d86407b4c0e89fa1
+Author: Siddhesh Poyarekar <siddhesh@redhat.com>
+Date:   Thu Aug 21 10:26:46 2014 +0530
+
+    Remove unnecessary uses of NOT_IN_libc
+    
+    If a IS_IN_* macro is defined, then NOT_IN_libc is always defined,
+    except obviously for IS_IN_libc.  There's no need to check for both.
+    Verified on x86_64 and i686 that the source is unchanged.
+    
+           * include/libc-symbols.h: Remove unnecessary check for
+           NOT_IN_libc.
+           * nptl/pthreadP.h: Likewise.
+           * sysdeps/aarch64/setjmp.S: Likewise.
+           * sysdeps/alpha/setjmp.S: Likewise.
+           * sysdeps/arm/sysdep.h: Likewise.
+           * sysdeps/i386/setjmp.S: Likewise.
+           * sysdeps/m68k/setjmp.c: Likewise.
+           * sysdeps/posix/getcwd.c: Likewise.
+           * sysdeps/powerpc/powerpc32/setjmp-common.S: Likewise.
+           * sysdeps/powerpc/powerpc64/setjmp-common.S: Likewise.
+           * sysdeps/s390/s390-32/setjmp.S: Likewise.
+           * sysdeps/s390/s390-64/setjmp.S: Likewise.
+           * sysdeps/sh/sh3/setjmp.S: Likewise.
+           * sysdeps/sh/sh4/setjmp.S: Likewise.
+           * sysdeps/unix/alpha/sysdep.h: Likewise.
+           * sysdeps/unix/sysv/linux/aarch64/sysdep.h: Likewise.
+           * sysdeps/unix/sysv/linux/i386/sysdep.h: Likewise.
+           * sysdeps/unix/sysv/linux/ia64/setjmp.S: Likewise.
+           * sysdeps/unix/sysv/linux/ia64/sysdep.h: Likewise.
+           * sysdeps/unix/sysv/linux/powerpc/powerpc32/sysdep.h: Likewise.
+           * sysdeps/unix/sysv/linux/powerpc/powerpc64/sysdep.h: Likewise.
+           * sysdeps/unix/sysv/linux/s390/s390-32/sysdep.h: Likewise.
+           * sysdeps/unix/sysv/linux/s390/s390-64/sysdep.h: Likewise.
+           * sysdeps/unix/sysv/linux/sh/sysdep.h: Likewise.
+           * sysdeps/unix/sysv/linux/sparc/sparc32/sysdep.h: Likewise.
+           * sysdeps/unix/sysv/linux/sparc/sparc64/sysdep.h: Likewise.
+           * sysdeps/unix/sysv/linux/tile/sysdep.h: Likewise.
+           * sysdeps/unix/sysv/linux/x86_64/sysdep.h: Likewise.
+           * sysdeps/x86_64/setjmp.S: Likewise.
+Index: glibc-2.17-c758a686/include/libc-symbols.h
+===================================================================
+--- glibc-2.17-c758a686.orig/include/libc-symbols.h
++++ glibc-2.17-c758a686/include/libc-symbols.h
+@@ -561,7 +561,7 @@ for linking")
+ # define libc_hidden_data_ver(local, name)
+ #endif
+ 
+-#if defined NOT_IN_libc && defined IS_IN_rtld
++#ifdef IS_IN_rtld
+ # define rtld_hidden_proto(name, attrs...) hidden_proto (name, ##attrs)
+ # define rtld_hidden_def(name) hidden_def (name)
+ # define rtld_hidden_weak(name) hidden_weak (name)
+@@ -579,7 +579,7 @@ for linking")
+ # define rtld_hidden_data_ver(local, name)
+ #endif
+ 
+-#if defined NOT_IN_libc && defined IS_IN_libm
++#ifdef IS_IN_libm
+ # define libm_hidden_proto(name, attrs...) hidden_proto (name, ##attrs)
+ # define libm_hidden_def(name) hidden_def (name)
+ # define libm_hidden_weak(name) hidden_weak (name)
+@@ -597,7 +597,7 @@ for linking")
+ # define libm_hidden_data_ver(local, name)
+ #endif
+ 
+-#if defined NOT_IN_libc && defined IS_IN_libresolv
++#ifdef IS_IN_libresolv
+ # define libresolv_hidden_proto(name, attrs...) hidden_proto (name, ##attrs)
+ # define libresolv_hidden_def(name) hidden_def (name)
+ # define libresolv_hidden_weak(name) hidden_weak (name)
+@@ -615,7 +615,7 @@ for linking")
+ # define libresolv_hidden_data_ver(local, name)
+ #endif
+ 
+-#if defined NOT_IN_libc && defined IS_IN_librt
++#ifdef IS_IN_librt
+ # define librt_hidden_proto(name, attrs...) hidden_proto (name, ##attrs)
+ # define librt_hidden_def(name) hidden_def (name)
+ # define librt_hidden_weak(name) hidden_weak (name)
+@@ -633,7 +633,7 @@ for linking")
+ # define librt_hidden_data_ver(local, name)
+ #endif
+ 
+-#if defined NOT_IN_libc && defined IS_IN_libdl
++#ifdef IS_IN_libdl
+ # define libdl_hidden_proto(name, attrs...) hidden_proto (name, ##attrs)
+ # define libdl_hidden_def(name) hidden_def (name)
+ # define libdl_hidden_weak(name) hidden_weak (name)
+@@ -651,7 +651,7 @@ for linking")
+ # define libdl_hidden_data_ver(local, name)
+ #endif
+ 
+-#if defined NOT_IN_libc && defined IS_IN_libnss_files
++#ifdef IS_IN_libnss_files
+ # define libnss_files_hidden_proto(name, attrs...) hidden_proto (name, ##attrs)
+ # define libnss_files_hidden_def(name) hidden_def (name)
+ # define libnss_files_hidden_weak(name) hidden_weak (name)
+@@ -669,7 +669,7 @@ for linking")
+ # define libnss_files_hidden_data_ver(local, name)
+ #endif
+ 
+-#if defined NOT_IN_libc && defined IS_IN_libnsl
++#ifdef IS_IN_libnsl
+ # define libnsl_hidden_proto(name, attrs...) hidden_proto (name, ##attrs)
+ # define libnsl_hidden_def(name) hidden_def (name)
+ # define libnsl_hidden_weak(name) hidden_weak (name)
+@@ -687,7 +687,7 @@ for linking")
+ # define libnsl_hidden_data_ver(local, name)
+ #endif
+ 
+-#if defined NOT_IN_libc && defined IS_IN_libnss_nisplus
++#ifdef IS_IN_libnss_nisplus
+ # define libnss_nisplus_hidden_proto(name, attrs...) hidden_proto (name, ##attrs)
+ # define libnss_nisplus_hidden_def(name) hidden_def (name)
+ # define libnss_nisplus_hidden_weak(name) hidden_weak (name)
+@@ -713,7 +713,7 @@ for linking")
+ # define HIDDEN_BUILTIN_JUMPTARGET(name) HIDDEN_JUMPTARGET(name)
+ #endif
+ 
+-#if defined NOT_IN_libc && defined IS_IN_libutil
++#ifdef IS_IN_libutil
+ # define libutil_hidden_proto(name, attrs...) hidden_proto (name, ##attrs)
+ # define libutil_hidden_def(name) hidden_def (name)
+ # define libutil_hidden_weak(name) hidden_weak (name)
+Index: glibc-2.17-c758a686/nptl/pthreadP.h
+===================================================================
+--- glibc-2.17-c758a686.orig/nptl/pthreadP.h
++++ glibc-2.17-c758a686/nptl/pthreadP.h
+@@ -239,7 +239,7 @@ extern void __pthread_register_cancel (_
+      __cleanup_fct_attribute;
+ extern void __pthread_unregister_cancel (__pthread_unwind_buf_t *__buf)
+      __cleanup_fct_attribute;
+-#if defined NOT_IN_libc && defined IS_IN_libpthread
++#ifdef IS_IN_libpthread
+ hidden_proto (__pthread_unwind)
+ hidden_proto (__pthread_unwind_next)
+ hidden_proto (__pthread_register_cancel)
+@@ -283,13 +283,13 @@ __do_cancel (void)
+ # define LIBC_CANCEL_HANDLED() \
+   __asm (".globl " __SYMBOL_PREFIX "__libc_enable_asynccancel"); \
+   __asm (".globl " __SYMBOL_PREFIX "__libc_disable_asynccancel")
+-#elif defined NOT_IN_libc && defined IS_IN_libpthread
++#elif defined IS_IN_libpthread
+ # define LIBC_CANCEL_ASYNC() CANCEL_ASYNC ()
+ # define LIBC_CANCEL_RESET(val) CANCEL_RESET (val)
+ # define LIBC_CANCEL_HANDLED() \
+   __asm (".globl " __SYMBOL_PREFIX "__pthread_enable_asynccancel"); \
+   __asm (".globl " __SYMBOL_PREFIX "__pthread_disable_asynccancel")
+-#elif defined NOT_IN_libc && defined IS_IN_librt
++#elif defined IS_IN_librt
+ # define LIBC_CANCEL_ASYNC() \
+   __librt_enable_asynccancel ()
+ # define LIBC_CANCEL_RESET(val) \
+@@ -344,7 +344,7 @@ extern int __make_stacks_executable (voi
+ 
+ /* longjmp handling.  */
+ extern void __pthread_cleanup_upto (__jmp_buf target, char *targetframe);
+-#if defined NOT_IN_libc && defined IS_IN_libpthread
++#ifdef IS_IN_libpthread
+ hidden_proto (__pthread_cleanup_upto)
+ #endif
+ 
+@@ -489,7 +489,7 @@ extern int __pthread_enable_asynccancel
+ extern void __pthread_disable_asynccancel (int oldtype)
+      internal_function attribute_hidden;
+ 
+-#if defined NOT_IN_libc && defined IS_IN_libpthread
++#ifdef IS_IN_libpthread
+ hidden_proto (__pthread_mutex_init)
+ hidden_proto (__pthread_mutex_destroy)
+ hidden_proto (__pthread_mutex_lock)
+Index: glibc-2.17-c758a686/sysdeps/posix/getcwd.c
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/posix/getcwd.c
++++ glibc-2.17-c758a686/sysdeps/posix/getcwd.c
+@@ -206,7 +206,7 @@ extern char *alloca ();
+ 
+ #ifdef __ASSUME_ATFCTS
+ # define __have_atfcts 1
+-#elif defined NOT_IN_libc && defined IS_IN_rtld
++#elif defined IS_IN_rtld
+ static int __rtld_have_atfcts;
+ # define __have_atfcts __rtld_have_atfcts
+ #endif
+Index: glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/setjmp-common.S
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/powerpc/powerpc64/setjmp-common.S
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/setjmp-common.S
+@@ -212,7 +212,7 @@ L(no_vmx):
+ #else
+ 	li	r6,0
+ #endif
+-#if defined NOT_IN_libc && defined IS_IN_rtld
++#ifdef IS_IN_rtld
+ 	li	r3,0
+ 	blr
+ #elif defined SHARED
+Index: glibc-2.17-c758a686/sysdeps/s390/s390-32/setjmp.S
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/s390/s390-32/setjmp.S
++++ glibc-2.17-c758a686/sysdeps/s390/s390-32/setjmp.S
+@@ -57,7 +57,7 @@ ENTRY(__sigsetjmp)
+ #endif
+ 	std    %f4,40(%r2)
+ 	std    %f6,48(%r2)
+-#if defined NOT_IN_libc && defined IS_IN_rtld
++#ifdef IS_IN_rtld
+ 	/* In ld.so we never save the signal mask.  */
+ 	lhi    %r2,0
+ 	br     %r14
+Index: glibc-2.17-c758a686/sysdeps/s390/s390-64/setjmp.S
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/s390/s390-64/setjmp.S
++++ glibc-2.17-c758a686/sysdeps/s390/s390-64/setjmp.S
+@@ -63,7 +63,7 @@ ENTRY(__sigsetjmp)
+ 	std    %f13,120(%r2)
+ 	std    %f14,128(%r2)
+ 	std    %f15,136(%r2)
+-#if defined NOT_IN_libc && defined IS_IN_rtld
++#ifdef IS_IN_rtld
+ 	/* In ld.so we never save the signal mask.  */
+ 	lghi   %r2,0
+ 	br     %r14
+Index: glibc-2.17-c758a686/sysdeps/sh/sh3/setjmp.S
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/sh/sh3/setjmp.S
++++ glibc-2.17-c758a686/sysdeps/sh/sh3/setjmp.S
+@@ -46,7 +46,7 @@ ENTRY (__sigsetjmp)
+ 	mov.l	r9, @-r4
+ 	mov.l	r8, @-r4
+ 
+-#if defined NOT_IN_libc && defined IS_IN_rtld
++#ifdef IS_IN_rtld
+ 	/* In ld.so we never save the signal mask.  */
+ 	rts
+ 	 mov	#0, r0
+Index: glibc-2.17-c758a686/sysdeps/sh/sh4/setjmp.S
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/sh/sh4/setjmp.S
++++ glibc-2.17-c758a686/sysdeps/sh/sh4/setjmp.S
+@@ -55,7 +55,7 @@ ENTRY (__sigsetjmp)
+ 	mov.l	r9, @-r4
+ 	mov.l	r8, @-r4
+ 
+-#if defined NOT_IN_libc && defined IS_IN_rtld
++#ifdef IS_IN_rtld
+ 	/* In ld.so we never save the signal mask.  */
+ 	rts
+ 	 mov	#0, r0
+Index: glibc-2.17-c758a686/sysdeps/unix/sysv/linux/i386/sysdep.h
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/unix/sysv/linux/i386/sysdep.h
++++ glibc-2.17-c758a686/sysdeps/unix/sysv/linux/i386/sysdep.h
+@@ -521,7 +521,7 @@ asm (".L__X'%ebx = 1\n\t"
+ 
+ 
+ /* Pointer mangling support.  */
+-#if defined NOT_IN_libc && defined IS_IN_rtld
++#ifdef IS_IN_rtld
+ /* We cannot use the thread descriptor because in ld.so we use setjmp
+    earlier than the descriptor is initialized.  Using a global variable
+    is too complicated here since we have no PC-relative addressing mode.  */
+Index: glibc-2.17-c758a686/sysdeps/unix/sysv/linux/powerpc/powerpc32/sysdep.h
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/unix/sysv/linux/powerpc/powerpc32/sysdep.h
++++ glibc-2.17-c758a686/sysdeps/unix/sysv/linux/powerpc/powerpc32/sysdep.h
+@@ -272,7 +272,7 @@
+ 
+ 
+ /* Pointer mangling support.  */
+-#if defined NOT_IN_libc && defined IS_IN_rtld
++#ifdef IS_IN_rtld
+ /* We cannot use the thread descriptor because in ld.so we use setjmp
+    earlier than the descriptor is initialized.  */
+ #else
+Index: glibc-2.17-c758a686/sysdeps/unix/sysv/linux/powerpc/powerpc64/sysdep.h
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/unix/sysv/linux/powerpc/powerpc64/sysdep.h
++++ glibc-2.17-c758a686/sysdeps/unix/sysv/linux/powerpc/powerpc64/sysdep.h
+@@ -282,7 +282,7 @@
+ 
+ 
+ /* Pointer mangling support.  */
+-#if defined NOT_IN_libc && defined IS_IN_rtld
++#ifdef IS_IN_rtld
+ /* We cannot use the thread descriptor because in ld.so we use setjmp
+    earlier than the descriptor is initialized.  */
+ #else
+Index: glibc-2.17-c758a686/sysdeps/unix/sysv/linux/s390/s390-32/sysdep.h
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/unix/sysv/linux/s390/s390-32/sysdep.h
++++ glibc-2.17-c758a686/sysdeps/unix/sysv/linux/s390/s390-32/sysdep.h
+@@ -367,7 +367,7 @@
+     _ret; })
+ 
+ /* Pointer mangling support.  */
+-#if defined NOT_IN_libc && defined IS_IN_rtld
++#ifdef IS_IN_rtld
+ /* We cannot use the thread descriptor because in ld.so we use setjmp
+    earlier than the descriptor is initialized.  */
+ #else
+Index: glibc-2.17-c758a686/sysdeps/unix/sysv/linux/s390/s390-64/sysdep.h
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/unix/sysv/linux/s390/s390-64/sysdep.h
++++ glibc-2.17-c758a686/sysdeps/unix/sysv/linux/s390/s390-64/sysdep.h
+@@ -373,7 +373,7 @@
+     _ret; })
+ 
+ /* Pointer mangling support.  */
+-#if defined NOT_IN_libc && defined IS_IN_rtld
++#ifdef IS_IN_rtld
+ /* We cannot use the thread descriptor because in ld.so we use setjmp
+    earlier than the descriptor is initialized.  */
+ #else
+Index: glibc-2.17-c758a686/sysdeps/unix/sysv/linux/sh/sysdep.h
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/unix/sysv/linux/sh/sysdep.h
++++ glibc-2.17-c758a686/sysdeps/unix/sysv/linux/sh/sysdep.h
+@@ -338,7 +338,7 @@
+ #endif	/* __ASSEMBLER__ */
+ 
+ /* Pointer mangling support.  */
+-#if defined NOT_IN_libc && defined IS_IN_rtld
++#ifdef IS_IN_rtld
+ /* We cannot use the thread descriptor because in ld.so we use setjmp
+    earlier than the descriptor is initialized.  Using a global variable
+    is too complicated here since we have no PC-relative addressing mode.  */
+Index: glibc-2.17-c758a686/sysdeps/unix/sysv/linux/sparc/sparc32/sysdep.h
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/unix/sysv/linux/sparc/sparc32/sysdep.h
++++ glibc-2.17-c758a686/sysdeps/unix/sysv/linux/sparc/sparc32/sysdep.h
+@@ -126,7 +126,7 @@ ENTRY(name);					\
+ #endif	/* __ASSEMBLER__ */
+ 
+ /* Pointer mangling support.  */
+-#if defined NOT_IN_libc && defined IS_IN_rtld
++#ifdef IS_IN_rtld
+ /* We cannot use the thread descriptor because in ld.so we use setjmp
+    earlier than the descriptor is initialized.  */
+ #else
+Index: glibc-2.17-c758a686/sysdeps/unix/sysv/linux/sparc/sparc64/sysdep.h
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/unix/sysv/linux/sparc/sparc64/sysdep.h
++++ glibc-2.17-c758a686/sysdeps/unix/sysv/linux/sparc/sparc64/sysdep.h
+@@ -141,7 +141,7 @@ ENTRY(name);					\
+ #define STACK_BIAS	2047
+ 
+ /* Pointer mangling support.  */
+-#if defined NOT_IN_libc && defined IS_IN_rtld
++#ifdef IS_IN_rtld
+ /* We cannot use the thread descriptor because in ld.so we use setjmp
+    earlier than the descriptor is initialized.  */
+ #else
+Index: glibc-2.17-c758a686/sysdeps/unix/sysv/linux/x86_64/sysdep.h
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/unix/sysv/linux/x86_64/sysdep.h
++++ glibc-2.17-c758a686/sysdeps/unix/sysv/linux/x86_64/sysdep.h
+@@ -395,7 +395,7 @@
+ 
+ 
+ /* Pointer mangling support.  */
+-#if defined NOT_IN_libc && defined IS_IN_rtld
++#ifdef IS_IN_rtld
+ /* We cannot use the thread descriptor because in ld.so we use setjmp
+    earlier than the descriptor is initialized.  */
+ # ifdef __ASSEMBLER__
+Index: glibc-2.17-c758a686/sysdeps/x86_64/setjmp.S
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/x86_64/setjmp.S
++++ glibc-2.17-c758a686/sysdeps/x86_64/setjmp.S
+@@ -54,7 +54,7 @@ ENTRY (__sigsetjmp)
+ #endif
+ 	movq %rax, (JB_PC*8)(%rdi)
+ 
+-#if defined NOT_IN_libc && defined IS_IN_rtld
++#ifdef IS_IN_rtld
+ 	/* In ld.so we never save the signal mask.  */
+ 	xorl %eax, %eax
+ 	retq
+Index: glibc-2.17-c758a686/ports/sysdeps/aarch64/setjmp.S
+===================================================================
+--- glibc-2.17-c758a686.orig/ports/sysdeps/aarch64/setjmp.S
++++ glibc-2.17-c758a686/ports/sysdeps/aarch64/setjmp.S
+@@ -58,7 +58,7 @@ ENTRY (__sigsetjmp)
+ 	mov	x2,  sp
+ 	str	x2,  [x0, #JB_SP<<3]
+ #endif
+-#if defined NOT_IN_libc && defined IS_IN_rtld
++#ifdef IS_IN_rtld
+ 	/* In ld.so we never save the signal mask */
+ 	mov	w0, #0
+ 	RET
+Index: glibc-2.17-c758a686/ports/sysdeps/alpha/setjmp.S
+===================================================================
+--- glibc-2.17-c758a686.orig/ports/sysdeps/alpha/setjmp.S
++++ glibc-2.17-c758a686/ports/sysdeps/alpha/setjmp.S
+@@ -86,7 +86,7 @@ $sigsetjmp_local:
+ 	ldq	ra, 0(sp)
+ 	addq	sp, 16, sp
+ 	ret
+-#elif defined NOT_IN_libc && defined IS_IN_rtld
++#elif defined IS_IN_rtld
+ 	/* In ld.so we never save the signal mask.  */
+ 	mov	0, v0
+ 	ret
+Index: glibc-2.17-c758a686/ports/sysdeps/m68k/setjmp.c
+===================================================================
+--- glibc-2.17-c758a686.orig/ports/sysdeps/m68k/setjmp.c
++++ glibc-2.17-c758a686/ports/sysdeps/m68k/setjmp.c
+@@ -57,7 +57,7 @@ __sigsetjmp (jmp_buf env, int savemask)
+ 		: : "m" (env[0].__jmpbuf[0].__fpregs[0]));
+ #endif
+ 
+-#if defined NOT_IN_libc && defined IS_IN_rtld
++#ifdef IS_IN_rtld
+   /* In ld.so we never save the signal mask.  */
+   return 0;
+ #else
+Index: glibc-2.17-c758a686/ports/sysdeps/unix/alpha/sysdep.h
+===================================================================
+--- glibc-2.17-c758a686.orig/ports/sysdeps/unix/alpha/sysdep.h
++++ glibc-2.17-c758a686/ports/sysdeps/unix/alpha/sysdep.h
+@@ -346,7 +346,7 @@ __LABEL(name)						\
+ 
+ #include <stdint.h>
+ 
+-#if defined NOT_IN_libc && defined IS_IN_rtld
++#ifdef IS_IN_rtld
+ # ifdef __ASSEMBLER__
+ #  define PTR_MANGLE(dst, src, tmp)				\
+ 	ldah	tmp, __pointer_chk_guard_local($29) !gprelhigh;	\
+Index: glibc-2.17-c758a686/sysdeps/i386/setjmp.S
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/i386/setjmp.S
++++ glibc-2.17-c758a686/sysdeps/i386/setjmp.S
+@@ -51,7 +51,7 @@ ENTRY (BP_SYM (__sigsetjmp))
+ 	LEAVE /* pop frame pointer to prepare for tail-call.  */
+ 	movl %ebp, (JB_BP*4)(%eax) /* Save caller's frame pointer.  */
+ 
+-#if defined NOT_IN_libc && defined IS_IN_rtld
++#ifdef IS_IN_rtld
+ 	/* In ld.so we never save the signal mask.  */
+ 	xorl %eax, %eax
+ 	ret
+Index: glibc-2.17-c758a686/sysdeps/powerpc/powerpc32/setjmp-common.S
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/powerpc/powerpc32/setjmp-common.S
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc32/setjmp-common.S
+@@ -64,7 +64,7 @@ ENTRY (BP_SYM (__sigsetjmp))
+ 	stw  r29,((JB_GPRS+15)*4)(3)
+ 	stw  r30,((JB_GPRS+16)*4)(3)
+ 	stw  r31,((JB_GPRS+17)*4)(3)
+-#if defined NOT_IN_libc && defined IS_IN_rtld
++#ifdef IS_IN_rtld
+ 	li   r3,0
+ 	blr
+ #else
+Index: glibc-2.17-c758a686/ports/sysdeps/unix/sysv/linux/aarch64/sysdep.h
+===================================================================
+--- glibc-2.17-c758a686.orig/ports/sysdeps/unix/sysv/linux/aarch64/sysdep.h
++++ glibc-2.17-c758a686/ports/sysdeps/unix/sysv/linux/aarch64/sysdep.h
+@@ -324,8 +324,9 @@
+ #endif	/* __ASSEMBLER__ */
+ 
+ /* Pointer mangling is supported for AArch64.  */
+-#if (defined NOT_IN_libc && defined IS_IN_rtld) || \
+-  (!defined SHARED && (!defined NOT_IN_libc || defined IS_IN_libpthread))
++#if (defined IS_IN_rtld) || \
++     (!defined SHARED && (!defined NOT_IN_libc \
++			  || defined IS_IN_libpthread))
+ # ifdef __ASSEMBLER__
+ #  define PTR_MANGLE(dst, src, guard, tmp)                                \
+   LDST_PCREL (ldr, guard, tmp, C_SYMBOL_NAME(__pointer_chk_guard_local)); \
+Index: glibc-2.17-c758a686/ports/sysdeps/unix/sysv/linux/ia64/setjmp.S
+===================================================================
+--- glibc-2.17-c758a686.orig/ports/sysdeps/unix/sysv/linux/ia64/setjmp.S
++++ glibc-2.17-c758a686/ports/sysdeps/unix/sysv/linux/ia64/setjmp.S
+@@ -179,7 +179,7 @@ ENTRY(__sigsetjmp)
+ 	;;
+ 	st8.nta [r2]=r25		// ar.unat
+ 	st8.nta [r3]=in0		// &__jmp_buf
+-#if defined NOT_IN_libc && defined IS_IN_rtld
++#ifdef IS_IN_rtld
+ 	/* In ld.so we never save the signal mask.  */
+ 	;;
+ #else
+Index: glibc-2.17-c758a686/ports/sysdeps/unix/sysv/linux/ia64/sysdep.h
+===================================================================
+--- glibc-2.17-c758a686.orig/ports/sysdeps/unix/sysv/linux/ia64/sysdep.h
++++ glibc-2.17-c758a686/ports/sysdeps/unix/sysv/linux/ia64/sysdep.h
+@@ -62,7 +62,7 @@
+ 
+ #if defined USE_DL_SYSINFO \
+ 	&& (!defined NOT_IN_libc \
+-	    || defined IS_IN_libpthread || defined IS_IN_librt)
++	    || IS_IN (libpthread) || defined IS_IN_librt)
+ # define IA64_USE_NEW_STUB
+ #else
+ # undef IA64_USE_NEW_STUB
+@@ -361,7 +361,7 @@
+ #endif /* not __ASSEMBLER__ */
+ 
+ /* Pointer mangling support.  */
+-#if defined NOT_IN_libc && defined IS_IN_rtld
++#ifdef IS_IN_rtld
+ /* We cannot use the thread descriptor because in ld.so we use setjmp
+    earlier than the descriptor is initialized.  */
+ #else

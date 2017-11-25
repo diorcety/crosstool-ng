@@ -1,0 +1,259 @@
+commit e8b9e065a1ae9d7d8b888909ae761cbd5cf7be32
+Author: Siddhesh Poyarekar <siddhesh@redhat.com>
+Date:   Wed Mar 19 00:42:30 2014 +0530
+
+    Fix offset computation for append+ mode on switching from read (BZ #16724)
+    
+    The offset computation in write mode uses the fact that _IO_read_end
+    is kept in sync with the external file offset.  This however is not
+    true when O_APPEND is in effect since switching to write mode ought to
+    send the external file offset to the end of file without making the
+    necessary adjustment to _IO_read_end.
+    
+    Hence in append mode, offset computation when writing should only
+    consider the effect of unflushed writes, i.e. from _IO_write_base to
+    _IO_write_ptr.
+
+diff --git glibc-2.17-c758a686/libio/Makefile glibc-2.17-c758a686/libio/Makefile
+index 69c25c0..4bedfad 100644
+--- glibc-2.17-c758a686/libio/Makefile
++++ glibc-2.17-c758a686/libio/Makefile
+@@ -60,7 +60,8 @@ tests = tst_swprintf tst_wprintf tst_swscanf tst_wscanf tst_getwc tst_putwc   \
+ 	tst-wmemstream1 tst-wmemstream2 \
+ 	bug-memstream1 bug-wmemstream1 \
+ 	tst-setvbuf1 tst-popen1 tst-fgetwc bug-wsetpos tst-fseek \
+-	tst-fwrite-error tst-ftell-active-handler
++	tst-fwrite-error tst-ftell-active-handler \
++	tst-ftell-append
+ ifeq (yes,$(build-shared))
+ # Add test-fopenloc only if shared library is enabled since it depends on
+ # shared localedata objects.
+diff --git glibc-2.17-c758a686/libio/fileops.c glibc-2.17-c758a686/libio/fileops.c
+index cf68dbf..204cfea 100644
+--- glibc-2.17-c758a686/libio/fileops.c
++++ glibc-2.17-c758a686/libio/fileops.c
+@@ -91,7 +91,9 @@ extern struct __gconv_trans_data __libio_translit attribute_hidden;
+ 
+    The position in the buffer that corresponds to the position
+    in external file system is normally _IO_read_end, except in putback
+-   mode, when it is _IO_save_end.
++   mode, when it is _IO_save_end and also when the file is in append mode,
++   since switching from read to write mode automatically sends the position in
++   the external file system to the end of file.
+    If the field _fb._offset is >= 0, it gives the offset in
+    the file as a whole corresponding to eGptr(). (?)
+ 
+@@ -966,6 +968,14 @@ do_ftell (_IO_FILE *fp)
+       /* Adjust for unflushed data.  */
+       if (!was_writing)
+ 	offset -= fp->_IO_read_end - fp->_IO_read_ptr;
++      /* We don't trust _IO_read_end to represent the current file offset when
++	 writing in append mode because the value would have to be shifted to
++	 the end of the file during a flush.  Use the write base instead, along
++	 with the new offset we got above when we did a seek to the end of the
++	 file.  */
++      else if (append_mode)
++	offset += fp->_IO_write_ptr - fp->_IO_write_base;
++      /* For all other modes, _IO_read_end represents the file offset.  */
+       else
+ 	offset += fp->_IO_write_ptr - fp->_IO_read_end;
+     }
+diff --git glibc-2.17-c758a686/libio/tst-ftell-append.c glibc-2.17-c758a686/libio/tst-ftell-append.c
+new file mode 100644
+index 0000000..604dc03
+--- /dev/null
++++ glibc-2.17-c758a686/libio/tst-ftell-append.c
+@@ -0,0 +1,169 @@
++/* Verify that ftell returns the correct value after a read and a write on a
++   file opened in a+ mode.
++   Copyright (C) 2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <stdio.h>
++#include <stdlib.h>
++#include <string.h>
++#include <errno.h>
++#include <unistd.h>
++#include <locale.h>
++#include <wchar.h>
++
++/* data points to either char_data or wide_data, depending on whether we're
++   testing regular file mode or wide mode respectively.  Similarly,
++   fputs_func points to either fputs or fputws.  data_len keeps track of the
++   length of the current data and file_len maintains the current file
++   length.  */
++#define BUF_LEN 4
++static void *buf;
++static char char_buf[BUF_LEN];
++static wchar_t wide_buf[BUF_LEN];
++static const void *data;
++static const char *char_data = "abcdefghijklmnopqrstuvwxyz";
++static const wchar_t *wide_data = L"abcdefghijklmnopqrstuvwxyz";
++static size_t data_len;
++static size_t file_len;
++
++typedef int (*fputs_func_t) (const void *data, FILE *fp);
++fputs_func_t fputs_func;
++
++typedef void *(*fgets_func_t) (void *s, int size, FILE *stream);
++fgets_func_t fgets_func;
++
++static int do_test (void);
++
++#define TEST_FUNCTION do_test ()
++#include "../test-skeleton.c"
++
++static FILE *
++init_file (const char *filename)
++{
++  FILE *fp = fopen (filename, "w");
++  if (fp == NULL)
++    {
++      printf ("fopen: %m\n");
++      return NULL;
++    }
++
++  int written = fputs_func (data, fp);
++
++  if (written == EOF)
++    {
++      printf ("fputs failed to write data\n");
++      fclose (fp);
++      return NULL;
++    }
++
++  file_len = data_len;
++
++  fclose (fp);
++
++  fp = fopen (filename, "a+");
++  if (fp == NULL)
++    {
++      printf ("fopen(a+): %m\n");
++      return NULL;
++    }
++
++  return fp;
++}
++
++static int
++do_one_test (const char *filename)
++{
++  FILE *fp = init_file (filename);
++
++  if (fp == NULL)
++    return 1;
++
++  void *ret = fgets_func (buf, BUF_LEN, fp);
++
++  if (ret == NULL)
++    {
++      printf ("read failed: %m\n");
++      fclose (fp);
++      return 1;
++    }
++
++  int written = fputs_func (data, fp);
++
++  if (written == EOF)
++    {
++      printf ("fputs failed to write data\n");
++      fclose (fp);
++      return 1;
++    }
++
++  file_len += data_len;
++
++  long off = ftell (fp);
++
++  if (off != file_len)
++    {
++      printf ("Incorrect offset %ld, expected %zu\n", off, file_len);
++      fclose (fp);
++      return 1;
++    }
++  else
++    printf ("Correct offset %ld after write.\n", off);
++
++  return 0;
++}
++
++/* Run the tests for regular files and wide mode files.  */
++static int
++do_test (void)
++{
++  int ret = 0;
++  char *filename;
++  int fd = create_temp_file ("tst-ftell-append-tmp.", &filename);
++
++  if (fd == -1)
++    {
++      printf ("create_temp_file: %m\n");
++      return 1;
++    }
++
++  close (fd);
++
++  /* Tests for regular files.  */
++  puts ("Regular mode:");
++  fputs_func = (fputs_func_t) fputs;
++  fgets_func = (fgets_func_t) fgets;
++  data = char_data;
++  buf = char_buf;
++  data_len = strlen (char_data);
++  ret |= do_one_test (filename);
++
++  /* Tests for wide files.  */
++  puts ("Wide mode:");
++  if (setlocale (LC_ALL, "en_US.UTF-8") == NULL)
++    {
++      printf ("Cannot set en_US.UTF-8 locale.\n");
++      return 1;
++    }
++  fputs_func = (fputs_func_t) fputws;
++  fgets_func = (fgets_func_t) fgetws;
++  data = wide_data;
++  buf = wide_buf;
++  data_len = wcslen (wide_data);
++  ret |= do_one_test (filename);
++
++  return ret;
++}
+diff --git glibc-2.17-c758a686/libio/wfileops.c glibc-2.17-c758a686/libio/wfileops.c
+index 3199861..f123add 100644
+--- glibc-2.17-c758a686/libio/wfileops.c
++++ glibc-2.17-c758a686/libio/wfileops.c
+@@ -713,9 +713,16 @@ do_ftell_wide (_IO_FILE *fp)
+ 	      offset += outstop - out;
+ 	    }
+ 
+-	  /* _IO_read_end coincides with fp._offset, so the actual file
+-	     position is fp._offset - (_IO_read_end - new_write_ptr).  */
+-	  offset -= fp->_IO_read_end - fp->_IO_write_ptr;
++	  /* We don't trust _IO_read_end to represent the current file offset
++	     when writing in append mode because the value would have to be
++	     shifted to the end of the file during a flush.  Use the write base
++	     instead, along with the new offset we got above when we did a seek
++	     to the end of the file.  */
++	  if (append_mode)
++	    offset += fp->_IO_write_ptr - fp->_IO_write_base;
++	  /* For all other modes, _IO_read_end represents the file offset.  */
++	  else
++	    offset += fp->_IO_write_ptr - fp->_IO_read_end;
+ 	}
+     }
+ 

@@ -1,0 +1,1252 @@
+We keep with the idea behind this patch but adjust all of the changes
+to match the existing impelementations in RHEL 7.3.
+
+commit 0b5395f052ee09cd7e3d219af4e805c38058afb5
+Author: H.J. Lu <hjl.tools@gmail.com>
+Date:   Thu Aug 13 03:38:47 2015 -0700
+
+    Update x86_64 multiarch functions for <cpu-features.h>
+    
+    This patch updates x86_64 multiarch functions to use the newly defined
+    HAS_CPU_FEATURE, HAS_ARCH_FEATURE and LOAD_RTLD_GLOBAL_RO_RDX from
+    <cpu-features.h>.
+    
+Index: glibc-2.17-c758a686/sysdeps/x86_64/fpu/multiarch/e_asin.c
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/x86_64/fpu/multiarch/e_asin.c
++++ glibc-2.17-c758a686/sysdeps/x86_64/fpu/multiarch/e_asin.c
+@@ -8,11 +8,15 @@ extern double __ieee754_acos_fma4 (doubl
+ extern double __ieee754_asin_fma4 (double);
+ 
+ libm_ifunc (__ieee754_acos,
+-	    HAS_FMA4 ? __ieee754_acos_fma4 : __ieee754_acos_sse2);
++	    HAS_ARCH_FEATURE (FMA4_Usable)
++	    ? __ieee754_acos_fma4
++	    : __ieee754_acos_sse2);
+ strong_alias (__ieee754_acos, __acos_finite)
+ 
+ libm_ifunc (__ieee754_asin,
+-	    HAS_FMA4 ? __ieee754_asin_fma4 : __ieee754_asin_sse2);
++	    HAS_ARCH_FEATURE (FMA4_Usable)
++	    ? __ieee754_asin_fma4
++	    : __ieee754_asin_sse2);
+ strong_alias (__ieee754_asin, __asin_finite)
+ 
+ # define __ieee754_acos __ieee754_acos_sse2
+Index: glibc-2.17-c758a686/sysdeps/x86_64/fpu/multiarch/e_atan2.c
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/x86_64/fpu/multiarch/e_atan2.c
++++ glibc-2.17-c758a686/sysdeps/x86_64/fpu/multiarch/e_atan2.c
+@@ -7,14 +7,15 @@ extern double __ieee754_atan2_avx (doubl
+ # ifdef HAVE_FMA4_SUPPORT
+ extern double __ieee754_atan2_fma4 (double, double);
+ # else
+-#  undef HAS_FMA4
+-#  define HAS_FMA4 0
++#  undef HAS_ARCH_FEATURE
++#  define HAS_ARCH_FEATURE(feature) 0
+ #  define __ieee754_atan2_fma4 ((void *) 0)
+ # endif
+ 
+ libm_ifunc (__ieee754_atan2,
+-	    HAS_FMA4 ? __ieee754_atan2_fma4
+-	    : (HAS_AVX ? __ieee754_atan2_avx : __ieee754_atan2_sse2));
++	    HAS_ARCH_FEATURE (FMA4_Usable) ? __ieee754_atan2_fma4
++	    : (HAS_ARCH_FEATURE (AVX_Usable)
++	       ? __ieee754_atan2_avx : __ieee754_atan2_sse2));
+ strong_alias (__ieee754_atan2, __atan2_finite)
+ 
+ # define __ieee754_atan2 __ieee754_atan2_sse2
+Index: glibc-2.17-c758a686/sysdeps/x86_64/fpu/multiarch/e_exp.c
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/x86_64/fpu/multiarch/e_exp.c
++++ glibc-2.17-c758a686/sysdeps/x86_64/fpu/multiarch/e_exp.c
+@@ -7,14 +7,15 @@ extern double __ieee754_exp_avx (double)
+ # ifdef HAVE_FMA4_SUPPORT
+ extern double __ieee754_exp_fma4 (double);
+ # else
+-#  undef HAS_FMA4
+-#  define HAS_FMA4 0
++#  undef HAS_ARCH_FEATURE
++#  define HAS_ARCH_FEATURE(feature) 0
+ #  define __ieee754_exp_fma4 ((void *) 0)
+ # endif
+ 
+ libm_ifunc (__ieee754_exp,
+-	    HAS_FMA4 ? __ieee754_exp_fma4
+-	    : (HAS_AVX ? __ieee754_exp_avx : __ieee754_exp_sse2));
++	    HAS_ARCH_FEATURE (FMA4_Usable) ? __ieee754_exp_fma4
++	    : (HAS_ARCH_FEATURE (AVX_Usable)
++	       ? __ieee754_exp_avx : __ieee754_exp_sse2));
+ strong_alias (__ieee754_exp, __exp_finite)
+ 
+ # define __ieee754_exp __ieee754_exp_sse2
+Index: glibc-2.17-c758a686/sysdeps/x86_64/fpu/multiarch/e_log.c
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/x86_64/fpu/multiarch/e_log.c
++++ glibc-2.17-c758a686/sysdeps/x86_64/fpu/multiarch/e_log.c
+@@ -7,14 +7,15 @@ extern double __ieee754_log_avx (double)
+ # ifdef HAVE_FMA4_SUPPORT
+ extern double __ieee754_log_fma4 (double);
+ # else
+-#  undef HAS_FMA4
+-#  define HAS_FMA4 0
++#  undef HAS_ARCH_FEATURE
++#  define HAS_ARCH_FEATURE(feature) 0
+ #  define __ieee754_log_fma4 ((void *) 0)
+ # endif
+ 
+ libm_ifunc (__ieee754_log,
+-	    HAS_FMA4 ? __ieee754_log_fma4
+-	    : (HAS_AVX ? __ieee754_log_avx : __ieee754_log_sse2));
++	    HAS_ARCH_FEATURE (FMA4_Usable) ? __ieee754_log_fma4
++	    : (HAS_ARCH_FEATURE (AVX_Usable)
++	       ? __ieee754_log_avx : __ieee754_log_sse2));
+ strong_alias (__ieee754_log, __log_finite)
+ 
+ # define __ieee754_log __ieee754_log_sse2
+Index: glibc-2.17-c758a686/sysdeps/x86_64/fpu/multiarch/e_pow.c
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/x86_64/fpu/multiarch/e_pow.c
++++ glibc-2.17-c758a686/sysdeps/x86_64/fpu/multiarch/e_pow.c
+@@ -5,7 +5,10 @@
+ extern double __ieee754_pow_sse2 (double, double);
+ extern double __ieee754_pow_fma4 (double, double);
+ 
+-libm_ifunc (__ieee754_pow, HAS_FMA4 ? __ieee754_pow_fma4 : __ieee754_pow_sse2);
++libm_ifunc (__ieee754_pow,
++	    HAS_ARCH_FEATURE (FMA4_Usable)
++	    ? __ieee754_pow_fma4
++	    : __ieee754_pow_sse2);
+ strong_alias (__ieee754_pow, __pow_finite)
+ 
+ # define __ieee754_pow __ieee754_pow_sse2
+Index: glibc-2.17-c758a686/sysdeps/x86_64/fpu/multiarch/s_atan.c
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/x86_64/fpu/multiarch/s_atan.c
++++ glibc-2.17-c758a686/sysdeps/x86_64/fpu/multiarch/s_atan.c
+@@ -7,13 +7,14 @@ extern double __atan_avx (double);
+ # ifdef HAVE_FMA4_SUPPORT
+ extern double __atan_fma4 (double);
+ # else
+-#  undef HAS_FMA4
+-#  define HAS_FMA4 0
++#  undef HAS_ARCH_FEATURE
++#  define HAS_ARCH_FEATURE(feature) 0
+ #  define __atan_fma4 ((void *) 0)
+ # endif
+ 
+-libm_ifunc (atan, (HAS_FMA4 ? __atan_fma4 :
+-		   HAS_AVX ? __atan_avx : __atan_sse2));
++libm_ifunc (atan, (HAS_ARCH_FEATURE (FMA4_Usable) ? __atan_fma4 :
++		   HAS_ARCH_FEATURE (AVX_Usable)
++		   ? __atan_avx : __atan_sse2));
+ 
+ # define atan __atan_sse2
+ #endif
+Index: glibc-2.17-c758a686/sysdeps/x86_64/fpu/multiarch/s_ceil.S
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/x86_64/fpu/multiarch/s_ceil.S
++++ glibc-2.17-c758a686/sysdeps/x86_64/fpu/multiarch/s_ceil.S
+@@ -22,10 +22,9 @@
+ 
+ ENTRY(__ceil)
+ 	.type	__ceil, @gnu_indirect_function
+-	call	__get_cpu_features@plt
+-	movq	%rax, %rdx
++	LOAD_RTLD_GLOBAL_RO_RDX
+ 	leaq	__ceil_sse41(%rip), %rax
+-	testl	$bit_SSE4_1, CPUID_OFFSET+index_SSE4_1(%rdx)
++	HAS_CPU_FEATURE (SSE4_1)
+ 	jnz	2f
+ 	leaq	__ceil_c(%rip), %rax
+ 2:	ret
+Index: glibc-2.17-c758a686/sysdeps/x86_64/fpu/multiarch/s_ceilf.S
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/x86_64/fpu/multiarch/s_ceilf.S
++++ glibc-2.17-c758a686/sysdeps/x86_64/fpu/multiarch/s_ceilf.S
+@@ -22,10 +22,9 @@
+ 
+ ENTRY(__ceilf)
+ 	.type	__ceilf, @gnu_indirect_function
+-	call	__get_cpu_features@plt
+-	movq	%rax, %rdx
++	LOAD_RTLD_GLOBAL_RO_RDX
+ 	leaq	__ceilf_sse41(%rip), %rax
+-	testl	$bit_SSE4_1, CPUID_OFFSET+index_SSE4_1(%rdx)
++	HAS_CPU_FEATURE (SSE4_1)
+ 	jnz	2f
+ 	leaq	__ceilf_c(%rip), %rax
+ 2:	ret
+Index: glibc-2.17-c758a686/sysdeps/x86_64/fpu/multiarch/s_floor.S
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/x86_64/fpu/multiarch/s_floor.S
++++ glibc-2.17-c758a686/sysdeps/x86_64/fpu/multiarch/s_floor.S
+@@ -22,10 +22,9 @@
+ 
+ ENTRY(__floor)
+ 	.type	__floor, @gnu_indirect_function
+-	call	__get_cpu_features@plt
+-	movq	%rax, %rdx
++	LOAD_RTLD_GLOBAL_RO_RDX
+ 	leaq	__floor_sse41(%rip), %rax
+-	testl	$bit_SSE4_1, CPUID_OFFSET+index_SSE4_1(%rdx)
++	HAS_CPU_FEATURE (SSE4_1)
+ 	jnz	2f
+ 	leaq	__floor_c(%rip), %rax
+ 2:	ret
+Index: glibc-2.17-c758a686/sysdeps/x86_64/fpu/multiarch/s_floorf.S
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/x86_64/fpu/multiarch/s_floorf.S
++++ glibc-2.17-c758a686/sysdeps/x86_64/fpu/multiarch/s_floorf.S
+@@ -22,10 +22,10 @@
+ 
+ ENTRY(__floorf)
+ 	.type	__floorf, @gnu_indirect_function
+-	call	__get_cpu_features@plt
++	LOAD_RTLD_GLOBAL_RO_RDX
+ 	movq	%rax, %rdx
+ 	leaq	__floorf_sse41(%rip), %rax
+-	testl	$bit_SSE4_1, CPUID_OFFSET+index_SSE4_1(%rdx)
++	HAS_CPU_FEATURE (SSE4_1)
+ 	jnz	2f
+ 	leaq	__floorf_c(%rip), %rax
+ 2:	ret
+Index: glibc-2.17-c758a686/sysdeps/x86_64/fpu/multiarch/s_fma.c
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/x86_64/fpu/multiarch/s_fma.c
++++ glibc-2.17-c758a686/sysdeps/x86_64/fpu/multiarch/s_fma.c
+@@ -42,14 +42,15 @@ __fma_fma4 (double x, double y, double z
+   return x;
+ }
+ # else
+-#  undef HAS_FMA4
+-#  define HAS_FMA4 0
++#  undef HAS_ARCH_FEATURE
++#  define HAS_ARCH_FEATURE(feature) 0
+ #  define __fma_fma4 ((void *) 0)
+ # endif
+ 
+ 
+-libm_ifunc (__fma, HAS_FMA
+-	    ? __fma_fma3 : (HAS_FMA4 ? __fma_fma4 : __fma_sse2));
++libm_ifunc (__fma, HAS_ARCH_FEATURE (FMA_Usable)
++	    ? __fma_fma3 : (HAS_ARCH_FEATURE (FMA4_Usable)
++			    ? __fma_fma4 : __fma_sse2));
+ weak_alias (__fma, fma)
+ 
+ # define __fma __fma_sse2
+Index: glibc-2.17-c758a686/sysdeps/x86_64/fpu/multiarch/s_fmaf.c
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/x86_64/fpu/multiarch/s_fmaf.c
++++ glibc-2.17-c758a686/sysdeps/x86_64/fpu/multiarch/s_fmaf.c
+@@ -41,14 +41,15 @@ __fmaf_fma4 (float x, float y, float z)
+   return x;
+ }
+ # else
+-#  undef HAS_FMA4
+-#  define HAS_FMA4 0
++#  undef HAS_ARCH_FEATURE
++#  define HAS_ARCH_FEATURE(feature) 0
+ #  define __fmaf_fma4 ((void *) 0)
+ # endif
+ 
+ 
+-libm_ifunc (__fmaf, HAS_FMA
+-	    ? __fmaf_fma3 : (HAS_FMA4 ? __fmaf_fma4 : __fmaf_sse2));
++libm_ifunc (__fmaf, HAS_ARCH_FEATURE (FMA_Usable)
++	    ? __fmaf_fma3 : (HAS_ARCH_FEATURE (FMA4_Usable)
++			     ? __fmaf_fma4 : __fmaf_sse2));
+ weak_alias (__fmaf, fmaf)
+ 
+ # define __fmaf __fmaf_sse2
+Index: glibc-2.17-c758a686/sysdeps/x86_64/fpu/multiarch/s_nearbyint.S
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/x86_64/fpu/multiarch/s_nearbyint.S
++++ glibc-2.17-c758a686/sysdeps/x86_64/fpu/multiarch/s_nearbyint.S
+@@ -22,10 +22,10 @@
+ 
+ ENTRY(__nearbyint)
+ 	.type	__nearbyint, @gnu_indirect_function
+-	call	__get_cpu_features@plt
++	LOAD_RTLD_GLOBAL_RO_RDX
+ 	movq	%rax, %rdx
+ 	leaq	__nearbyint_sse41(%rip), %rax
+-	testl	$bit_SSE4_1, CPUID_OFFSET+index_SSE4_1(%rdx)
++	HAS_CPU_FEATURE (SSE4_1)
+ 	jnz	2f
+ 	leaq	__nearbyint_c(%rip), %rax
+ 2:	ret
+Index: glibc-2.17-c758a686/sysdeps/x86_64/fpu/multiarch/s_nearbyintf.S
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/x86_64/fpu/multiarch/s_nearbyintf.S
++++ glibc-2.17-c758a686/sysdeps/x86_64/fpu/multiarch/s_nearbyintf.S
+@@ -22,10 +22,9 @@
+ 
+ ENTRY(__nearbyintf)
+ 	.type	__nearbyintf, @gnu_indirect_function
+-	call	__get_cpu_features@plt
+-	movq	%rax, %rdx
++	LOAD_RTLD_GLOBAL_RO_RDX
+ 	leaq	__nearbyintf_sse41(%rip), %rax
+-	testl	$bit_SSE4_1, CPUID_OFFSET+index_SSE4_1(%rdx)
++	HAS_CPU_FEATURE (SSE4_1)
+ 	jnz	2f
+ 	leaq	__nearbyintf_c(%rip), %rax
+ 2:	ret
+Index: glibc-2.17-c758a686/sysdeps/x86_64/fpu/multiarch/s_rint.S
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/x86_64/fpu/multiarch/s_rint.S
++++ glibc-2.17-c758a686/sysdeps/x86_64/fpu/multiarch/s_rint.S
+@@ -22,10 +22,9 @@
+ 
+ ENTRY(__rint)
+ 	.type	__rint, @gnu_indirect_function
+-	call	__get_cpu_features@plt
+-	movq	%rax, %rdx
++	LOAD_RTLD_GLOBAL_RO_RDX
+ 	leaq	__rint_sse41(%rip), %rax
+-	testl	$bit_SSE4_1, CPUID_OFFSET+index_SSE4_1(%rdx)
++	HAS_CPU_FEATURE (SSE4_1)
+ 	jnz	2f
+ 	leaq	__rint_c(%rip), %rax
+ 2:	ret
+Index: glibc-2.17-c758a686/sysdeps/x86_64/fpu/multiarch/s_rintf.S
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/x86_64/fpu/multiarch/s_rintf.S
++++ glibc-2.17-c758a686/sysdeps/x86_64/fpu/multiarch/s_rintf.S
+@@ -22,10 +22,9 @@
+ 
+ ENTRY(__rintf)
+ 	.type	__rintf, @gnu_indirect_function
+-	call	__get_cpu_features@plt
+-	movq	%rax, %rdx
++	LOAD_RTLD_GLOBAL_RO_RDX
+ 	leaq	__rintf_sse41(%rip), %rax
+-	testl	$bit_SSE4_1, CPUID_OFFSET+index_SSE4_1(%rdx)
++	HAS_CPU_FEATURE (SSE4_1)
+ 	jnz	2f
+ 	leaq	__rintf_c(%rip), %rax
+ 2:	ret
+Index: glibc-2.17-c758a686/sysdeps/x86_64/fpu/multiarch/s_sin.c
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/x86_64/fpu/multiarch/s_sin.c
++++ glibc-2.17-c758a686/sysdeps/x86_64/fpu/multiarch/s_sin.c
+@@ -11,18 +11,20 @@ extern double __sin_avx (double);
+ extern double __cos_fma4 (double);
+ extern double __sin_fma4 (double);
+ # else
+-#  undef HAS_FMA4
+-#  define HAS_FMA4 0
++#  undef HAS_ARCH_FEATURE
++#  define HAS_ARCH_FEATURE(feature) 0
+ #  define __cos_fma4 ((void *) 0)
+ #  define __sin_fma4 ((void *) 0)
+ # endif
+ 
+-libm_ifunc (__cos, (HAS_FMA4 ? __cos_fma4 :
+-		    HAS_AVX ? __cos_avx : __cos_sse2));
++libm_ifunc (__cos, (HAS_ARCH_FEATURE (FMA4_Usable) ? __cos_fma4 :
++		    HAS_ARCH_FEATURE (AVX_Usable)
++		    ? __cos_avx : __cos_sse2));
+ weak_alias (__cos, cos)
+ 
+-libm_ifunc (__sin, (HAS_FMA4 ? __sin_fma4 :
+-		    HAS_AVX ? __sin_avx : __sin_sse2));
++libm_ifunc (__sin, (HAS_ARCH_FEATURE (FMA4_Usable) ? __sin_fma4 :
++		    HAS_ARCH_FEATURE (AVX_Usable)
++		    ? __sin_avx : __sin_sse2));
+ weak_alias (__sin, sin)
+ 
+ # define __cos __cos_sse2
+Index: glibc-2.17-c758a686/sysdeps/x86_64/fpu/multiarch/s_tan.c
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/x86_64/fpu/multiarch/s_tan.c
++++ glibc-2.17-c758a686/sysdeps/x86_64/fpu/multiarch/s_tan.c
+@@ -7,13 +7,14 @@ extern double __tan_avx (double);
+ # ifdef HAVE_FMA4_SUPPORT
+ extern double __tan_fma4 (double);
+ # else
+-#  undef HAS_FMA4
+-#  define HAS_FMA4 0
++#  undef HAS_ARCH_FEATURE
++#  define HAS_ARCH_FEATURE(feature) 0
+ #  define __tan_fma4 ((void *) 0)
+ # endif
+ 
+-libm_ifunc (tan, (HAS_FMA4 ? __tan_fma4 :
+-		  HAS_AVX ? __tan_avx : __tan_sse2));
++libm_ifunc (tan, (HAS_ARCH_FEATURE (FMA4_Usable) ? __tan_fma4 :
++		  HAS_ARCH_FEATURE (AVX_Usable)
++		  ? __tan_avx : __tan_sse2));
+ 
+ # define tan __tan_sse2
+ #endif
+Index: glibc-2.17-c758a686/sysdeps/x86_64/multiarch/ifunc-impl-list.c
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/x86_64/multiarch/ifunc-impl-list.c
++++ glibc-2.17-c758a686/sysdeps/x86_64/multiarch/ifunc-impl-list.c
+@@ -39,25 +39,26 @@ __libc_ifunc_impl_list (const char *name
+ 
+   /* Support sysdeps/x86_64/multiarch/memcmp.S.  */
+   IFUNC_IMPL (i, name, memcmp,
+-	      IFUNC_IMPL_ADD (array, i, memcmp, HAS_SSE4_1,
++	      IFUNC_IMPL_ADD (array, i, memcmp, HAS_CPU_FEATURE (SSE4_1),
+ 			      __memcmp_sse4_1)
+-	      IFUNC_IMPL_ADD (array, i, memcmp, HAS_SSSE3, __memcmp_ssse3)
++	      IFUNC_IMPL_ADD (array, i, memcmp, HAS_CPU_FEATURE (SSSE3),
++			      __memcmp_ssse3)
+ 	      IFUNC_IMPL_ADD (array, i, memcmp, 1, __memcmp_sse2))
+ 
+   /* Support sysdeps/x86_64/multiarch/memmove_chk.S.  */
+   IFUNC_IMPL (i, name, __memmove_chk,
+-	      IFUNC_IMPL_ADD (array, i, __memmove_chk, HAS_SSSE3,
++	      IFUNC_IMPL_ADD (array, i, __memmove_chk, HAS_CPU_FEATURE (SSSE3),
+ 			      __memmove_chk_ssse3_back)
+-	      IFUNC_IMPL_ADD (array, i, __memmove_chk, HAS_SSSE3,
++	      IFUNC_IMPL_ADD (array, i, __memmove_chk, HAS_CPU_FEATURE (SSSE3),
+ 			      __memmove_chk_ssse3)
+ 	      IFUNC_IMPL_ADD (array, i, __memmove_chk, 1,
+ 			      __memmove_chk_sse2))
+ 
+   /* Support sysdeps/x86_64/multiarch/memmove.S.  */
+   IFUNC_IMPL (i, name, memmove,
+-	      IFUNC_IMPL_ADD (array, i, memmove, HAS_SSSE3,
++	      IFUNC_IMPL_ADD (array, i, memmove, HAS_CPU_FEATURE (SSSE3),
+ 			      __memmove_ssse3_back)
+-	      IFUNC_IMPL_ADD (array, i, memmove, HAS_SSSE3,
++	      IFUNC_IMPL_ADD (array, i, memmove, HAS_CPU_FEATURE (SSSE3),
+ 			      __memmove_ssse3)
+ 	      IFUNC_IMPL_ADD (array, i, memmove, 1, __memmove_sse2))
+ 
+@@ -74,13 +75,13 @@ __libc_ifunc_impl_list (const char *name
+ 
+   /* Support sysdeps/x86_64/multiarch/rawmemchr.S.  */
+   IFUNC_IMPL (i, name, rawmemchr,
+-	      IFUNC_IMPL_ADD (array, i, rawmemchr, HAS_SSE4_2,
++	      IFUNC_IMPL_ADD (array, i, rawmemchr, HAS_CPU_FEATURE (SSE4_2),
+ 			      __rawmemchr_sse42)
+ 	      IFUNC_IMPL_ADD (array, i, rawmemchr, 1, __rawmemchr_sse2))
+ 
+   /* Support sysdeps/x86_64/multiarch/stpncpy.S.  */
+   IFUNC_IMPL (i, name, stpncpy,
+-	      IFUNC_IMPL_ADD (array, i, stpncpy, HAS_SSSE3,
++	      IFUNC_IMPL_ADD (array, i, stpncpy, HAS_CPU_FEATURE (SSSE3),
+ 			      __stpncpy_ssse3)
+ 	      IFUNC_IMPL_ADD (array, i, stpncpy, 1,
+ 			      __stpncpy_sse2_unaligned)
+@@ -88,92 +89,105 @@ __libc_ifunc_impl_list (const char *name
+ 
+   /* Support sysdeps/x86_64/multiarch/stpcpy.S.  */
+   IFUNC_IMPL (i, name, stpcpy,
+-	      IFUNC_IMPL_ADD (array, i, stpcpy, HAS_SSSE3, __stpcpy_ssse3)
++	      IFUNC_IMPL_ADD (array, i, stpcpy, HAS_CPU_FEATURE (SSSE3),
++			      __stpcpy_ssse3)
+ 	      IFUNC_IMPL_ADD (array, i, stpcpy, 1, __stpcpy_sse2_unaligned)
+ 	      IFUNC_IMPL_ADD (array, i, stpcpy, 1, __stpcpy_sse2))
+ 
+   /* Support sysdeps/x86_64/multiarch/strcasecmp_l.S.  */
+   IFUNC_IMPL (i, name, strcasecmp,
+-	      IFUNC_IMPL_ADD (array, i, strcasecmp, HAS_AVX,
++	      IFUNC_IMPL_ADD (array, i, strcasecmp,
++			      HAS_ARCH_FEATURE (AVX_Usable),
+ 			      __strcasecmp_avx)
+-	      IFUNC_IMPL_ADD (array, i, strcasecmp, HAS_SSE4_2,
++	      IFUNC_IMPL_ADD (array, i, strcasecmp,
++			      HAS_CPU_FEATURE (SSE4_2),
+ 			      __strcasecmp_sse42)
+-	      IFUNC_IMPL_ADD (array, i, strcasecmp, HAS_SSSE3,
++	      IFUNC_IMPL_ADD (array, i, strcasecmp,
++			      HAS_CPU_FEATURE (SSSE3),
+ 			      __strcasecmp_ssse3)
+ 	      IFUNC_IMPL_ADD (array, i, strcasecmp, 1, __strcasecmp_sse2))
+ 
+   /* Support sysdeps/x86_64/multiarch/strcasecmp_l.S.  */
+   IFUNC_IMPL (i, name, strcasecmp_l,
+-	      IFUNC_IMPL_ADD (array, i, strcasecmp_l, HAS_AVX,
++	      IFUNC_IMPL_ADD (array, i, strcasecmp_l,
++			      HAS_ARCH_FEATURE (AVX_Usable),
+ 			      __strcasecmp_l_avx)
+-	      IFUNC_IMPL_ADD (array, i, strcasecmp_l, HAS_SSE4_2,
++	      IFUNC_IMPL_ADD (array, i, strcasecmp_l,
++			      HAS_CPU_FEATURE (SSE4_2),
+ 			      __strcasecmp_l_sse42)
+-	      IFUNC_IMPL_ADD (array, i, strcasecmp_l, HAS_SSSE3,
++	      IFUNC_IMPL_ADD (array, i, strcasecmp_l,
++			      HAS_CPU_FEATURE (SSSE3),
+ 			      __strcasecmp_l_ssse3)
+ 	      IFUNC_IMPL_ADD (array, i, strcasecmp_l, 1,
+ 			      __strcasecmp_l_sse2))
+ 
+   /* Support sysdeps/x86_64/multiarch/strcasestr.c.  */
+   IFUNC_IMPL (i, name, strcasestr,
+-	      IFUNC_IMPL_ADD (array, i, strcasestr, HAS_SSE4_2,
++	      IFUNC_IMPL_ADD (array, i, strcasestr, HAS_CPU_FEATURE (SSE4_2),
+ 			      __strcasestr_sse42)
+ 	      IFUNC_IMPL_ADD (array, i, strcasestr, 1, __strcasestr_sse2))
+ 
+   /* Support sysdeps/x86_64/multiarch/strcat.S.  */
+   IFUNC_IMPL (i, name, strcat,
+-	      IFUNC_IMPL_ADD (array, i, strcat, HAS_SSSE3, __strcat_ssse3)
++	      IFUNC_IMPL_ADD (array, i, strcat, HAS_CPU_FEATURE (SSSE3),
++			      __strcat_ssse3)
+ 	      IFUNC_IMPL_ADD (array, i, strcat, 1, __strcat_sse2_unaligned)
+ 	      IFUNC_IMPL_ADD (array, i, strcat, 1, __strcat_sse2))
+ 
+   /* Support sysdeps/x86_64/multiarch/strchr.S.  */
+   IFUNC_IMPL (i, name, strchr,
+-	      IFUNC_IMPL_ADD (array, i, strchr, HAS_SSE4_2, __strchr_sse42)
++	      IFUNC_IMPL_ADD (array, i, strchr, HAS_CPU_FEATURE (SSE4_2),
++			      __strchr_sse42)
+ 	      IFUNC_IMPL_ADD (array, i, strchr, 1, __strchr_sse2_no_bsf)
+ 	      IFUNC_IMPL_ADD (array, i, strchr, 1, __strchr_sse2))
+ 
+   /* Support sysdeps/x86_64/multiarch/strcmp.S.  */
+   IFUNC_IMPL (i, name, strcmp,
+-	      IFUNC_IMPL_ADD (array, i, strcmp, HAS_SSE4_2, __strcmp_sse42)
+-	      IFUNC_IMPL_ADD (array, i, strcmp, HAS_SSSE3, __strcmp_ssse3)
++	      IFUNC_IMPL_ADD (array, i, strcmp, HAS_CPU_FEATURE (SSE4_2),
++			      __strcmp_sse42)
++	      IFUNC_IMPL_ADD (array, i, strcmp, HAS_CPU_FEATURE (SSSE3),
++			      __strcmp_ssse3)
+ 	      IFUNC_IMPL_ADD (array, i, strcmp, 1, __strcmp_sse2))
+ 
+   /* Support sysdeps/x86_64/multiarch/strcpy.S.  */
+   IFUNC_IMPL (i, name, strcpy,
+-	      IFUNC_IMPL_ADD (array, i, strcpy, HAS_SSSE3, __strcpy_ssse3)
++	      IFUNC_IMPL_ADD (array, i, strcpy, HAS_CPU_FEATURE (SSSE3),
++			      __strcpy_ssse3)
+ 	      IFUNC_IMPL_ADD (array, i, strcpy, 1, __strcpy_sse2_unaligned)
+ 	      IFUNC_IMPL_ADD (array, i, strcpy, 1, __strcpy_sse2))
+ 
+   /* Support sysdeps/x86_64/multiarch/strcspn.S.  */
+   IFUNC_IMPL (i, name, strcspn,
+-	      IFUNC_IMPL_ADD (array, i, strcspn, HAS_SSE4_2,
++	      IFUNC_IMPL_ADD (array, i, strcspn, HAS_CPU_FEATURE (SSE4_2),
+ 			      __strcspn_sse42)
+ 	      IFUNC_IMPL_ADD (array, i, strcspn, 1, __strcspn_sse2))
+ 
+   /* Support sysdeps/x86_64/multiarch/strncase_l.S.  */
+   IFUNC_IMPL (i, name, strncasecmp,
+-	      IFUNC_IMPL_ADD (array, i, strncasecmp, HAS_AVX,
++	      IFUNC_IMPL_ADD (array, i, strncasecmp, HAS_ARCH_FEATURE (AVX_Usable),
+ 			      __strncasecmp_avx)
+-	      IFUNC_IMPL_ADD (array, i, strncasecmp, HAS_SSE4_2,
++	      IFUNC_IMPL_ADD (array, i, strncasecmp, HAS_CPU_FEATURE (SSE4_2),
+ 			      __strncasecmp_sse42)
+-	      IFUNC_IMPL_ADD (array, i, strncasecmp, HAS_SSSE3,
++	      IFUNC_IMPL_ADD (array, i, strncasecmp, HAS_CPU_FEATURE (SSSE3),
+ 			      __strncasecmp_ssse3)
+ 	      IFUNC_IMPL_ADD (array, i, strncasecmp, 1,
+ 			      __strncasecmp_sse2))
+ 
+   /* Support sysdeps/x86_64/multiarch/strncase_l.S.  */
+   IFUNC_IMPL (i, name, strncasecmp_l,
+-	      IFUNC_IMPL_ADD (array, i, strncasecmp_l, HAS_AVX,
++	      IFUNC_IMPL_ADD (array, i, strncasecmp_l,
++			      HAS_ARCH_FEATURE (AVX_Usable),
+ 			      __strncasecmp_l_avx)
+-	      IFUNC_IMPL_ADD (array, i, strncasecmp_l, HAS_SSE4_2,
++	      IFUNC_IMPL_ADD (array, i, strncasecmp_l, HAS_CPU_FEATURE (SSE4_2),
+ 			      __strncasecmp_l_sse42)
+-	      IFUNC_IMPL_ADD (array, i, strncasecmp_l, HAS_SSSE3,
++	      IFUNC_IMPL_ADD (array, i, strncasecmp_l, HAS_CPU_FEATURE (SSSE3),
+ 			      __strncasecmp_l_ssse3)
+ 	      IFUNC_IMPL_ADD (array, i, strncasecmp_l, 1,
+ 			      __strncasecmp_l_sse2))
+ 
+   /* Support sysdeps/x86_64/multiarch/strncat.S.  */
+   IFUNC_IMPL (i, name, strncat,
+-	      IFUNC_IMPL_ADD (array, i, strncat, HAS_SSSE3,
++	      IFUNC_IMPL_ADD (array, i, strncat, HAS_CPU_FEATURE (SSSE3),
+ 			      __strncat_ssse3)
+ 	      IFUNC_IMPL_ADD (array, i, strncat, 1,
+ 			      __strncat_sse2_unaligned)
+@@ -181,7 +195,7 @@ __libc_ifunc_impl_list (const char *name
+ 
+   /* Support sysdeps/x86_64/multiarch/strncpy.S.  */
+   IFUNC_IMPL (i, name, strncpy,
+-	      IFUNC_IMPL_ADD (array, i, strncpy, HAS_SSSE3,
++	      IFUNC_IMPL_ADD (array, i, strncpy, HAS_CPU_FEATURE (SSSE3),
+ 			      __strncpy_ssse3)
+ 	      IFUNC_IMPL_ADD (array, i, strncpy, 1,
+ 			      __strncpy_sse2_unaligned)
+@@ -194,79 +208,83 @@ __libc_ifunc_impl_list (const char *name
+ 
+   /* Support sysdeps/x86_64/multiarch/strpbrk.S.  */
+   IFUNC_IMPL (i, name, strpbrk,
+-	      IFUNC_IMPL_ADD (array, i, strpbrk, HAS_SSE4_2,
++	      IFUNC_IMPL_ADD (array, i, strpbrk, HAS_CPU_FEATURE (SSE4_2),
+ 			      __strpbrk_sse42)
+ 	      IFUNC_IMPL_ADD (array, i, strpbrk, 1, __strpbrk_sse2))
+ 
+   /* Support sysdeps/x86_64/multiarch/strrchr.S.  */
+   IFUNC_IMPL (i, name, strrchr,
+-	      IFUNC_IMPL_ADD (array, i, strrchr, HAS_SSE4_2,
++	      IFUNC_IMPL_ADD (array, i, strrchr, HAS_CPU_FEATURE (SSE4_2),
+ 			      __strrchr_sse42)
+ 	      IFUNC_IMPL_ADD (array, i, strrchr, 1, __strrchr_sse2_no_bsf)
+ 	      IFUNC_IMPL_ADD (array, i, strrchr, 1, __strrchr_sse2))
+ 
+   /* Support sysdeps/x86_64/multiarch/strspn.S.  */
+   IFUNC_IMPL (i, name, strspn,
+-	      IFUNC_IMPL_ADD (array, i, strspn, HAS_SSE4_2, __strspn_sse42)
++	      IFUNC_IMPL_ADD (array, i, strspn, HAS_CPU_FEATURE (SSE4_2),
++			      __strspn_sse42)
+ 	      IFUNC_IMPL_ADD (array, i, strspn, 1, __strspn_sse2))
+ 
+   /* Support sysdeps/x86_64/multiarch/strstr-c.c.  */
+   IFUNC_IMPL (i, name, strstr,
+ 	      IFUNC_IMPL_ADD (array, i, strstr, use_unaligned_strstr (),
+ 			      __strstr_sse2_unaligned)
+-	      IFUNC_IMPL_ADD (array, i, strstr, HAS_SSE4_2, __strstr_sse42)
++	      IFUNC_IMPL_ADD (array, i, strstr, HAS_CPU_FEATURE (SSE4_2),
++			      __strstr_sse42)
+ 	      IFUNC_IMPL_ADD (array, i, strstr, 1, __strstr_sse2))
+ 
+   /* Support sysdeps/x86_64/multiarch/wcscpy.S.  */
+   IFUNC_IMPL (i, name, wcscpy,
+-	      IFUNC_IMPL_ADD (array, i, wcscpy, HAS_SSSE3, __wcscpy_ssse3)
++	      IFUNC_IMPL_ADD (array, i, wcscpy, HAS_CPU_FEATURE (SSSE3),
++			      __wcscpy_ssse3)
+ 	      IFUNC_IMPL_ADD (array, i, wcscpy, 1, __wcscpy_sse2))
+ 
+   /* Support sysdeps/x86_64/multiarch/wmemcmp.S.  */
+   IFUNC_IMPL (i, name, wmemcmp,
+-	      IFUNC_IMPL_ADD (array, i, wmemcmp, HAS_SSE4_1,
++	      IFUNC_IMPL_ADD (array, i, wmemcmp, HAS_CPU_FEATURE (SSE4_1),
+ 			      __wmemcmp_sse4_1)
+-	      IFUNC_IMPL_ADD (array, i, wmemcmp, HAS_SSSE3,
++	      IFUNC_IMPL_ADD (array, i, wmemcmp, HAS_CPU_FEATURE (SSSE3),
+ 			      __wmemcmp_ssse3)
+ 	      IFUNC_IMPL_ADD (array, i, wmemcmp, 1, __wmemcmp_sse2))
+ 
+ #ifdef SHARED
+   /* Support sysdeps/x86_64/multiarch/memcpy_chk.S.  */
+   IFUNC_IMPL (i, name, __memcpy_chk,
+-	      IFUNC_IMPL_ADD (array, i, __memcpy_chk, HAS_SSSE3,
++	      IFUNC_IMPL_ADD (array, i, __memcpy_chk, HAS_CPU_FEATURE (SSSE3),
+ 			      __memcpy_chk_ssse3_back)
+-	      IFUNC_IMPL_ADD (array, i, __memcpy_chk, HAS_SSSE3,
++	      IFUNC_IMPL_ADD (array, i, __memcpy_chk, HAS_CPU_FEATURE (SSSE3),
+ 			      __memcpy_chk_ssse3)
+ 	      IFUNC_IMPL_ADD (array, i, __memcpy_chk, 1,
+ 			      __memcpy_chk_sse2))
+ 
+   /* Support sysdeps/x86_64/multiarch/memcpy.S.  */
+   IFUNC_IMPL (i, name, memcpy,
+-	      IFUNC_IMPL_ADD (array, i, memcpy, HAS_SSSE3,
++	      IFUNC_IMPL_ADD (array, i, memcpy, HAS_CPU_FEATURE (SSSE3),
+ 			      __memcpy_ssse3_back)
+-	      IFUNC_IMPL_ADD (array, i, memcpy, HAS_SSSE3, __memcpy_ssse3)
++	      IFUNC_IMPL_ADD (array, i, memcpy, HAS_CPU_FEATURE (SSSE3), __memcpy_ssse3)
+ 	      IFUNC_IMPL_ADD (array, i, memcpy, 1, __memcpy_sse2))
+ 
+   /* Support sysdeps/x86_64/multiarch/mempcpy_chk.S.  */
+   IFUNC_IMPL (i, name, __mempcpy_chk,
+-	      IFUNC_IMPL_ADD (array, i, __mempcpy_chk, HAS_SSSE3,
++	      IFUNC_IMPL_ADD (array, i, __mempcpy_chk, HAS_CPU_FEATURE (SSSE3),
+ 			      __mempcpy_chk_ssse3_back)
+-	      IFUNC_IMPL_ADD (array, i, __mempcpy_chk, HAS_SSSE3,
++	      IFUNC_IMPL_ADD (array, i, __mempcpy_chk, HAS_CPU_FEATURE (SSSE3),
+ 			      __mempcpy_chk_ssse3)
+ 	      IFUNC_IMPL_ADD (array, i, __mempcpy_chk, 1,
+ 			      __mempcpy_chk_sse2))
+ 
+   /* Support sysdeps/x86_64/multiarch/mempcpy.S.  */
+   IFUNC_IMPL (i, name, mempcpy,
+-	      IFUNC_IMPL_ADD (array, i, mempcpy, HAS_SSSE3,
++	      IFUNC_IMPL_ADD (array, i, mempcpy, HAS_CPU_FEATURE (SSSE3),
+ 			      __mempcpy_ssse3_back)
+-	      IFUNC_IMPL_ADD (array, i, mempcpy, HAS_SSSE3,
++	      IFUNC_IMPL_ADD (array, i, mempcpy, HAS_CPU_FEATURE (SSSE3),
+ 			      __mempcpy_ssse3)
+ 	      IFUNC_IMPL_ADD (array, i, mempcpy, 1, __mempcpy_sse2))
+ 
+   /* Support sysdeps/x86_64/multiarch/strlen.S.  */
+   IFUNC_IMPL (i, name, strlen,
+-	      IFUNC_IMPL_ADD (array, i, strlen, HAS_SSE4_2, __strlen_sse42)
++	      IFUNC_IMPL_ADD (array, i, strlen, HAS_CPU_FEATURE (SSE4_2),
++			      __strlen_sse42)
+ 	      IFUNC_IMPL_ADD (array, i, strlen, 1, __strlen_sse2_pminub)
+ 	      IFUNC_IMPL_ADD (array, i, strlen, 1, __strlen_sse2_no_bsf)
+ 	      IFUNC_IMPL_ADD (array, i, strlen, 1, __strlen_sse2)
+@@ -274,9 +292,9 @@ __libc_ifunc_impl_list (const char *name
+ 
+   /* Support sysdeps/x86_64/multiarch/strncmp.S.  */
+   IFUNC_IMPL (i, name, strncmp,
+-	      IFUNC_IMPL_ADD (array, i, strncmp, HAS_SSE4_2,
++	      IFUNC_IMPL_ADD (array, i, strncmp, HAS_CPU_FEATURE (SSE4_2),
+ 			      __strncmp_sse42)
+-	      IFUNC_IMPL_ADD (array, i, strncmp, HAS_SSSE3,
++	      IFUNC_IMPL_ADD (array, i, strncmp, HAS_CPU_FEATURE (SSSE3),
+ 			      __strncmp_ssse3)
+ 	      IFUNC_IMPL_ADD (array, i, strncmp, 1, __strncmp_sse2))
+ #endif
+Index: glibc-2.17-c758a686/sysdeps/x86_64/multiarch/memcmp.S
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/x86_64/multiarch/memcmp.S
++++ glibc-2.17-c758a686/sysdeps/x86_64/multiarch/memcmp.S
+@@ -26,16 +26,13 @@
+ 	.text
+ ENTRY(memcmp)
+ 	.type	memcmp, @gnu_indirect_function
+-	cmpl	$0, KIND_OFFSET+__cpu_features(%rip)
+-	jne	1f
+-	call	__init_cpu_features
+-
+-1:	testl	$bit_SSSE3, __cpu_features+CPUID_OFFSET+index_SSSE3(%rip)
++	LOAD_RTLD_GLOBAL_RO_RDX
++	HAS_CPU_FEATURE (SSSE3)
+ 	jnz	2f
+ 	leaq	__memcmp_sse2(%rip), %rax
+ 	ret
+ 
+-2:	testl	$bit_SSE4_1, __cpu_features+CPUID_OFFSET+index_SSE4_1(%rip)
++2:	HAS_CPU_FEATURE (SSE4_1)
+ 	jz	3f
+ 	leaq	__memcmp_sse4_1(%rip), %rax
+ 	ret
+Index: glibc-2.17-c758a686/sysdeps/x86_64/multiarch/memcpy.S
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/x86_64/multiarch/memcpy.S
++++ glibc-2.17-c758a686/sysdeps/x86_64/multiarch/memcpy.S
+@@ -29,14 +29,12 @@
+ 	.text
+ ENTRY(__new_memcpy)
+ 	.type	__new_memcpy, @gnu_indirect_function
+-	cmpl	$0, KIND_OFFSET+__cpu_features(%rip)
+-	jne	1f
+-	call	__init_cpu_features
+-1:	leaq	__memcpy_sse2(%rip), %rax
+-	testl	$bit_SSSE3, __cpu_features+CPUID_OFFSET+index_SSSE3(%rip)
++	LOAD_RTLD_GLOBAL_RO_RDX
++	leaq	__memcpy_sse2(%rip), %rax
++	HAS_CPU_FEATURE (SSSE3)
+ 	jz	2f
+ 	leaq	__memcpy_ssse3(%rip), %rax
+-	testl	$bit_Fast_Copy_Backward, __cpu_features+FEATURE_OFFSET+index_Fast_Copy_Backward(%rip)
++	HAS_ARCH_FEATURE (Fast_Copy_Backward)
+ 	jz	2f
+ 	leaq	__memcpy_ssse3_back(%rip), %rax
+ 2:	ret
+Index: glibc-2.17-c758a686/sysdeps/x86_64/multiarch/memcpy_chk.S
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/x86_64/multiarch/memcpy_chk.S
++++ glibc-2.17-c758a686/sysdeps/x86_64/multiarch/memcpy_chk.S
+@@ -29,14 +29,12 @@
+ 	.text
+ ENTRY(__memcpy_chk)
+ 	.type	__memcpy_chk, @gnu_indirect_function
+-	cmpl	$0, KIND_OFFSET+__cpu_features(%rip)
+-	jne	1f
+-	call	__init_cpu_features
+-1:	leaq	__memcpy_chk_sse2(%rip), %rax
+-	testl	$bit_SSSE3, __cpu_features+CPUID_OFFSET+index_SSSE3(%rip)
++	LOAD_RTLD_GLOBAL_RO_RDX
++	leaq	__memcpy_chk_sse2(%rip), %rax
++	HAS_CPU_FEATURE (SSSE3)
+ 	jz	2f
+ 	leaq	__memcpy_chk_ssse3(%rip), %rax
+-	testl	$bit_Fast_Copy_Backward, __cpu_features+FEATURE_OFFSET+index_Fast_Copy_Backward(%rip)
++	HAS_ARCH_FEATURE (Fast_Copy_Backward)
+ 	jz	2f
+ 	leaq	__memcpy_chk_ssse3_back(%rip), %rax
+ 2:	ret
+Index: glibc-2.17-c758a686/sysdeps/x86_64/multiarch/memmove.c
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/x86_64/multiarch/memmove.c
++++ glibc-2.17-c758a686/sysdeps/x86_64/multiarch/memmove.c
+@@ -47,8 +47,8 @@ extern __typeof (__redirect_memmove) __m
+    ifunc symbol properly.  */
+ extern __typeof (__redirect_memmove) __libc_memmove;
+ libc_ifunc (__libc_memmove,
+-	    HAS_SSSE3
+-	    ? (HAS_FAST_COPY_BACKWARD
++	    HAS_CPU_FEATURE (SSSE3)
++	    ? (HAS_ARCH_FEATURE (Fast_Copy_Backward)
+ 	       ? __memmove_ssse3_back : __memmove_ssse3)
+ 	    : __memmove_sse2)
+ 
+Index: glibc-2.17-c758a686/sysdeps/x86_64/multiarch/memmove_chk.c
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/x86_64/multiarch/memmove_chk.c
++++ glibc-2.17-c758a686/sysdeps/x86_64/multiarch/memmove_chk.c
+@@ -29,7 +29,7 @@ extern __typeof (__memmove_chk) __memmov
+ #include "debug/memmove_chk.c"
+ 
+ libc_ifunc (__memmove_chk,
+-	    HAS_SSSE3
+-	    ? (HAS_FAST_COPY_BACKWARD
++	    HAS_CPU_FEATURE (SSSE3)
++	    ? (HAS_ARCH_FEATURE (Fast_Copy_Backward)
+ 	       ? __memmove_chk_ssse3_back : __memmove_chk_ssse3)
+ 	    : __memmove_chk_sse2);
+Index: glibc-2.17-c758a686/sysdeps/x86_64/multiarch/mempcpy.S
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/x86_64/multiarch/mempcpy.S
++++ glibc-2.17-c758a686/sysdeps/x86_64/multiarch/mempcpy.S
+@@ -27,14 +27,12 @@
+ #if defined SHARED && IS_IN (libc)
+ ENTRY(__mempcpy)
+ 	.type	__mempcpy, @gnu_indirect_function
+-	cmpl	$0, KIND_OFFSET+__cpu_features(%rip)
+-	jne	1f
+-	call	__init_cpu_features
+-1:	leaq	__mempcpy_sse2(%rip), %rax
+-	testl	$bit_SSSE3, __cpu_features+CPUID_OFFSET+index_SSSE3(%rip)
++	LOAD_RTLD_GLOBAL_RO_RDX
++	leaq	__mempcpy_sse2(%rip), %rax
++	HAS_CPU_FEATURE (SSSE3)
+ 	jz	2f
+ 	leaq	__mempcpy_ssse3(%rip), %rax
+-	testl	$bit_Fast_Copy_Backward, __cpu_features+FEATURE_OFFSET+index_Fast_Copy_Backward(%rip)
++	HAS_ARCH_FEATURE (Fast_Copy_Backward)
+ 	jz	2f
+ 	leaq	__mempcpy_ssse3_back(%rip), %rax
+ 2:	ret
+Index: glibc-2.17-c758a686/sysdeps/x86_64/multiarch/mempcpy_chk.S
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/x86_64/multiarch/mempcpy_chk.S
++++ glibc-2.17-c758a686/sysdeps/x86_64/multiarch/mempcpy_chk.S
+@@ -29,14 +29,12 @@
+ 	.text
+ ENTRY(__mempcpy_chk)
+ 	.type	__mempcpy_chk, @gnu_indirect_function
+-	cmpl	$0, KIND_OFFSET+__cpu_features(%rip)
+-	jne	1f
+-	call	__init_cpu_features
+-1:	leaq	__mempcpy_chk_sse2(%rip), %rax
+-	testl	$bit_SSSE3, __cpu_features+CPUID_OFFSET+index_SSSE3(%rip)
++	LOAD_RTLD_GLOBAL_RO_RDX
++	leaq	__mempcpy_chk_sse2(%rip), %rax
++	HAS_CPU_FEATURE (SSSE3)
+ 	jz	2f
+ 	leaq	__mempcpy_chk_ssse3(%rip), %rax
+-	testl	$bit_Fast_Copy_Backward, __cpu_features+FEATURE_OFFSET+index_Fast_Copy_Backward(%rip)
++	HAS_ARCH_FEATURE (Fast_Copy_Backward)
+ 	jz	2f
+ 	leaq	__mempcpy_chk_ssse3_back(%rip), %rax
+ 2:	ret
+Index: glibc-2.17-c758a686/sysdeps/x86_64/multiarch/memset.S
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/x86_64/multiarch/memset.S
++++ glibc-2.17-c758a686/sysdeps/x86_64/multiarch/memset.S
+@@ -24,11 +24,9 @@
+ #if IS_IN (libc)
+ ENTRY(memset)
+ 	.type	memset, @gnu_indirect_function
+-	cmpl	$0, __cpu_features+KIND_OFFSET(%rip)
+-	jne	1f
+-	call	__init_cpu_features
+-1:	leaq	__memset_x86_64(%rip), %rax
+-	testl	$bit_Prefer_SSE_for_memop, __cpu_features+FEATURE_OFFSET+index_Prefer_SSE_for_memop(%rip)
++	LOAD_RTLD_GLOBAL_RO_RDX
++	leaq	__memset_x86_64(%rip), %rax
++	HAS_ARCH_FEATURE (Prefer_SSE_for_memop)
+ 	jz	2f
+ 	leaq	__memset_sse2(%rip), %rax
+ 2:	ret
+Index: glibc-2.17-c758a686/sysdeps/x86_64/multiarch/memset_chk.S
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/x86_64/multiarch/memset_chk.S
++++ glibc-2.17-c758a686/sysdeps/x86_64/multiarch/memset_chk.S
+@@ -25,11 +25,9 @@
+ # ifdef SHARED
+ ENTRY(__memset_chk)
+ 	.type	__memset_chk, @gnu_indirect_function
+-	cmpl	$0, __cpu_features+KIND_OFFSET(%rip)
+-	jne	1f
+-	call	__init_cpu_features
+-1:	leaq	__memset_chk_x86_64(%rip), %rax
+-	testl	$bit_Prefer_SSE_for_memop, __cpu_features+FEATURE_OFFSET+index_Prefer_SSE_for_memop(%rip)
++	LOAD_RTLD_GLOBAL_RO_RDX
++	leaq	__memset_chk_x86_64(%rip), %rax
++	HAS_ARCH_FEATURE (Prefer_SSE_for_memop)
+ 	jz	2f
+ 	leaq	__memset_chk_sse2(%rip), %rax
+ 2:	ret
+Index: glibc-2.17-c758a686/sysdeps/x86_64/multiarch/sched_cpucount.c
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/x86_64/multiarch/sched_cpucount.c
++++ glibc-2.17-c758a686/sysdeps/x86_64/multiarch/sched_cpucount.c
+@@ -33,4 +33,4 @@
+ #undef __sched_cpucount
+ 
+ libc_ifunc (__sched_cpucount,
+-	    HAS_POPCOUNT ? popcount_cpucount : generic_cpucount);
++	    HAS_CPU_FEATURE (POPCOUNT) ? popcount_cpucount : generic_cpucount);
+Index: glibc-2.17-c758a686/sysdeps/x86_64/multiarch/strcat.S
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/x86_64/multiarch/strcat.S
++++ glibc-2.17-c758a686/sysdeps/x86_64/multiarch/strcat.S
+@@ -47,14 +47,12 @@
+ 	.text
+ ENTRY(STRCAT)
+ 	.type	STRCAT, @gnu_indirect_function
+-	cmpl	$0, __cpu_features+KIND_OFFSET(%rip)
+-	jne	1f
+-	call	__init_cpu_features
+-1:	leaq	STRCAT_SSE2_UNALIGNED(%rip), %rax
+-	testl	$bit_Fast_Unaligned_Load, __cpu_features+FEATURE_OFFSET+index_Fast_Unaligned_Load(%rip)
++	LOAD_RTLD_GLOBAL_RO_RDX
++	leaq	STRCAT_SSE2_UNALIGNED(%rip), %rax
++	HAS_ARCH_FEATURE (Fast_Unaligned_Load)
+ 	jnz	2f
+ 	leaq	STRCAT_SSE2(%rip), %rax
+-	testl	$bit_SSSE3, __cpu_features+CPUID_OFFSET+index_SSSE3(%rip)
++	HAS_CPU_FEATURE (SSSE3)
+ 	jz	2f
+ 	leaq	STRCAT_SSSE3(%rip), %rax
+ 2:	ret
+Index: glibc-2.17-c758a686/sysdeps/x86_64/multiarch/strchr.S
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/x86_64/multiarch/strchr.S
++++ glibc-2.17-c758a686/sysdeps/x86_64/multiarch/strchr.S
+@@ -25,15 +25,13 @@
+ 	.text
+ ENTRY(strchr)
+ 	.type	strchr, @gnu_indirect_function
+-	cmpl	$0, __cpu_features+KIND_OFFSET(%rip)
+-	jne	1f
+-	call	__init_cpu_features
+-1:	leaq	__strchr_sse2(%rip), %rax
+-	testl	$bit_SSE4_2, __cpu_features+CPUID_OFFSET+index_SSE4_2(%rip)
++	LOAD_RTLD_GLOBAL_RO_RDX
++	leaq	__strchr_sse2(%rip), %rax
++	HAS_CPU_FEATURE (SSE4_2)
+ 	jz	2f
+ 	leaq	__strchr_sse42(%rip), %rax
+ 	ret
+-2:	testl	$bit_Slow_BSF, __cpu_features+FEATURE_OFFSET+index_Slow_BSF(%rip)
++2:	HAS_ARCH_FEATURE (Slow_BSF)
+ 	jz	3f
+ 	leaq    __strchr_sse2_no_bsf(%rip), %rax
+ 3:	ret
+Index: glibc-2.17-c758a686/sysdeps/x86_64/multiarch/strcmp.S
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/x86_64/multiarch/strcmp.S
++++ glibc-2.17-c758a686/sysdeps/x86_64/multiarch/strcmp.S
+@@ -83,16 +83,12 @@
+ 	.text
+ ENTRY(STRCMP)
+ 	.type	STRCMP, @gnu_indirect_function
+-	/* Manually inlined call to __get_cpu_features.  */
+-	cmpl	$0, __cpu_features+KIND_OFFSET(%rip)
+-	jne	1f
+-	call	__init_cpu_features
+-1:
++	LOAD_RTLD_GLOBAL_RO_RDX
+ 	leaq	STRCMP_SSE42(%rip), %rax
+-	testl	$bit_SSE4_2, __cpu_features+CPUID_OFFSET+index_SSE4_2(%rip)
++	HAS_CPU_FEATURE (SSE4_2)
+ 	jnz	2f
+ 	leaq	STRCMP_SSSE3(%rip), %rax
+-	testl	$bit_SSSE3, __cpu_features+CPUID_OFFSET+index_SSSE3(%rip)
++	HAS_CPU_FEATURE (SSSE3)
+ 	jnz	2f
+ 	leaq	STRCMP_SSE2(%rip), %rax
+ 2:	ret
+@@ -101,21 +97,17 @@ END(STRCMP)
+ # ifdef USE_AS_STRCASECMP_L
+ ENTRY(__strcasecmp)
+ 	.type	__strcasecmp, @gnu_indirect_function
+-	/* Manually inlined call to __get_cpu_features.  */
+-	cmpl	$0, __cpu_features+KIND_OFFSET(%rip)
+-	jne	1f
+-	call	__init_cpu_features
+-1:
++	LOAD_RTLD_GLOBAL_RO_RDX
+ #  ifdef HAVE_AVX_SUPPORT
+ 	leaq	__strcasecmp_avx(%rip), %rax
+-	testl	$bit_AVX_Usable, __cpu_features+FEATURE_OFFSET+index_AVX_Usable(%rip)
++	HAS_ARCH_FEATURE (AVX_Usable)
+ 	jnz	2f
+ #  endif
+ 	leaq	__strcasecmp_sse42(%rip), %rax
+-	testl	$bit_SSE4_2, __cpu_features+CPUID_OFFSET+index_SSE4_2(%rip)
++	HAS_CPU_FEATURE (SSE4_2)
+ 	jnz	2f
+ 	leaq	__strcasecmp_ssse3(%rip), %rax
+-	testl	$bit_SSSE3, __cpu_features+CPUID_OFFSET+index_SSSE3(%rip)
++	HAS_CPU_FEATURE (SSSE3)
+ 	jnz	2f
+ 	leaq	__strcasecmp_sse2(%rip), %rax
+ 2:	ret
+@@ -125,21 +117,17 @@ weak_alias (__strcasecmp, strcasecmp)
+ # ifdef USE_AS_STRNCASECMP_L
+ ENTRY(__strncasecmp)
+ 	.type	__strncasecmp, @gnu_indirect_function
+-	/* Manually inlined call to __get_cpu_features.  */
+-	cmpl	$0, __cpu_features+KIND_OFFSET(%rip)
+-	jne	1f
+-	call	__init_cpu_features
+-1:
++	LOAD_RTLD_GLOBAL_RO_RDX
+ #  ifdef HAVE_AVX_SUPPORT
+ 	leaq	__strncasecmp_avx(%rip), %rax
+-	testl	$bit_AVX_Usable, __cpu_features+FEATURE_OFFSET+index_AVX_Usable(%rip)
++	HAS_ARCH_FEATURE (AVX_Usable)
+ 	jnz	2f
+ #  endif
+ 	leaq	__strncasecmp_sse42(%rip), %rax
+-	testl	$bit_SSE4_2, __cpu_features+CPUID_OFFSET+index_SSE4_2(%rip)
++	HAS_CPU_FEATURE (SSE4_2)
+ 	jnz	2f
+ 	leaq	__strncasecmp_ssse3(%rip), %rax
+-	testl	$bit_SSSE3, __cpu_features+CPUID_OFFSET+index_SSSE3(%rip)
++	HAS_CPU_FEATURE (SSSE3)
+ 	jnz	2f
+ 	leaq	__strncasecmp_sse2(%rip), %rax
+ 2:	ret
+Index: glibc-2.17-c758a686/sysdeps/x86_64/multiarch/strcpy.S
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/x86_64/multiarch/strcpy.S
++++ glibc-2.17-c758a686/sysdeps/x86_64/multiarch/strcpy.S
+@@ -61,14 +61,12 @@
+ 	.text
+ ENTRY(STRCPY)
+ 	.type	STRCPY, @gnu_indirect_function
+-	cmpl	$0, __cpu_features+KIND_OFFSET(%rip)
+-	jne	1f
+-	call	__init_cpu_features
+-1:	leaq	STRCPY_SSE2_UNALIGNED(%rip), %rax
+-	testl	$bit_Fast_Unaligned_Load, __cpu_features+FEATURE_OFFSET+index_Fast_Unaligned_Load(%rip)
++	LOAD_RTLD_GLOBAL_RO_RDX
++	leaq	STRCPY_SSE2_UNALIGNED(%rip), %rax
++	HAS_ARCH_FEATURE (Fast_Unaligned_Load)
+ 	jnz	2f
+ 	leaq	STRCPY_SSE2(%rip), %rax
+-	testl	$bit_SSSE3, __cpu_features+CPUID_OFFSET+index_SSSE3(%rip)
++	HAS_CPU_FEATURE (SSSE3)
+ 	jz	2f
+ 	leaq	STRCPY_SSSE3(%rip), %rax
+ 2:	ret
+Index: glibc-2.17-c758a686/sysdeps/x86_64/multiarch/strcspn.S
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/x86_64/multiarch/strcspn.S
++++ glibc-2.17-c758a686/sysdeps/x86_64/multiarch/strcspn.S
+@@ -45,11 +45,9 @@
+ 	.text
+ ENTRY(STRCSPN)
+ 	.type	STRCSPN, @gnu_indirect_function
+-	cmpl	$0, __cpu_features+KIND_OFFSET(%rip)
+-	jne	1f
+-	call	__init_cpu_features
+-1:	leaq	STRCSPN_SSE2(%rip), %rax
+-	testl	$bit_SSE4_2, __cpu_features+CPUID_OFFSET+index_SSE4_2(%rip)
++	LOAD_RTLD_GLOBAL_RO_RDX
++	leaq	STRCSPN_SSE2(%rip), %rax
++	HAS_CPU_FEATURE (SSE4_2)
+ 	jz	2f
+ 	leaq	STRCSPN_SSE42(%rip), %rax
+ 2:	ret
+Index: glibc-2.17-c758a686/sysdeps/x86_64/multiarch/strspn.S
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/x86_64/multiarch/strspn.S
++++ glibc-2.17-c758a686/sysdeps/x86_64/multiarch/strspn.S
+@@ -30,11 +30,9 @@
+ 	.text
+ ENTRY(strspn)
+ 	.type	strspn, @gnu_indirect_function
+-	cmpl	$0, __cpu_features+KIND_OFFSET(%rip)
+-	jne	1f
+-	call	__init_cpu_features
+-1:	leaq	__strspn_sse2(%rip), %rax
+-	testl	$bit_SSE4_2, __cpu_features+CPUID_OFFSET+index_SSE4_2(%rip)
++	LOAD_RTLD_GLOBAL_RO_RDX
++	leaq	__strspn_sse2(%rip), %rax
++	HAS_CPU_FEATURE (SSE4_2)
+ 	jz	2f
+ 	leaq	__strspn_sse42(%rip), %rax
+ 2:	ret
+Index: glibc-2.17-c758a686/sysdeps/x86_64/multiarch/test-multiarch.c
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/x86_64/multiarch/test-multiarch.c
++++ glibc-2.17-c758a686/sysdeps/x86_64/multiarch/test-multiarch.c
+@@ -75,12 +75,18 @@ do_test (int argc, char **argv)
+   int fails;
+ 
+   get_cpuinfo ();
+-  fails = check_proc ("avx", HAS_AVX, "HAS_AVX");
+-  fails += check_proc ("fma4", HAS_FMA4, "HAS_FMA4");
+-  fails += check_proc ("sse4_2", HAS_SSE4_2, "HAS_SSE4_2");
+-  fails += check_proc ("sse4_1", HAS_SSE4_1, "HAS_SSE4_1");
+-  fails += check_proc ("ssse3", HAS_SSSE3, "HAS_SSSE3");
+-  fails += check_proc ("popcnt", HAS_POPCOUNT, "HAS_POPCOUNT");
++  fails = check_proc ("avx", HAS_ARCH_FEATURE (AVX_Usable),
++		      "HAS_ARCH_FEATURE (AVX_Usable)");
++  fails += check_proc ("fma4", HAS_ARCH_FEATURE (FMA4_Usable),
++		       "HAS_ARCH_FEATURE (FMA4_Usable)");
++  fails += check_proc ("sse4_2", HAS_CPU_FEATURE (SSE4_2),
++		       "HAS_CPU_FEATURE (SSE4_2)");
++  fails += check_proc ("sse4_1", HAS_CPU_FEATURE (SSE4_1)
++		       , "HAS_CPU_FEATURE (SSE4_1)");
++  fails += check_proc ("ssse3", HAS_CPU_FEATURE (SSSE3),
++		       "HAS_CPU_FEATURE (SSSE3)");
++  fails += check_proc ("popcnt", HAS_CPU_FEATURE (POPCOUNT),
++		       "HAS_CPU_FEATURE (POPCOUNT)");
+ 
+   printf ("%d differences between /proc/cpuinfo and glibc code.\n", fails);
+ 
+Index: glibc-2.17-c758a686/sysdeps/x86_64/multiarch/wcscpy.S
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/x86_64/multiarch/wcscpy.S
++++ glibc-2.17-c758a686/sysdeps/x86_64/multiarch/wcscpy.S
+@@ -27,11 +27,8 @@
+ 	.text
+ ENTRY(wcscpy)
+ 	.type	wcscpy, @gnu_indirect_function
+-	cmpl	$0, KIND_OFFSET+__cpu_features(%rip)
+-	jne	1f
+-	call	__init_cpu_features
+-
+-1:	testl	$bit_SSSE3, __cpu_features+CPUID_OFFSET+index_SSSE3(%rip)
++	LOAD_RTLD_GLOBAL_RO_RDX
++	HAS_CPU_FEATURE (SSSE3)
+ 	jnz	2f
+ 	leaq	__wcscpy_sse2(%rip), %rax
+ 	ret
+Index: glibc-2.17-c758a686/sysdeps/x86_64/multiarch/wmemcmp.S
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/x86_64/multiarch/wmemcmp.S
++++ glibc-2.17-c758a686/sysdeps/x86_64/multiarch/wmemcmp.S
+@@ -26,16 +26,13 @@
+ 	.text
+ ENTRY(wmemcmp)
+ 	.type	wmemcmp, @gnu_indirect_function
+-	cmpl	$0, KIND_OFFSET+__cpu_features(%rip)
+-	jne	1f
+-	call	__init_cpu_features
+-
+-1:	testl	$bit_SSSE3, __cpu_features+CPUID_OFFSET+index_SSSE3(%rip)
++	LOAD_RTLD_GLOBAL_RO_RDX
++	HAS_CPU_FEATURE (SSSE3)
+ 	jnz	2f
+ 	leaq	__wmemcmp_sse2(%rip), %rax
+ 	ret
+ 
+-2:	testl	$bit_SSE4_1, __cpu_features+CPUID_OFFSET+index_SSE4_1(%rip)
++2:	HAS_CPU_FEATURE (SSE4_1)
+ 	jz	3f
+ 	leaq	__wmemcmp_sse4_1(%rip), %rax
+ 	ret
+Index: glibc-2.17-c758a686/sysdeps/x86_64/multiarch/rawmemchr.S
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/x86_64/multiarch/rawmemchr.S
++++ glibc-2.17-c758a686/sysdeps/x86_64/multiarch/rawmemchr.S
+@@ -27,12 +27,10 @@
+ 	.text
+ ENTRY(rawmemchr)
+ 	.type	rawmemchr, @gnu_indirect_function
+-	cmpl	$0, __cpu_features+KIND_OFFSET(%rip)
+-	jne	1f
+-	call	__init_cpu_features
+-1:	testl	$bit_Prefer_PMINUB_for_stringop, __cpu_features+FEATURE_OFFSET+index_Prefer_PMINUB_for_stringop(%rip)
++	LOAD_RTLD_GLOBAL_RO_RDX
++	HAS_ARCH_FEATURE (Prefer_PMINUB_for_stringop)
+ 	jnz	2f
+-	testl	$bit_SSE4_2, __cpu_features+CPUID_OFFSET+index_SSE4_2(%rip)
++	HAS_CPU_FEATURE (SSE4_2)
+ 	jz	2f
+ 	leaq	__rawmemchr_sse42(%rip), %rax
+ 	ret
+Index: glibc-2.17-c758a686/sysdeps/x86_64/multiarch/strlen.S
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/x86_64/multiarch/strlen.S
++++ glibc-2.17-c758a686/sysdeps/x86_64/multiarch/strlen.S
+@@ -29,18 +29,16 @@
+ 	.text
+ ENTRY(strlen)
+ 	.type	strlen, @gnu_indirect_function
+-	cmpl	$0, __cpu_features+KIND_OFFSET(%rip)
+-	jne	1f
+-	call	__init_cpu_features
+-1:	leaq	__strlen_sse2_pminub(%rip), %rax
+-	testl	$bit_Prefer_PMINUB_for_stringop, __cpu_features+FEATURE_OFFSET+index_Prefer_PMINUB_for_stringop(%rip)
++	LOAD_RTLD_GLOBAL_RO_RDX
++	leaq	__strlen_sse2_pminub(%rip), %rax
++	HAS_ARCH_FEATURE (Prefer_PMINUB_for_stringop)
+ 	jnz	2f
+ 	leaq	__strlen_sse2(%rip), %rax
+-	testl	$bit_SSE4_2, __cpu_features+CPUID_OFFSET+index_SSE4_2(%rip)
++	HAS_CPU_FEATURE (SSE4_2)
+ 	jz	2f
+ 	leaq	__strlen_sse42(%rip), %rax
+ 	ret
+-2:	testl	$bit_Slow_BSF, __cpu_features+FEATURE_OFFSET+index_Slow_BSF(%rip)
++2:	HAS_ARCH_FEATURE (Slow_BSF)
+ 	jz	3f
+ 	leaq    __strlen_sse2_no_bsf(%rip), %rax
+ 3:	ret
+Index: glibc-2.17-c758a686/sysdeps/x86_64/multiarch/strnlen.S
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/x86_64/multiarch/strnlen.S
++++ glibc-2.17-c758a686/sysdeps/x86_64/multiarch/strnlen.S
+@@ -27,11 +27,9 @@
+ 	.text
+ ENTRY(__strnlen)
+ 	.type	__strnlen, @gnu_indirect_function
+-	cmpl	$0, __cpu_features+KIND_OFFSET(%rip)
+-	jne	1f
+-	call	__init_cpu_features
+-1:	leaq	__strnlen_sse2(%rip), %rax
+-	testl	$bit_Slow_BSF, __cpu_features+FEATURE_OFFSET+index_Slow_BSF(%rip)
++	LOAD_RTLD_GLOBAL_RO_RDX
++	leaq	__strnlen_sse2(%rip), %rax
++	HAS_ARCH_FEATURE (Slow_BSF)
+ 	jz	2f
+ 	leaq	__strnlen_sse2_no_bsf(%rip), %rax
+ 2:	ret
+Index: glibc-2.17-c758a686/sysdeps/x86_64/multiarch/strrchr.S
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/x86_64/multiarch/strrchr.S
++++ glibc-2.17-c758a686/sysdeps/x86_64/multiarch/strrchr.S
+@@ -28,15 +28,13 @@
+ 	.text
+ ENTRY(strrchr)
+ 	.type	strrchr, @gnu_indirect_function
+-	cmpl	$0, __cpu_features+KIND_OFFSET(%rip)
+-	jne	1f
+-	call	__init_cpu_features
+-1:	leaq	__strrchr_sse2(%rip), %rax
+-	testl	$bit_SSE4_2, __cpu_features+CPUID_OFFSET+index_SSE4_2(%rip)
++	LOAD_RTLD_GLOBAL_RO_RDX
++	leaq	__strrchr_sse2(%rip), %rax
++	HAS_CPU_FEATURE (SSE4_2)
+ 	jz	2f
+ 	leaq	__strrchr_sse42(%rip), %rax
+ 	ret
+-2:	testl	$bit_Slow_BSF, __cpu_features+FEATURE_OFFSET+index_Slow_BSF(%rip)
++2:	HAS_ARCH_FEATURE (Slow_BSF)
+ 	jz	3f
+ 	leaq    __strrchr_sse2_no_bsf(%rip), %rax
+ 3:	ret
+Index: glibc-2.17-c758a686/sysdeps/x86_64/multiarch/strcasestr-c.c
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/x86_64/multiarch/strcasestr-c.c
++++ glibc-2.17-c758a686/sysdeps/x86_64/multiarch/strcasestr-c.c
+@@ -12,8 +12,8 @@ extern __typeof (__strcasestr_sse2) __st
+ 
+ #if 1
+ libc_ifunc (__strcasestr,
+-	    HAS_SSE4_2 && !use_unaligned_strstr () ? __strcasestr_sse42 :
+-	    __strcasestr_sse2);
++	    HAS_CPU_FEATURE (SSE4_2) && !use_unaligned_strstr ()
++	    ? __strcasestr_sse42 : __strcasestr_sse2);
+ #else
+ libc_ifunc (__strcasestr,
+ 	    0 ? __strcasestr_sse42 : __strcasestr_sse2);
+Index: glibc-2.17-c758a686/sysdeps/x86_64/multiarch/strstr-c.c
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/x86_64/multiarch/strstr-c.c
++++ glibc-2.17-c758a686/sysdeps/x86_64/multiarch/strstr-c.c
+@@ -42,7 +42,7 @@ extern __typeof (__redirect_strstr) __st
+ /* Avoid DWARF definition DIE on ifunc symbol so that GDB can handle
+    ifunc symbol properly.  */
+ extern __typeof (__redirect_strstr) __libc_strstr;
+-libc_ifunc (__libc_strstr, HAS_SSE4_2 ? (use_unaligned_strstr () ?
++libc_ifunc (__libc_strstr, HAS_CPU_FEATURE (SSE4_2) ? (use_unaligned_strstr () ?
+ 					 __strstr_sse2_unaligned :
+ 					 __strstr_sse42) : __strstr_sse2)
+ 

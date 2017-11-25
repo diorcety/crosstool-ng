@@ -1,0 +1,474 @@
+commit 2bf1804182cc4bd671193587c8d5e3de45a9618e
+Author: Joseph Myers <joseph@codesourcery.com>
+Date:   Wed Jun 4 23:37:25 2014 +0000
+
+    Include LOCPATH in default test environment.
+    
+    Tests run using the default $(make-test-out) automatically get
+    GCONV_PATH and LC_ALL set, whether or not those environment variables
+    are actually needed for the individual test.  However, they do not get
+    LOCPATH set, meaning that a large number of tests have -ENV settings
+    just to set LOCPATH.
+    
+    This patch moves LOCPATH into the default environment used for all
+    tests, on the principle that like GCONV_PATH any settings needed to
+    use files associated with the newly built library, rather than any old
+    installed files, are appropriate to use by default.
+    
+    A further motivation is that various tests using .sh files also set
+    some combination of LC_ALL, GCONV_PATH and LOCPATH.  Preferably .sh
+    files should also use the default environment with any additions
+    required for the individual test.  Now, it was suggested in
+    <https://sourceware.org/ml/libc-alpha/2014-05/msg00715.html> that
+    various Makefile variables used in testing should be derived by
+    composing the -before-env and -after-env variables used when explicit
+    environment settings are required.  With such a change, it's also
+    natural for those variables to include the default settings (via some
+    intermediate makefile variable also used in make-test-out).
+    
+    Because some .sh files only set variables that correspond to the
+    default settings, or a subset thereof, and this applies to more of the
+    .sh files once LOCPATH is in the default settings, doing so reduces
+    the size of a revised version of
+    <https://sourceware.org/ml/libc-alpha/2014-05/msg00596.html>: scripts
+    only needing the (expanded) default settings will not need to receive
+    the separate -before-env and -after-env variables, only the single
+    variable they do at present.  So moving LOCPATH into the default
+    settings can reduce churn caused by subsequent patches.
+    
+    Tested x86_64 and x86.
+    
+    	* Rules (make-test-out): Include
+    	LOCPATH=$(common-objpfx)localedata in default environment.
+    	* debug/Makefile (tst-chk1-ENV): Remove variable.
+    	(tst-chk2-ENV): Likewise.
+    	(tst-chk3-ENV): Likewise.
+    	(tst-chk4-ENV): Likewise.
+    	(tst-chk5-ENV): Likewise.
+    	(tst-chk6-ENV): Likewise.
+    	(tst-lfschk1-ENV): Likewise.
+    	(tst-lfschk2-ENV): Likewise.
+    	(tst-lfschk3-ENV): Likewise.
+    	(tst-lfschk4-ENV): Likewise.
+    	(tst-lfschk5-ENV): Likewise.
+    	(tst-lfschk6-ENV): Likewise.
+    	* iconvdata/Makefile (bug-iconv6-ENV): Likewise.
+    	(tst-iconv7-ENV): Likewise.
+    	* intl/Makefile (LOCPATH-ENV): Likewise.
+    	(tst-codeset-ENV): Likewise.
+    	(tst-gettext3-ENV): Likewise.
+    	(tst-gettext5-ENV): Likewise.
+    	* libio/Makefile (tst-widetext-ENV): Don't set LOCPATH.
+    	(tst-fopenloc-ENV): Likewise.
+    	(tst-fgetws-ENV): Remove variable.
+    	(tst-ungetwc1-ENV): Likewise.
+    	(tst-ungetwc2-ENV): Likewise.
+    	(bug-ungetwc2-ENV): Likewise.
+    	(tst-swscanf-ENV): Likewise.
+    	(bug-ftell-ENV): Likewise.
+    	(tst-fgetwc-ENV): Likewise.
+    	(tst-fseek-ENV): Likewise.
+    	(tst-ftell-partial-wide-ENV): Likewise.
+    	(tst-ftell-active-handler-ENV): Likewise.
+    	(tst-ftell-append-ENV): Likewise.
+    	* posix/Makefile (tst-fnmatch-ENV): Likewise.
+    	(tst-regexloc-ENV): Likewise.
+    	(bug-regex1-ENV): Likewise.
+    	(tst-regex-ENV): Likewise.
+    	(tst-regex2-ENV): Likewise.
+    	(bug-regex5-ENV): Likewise.
+    	(bug-regex6-ENV): Likewise.
+    	(bug-regex17-ENV): Likewise.
+    	(bug-regex18-ENV): Likewise.
+    	(bug-regex19-ENV): Likewise.
+    	(bug-regex20-ENV): Likewise.
+    	(bug-regex22-ENV): Likewise.
+    	(bug-regex23-ENV): Likewise.
+    	(bug-regex25-ENV): Likewise.
+    	(bug-regex26-ENV): Likewise.
+    	(bug-regex30-ENV): Likewise.
+    	(bug-regex32-ENV): Likewise.
+    	(bug-regex33-ENV): Likewise.
+    	(bug-regex34-ENV): Likewise.
+    	(bug-regex35-ENV): Likewise.
+    	(tst-rxspencer-ENV): Likewise.
+    	(tst-rxspencer-no-utf8-ENV): Likewise.
+    	* stdio-common/Makefile (tst-sprintf-ENV): Likewise.
+    	(tst-sscanf-ENV): Likewise.
+    	(tst-swprintf-ENV): Likewise.
+    	(tst-swscanf-ENV): Likewise.
+    	(test-vfprintf-ENV): Likewise.
+    	(scanf13-ENV): Likewise.
+    	(bug14-ENV): Likewise.
+    	(tst-grouping-ENV): Likewise.
+    	* stdlib/Makefile (tst-strtod-ENV): Likewise.
+    	(tst-strtod3-ENV): Likewise.
+    	(tst-strtod4-ENV): Likewise.
+    	(tst-strtod5-ENV): Likewise.
+    	(testmb2-ENV): Likewise./
+    	* string/Makefile (tst-strxfrm-ENV): Likewise.
+    	(tst-strxfrm2-ENV): Likewise.
+    	(bug-strcoll1-ENV): Likewise.
+    	(test-strcasecmp-ENV): Likewise.
+    	(test-strncasecmp-ENV): Likewise.
+    	* time/Makefile (tst-strptime-ENV): Likewise.
+    	(tst-ftime_l-ENV): Likewise.
+    	* wcsmbs/Makefile (tst-btowc-ENV): Likewise.
+    	(tst-mbrtowc-ENV): Likewise.
+    	(tst-wcrtomb-ENV): Likewise.
+    	(tst-mbrtowc2-ENV): Likewise.
+    	(tst-c16c32-1-ENV): Likewise.
+    	(tst-mbsnrtowcs-ENV): Likewise.
+    
+    localedata/ChangeLog:
+    	* Makefile (TEST_MBWC_ENV): Remove variable.
+    	(tst_iswalnum-ENV): Likewise.
+    	(tst_iswalpha-ENV): Likewise.
+    	(tst_iswcntrl-ENV): Likewise.
+    	(tst_iswctype-ENV): Likewise.
+    	(tst_iswdigit-ENV): Likewise.
+    	(tst_iswgraph-ENV): Likewise.
+    	(tst_iswlower-ENV): Likewise.
+    	(tst_iswprint-ENV): Likewise.
+    	(tst_iswpunct-ENV): Likewise.
+    	(tst_iswspace-ENV): Likewise.
+    	(tst_iswupper-ENV): Likewise.
+    	(tst_iswxdigit-ENV): Likewise.
+    	(tst_mblen-ENV): Likewise.
+    	(tst_mbrlen-ENV): Likewise.
+    	(tst_mbrtowc-ENV): Likewise.
+    	(tst_mbsrtowcs-ENV): Likewise.
+    	(tst_mbstowcs-ENV): Likewise.
+    	(tst_mbtowc-ENV): Likewise.
+    	(tst_strcoll-ENV): Likewise.
+    	(tst_strfmon-ENV): Likewise.
+    	(tst_strxfrm-ENV): Likewise.
+    	(tst_swscanf-ENV): Likewise.
+    	(tst_towctrans-ENV): Likewise.
+    	(tst_towlower-ENV): Likewise.
+    	(tst_towupper-ENV): Likewise.
+    	(tst_wcrtomb-ENV): Likewise.
+    	(tst_wcscat-ENV): Likewise.
+    	(tst_wcschr-ENV): Likewise.
+    	(tst_wcscmp-ENV): Likewise.
+    	(tst_wcscoll-ENV): Likewise.
+    	(tst_wcscpy-ENV): Likewise.
+    	(tst_wcscspn-ENV): Likewise.
+    	(tst_wcslen-ENV): Likewise.
+    	(tst_wcsncat-ENV): Likewise.
+    	(tst_wcsncmp-ENV): Likewise.
+    	(tst_wcsncpy-ENV): Likewise.
+    	(tst_wcspbrk-ENV): Likewise.
+    	(tst_wcsrtombs-ENV): Likewise.
+    	(tst_wcsspn-ENV): Likewise.
+    	(tst_wcsstr-ENV): Likewise.
+    	(tst_wcstod-ENV): Likewise.
+    	(tst_wcstok-ENV): Likewise.
+    	(tst_wcstombs-ENV): Likewise.
+    	(tst_wcswidth-ENV): Likewise.
+    	(tst_wcsxfrm-ENV): Likewise.
+    	(tst_wctob-ENV): Likewise.
+    	(tst_wctomb-ENV): Likewise.
+    	(tst_wctrans-ENV): Likewise.
+    	(tst_wctype-ENV): Likewise.
+    	(tst_wcwidth-ENV): Likewise.
+    	(tst-digits-ENV): Likewise.
+    	(tst-mbswcs6-ENV): Likewise.
+    	(tst-xlocale1-ENV): Likewise.
+    	(tst-xlocale2-ENV): Likewise.
+    	(tst-strfmon1-ENV): Likewise.
+    	(tst-strptime-ENV): Likewise.
+    	(tst-setlocale-ENV): Don't set LOCPATH.
+    	(bug-iconv-trans-ENV): Remove variable.
+    	(tst-sscanf-ENV): Likewise.
+    	(tst-leaks-ENV): Don't set LOCPATH.
+    	(bug-setlocale1-ENV): Remove variable.
+    	(bug-setlocale1-static-ENV): Likewise.
+    	(tst-setlocale2-ENV): Likewise.
+
+diff --git glibc-2.17-c758a686/Rules glibc-2.17-c758a686/Rules
+index feb304d..9f1a445 100644
+--- glibc-2.17-c758a686/Rules
++++ glibc-2.17-c758a686/Rules
+@@ -191,7 +191,8 @@ ifneq "$(strip $(tests) $(xtests) $(test-srcs))" ""
+ # from the test programs and whatever input files are present.
+ 
+ make-test-out = $(test-wrapper-env) \
+-		GCONV_PATH=$(common-objpfx)iconvdata LC_ALL=C \
++		GCONV_PATH=$(common-objpfx)iconvdata \
++		LOCPATH=$(common-objpfx)localedata LC_ALL=C \
+ 		$($*-ENV) $(host-built-program-cmd) $($*-ARGS)
+ $(objpfx)%-bp.out: %.input $(objpfx)%-bp
+ 	$(make-test-out) > $@ < $(word 1,$^)
+diff --git glibc-2.17-c758a686/debug/Makefile glibc-2.17-c758a686/debug/Makefile
+index b599a22..c284c51 100644
+--- glibc-2.17-c758a686/debug/Makefile
++++ glibc-2.17-c758a686/debug/Makefile
+@@ -109,18 +109,6 @@ CFLAGS-tst-lfschk3.c = -Wno-format
+ CFLAGS-tst-lfschk4.cc = -Wno-format
+ CFLAGS-tst-lfschk5.cc = -Wno-format
+ CFLAGS-tst-lfschk6.cc = -Wno-format
+-tst-chk1-ENV = LOCPATH=$(common-objpfx)localedata
+-tst-chk2-ENV = LOCPATH=$(common-objpfx)localedata
+-tst-chk3-ENV = LOCPATH=$(common-objpfx)localedata
+-tst-chk4-ENV = LOCPATH=$(common-objpfx)localedata
+-tst-chk5-ENV = LOCPATH=$(common-objpfx)localedata
+-tst-chk6-ENV = LOCPATH=$(common-objpfx)localedata
+-tst-lfschk1-ENV = LOCPATH=$(common-objpfx)localedata
+-tst-lfschk2-ENV = LOCPATH=$(common-objpfx)localedata
+-tst-lfschk3-ENV = LOCPATH=$(common-objpfx)localedata
+-tst-lfschk4-ENV = LOCPATH=$(common-objpfx)localedata
+-tst-lfschk5-ENV = LOCPATH=$(common-objpfx)localedata
+-tst-lfschk6-ENV = LOCPATH=$(common-objpfx)localedata
+ LDLIBS-tst-chk4 = -lstdc++
+ LDLIBS-tst-chk5 = -lstdc++
+ LDLIBS-tst-chk6 = -lstdc++
+diff --git glibc-2.17-c758a686/iconvdata/Makefile glibc-2.17-c758a686/iconvdata/Makefile
+index 074d330..d98b6bd 100644
+--- glibc-2.17-c758a686/iconvdata/Makefile
++++ glibc-2.17-c758a686/iconvdata/Makefile
+@@ -73,9 +73,6 @@ tests += bug-iconv3
+ endif
+ 
+ test-srcs := tst-table-from tst-table-to
+-
+-bug-iconv6-ENV = LOCPATH=$(common-objpfx)localedata
+-tst-iconv7-ENV = LOCPATH=$(common-objpfx)localedata
+ endif
+ 
+ # No code here is in libc.so.
+diff --git glibc-2.17-c758a686/intl/Makefile glibc-2.17-c758a686/intl/Makefile
+index f11449d..10051f6 100644
+--- glibc-2.17-c758a686/intl/Makefile
++++ glibc-2.17-c758a686/intl/Makefile
+@@ -118,11 +118,6 @@ CFLAGS-tst-gettext4.c = -DOBJPFX=\"$(objpfx)\"
+ CFLAGS-tst-gettext5.c = -DOBJPFX=\"$(objpfx)\"
+ CFLAGS-tst-gettext6.c = -DOBJPFX=\"$(objpfx)\"
+ 
+-LOCPATH-ENV = LOCPATH=$(common-objpfx)localedata
+-tst-codeset-ENV = $(LOCPATH-ENV)
+-tst-gettext3-ENV = $(LOCPATH-ENV)
+-tst-gettext5-ENV = $(LOCPATH-ENV)
+-
+ ifeq ($(have-thread-library),yes)
+ ifeq (yes,$(build-shared))
+ $(addprefix $(objpfx),$(multithread-test-srcs)): $(shared-thread-library)
+diff --git glibc-2.17-c758a686/libio/Makefile glibc-2.17-c758a686/libio/Makefile
+index b324ccc..4552360 100644
+--- glibc-2.17-c758a686/libio/Makefile
++++ glibc-2.17-c758a686/libio/Makefile
+@@ -148,17 +148,8 @@ CFLAGS-tst_putwc.c = -DOBJPFX=\"$(objpfx)\"
+ 
+ tst_wprintf2-ARGS = "Some Text"
+ 
+-tst-widetext-ENV = LOCPATH=$(common-objpfx)localedata LANGUAGE=C
+-tst-fopenloc-ENV = LOCPATH=$(common-objpfx)localedata \
+-		   MALLOC_TRACE=$(objpfx)tst-fopenloc.mtrace
+-tst-fgetws-ENV = LOCPATH=$(common-objpfx)localedata
+-tst-ungetwc1-ENV = LOCPATH=$(common-objpfx)localedata
+-tst-ungetwc2-ENV = LOCPATH=$(common-objpfx)localedata
+-bug-ungetwc2-ENV = LOCPATH=$(common-objpfx)localedata
+-tst-swscanf-ENV = LOCPATH=$(common-objpfx)localedata
+-bug-ftell-ENV = LOCPATH=$(common-objpfx)localedata
+-tst-fgetwc-ENV = LOCPATH=$(common-objpfx)localedata
+-tst-fseek-ENV = LOCPATH=$(common-objpfx)localedata
++tst-widetext-ENV = LANGUAGE=C
++tst-fopenloc-ENV = MALLOC_TRACE=$(objpfx)tst-fopenloc.mtrace
+ 
+ generated = tst-fopenloc.mtrace tst-fopenloc.check
+ 
+diff --git glibc-2.17-c758a686/localedata/Makefile glibc-2.17-c758a686/localedata/Makefile
+index d7ab445..20da00c 100644
+--- glibc-2.17-c758a686/localedata/Makefile
++++ glibc-2.17-c758a686/localedata/Makefile
+@@ -215,79 +215,13 @@
+ 		     $(addprefix --prefix=,$(install_root)) $$locale; \
+ 	echo ' done'; \
+ 
+-# The mbwc-tests need some environment setup to find the locale data files
+-TEST_MBWC_ENV:= LOCPATH=$(common-objpfx)localedata
+-tst_iswalnum-ENV = $(TEST_MBWC_ENV)
+-tst_iswalpha-ENV = $(TEST_MBWC_ENV)
+-tst_iswcntrl-ENV = $(TEST_MBWC_ENV)
+-tst_iswctype-ENV = $(TEST_MBWC_ENV)
+-tst_iswdigit-ENV = $(TEST_MBWC_ENV)
+-tst_iswgraph-ENV = $(TEST_MBWC_ENV)
+-tst_iswlower-ENV = $(TEST_MBWC_ENV)
+-tst_iswprint-ENV = $(TEST_MBWC_ENV)
+-tst_iswpunct-ENV = $(TEST_MBWC_ENV)
+-tst_iswspace-ENV = $(TEST_MBWC_ENV)
+-tst_iswupper-ENV = $(TEST_MBWC_ENV)
+-tst_iswxdigit-ENV = $(TEST_MBWC_ENV)
+-tst_mblen-ENV = $(TEST_MBWC_ENV)
+-tst_mbrlen-ENV = $(TEST_MBWC_ENV)
+-tst_mbrtowc-ENV = $(TEST_MBWC_ENV)
+-tst_mbsrtowcs-ENV = $(TEST_MBWC_ENV)
+-tst_mbstowcs-ENV = $(TEST_MBWC_ENV)
+-tst_mbtowc-ENV = $(TEST_MBWC_ENV)
+-tst_strcoll-ENV = $(TEST_MBWC_ENV)
+-tst_strfmon-ENV = $(TEST_MBWC_ENV)
+-tst_strxfrm-ENV = $(TEST_MBWC_ENV)
+-tst_swscanf-ENV = $(TEST_MBWC_ENV)
+-tst_towctrans-ENV = $(TEST_MBWC_ENV)
+-tst_towlower-ENV = $(TEST_MBWC_ENV)
+-tst_towupper-ENV = $(TEST_MBWC_ENV)
+-tst_wcrtomb-ENV = $(TEST_MBWC_ENV)
+-tst_wcscat-ENV = $(TEST_MBWC_ENV)
+-tst_wcschr-ENV = $(TEST_MBWC_ENV)
+-tst_wcscmp-ENV = $(TEST_MBWC_ENV)
+-tst_wcscoll-ENV = $(TEST_MBWC_ENV)
+-tst_wcscpy-ENV = $(TEST_MBWC_ENV)
+-tst_wcscspn-ENV = $(TEST_MBWC_ENV)
+-tst_wcslen-ENV = $(TEST_MBWC_ENV)
+-tst_wcsncat-ENV = $(TEST_MBWC_ENV)
+-tst_wcsncmp-ENV = $(TEST_MBWC_ENV)
+-tst_wcsncpy-ENV = $(TEST_MBWC_ENV)
+-tst_wcspbrk-ENV = $(TEST_MBWC_ENV)
+-tst_wcsrtombs-ENV = $(TEST_MBWC_ENV)
+-tst_wcsspn-ENV = $(TEST_MBWC_ENV)
+-tst_wcsstr-ENV = $(TEST_MBWC_ENV)
+-tst_wcstod-ENV = $(TEST_MBWC_ENV)
+-tst_wcstok-ENV = $(TEST_MBWC_ENV)
+-tst_wcstombs-ENV = $(TEST_MBWC_ENV)
+-tst_wcswidth-ENV = $(TEST_MBWC_ENV)
+-tst_wcsxfrm-ENV = $(TEST_MBWC_ENV)
+-tst_wctob-ENV = $(TEST_MBWC_ENV)
+-tst_wctomb-ENV = $(TEST_MBWC_ENV)
+-tst_wctrans-ENV = $(TEST_MBWC_ENV)
+-tst_wctype-ENV = $(TEST_MBWC_ENV)
+-tst_wcwidth-ENV = $(TEST_MBWC_ENV)
+-tst-digits-ENV = $(TEST_MBWC_ENV)
+-tst-mbswcs6-ENV = $(TEST_MBWC_ENV)
+-tst-xlocale1-ENV = $(TEST_MBWC_ENV)
+-tst-xlocale2-ENV = $(TEST_MBWC_ENV)
+-tst-strfmon1-ENV = $(TEST_MBWC_ENV)
+-tst-strptime-ENV = $(TEST_MBWC_ENV)
++tst-setlocale-ENV = LC_ALL=ja_JP.EUC-JP
+ 
+-tst-setlocale-ENV = LOCPATH=$(common-objpfx)localedata LC_ALL=ja_JP.EUC-JP
+-
+-bug-iconv-trans-ENV = LOCPATH=$(common-objpfx)localedata
+-
+-tst-sscanf-ENV = LOCPATH=$(common-objpfx)localedata
+-
+-tst-leaks-ENV = MALLOC_TRACE=$(objpfx)tst-leaks.mtrace \
+-		LOCPATH=$(common-objpfx)localedata
++tst-leaks-ENV = MALLOC_TRACE=$(objpfx)tst-leaks.mtrace
+ $(objpfx)mtrace-tst-leaks: $(objpfx)tst-leaks.out
+ 	$(common-objpfx)malloc/mtrace $(objpfx)tst-leaks.mtrace > $@
+ 
+-bug-setlocale1-ENV = LOCPATH=$(common-objpfx)localedata
+ bug-setlocale1-ARGS = $(common-objpfx)
+-tst-setlocale2-ENV = LOCPATH=$(common-objpfx)localedata
+ 
+ $(objdir)/iconvdata/gconv-modules:
+ 	$(MAKE) -C ../iconvdata subdir=iconvdata $@
+diff --git glibc-2.17-c758a686/posix/Makefile glibc-2.17-c758a686/posix/Makefile
+index 328c2c5..3d75971 100644
+--- glibc-2.17-c758a686/posix/Makefile
++++ glibc-2.17-c758a686/posix/Makefile
+@@ -203,27 +203,7 @@ tst-dir-ARGS = `pwd` `cd $(common-objdir)/$(subdir); pwd` `cd $(common-objdir);
+ tst-chmod-ARGS = $(objdir)
+ tst-vfork3-ARGS = --test-dir=$(objpfx)
+ 
+-tst-fnmatch-ENV = LOCPATH=$(common-objpfx)localedata
+-tst-regexloc-ENV = LOCPATH=$(common-objpfx)localedata
+-bug-regex1-ENV = LOCPATH=$(common-objpfx)localedata
+-tst-regex-ENV = LOCPATH=$(common-objpfx)localedata
+-tst-regex2-ENV = LOCPATH=$(common-objpfx)localedata
+-bug-regex5-ENV = LOCPATH=$(common-objpfx)localedata
+-bug-regex6-ENV = LOCPATH=$(common-objpfx)localedata
+-bug-regex17-ENV = LOCPATH=$(common-objpfx)localedata
+-bug-regex18-ENV = LOCPATH=$(common-objpfx)localedata
+-bug-regex19-ENV = LOCPATH=$(common-objpfx)localedata
+-bug-regex20-ENV = LOCPATH=$(common-objpfx)localedata
+-bug-regex22-ENV = LOCPATH=$(common-objpfx)localedata
+-bug-regex23-ENV = LOCPATH=$(common-objpfx)localedata
+-bug-regex25-ENV = LOCPATH=$(common-objpfx)localedata
+-bug-regex26-ENV = LOCPATH=$(common-objpfx)localedata
+-bug-regex30-ENV = LOCPATH=$(common-objpfx)localedata
+-bug-regex32-ENV = LOCPATH=$(common-objpfx)localedata
+-bug-regex33-ENV = LOCPATH=$(common-objpfx)localedata
+-bug-regex34-ENV = LOCPATH=$(common-objpfx)localedata
+ tst-rxspencer-ARGS = --utf8 rxspencer/tests
+-tst-rxspencer-ENV = LOCPATH=$(common-objpfx)localedata
+ tst-pcre-ARGS = PCRE.tests
+ tst-boost-ARGS = BOOST.tests
+ bug-glob1-ARGS = "$(objpfx)"
+diff --git glibc-2.17-c758a686/stdio-common/Makefile glibc-2.17-c758a686/stdio-common/Makefile
+index f179eab..5f8e534 100644
+--- glibc-2.17-c758a686/stdio-common/Makefile
++++ glibc-2.17-c758a686/stdio-common/Makefile
+@@ -118,13 +118,6 @@ CFLAGS-scanf17.c = -I../libio -I../stdlib -I../wcsmbs -I../time -I../string \
+ 
+ # We know the test has a format string problem.
+ CFLAGS-tst-sprintf.c = -Wno-format
+-tst-sprintf-ENV = LOCPATH=$(common-objpfx)localedata
+-tst-sscanf-ENV = LOCPATH=$(common-objpfx)localedata
+-tst-swprintf-ENV = LOCPATH=$(common-objpfx)localedata
+-test-vfprintf-ENV = LOCPATH=$(common-objpfx)localedata
+-scanf13-ENV = LOCPATH=$(common-objpfx)localedata
+-bug14-ENV = LOCPATH=$(common-objpfx)localedata
+-tst-grouping-ENV = LOCPATH=$(common-objpfx)localedata
+ 
+ CPPFLAGS += $(libio-mtsafe)
+ 
+diff --git glibc-2.17-c758a686/stdlib/Makefile glibc-2.17-c758a686/stdlib/Makefile
+index d7a562f..0fdf7cc 100644
+--- glibc-2.17-c758a686/stdlib/Makefile
++++ glibc-2.17-c758a686/stdlib/Makefile
+@@ -123,11 +123,6 @@ include ../Rules
+ # Testdir has to be named stdlib and needs to be writable
+ test-canon-ARGS = --test-dir=${common-objpfx}stdlib
+ 
+-tst-strtod-ENV = LOCPATH=$(common-objpfx)localedata
+-tst-strtod3-ENV = LOCPATH=$(common-objpfx)localedata
+-tst-strtod4-ENV = LOCPATH=$(common-objpfx)localedata
+-tst-strtod5-ENV = LOCPATH=$(common-objpfx)localedata
+-testmb2-ENV = LOCPATH=$(common-objpfx)localedata
+ bug-fmtmsg1-ENV = SEV_LEVEL=foo,11,newsev
+ 
+ # Run a test on the header files we use.
+diff --git glibc-2.17-c758a686/string/Makefile glibc-2.17-c758a686/string/Makefile
+index 5a76872..70b9c19 100644
+--- glibc-2.17-c758a686/string/Makefile
++++ glibc-2.17-c758a686/string/Makefile
+@@ -67,9 +67,6 @@ include ../Rules
+ tester-ENV = LANGUAGE=C
+ inl-tester-ENV = LANGUAGE=C
+ noinl-tester-ENV = LANGUAGE=C
+-tst-strxfrm-ENV = LOCPATH=$(common-objpfx)localedata
+-tst-strxfrm2-ENV = LOCPATH=$(common-objpfx)localedata
+-bug-strcoll1-ENV = LOCPATH=$(common-objpfx)localedata
+ CFLAGS-inl-tester.c = -fno-builtin
+ CFLAGS-noinl-tester.c = -fno-builtin
+ CFLAGS-tst-strlen.c = -fno-builtin
+diff --git glibc-2.17-c758a686/time/Makefile glibc-2.17-c758a686/time/Makefile
+index b7f3dba..a07c041 100644
+--- glibc-2.17-c758a686/time/Makefile
++++ glibc-2.17-c758a686/time/Makefile
+@@ -55,7 +55,4 @@ CFLAGS-test_time.c = -Wno-format
+ tst-getdate-ENV= DATEMSK=datemsk TZDIR=${common-objpfx}timezone/testdata
+ test_time-ARGS= EST5EDT CST
+ 
+-tst-strptime-ENV = LOCPATH=${common-objpfx}localedata
+-tst-ftime_l-ENV = LOCPATH=${common-objpfx}localedata
+-
+ bug-getdate1-ARGS = ${objpfx}bug-getdate1-fmt
+diff --git glibc-2.17-c758a686/wcsmbs/Makefile glibc-2.17-c758a686/wcsmbs/Makefile
+index 197ca7d..42843a6 100644
+--- glibc-2.17-c758a686/wcsmbs/Makefile
++++ glibc-2.17-c758a686/wcsmbs/Makefile
+@@ -80,10 +80,3 @@ CPPFLAGS += $(libio-mtsafe)
+ 
+ # We need to find the default version of strtold_l in stdlib.
+ CPPFLAGS-wcstold_l.c = -I../stdlib
+-
+-tst-btowc-ENV = LOCPATH=$(common-objpfx)localedata
+-tst-mbrtowc-ENV = LOCPATH=$(common-objpfx)localedata
+-tst-wcrtomb-ENV = LOCPATH=$(common-objpfx)localedata
+-tst-mbrtowc2-ENV = LOCPATH=$(common-objpfx)localedata
+-tst-c16c32-1-ENV = LOCPATH=$(common-objpfx)localedata
+-tst-mbsnrtowcs-ENV = LOCPATH=$(common-objpfx)localedata
+--- glibc-2.17-c758a686/localedata/Makefile	2014-08-26 21:38:56.564751630 +0530
++++ glibc-2.17-c758a686/localedata/Makefile.new	2014-08-26 21:40:16.596223207 +0530

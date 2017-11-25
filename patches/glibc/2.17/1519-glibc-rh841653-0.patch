@@ -1,0 +1,761 @@
+In RHEL7 we already have the newer cpu-feature support so we need
+to backport b376899d2 to get 1cdbe5794 to compile. The goal wtih elision
+is an incremental set of patches each which compile and introduce the
+required functionality for elision.
+
+Partial backport of:
+
+commit b376899d27e5ac892f0339cf1bbb3d2158347db8
+Author: H.J. Lu <hjl.tools@gmail.com>
+Date:   Thu Aug 13 03:40:40 2015 -0700
+
+    Update x86 elision-conf.c for <cpu-features.h>
+    
+    This patch updates x86 elision-conf.c to use the newly defined
+    HAS_CPU_FEATURE from <cpu-features.h>.
+    
+            * sysdeps/unix/sysv/linux/x86/elision-conf.c (elision_init):
+            Replace HAS_RTM with HAS_CPU_FEATURE (RTM).
+
+
+Full backport of:
+
+commit 1717da59aed9612becd56aaa1249aac695af4c8a
+Author: Andi Kleen <ak@linux.intel.com>
+Date:   Thu May 16 19:17:14 2013 -0700
+
+    Add a configure option to enable lock elision and disable by default
+    
+    Can be enabled with --enable-lock-elision=yes at configure time.
+
+commit 1cdbe579482c07e9f4bb3baa4864da2d3e7eb837
+Author: Andi Kleen <ak@linux.intel.com>
+Date:   Sat Nov 10 00:51:26 2012 -0800
+
+    Add the low level infrastructure for pthreads lock elision with TSX
+    
+    Lock elision using TSX is a technique to optimize lock scaling
+    It allows to run locks in parallel using hardware support for
+    a transactional execution mode in 4th generation Intel Core CPUs.
+    See http://www.intel.com/software/tsx for more Information.
+    
+    This patch implements a simple adaptive lock elision algorithm based
+    on RTM. It enables elision for the pthread mutexes and rwlocks.
+    The algorithm keeps track whether a mutex successfully elides or not,
+    and stops eliding for some time when it is not.
+    
+    When the CPU supports RTM the elision path is automatically tried,
+    otherwise any elision is disabled.
+    
+    The adaptation algorithm and its tuning is currently preliminary.
+    
+    The code adds some checks to the lock fast paths. Micro-benchmarks
+    show little to no difference without RTM.
+    
+    This patch implements the low level "lll_" code for lock elision.
+    Followon patches hook this into the pthread implementation
+    
+    Changes with the RTM mutexes:
+    -----------------------------
+    Lock elision in pthreads is generally compatible with existing programs.
+    There are some obscure exceptions, which are expected to be uncommon.
+    See the manual for more details.
+    
+    - A broken program that unlocks a free lock will crash.
+      There are ways around this with some tradeoffs (more code in hot paths)
+      I'm still undecided on what approach to take here; have to wait for testing reports.
+    - pthread_mutex_destroy of a lock mutex will not return EBUSY but 0.
+    - There's also a similar situation with trylock outside the mutex,
+      "knowing" that the mutex must be held due to some other condition.
+      In this case an assert failure cannot be recovered. This situation is
+      usually an existing bug in the program.
+    - Same applies to the rwlocks. Some of the return values changes
+      (for example there is no EDEADLK for an elided lock, unless it aborts.
+       However when elided it will also never deadlock of course)
+    - Timing changes, so broken programs that make assumptions about specific timing
+      may expose already existing latent problems.  Note that these broken programs will
+      break in other situations too (loaded system, new faster hardware, compiler
+      optimizations etc.)
+    - Programs with non recursive mutexes that take them recursively in a thread and
+      which would always deadlock without elision may not always see a deadlock.
+      The deadlock will only happen on an early or delayed abort (which typically
+      happens at some point)
+      This only happens for mutexes not explicitely set to PTHREAD_MUTEX_NORMAL
+      or PTHREAD_MUTEX_ADAPTIVE_NP.  PTHREAD_MUTEX_NORMAL mutexes do not elide.
+    
+    The elision default can be set at configure time.
+    
+    This patch implements the basic infrastructure for elision.
+Index: glibc-2.17-c758a686/nptl/elision-conf.h
+===================================================================
+--- /dev/null
++++ glibc-2.17-c758a686/nptl/elision-conf.h
+@@ -0,0 +1 @@
++/* empty */
+Index: glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/i386/lowlevellock.h
+===================================================================
+--- glibc-2.17-c758a686.orig/nptl/sysdeps/unix/sysv/linux/i386/lowlevellock.h
++++ glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/i386/lowlevellock.h
+@@ -430,6 +430,12 @@ LLL_STUB_UNWIND_INFO_END
+ 		       : "memory");					      \
+      result; })
+ 
++extern int __lll_timedlock_elision (int *futex, short *adapt_count,
++					 const struct timespec *timeout,
++					 int private) attribute_hidden;
++
++#define lll_timedlock_elision(futex, adapt_count, timeout, private)	\
++  __lll_timedlock_elision(&(futex), &(adapt_count), timeout, private)
+ 
+ #define lll_robust_timedlock(futex, timeout, id, private) \
+   ({ int result, ignore1, ignore2, ignore3;				      \
+@@ -583,6 +589,22 @@ extern int __lll_timedwait_tid (int *tid
+       }									      \
+     __result; })
+ 
++extern int __lll_lock_elision (int *futex, short *adapt_count, int private)
++  attribute_hidden;
++
++extern int __lll_unlock_elision(int *lock, int private)
++  attribute_hidden;
++
++extern int __lll_trylock_elision(int *lock, short *adapt_count)
++  attribute_hidden;
++
++#define lll_lock_elision(futex, adapt_count, private) \
++  __lll_lock_elision (&(futex), &(adapt_count), private)
++#define lll_unlock_elision(futex, private) \
++  __lll_unlock_elision (&(futex), private)
++#define lll_trylock_elision(futex, adapt_count) \
++  __lll_trylock_elision(&(futex), &(adapt_count))
++
+ #endif  /* !__ASSEMBLER__ */
+ 
+ #endif	/* lowlevellock.h */
+Index: glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/x86/Makefile
+===================================================================
+--- /dev/null
++++ glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/x86/Makefile
+@@ -0,0 +1,2 @@
++libpthread-sysdep_routines += elision-lock elision-unlock elision-timed \
++			      elision-trylock
+Index: glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/x86/elision-conf.c
+===================================================================
+--- /dev/null
++++ glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/x86/elision-conf.c
+@@ -0,0 +1,90 @@
++/* elision-conf.c: Lock elision tunable parameters.
++   Copyright (C) 2013 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>. */
++
++#include "config.h"
++#include <pthreadP.h>
++#include <init-arch.h>
++#include <elision-conf.h>
++#include <unistd.h>
++
++/* Reasonable initial tuning values, may be revised in the future.
++   This is a conservative initial value.  */
++
++struct elision_config __elision_aconf =
++  {
++    /* How often to not attempt to use elision if a transaction aborted
++       because the lock is already acquired.  Expressed in number of lock
++       acquisition attempts.  */
++    .skip_lock_busy = 3,
++    /* How often to not attempt to use elision if a transaction aborted due
++       to reasons other than other threads' memory accesses. Expressed in
++       number of lock acquisition attempts.  */
++    .skip_lock_internal_abort = 3,
++    /* How often we retry using elision if there is chance for the transaction
++       to finish execution (e.g., it wasn't aborted due to the lock being
++       already acquired.  */
++    .retry_try_xbegin = 3,
++    /* Same as SKIP_LOCK_INTERNAL_ABORT but for trylock.  */
++    .skip_trylock_internal_abort = 3,
++  };
++
++/* Elided rwlock toggle, set when elision is available and is
++   enabled for rwlocks.  */
++
++int __rwlock_rtm_enabled attribute_hidden;
++
++/* Retries for elided rwlocks on read. Conservative initial value.  */
++
++int __rwlock_rtm_read_retries attribute_hidden = 3;
++
++/* Set when the CPU supports elision. When false elision is never attempted.  */
++
++int __elision_available attribute_hidden;
++
++/* Force elision for all new locks. This is used to decide whether existing
++   DEFAULT locks should be automatically upgraded to elision in
++   pthread_mutex_lock(). Disabled for suid programs. Only used when elision
++   is available.  */
++
++int __pthread_force_elision attribute_hidden;
++
++/* Initialize elison.  */
++
++static void
++elision_init (int argc __attribute__ ((unused)),
++	      char **argv  __attribute__ ((unused)),
++	      char **environ)
++{
++  __elision_available = HAS_CPU_FEATURE (RTM);
++#ifdef ENABLE_LOCK_ELISION
++  __pthread_force_elision = __libc_enable_secure ? 0 : __elision_available;
++  __rwlock_rtm_enabled = __libc_enable_secure ? 0 : __elision_available;
++#endif
++}
++
++#ifdef SHARED
++# define INIT_SECTION ".init_array"
++#else
++# define INIT_SECTION ".preinit_array"
++#endif
++
++void (*const __pthread_init_array []) (int, char **, char **)
++  __attribute__ ((section (INIT_SECTION), aligned (sizeof (void *)))) =
++{
++  &elision_init
++};
+Index: glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/x86/elision-conf.h
+===================================================================
+--- /dev/null
++++ glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/x86/elision-conf.h
+@@ -0,0 +1,44 @@
++/* elision-conf.h: Lock elision tunable parameters.
++   Copyright (C) 2013 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>. */
++#ifndef _ELISION_CONF_H
++#define _ELISION_CONF_H 1
++
++#include <pthread.h>
++#include <cpuid.h>
++#include <time.h>
++
++/* Should make sure there is no false sharing on this.  */
++
++struct elision_config
++{
++  int skip_lock_busy;
++  int skip_lock_internal_abort;
++  int retry_try_xbegin;
++  int skip_trylock_internal_abort;
++};
++
++extern struct elision_config __elision_aconf attribute_hidden;
++
++extern int __rwlock_rtm_enabled attribute_hidden;
++extern int __elision_available attribute_hidden;
++extern int __pthread_force_elision attribute_hidden;
++
++/* Tell the test suite to test elision for this architecture.  */
++#define HAVE_ELISION 1
++
++#endif
+Index: glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/x86/elision-lock.c
+===================================================================
+--- /dev/null
++++ glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/x86/elision-lock.c
+@@ -0,0 +1,95 @@
++/* elision-lock.c: Elided pthread mutex lock.
++   Copyright (C) 2011-2013 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>. */
++
++#include <pthread.h>
++#include "pthreadP.h"
++#include "lowlevellock.h"
++#include "hle.h"
++#include <elision-conf.h>
++
++#if !defined(LLL_LOCK) && !defined(EXTRAARG)
++/* Make sure the configuration code is always linked in for static
++   libraries.  */
++#include "elision-conf.c"
++#endif
++
++#ifndef EXTRAARG
++#define EXTRAARG
++#endif
++#ifndef LLL_LOCK
++#define LLL_LOCK(a,b) lll_lock(a,b), 0
++#endif
++
++#define aconf __elision_aconf
++
++/* Adaptive lock using transactions.
++   By default the lock region is run as a transaction, and when it
++   aborts or the lock is busy the lock adapts itself.  */
++
++int
++__lll_lock_elision (int *futex, short *adapt_count, EXTRAARG int private)
++{
++  if (*adapt_count <= 0)
++    {
++      unsigned status;
++      int try_xbegin;
++
++      for (try_xbegin = aconf.retry_try_xbegin;
++	   try_xbegin > 0;
++	   try_xbegin--)
++	{
++	  if ((status = _xbegin()) == _XBEGIN_STARTED)
++	    {
++	      if (*futex == 0)
++		return 0;
++
++	      /* Lock was busy. Fall back to normal locking.
++		 Could also _xend here but xabort with 0xff code
++		 is more visible in the profiler.  */
++	      _xabort (_ABORT_LOCK_BUSY);
++	    }
++
++	  if (!(status & _XABORT_RETRY))
++	    {
++	      if ((status & _XABORT_EXPLICIT)
++			&& _XABORT_CODE (status) == _ABORT_LOCK_BUSY)
++	        {
++		  /* Right now we skip here. Better would be to wait a bit
++		     and retry. This likely needs some spinning.  */
++		  if (*adapt_count != aconf.skip_lock_busy)
++		    *adapt_count = aconf.skip_lock_busy;
++		}
++	      /* Internal abort. There is no chance for retry.
++		 Use the normal locking and next time use lock.
++		 Be careful to avoid writing to the lock.  */
++	      else if (*adapt_count != aconf.skip_lock_internal_abort)
++		*adapt_count = aconf.skip_lock_internal_abort;
++	      break;
++	    }
++	}
++    }
++  else
++    {
++      /* Use a normal lock until the threshold counter runs out.
++	 Lost updates possible.  */
++      (*adapt_count)--;
++    }
++
++  /* Use a normal lock here.  */
++  return LLL_LOCK ((*futex), private);
++}
+Index: glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/x86/elision-timed.c
+===================================================================
+--- /dev/null
++++ glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/x86/elision-timed.c
+@@ -0,0 +1,26 @@
++/* elision-timed.c: Lock elision timed lock.
++   Copyright (C) 2013 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>. */
++
++#include <time.h>
++#include <elision-conf.h>
++#include "lowlevellock.h"
++#define __lll_lock_elision __lll_timedlock_elision
++#define EXTRAARG const struct timespec *t,
++#undef LLL_LOCK
++#define LLL_LOCK(a, b) lll_timedlock(a, t, b)
++#include "elision-lock.c"
+Index: glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/x86/elision-trylock.c
+===================================================================
+--- /dev/null
++++ glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/x86/elision-trylock.c
+@@ -0,0 +1,72 @@
++/* elision-trylock.c: Lock eliding trylock for pthreads.
++   Copyright (C) 2013 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>. */
++
++#include <pthread.h>
++#include <pthreadP.h>
++#include <lowlevellock.h>
++#include "hle.h"
++#include <elision-conf.h>
++
++#define aconf __elision_aconf
++
++/* Try to elide a futex trylock. FUTEX is the futex variable. TRY_LOCK is the
++   adaptation counter in the mutex. UPGRADED is != 0 when this is for an
++   automatically upgraded lock.  */
++
++int
++__lll_trylock_elision (int *futex, short *adapt_count)
++{
++  /* Implement POSIX semantics by forbiding nesting
++     trylock. Sorry. After the abort the code is re-executed
++     non transactional and if the lock was already locked
++     return an error.  */
++  _xabort (_ABORT_NESTED_TRYLOCK);
++
++  /* Only try a transaction if it's worth it.  */
++  if (*adapt_count <= 0)
++    {
++      unsigned status;
++
++      if ((status = _xbegin()) == _XBEGIN_STARTED)
++	{
++	  if (*futex == 0)
++	    return 0;
++
++	  /* Lock was busy. Fall back to normal locking.
++	     Could also _xend here but xabort with 0xff code
++	     is more visible in the profiler.  */
++	  _xabort (_ABORT_LOCK_BUSY);
++	}
++
++      if (!(status & _XABORT_RETRY))
++        {
++          /* Internal abort. No chance for retry. For future
++             locks don't try speculation for some time.  */
++          if (*adapt_count != aconf.skip_trylock_internal_abort)
++            *adapt_count = aconf.skip_trylock_internal_abort;
++        }
++      /* Could do some retries here. */
++    }
++  else
++    {
++      /* Lost updates are possible, but harmless.  */
++      (*adapt_count)--;
++    }
++
++  return lll_trylock (*futex);
++}
+Index: glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/x86/elision-unlock.c
+===================================================================
+--- /dev/null
++++ glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/x86/elision-unlock.c
+@@ -0,0 +1,33 @@
++/* elision-unlock.c: Commit an elided pthread lock.
++   Copyright (C) 2013 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include "pthreadP.h"
++#include "lowlevellock.h"
++#include "hle.h"
++
++int
++__lll_unlock_elision(int *lock, int private)
++{
++  /* When the lock was free we're in a transaction.
++     When you crash here you unlocked a free lock.  */
++  if (*lock == 0)
++    _xend();
++  else
++    lll_unlock ((*lock), private);
++  return 0;
++}
+Index: glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/x86/hle.h
+===================================================================
+--- /dev/null
++++ glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/x86/hle.h
+@@ -0,0 +1,75 @@
++/* Shared RTM header. Emulate TSX intrinsics for compilers and assemblers
++   that do not support the intrinsics and instructions yet. */
++#ifndef _HLE_H
++#define _HLE_H 1
++
++#ifdef __ASSEMBLER__
++
++.macro XBEGIN target
++	.byte 0xc7,0xf8
++	.long \target-1f
++1:
++.endm
++
++.macro XEND
++	.byte 0x0f,0x01,0xd5
++.endm
++
++.macro XABORT code
++	.byte 0xc6,0xf8,\code
++.endm
++
++.macro XTEST
++	 .byte 0x0f,0x01,0xd6
++.endm
++
++#endif
++
++/* Official RTM intrinsics interface matching gcc/icc, but works
++   on older gcc compatible compilers and binutils.
++   We should somehow detect if the compiler supports it, because
++   it may be able to generate slightly better code. */
++
++#define _XBEGIN_STARTED		(~0u)
++#define _XABORT_EXPLICIT	(1 << 0)
++#define _XABORT_RETRY		(1 << 1)
++#define _XABORT_CONFLICT	(1 << 2)
++#define _XABORT_CAPACITY	(1 << 3)
++#define _XABORT_DEBUG		(1 << 4)
++#define _XABORT_NESTED		(1 << 5)
++#define _XABORT_CODE(x)		(((x) >> 24) & 0xff)
++
++#define _ABORT_LOCK_BUSY 	0xff
++#define _ABORT_LOCK_IS_LOCKED	0xfe
++#define _ABORT_NESTED_TRYLOCK	0xfd
++
++#ifndef __ASSEMBLER__
++
++#define __force_inline __attribute__((__always_inline__)) inline
++
++static __force_inline int _xbegin(void)
++{
++  int ret = _XBEGIN_STARTED;
++  asm volatile (".byte 0xc7,0xf8 ; .long 0" : "+a" (ret) :: "memory");
++  return ret;
++}
++
++static __force_inline void _xend(void)
++{
++  asm volatile (".byte 0x0f,0x01,0xd5" ::: "memory");
++}
++
++static __force_inline void _xabort(const unsigned int status)
++{
++  asm volatile (".byte 0xc6,0xf8,%P0" :: "i" (status) : "memory");
++}
++
++static __force_inline int _xtest(void)
++{
++  unsigned char out;
++  asm volatile (".byte 0x0f,0x01,0xd6 ; setnz %0" : "=r" (out) :: "memory");
++  return out;
++}
++
++#endif
++#endif
+Index: glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/x86_64/lowlevellock.h
+===================================================================
+--- glibc-2.17-c758a686.orig/nptl/sysdeps/unix/sysv/linux/x86_64/lowlevellock.h
++++ glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/x86_64/lowlevellock.h
+@@ -427,6 +427,13 @@ LLL_STUB_UNWIND_INFO_END
+ 		       : "memory", "cx", "cc", "r10", "r11");		      \
+      result; })
+ 
++extern int __lll_timedlock_elision (int *futex, short *adapt_count,
++					 const struct timespec *timeout,
++					 int private) attribute_hidden;
++
++#define lll_timedlock_elision(futex, adapt_count, timeout, private)	\
++  __lll_timedlock_elision(&(futex), &(adapt_count), timeout, private)
++
+ #define lll_robust_timedlock(futex, timeout, id, private) \
+   ({ int result, ignore1, ignore2, ignore3;				      \
+      __asm __volatile (LOCK_INSTR "cmpxchgl %1, %4\n\t"			      \
+@@ -597,6 +604,22 @@ extern int __lll_timedwait_tid (int *tid
+       }									      \
+     __result; })
+ 
++extern int __lll_lock_elision (int *futex, short *adapt_count, int private)
++  attribute_hidden;
++
++extern int __lll_unlock_elision (int *lock, int private)
++  attribute_hidden;
++
++extern int __lll_trylock_elision (int *lock, short *adapt_count)
++  attribute_hidden;
++
++#define lll_lock_elision(futex, adapt_count, private) \
++  __lll_lock_elision (&(futex), &(adapt_count), private)
++#define lll_unlock_elision(futex, private) \
++  __lll_unlock_elision (&(futex), private)
++#define lll_trylock_elision(futex, adapt_count) \
++  __lll_trylock_elision (&(futex), &(adapt_count))
++
+ #endif  /* !__ASSEMBLER__ */
+ 
+ #endif	/* lowlevellock.h */
+Index: glibc-2.17-c758a686/sysdeps/i386/i686/multiarch/init-arch.c
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/i386/i686/multiarch/init-arch.c
++++ /dev/null
+@@ -1 +0,0 @@
+-#include <sysdeps/x86_64/multiarch/init-arch.c>
+Index: glibc-2.17-c758a686/INSTALL
+===================================================================
+--- glibc-2.17-c758a686.orig/INSTALL
++++ glibc-2.17-c758a686/INSTALL
+@@ -140,6 +140,9 @@ will be used, and CFLAGS sets optimizati
+      additional security risks to the system and you should enable it
+      only if you understand and accept those risks.
+ 
++`--enable-lock-elision=yes'
++     Enable lock elision for pthread mutexes and rwlocks by default.
++
+ `--build=BUILD-SYSTEM'
+ `--host=HOST-SYSTEM'
+      These options are for cross-compiling.  If you specify both
+Index: glibc-2.17-c758a686/config.h.in
+===================================================================
+--- glibc-2.17-c758a686.orig/config.h.in
++++ glibc-2.17-c758a686/config.h.in
+@@ -180,6 +180,9 @@
+ /* Define if __stack_chk_guard canary should be randomized at program startup.  */
+ #undef ENABLE_STACKGUARD_RANDOMIZE
+ 
++/* Define if lock elision should be enabled by default.  */
++#undef ENABLE_LOCK_ELISION
++
+ /* Package description.  */
+ #undef PKGVERSION
+ 
+Index: glibc-2.17-c758a686/configure
+===================================================================
+--- glibc-2.17-c758a686.orig/configure
++++ glibc-2.17-c758a686/configure
+@@ -750,6 +750,7 @@ enable_profile
+ enable_versioning
+ enable_oldest_abi
+ enable_stackguard_randomization
++enable_lock_elision
+ enable_add_ons
+ enable_hidden_plt
+ enable_bind_now
+@@ -1405,6 +1406,9 @@ Optional Features:
+   --enable-stackguard-randomization
+                           initialize __stack_chk_guard canary with a random
+                           number at program start
++  --enable-lock-elision=yes/no
++                          Enable lock elision for pthread mutexes and rwlocks
++                          by default
+   --enable-add-ons[=DIRS...]
+                           configure and build add-ons in DIR1,DIR2,... search
+                           for add-ons if no parameter given
+@@ -3716,6 +3720,18 @@ if test "$enable_stackguard_randomize" =
+ 
+ fi
+ 
++# Check whether --enable-lock-elision was given.
++if test "${enable_lock_elision+set}" = set; then :
++  enableval=$enable_lock_elision; enable_lock_elision=$enableval
++else
++  enable_lock_elision=no
++fi
++
++if test "$enable_lock_elision" = yes ; then
++  $as_echo "#define ENABLE_LOCK_ELISION 1" >>confdefs.h
++
++fi
++
+ # Check whether --enable-add-ons was given.
+ if test "${enable_add_ons+set}" = set; then :
+   enableval=$enable_add_ons;
+Index: glibc-2.17-c758a686/configure.in
+===================================================================
+--- glibc-2.17-c758a686.orig/configure.in
++++ glibc-2.17-c758a686/configure.in
+@@ -155,6 +155,15 @@ if test "$enable_stackguard_randomize" =
+   AC_DEFINE(ENABLE_STACKGUARD_RANDOMIZE)
+ fi
+ 
++AC_ARG_ENABLE([lock-elision],
++	      AC_HELP_STRING([--enable-lock-elision[=yes/no]],
++			     [Enable lock elision for pthread mutexes and rwlocks by default]),
++	      [enable_lock_elision=$enableval],
++	      [enable_lock_elision=no])
++if test "$enable_lock_elision" = yes ; then
++  AC_DEFINE(ENABLE_LOCK_ELISION)
++fi
++
+ dnl Generic infrastructure for drop-in additions to libc.
+ AC_ARG_ENABLE([add-ons],
+ 	      AC_HELP_STRING([--enable-add-ons@<:@=DIRS...@:>@],
+Index: glibc-2.17-c758a686/manual/install.texi
+===================================================================
+--- glibc-2.17-c758a686.orig/manual/install.texi
++++ glibc-2.17-c758a686/manual/install.texi
+@@ -174,6 +174,9 @@ setuid and owned by @code{root}.  The us
+ additional security risks to the system and you should enable it only if
+ you understand and accept those risks.
+ 
++@item --enable-lock-elision=yes
++Enable lock elision for pthread mutexes by default.
++
+ @item --build=@var{build-system}
+ @itemx --host=@var{host-system}
+ These options are for cross-compiling.  If you specify both options and

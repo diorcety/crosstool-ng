@@ -1,0 +1,155 @@
+#
+# EMARGOED!!! -- EMBARGOED!!! -- EMBARGOED!!!
+# EMARGOED!!! -- EMBARGOED!!! -- EMBARGOED!!!
+# EMARGOED!!! -- EMBARGOED!!! -- EMBARGOED!!!
+# Release date is RHEL 7.1 RC.
+# CVE-2014-8121:
+# Unexpected closing of nss_files databases after lookups causes denial of service 
+# EMARGOED!!! -- EMBARGOED!!! -- EMBARGOED!!!
+# EMARGOED!!! -- EMBARGOED!!! -- EMBARGOED!!!
+# EMARGOED!!! -- EMBARGOED!!! -- EMBARGOED!!!
+#
+diff -up glibc-2.17-c758a686/nss/Makefile.rh1165192 glibc-2.17-c758a686/nss/Makefile
+--- glibc-2.17-c758a686/nss/Makefile.rh1165192	2015-01-14 21:22:57.558006945 +0100
++++ glibc-2.17-c758a686/nss/Makefile	2015-01-14 21:44:59.657777124 +0100
+@@ -38,7 +38,7 @@ install-bin             := getent makedb
+ makedb-modules = xmalloc hash-string
+ extra-objs		+= $(makedb-modules:=.o)
+ 
+-tests			= test-netdb tst-nss-test1 bug17079
++tests			= test-netdb tst-nss-test1 bug17079 tst-nss-getpwent
+ xtests			= bug-erange
+ 
+ include ../Makeconfig
+diff -up glibc-2.17-c758a686/nss/nss_files/files-XXX.c.rh1165192 glibc-2.17-c758a686/nss/nss_files/files-XXX.c
+--- glibc-2.17-c758a686/nss/nss_files/files-XXX.c.rh1165192	2015-01-14 21:22:14.630721754 +0100
++++ glibc-2.17-c758a686/nss/nss_files/files-XXX.c	2015-01-14 21:22:15.072725814 +0100
+@@ -135,7 +135,7 @@ CONCAT(_nss_files_set,ENTNAME) (int stay
+ 
+   __libc_lock_lock (lock);
+ 
+-  status = internal_setent (stayopen);
++  status = internal_setent (1);
+ 
+   if (status == NSS_STATUS_SUCCESS && fgetpos (stream, &position) < 0)
+     {
+diff -up glibc-2.17-c758a686/nss/tst-nss-getpwent.c.rh1165192 glibc-2.17-c758a686/nss/tst-nss-getpwent.c
+--- glibc-2.17-c758a686/nss/tst-nss-getpwent.c.rh1165192	2015-01-14 21:23:50.003236107 +0100
++++ glibc-2.17-c758a686/nss/tst-nss-getpwent.c	2015-01-14 21:46:39.912194368 +0100
+@@ -0,0 +1,116 @@
++/* Copyright (C) 2015 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <pwd.h>
++#include <stdbool.h>
++#include <stdio.h>
++#include <stdlib.h>
++#include <string.h>
++
++int
++do_test (void)
++{
++  /* Count the number of entries in the password database, and fetch
++     data from the first and last entries.  */
++  size_t count = 0;
++  struct passwd * pw;
++  char *first_name = NULL;
++  uid_t first_uid = 0;
++  char *last_name = NULL;
++  uid_t last_uid = 0;
++  setpwent ();
++  while ((pw  = getpwent ()) != NULL)
++    {
++      if (first_name == NULL)
++	{
++	  first_name = strdup (pw->pw_name);
++	  if (first_name == NULL)
++	    {
++	      printf ("strdup: %m\n");
++	      return 1;
++	    }
++	  first_uid = pw->pw_uid;
++	}
++      
++      free (last_name);
++      last_name = strdup (pw->pw_name);
++      if (last_name == NULL)
++	{
++	  printf ("strdup: %m\n");
++	  return 1;
++	}
++      last_uid = pw->pw_uid;
++      ++count;
++    }
++  endpwent ();
++
++  if (count == 0)
++    {
++      printf ("No entries in the password database.\n");
++      return 0;
++    }
++
++  /* Try again, this time interleaving with name-based and UID-based
++     lookup operations.  The counts do not match if the interleaved
++     lookups affected the enumeration.  */
++  size_t new_count = 0;
++  setpwent ();
++  while ((pw  = getpwent ()) != NULL)
++    {
++      if (new_count == count)
++	{
++	  printf ("Additional entry in the password database.\n");
++	  return 1;
++	}
++      ++new_count;
++      struct passwd *pw2 = getpwnam (first_name);
++      if (pw2 == NULL)
++	{
++	  printf ("getpwnam (%s) failed: %m\n", first_name);
++	  return 1;
++	}
++      pw2 = getpwnam (last_name);
++      if (pw2 == NULL)
++	{
++	  printf ("getpwnam (%s) failed: %m\n", last_name);
++	  return 1;
++	}
++      pw2 = getpwuid (first_uid);
++      if (pw2 == NULL)
++	{
++	  printf ("getpwuid (%llu) failed: %m\n", (unsigned long long) first_uid);
++	  return 1;
++	}
++      pw2 = getpwuid (last_uid);
++      if (pw2 == NULL)
++	{
++	  printf ("getpwuid (%llu) failed: %m\n", (unsigned long long) last_uid);
++	  return 1;
++	}
++    }
++  endpwent ();
++  if (new_count < count)
++    {
++      printf ("Missing entry in the password database.\n");
++      return 1;
++    }
++  
++  return 0;
++}
++
++#define TEST_FUNCTION do_test ()
++#include "../test-skeleton.c"

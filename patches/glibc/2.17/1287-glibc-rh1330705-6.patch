@@ -1,0 +1,94 @@
+Do not expose O_TMPFILE in a public header.
+
+Adjust tst-open-tmpfile so that it exits with 0 in case of missing
+kernel support.
+
+Index: b/io/tst-open-tmpfile.c
+===================================================================
+--- a/io/tst-open-tmpfile.c
++++ b/io/tst-open-tmpfile.c
+@@ -33,7 +33,6 @@ static int do_test (void);
+ #define TEST_FUNCTION do_test ()
+ #include "../test-skeleton.c"
+ 
+-#ifdef O_TMPFILE
+ typedef int (*wrapper_func) (const char *, int, mode_t);
+ 
+ /* Error-checking wrapper for the open function, compatible with the
+@@ -157,7 +156,7 @@ static void
+ check_wrapper_flags_mode (const char *op, wrapper_func wrapper,
+                           const char *path, int flags, mode_t mode)
+ {
+-  int fd = wrapper (path, flags | O_TMPFILE, mode);
++  int fd = wrapper (path, flags | __O_TMPFILE, mode);
+   struct stat64 st;
+   if (fstat64 (fd, &st) != 0)
+     {
+@@ -257,20 +256,20 @@ check_wrapper (const char *op, wrapper_f
+ }
+ 
+ /* Verify that the directory at PATH supports O_TMPFILE.  Exit with
+-   status 77 (unsupported) if the kernel does not support O_TMPFILE.
+-   Even with kernel support, not all file systems O_TMPFILE, so return
+-   true if the directory supports O_TMPFILE, false if not.  */
++   status 0 if the kernel does not support O_TMPFILE.  Even with
++   kernel support, not all file systems O_TMPFILE, so return true if
++   the directory supports O_TMPFILE, false if not.  */
+ static bool
+ probe_path (const char *path)
+ {
+-  int fd = openat (AT_FDCWD, path, O_TMPFILE | O_RDWR, 0);
++  int fd = openat (AT_FDCWD, path, __O_TMPFILE | O_RDWR, 0);
+   if (fd < 0)
+     {
+       if (errno == EISDIR)
+         /* The system does not support O_TMPFILE.  */
+         {
+           printf ("info: kernel does not support O_TMPFILE\n");
+-          exit (77);
++          exit (0);
+         }
+       if (errno == EOPNOTSUPP)
+         {
+@@ -291,29 +290,14 @@ do_test (void)
+   const char *paths[] = { ".", "/dev/shm", "/tmp",
+                           getenv ("TEST_TMPFILE_PATH"),
+                           NULL };
+-  bool supported = false;
+   for (int i = 0; paths[i] != NULL; ++i)
+     if (probe_path (paths[i]))
+       {
+-        supported = true;
+         check_wrapper ("open", wrap_open, paths[i]);
+         check_wrapper ("openat", wrap_openat, paths[i]);
+         check_wrapper ("open64", wrap_open64, paths[i]);
+         check_wrapper ("openat64", wrap_openat64, paths[i]);
+       }
+ 
+-  if (!supported)
+-    return 77;
+-
+   return 0;
+ }
+-
+-#else  /* !O_TMPFILE */
+-
+-static int
+-do_test (void)
+-{
+-  return 77;
+-}
+-
+-#endif  /* O_TMPFILE */
+Index: b/sysdeps/unix/sysv/linux/bits/fcntl-linux.h
+===================================================================
+--- a/sysdeps/unix/sysv/linux/bits/fcntl-linux.h
++++ b/sysdeps/unix/sysv/linux/bits/fcntl-linux.h
+@@ -131,7 +131,6 @@
+ # define O_DIRECT	__O_DIRECT	/* Direct disk access.	*/
+ # define O_NOATIME	__O_NOATIME	/* Do not set atime.  */
+ # define O_PATH		__O_PATH	/* Resolve pathname but do not open file.  */
+-# define O_TMPFILE	__O_TMPFILE	/* Atomically create nameless file.  */
+ #endif
+ 
+ /* For now, Linux has no separate synchronicitiy options for read

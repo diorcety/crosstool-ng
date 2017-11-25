@@ -1,0 +1,78 @@
+    Backport of the addition of
+      sysdeps/powerpc/powerpc64/multiarch/strncat-power7.c
+    from the following:
+    
+    commit 9f2f36e5a91c2ce6edba5415e176155eb1008ae1
+    Author: Adhemerval Zanella <azanella@linux.vnet.ibm.com>
+    Date:   Tue Dec 23 13:39:23 2014 -0500
+    
+        powerpc: Optimized strncat for POWER7/PPC64
+    
+        With 3eb38795dbbbd816 (Simplify strncat) the generic algorithms uses
+        strlen, strnlen, and memcpy.  This is faster than POWER7 current
+        implementation, especially for unaligned strings (where POWER7 code
+        uses byte-byte operations).
+    
+        This patch removes the assembly implementation and uses a multiarch
+        specialization based on default algorithm calling optimized POWER7
+        symbols.
+    
+        ChangeLog:
+            2015-01-13  Adhemerval Zanella  <azanella@linux.vnet.ibm.com>
+    
+            * sysdeps/powerpc/powerpc64/multiarch/strncat-power7.c: New file.
+            * sysdeps/powerpc/powerpc64/multiarch/strncat-power7.S: Remove file.
+            * sysdeps/powerpc/powerpc64/power7/strncat.S: Likewise.
+    
+    plus the addition of strncat-power7 to
+      sysdeps/powerpc/powerpc64/multiarch/Makefile
+
+diff --git a/sysdeps/powerpc/powerpc64/multiarch/Makefile b/sysdeps/powerpc/powerpc64/multiarch/Makefile
+index 7ebfc7e..74ae710 100644
+--- a/sysdeps/powerpc/powerpc64/multiarch/Makefile
++++ b/sysdeps/powerpc/powerpc64/multiarch/Makefile
+@@ -8,6 +8,7 @@ sysdep_routines += memcpy-power7 memcpy-a2 memcpy-power6 memcpy-cell \
+                   stpcpy-power8 stpcpy-power7 stpcpy-ppc64 \
+                   strcat-power8 strcat-power7 strcat-ppc64 \
+                   strcpy-power8 strcpy-power7 strcpy-ppc64 \
++                  strncat-power7 \
+                   rawmemchr-ppc64 strlen-power7 strlen-ppc64 strnlen-power7 \
+                   strnlen-ppc64 strcasecmp-power7 strcasecmp_l-power7 \
+                   strncase-power7 strncase_l-power7 strncmp-power7 \
+diff --git a/sysdeps/powerpc/powerpc64/multiarch/strncat-power7.c b/sysdeps/powerpc/powerpc64/multiarch/strncat-power7.c
+new file mode 100644
+index 0000000..39b1aeb
+--- /dev/null
++++ b/sysdeps/powerpc/powerpc64/multiarch/strncat-power7.c
+@@ -0,0 +1,31 @@
++/* Copyright (C) 2015 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/ >.  */
++
++#include <string.h>
++
++#define STRNCAT __strncat_power7
++
++extern __typeof (strncat) __strncat_power7 attribute_hidden;
++extern __typeof (strlen) __strlen_power7 attribute_hidden;
++extern __typeof (strnlen) __strnlen_power7 attribute_hidden;
++extern __typeof (memcpy) __memcpy_power7 attribute_hidden;
++
++#define strlen    __strlen_power7
++#define __strnlen __strnlen_power7
++#define memcpy    __memcpy_power7
++
++#include <string/strncat.c>

@@ -1,0 +1,146 @@
+From 01c3d9bb14a1e90159d6999cf3469e62c0c5d4b2 Mon Sep 17 00:00:00 2001
+From: Adhemerval Zanella <azanella@linux.vnet.ibm.com>
+Date: Fri, 3 May 2013 15:00:31 -0500
+Subject: [PATCH 27/42] PowerPC: Add time vDSO support
+
+PowerPC kernel now provides a vDSO implementation for time syscall
+(commit fcb41a2030abe0eb716ef0798035ef9562097f42). This patch changes
+time syscall wrapper to use the vDSO when available. It also changes
+the default non vDSO time on PowerPC to use sysdeps/posix/time.c
+(since gettimeofday is a vDSO call).
+(cherry picked from commit 83e7640f6bf68708ecf0b09d83c670203167271e)
+---
+ sysdeps/unix/sysv/linux/powerpc/Versions         |  1 +
+ sysdeps/unix/sysv/linux/powerpc/bits/libc-vdso.h |  6 ++-
+ sysdeps/unix/sysv/linux/powerpc/init-first.c     |  4 +-
+ sysdeps/unix/sysv/linux/powerpc/time.c           | 62 ++++++++++++++++++++++++
+ 5 files changed, 81 insertions(+), 3 deletions(-)
+ create mode 100644 sysdeps/unix/sysv/linux/powerpc/time.c
+
+diff --git glibc-2.17-c758a686/sysdeps/unix/sysv/linux/powerpc/Versions glibc-2.17-c758a686/sysdeps/unix/sysv/linux/powerpc/Versions
+index 396a423..289c4fe 100644
+--- glibc-2.17-c758a686/sysdeps/unix/sysv/linux/powerpc/Versions
++++ glibc-2.17-c758a686/sysdeps/unix/sysv/linux/powerpc/Versions
+@@ -4,5 +4,6 @@ libc {
+     __vdso_clock_gettime;
+     __vdso_clock_getres;
+     __vdso_getcpu;
++    __vdso_time;
+   }
+ }
+diff --git glibc-2.17-c758a686/sysdeps/unix/sysv/linux/powerpc/bits/libc-vdso.h glibc-2.17-c758a686/sysdeps/unix/sysv/linux/powerpc/bits/libc-vdso.h
+index e4ae630..f7f635e 100644
+--- glibc-2.17-c758a686/sysdeps/unix/sysv/linux/powerpc/bits/libc-vdso.h
++++ glibc-2.17-c758a686/sysdeps/unix/sysv/linux/powerpc/bits/libc-vdso.h
+@@ -32,14 +32,16 @@ extern void *__vdso_get_tbfreq;
+ 
+ extern void *__vdso_getcpu;
+ 
++extern void *__vdso_time;
++
+ /* This macro is needed for PPC64 to return a skeleton OPD entry of a vDSO
+    symbol.  This works because _dl_vdso_vsym always return the function
+    address, and no vDSO symbols use the TOC or chain pointers from the OPD
+    so we can allow them to be garbage.  */
+ #if defined(__PPC64__) || defined(__powerpc64__)
+-#define VDSO_IFUNC_RET(value)  &value
++#define VDSO_IFUNC_RET(value)  ((void *) &(value))
+ #else
+-#define VDSO_IFUNC_RET(value)  value
++#define VDSO_IFUNC_RET(value)  ((void *) (value))
+ #endif
+ 
+ #endif
+diff --git glibc-2.17-c758a686/sysdeps/unix/sysv/linux/powerpc/init-first.c glibc-2.17-c758a686/sysdeps/unix/sysv/linux/powerpc/init-first.c
+index 5587e2a..3cefd9b 100644
+--- glibc-2.17-c758a686/sysdeps/unix/sysv/linux/powerpc/init-first.c
++++ glibc-2.17-c758a686/sysdeps/unix/sysv/linux/powerpc/init-first.c
+@@ -28,7 +28,7 @@ void *__vdso_clock_gettime;
+ void *__vdso_clock_getres;
+ void *__vdso_get_tbfreq;
+ void *__vdso_getcpu;
+-
++void *__vdso_time;
+ 
+ static inline void
+ _libc_vdso_platform_setup (void)
+@@ -44,6 +44,8 @@ _libc_vdso_platform_setup (void)
+   __vdso_get_tbfreq = _dl_vdso_vsym ("__kernel_get_tbfreq", &linux2615);
+ 
+   __vdso_getcpu = _dl_vdso_vsym ("__kernel_getcpu", &linux2615);
++
++  __vdso_time = _dl_vdso_vsym ("__kernel_time", &linux2615);
+ }
+ 
+ # define VDSO_SETUP _libc_vdso_platform_setup
+diff --git glibc-2.17-c758a686/sysdeps/unix/sysv/linux/powerpc/time.c glibc-2.17-c758a686/sysdeps/unix/sysv/linux/powerpc/time.c
+new file mode 100644
+index 0000000..66b4eb3
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/unix/sysv/linux/powerpc/time.c
+@@ -0,0 +1,62 @@
++/* time system call for Linux/PowerPC.
++   Copyright (C) 2013 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#ifdef SHARED
++
++# include <time.h>
++# include <sysdep.h>
++# include <bits/libc-vdso.h>
++
++void *time_ifunc (void) asm ("time");
++
++static time_t
++time_syscall (time_t *t)
++{
++  struct timeval tv;
++  time_t result;
++
++  if (INLINE_VSYSCALL (gettimeofday, 2, &tv, NULL) < 0)
++    result = (time_t) -1;
++  else
++    result = (time_t) tv.tv_sec;
++
++  if (t != NULL)
++    *t = result;
++  return result;
++}
++
++void *
++time_ifunc (void)
++{
++  /* If the vDSO is not available we fall back to the syscall.  */
++  return (__vdso_time ? VDSO_IFUNC_RET (__vdso_time)
++	  : time_syscall);
++}
++asm (".type time, %gnu_indirect_function");
++
++/* This is doing "libc_hidden_def (time)" but the compiler won't
++ * let us do it in C because it doesn't know we're defining time
++ * here in this file.  */
++asm (".globl __GI_time\n"
++     "__GI_time = time");
++
++#else
++
++#include <sysdeps/posix/time.c>
++
++#endif
+-- 
+1.7.11.7
+

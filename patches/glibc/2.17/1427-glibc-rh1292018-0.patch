@@ -1,0 +1,55 @@
+commit a3d9ab5070b56b49aa91be2887fa5b118012b2cd
+Author: H.J. Lu <hjl.tools@gmail.com>
+Date:   Tue Mar 31 13:17:51 2015 -0700
+
+    Limit threads sharing L2 cache to 2 for SLM/KNL
+    
+    Silvermont and Knights Landing have a modular system design with two cores
+    sharing an L2 cache.  If more than 2 cores are detected to shared L2 cache,
+    it should be adjusted for Silvermont and Knights Landing.
+    
+        [BZ #18185]
+        * sysdeps/x86_64/cacheinfo.c (init_cacheinfo): Limit threads
+        sharing L2 cache to 2 for Silvermont/Knights Landing.
+
+diff --git a/sysdeps/x86_64/cacheinfo.c b/sysdeps/x86_64/cacheinfo.c
+index f1cbf50..b99fb9a 100644
+--- a/sysdeps/x86_64/cacheinfo.c
++++ b/sysdeps/x86_64/cacheinfo.c
+@@ -585,6 +585,10 @@ init_cacheinfo (void)
+       __cpuid (1, eax, ebx_1, ecx, edx);
+ #endif
+ 
++      unsigned int family = (eax >> 8) & 0x0f;
++      unsigned int model = (eax >> 4) & 0x0f;
++      unsigned int extended_model = (eax >> 12) & 0xf0;
++
+ #ifndef DISABLE_PREFERRED_MEMORY_INSTRUCTION
+       /* Intel prefers SSSE3 instructions for memory/string routines
+ 	 if they are available.  */
+@@ -647,6 +651,25 @@ init_cacheinfo (void)
+ 		}
+ 	    }
+ 	  threads += 1;
++	  if (threads > 2 && level == 2 && family == 6)
++	    {
++	      model += extended_model;
++	      switch (model)
++		{
++		case 0x57:
++		  /* Knights Landing has L2 cache shared by 2 cores.  */
++		case 0x37:
++		case 0x4a:
++		case 0x4d:
++		case 0x5a:
++		case 0x5d:
++		  /* Silvermont has L2 cache shared by 2 cores.  */
++		  threads = 2;
++		  break;
++		default:
++		  break;
++		}
++	    }
+ 	}
+       else
+ 	{

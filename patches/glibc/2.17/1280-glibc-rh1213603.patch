@@ -1,0 +1,41 @@
+commit 31d0a4fa646db8b8c97ce24e0ec0a7b73de4fca1
+Author: Florian Weimer <fweimer@redhat.com>
+Date:   Sat Jun 11 12:12:56 2016 +0200
+
+    nss_db: Fix initialization of iteration position [BZ #20237]
+    
+    When get*ent is called without a preceding set*ent, we need
+    to set the initial iteration position in get*ent.
+    
+    Reproducer: Add “services: db files” to /etc/nsswitch.conf, then run
+    “perl -e getservent”.  It will segfault before this change, and exit
+    silently after it.
+
+Index: b/nss/nss_db/db-XXX.c
+===================================================================
+--- a/nss/nss_db/db-XXX.c
++++ b/nss/nss_db/db-XXX.c
+@@ -76,7 +76,7 @@ CONCAT(_nss_db_set,ENTNAME) (int stayope
+       keep_db |= stayopen;
+ 
+       /* Reset the sequential index.  */
+-      entidx  = (const char *) state.header + state.header->valstroffset;
++      entidx  = NULL;
+     }
+ 
+   __libc_lock_unlock (lock);
+@@ -249,8 +249,14 @@ CONCAT(_nss_db_get,ENTNAME_r) (struct ST
+ 	  H_ERRNO_SET (NETDB_INTERNAL);
+ 	  goto out;
+ 	}
++      entidx = NULL;
+     }
+ 
++  /* Start from the beginning if freshly initialized or reset
++     requested by set*ent.  */
++  if (entidx == NULL)
++    entidx = (const char *) state.header + state.header->valstroffset;
++
+   status = NSS_STATUS_UNAVAIL;
+   if (state.header != MAP_FAILED)
+     {

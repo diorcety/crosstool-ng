@@ -1,0 +1,244 @@
+The functions in locarchive.c cannot create files in non-default
+locations.  Rather than enhancing locarchive.c (and risk regressions
+in localedef), this patch adapts build-locale-archive to use the
+existing output_prefix configuration variable.
+
+Index: glibc-2.17-c758a686/releng/build-locale-archive.c
+===================================================================
+--- glibc-2.17-c758a686.orig/releng/build-locale-archive.c
++++ glibc-2.17-c758a686/releng/build-locale-archive.c
+@@ -92,23 +92,34 @@ xmalloc (size_t size)
+   return p;
+ }
+ 
++static char *
++xasprintf (const char *format, ...)
++{
++  va_list ap;
++  va_start (ap, format);
++  char *result;
++  if (vasprintf (&result, format, ap) < 0)
++    error (EXIT_FAILURE, errno, "could not format string");
++  va_end (ap);
++  return result;
++}
++
+ static void
+ open_tmpl_archive (struct locarhandle *ah)
+ {
+   struct stat64 st;
+   int fd;
+   struct locarhead head;
+-  const char *archivefname = ah->fname == NULL ? tmpl_file : ah->fname;
+ 
+   /* Open the archive.  We must have exclusive write access.  */
+-  fd = open64 (archivefname, O_RDONLY);
++  fd = open64 (tmpl_file, O_RDONLY);
+   if (fd == -1)
+     error (EXIT_FAILURE, errno, "cannot open locale archive template file \"%s\"",
+-	   archivefname);
++	   tmpl_file);
+ 
+   if (fstat64 (fd, &st) < 0)
+     error (EXIT_FAILURE, errno, "cannot stat locale archive template file \"%s\"",
+-	   archivefname);
++	   tmpl_file);
+ 
+   /* Read the header.  */
+   if (TEMP_FAILURE_RETRY (read (fd, &head, sizeof (head))) != sizeof (head))
+@@ -253,12 +264,11 @@ compute_data (struct locarhandle *ah, st
+ 
+ static int
+ fill_archive (struct locarhandle *tmpl_ah,
+-	      const char *fname,
+ 	      size_t install_langs_count, char *install_langs_list[],
+ 	      size_t nlist, char *list[],
+ 	      const char *primary)
+ {
+-  struct locarhandle ah;
++  struct locarhandle ah = {};
+   struct locarhead *head;
+   int result = 0;
+   struct nameent *names;
+@@ -338,9 +348,6 @@ fill_archive (struct locarhandle *tmpl_a
+ 
+   /* Open the archive.  This call never returns if we cannot
+      successfully open the archive.  */
+-  ah.fname = NULL;
+-  if (fname != NULL)
+-    ah.fname = fname;
+   open_archive (&ah, false);
+ 
+   if (primary != NULL)
+@@ -619,38 +626,39 @@ Usage: build-locale-archive [OPTION]...
+                              \"de\" but also the aliases \"deutsch\"\n\
+                              and and \"german\" although the latter does not\n\
+                              start with \"de\".\n\
++  --prefix=DIR               Operate under the file system root DIR\n\
+ \n\
+-  If the arguments TEMPLATE-FILE and ARCHIVE-FILE are not given the locations\n\
+-  where the glibc used expects these files are used by default.\n\
+ ");
+ }
+ 
+ int main (int argc, char *argv[])
+ {
+-  char path[4096];
+   DIR *dirp;
+   struct dirent64 *d;
+   struct stat64 st;
+   char *list[16384], *primary;
+   char *lang;
+   int install_langs_count = 0;
+-  int i;
+   char *install_langs_arg, *ila_start;
+   char **install_langs_list;
+   unsigned int cnt = 0;
+-  struct locarhandle tmpl_ah;
+-  char *new_locar_fname = NULL;
+-  size_t loc_path_len = strlen (loc_path);
++  struct locarhandle tmpl_ah = {};
+ 
+   while (1)
+     {
+       int c;
+ 
++      enum
++      {
++	opt_prefix = 1000,
++      };
++
+       static struct option long_options[] =
+         {
+             {"help",            no_argument,       0, 'h'},
+             {"verbose",         no_argument,       0, 'v'},
+             {"install-langs",   required_argument, 0, 'l'},
++	    {"prefix",          required_argument, 0, opt_prefix},
+             {0, 0, 0, 0}
+         };
+       /* getopt_long stores the option index here. */
+@@ -721,6 +729,10 @@ int main (int argc, char *argv[])
+             }
+           break;
+ 
++	case opt_prefix:
++	  output_prefix = optarg;
++	  break;
++
+         case '?':
+           /* getopt_long already printed an error message. */
+           usage ();
+@@ -730,23 +742,26 @@ int main (int argc, char *argv[])
+           abort ();
+         }
+     }
+-  tmpl_ah.fname = NULL;
+-  if (optind < argc)
+-    tmpl_ah.fname = argv[optind];
+-  if (optind + 1 < argc)
+-    new_locar_fname = argv[optind + 1];
++  if (optind != argc)
++    {
++      usage ();
++      exit (1);
++    }
++  if (output_prefix)
++    {
++      tmpl_file = xasprintf ("%s%s", output_prefix, tmpl_file);
++      alias_file = xasprintf ("%s%s", output_prefix, alias_file);
++      locar_file = xasprintf ("%s%s", output_prefix, locar_file);
++      loc_path = xasprintf ("%s%s", output_prefix, loc_path);
++    }
+   if (verbose)
+     {
+-      if (tmpl_ah.fname)
+-        printf("input archive file specified on command line: %s\n",
+-               tmpl_ah.fname);
+-      else
+-        printf("using default input archive file.\n");
+-      if (new_locar_fname)
+-        printf("output archive file specified on command line: %s\n",
+-               new_locar_fname);
+-      else
+-        printf("using default output archive file.\n");
++      if (output_prefix != NULL)
++	printf ("output prefix: %s\n", output_prefix);
++      printf ("input archive file: %s\n", tmpl_file);
++      printf ("input alias file: %s\n", alias_file);
++      printf ("input locale directory prefix: %s\n", loc_path);
++      printf ("output archive file: %s\n", locar_file);
+     }
+ 
+   dirp = opendir (loc_path);
+@@ -754,11 +769,7 @@ int main (int argc, char *argv[])
+     error (EXIT_FAILURE, errno, "cannot open directory \"%s\"", loc_path);
+ 
+   open_tmpl_archive (&tmpl_ah);
+-
+-  if (new_locar_fname)
+-    unlink (new_locar_fname);
+-  else
+-    unlink (locar_file);
++  unlink (locar_file);
+ 
+   primary = getenv ("LC_ALL");
+   if (primary == NULL)
+@@ -790,8 +801,6 @@ int main (int argc, char *argv[])
+ 	}
+     }
+ 
+-  memcpy (path, loc_path, loc_path_len);
+-
+   while ((d = readdir64 (dirp)) != NULL)
+     {
+       if (strcmp (d->d_name, ".") == 0 || strcmp (d->d_name, "..") == 0)
+@@ -799,32 +808,25 @@ int main (int argc, char *argv[])
+       if (strchr (d->d_name, '_') == NULL)
+ 	continue;
+ 
+-      size_t d_name_len = strlen (d->d_name);
+-      if (loc_path_len + d_name_len + 1 > sizeof (path))
+-	{
+-	  error (0, 0, "too long filename \"%s\"", d->d_name);
+-	  continue;
+-	}
+-
+-      memcpy (path + loc_path_len, d->d_name, d_name_len + 1);
++      char *path = xasprintf ("%s%s", loc_path, d->d_name);
+       if (stat64 (path, &st) < 0)
+ 	{
+ 	  error (0, errno, "cannot stat \"%s\"", path);
++	  free (path);
+ 	  continue;
+ 	}
+       if (! S_ISDIR (st.st_mode))
+-	continue;
++	{
++	  free (path);
++	  continue;
++	}
+       if (cnt == 16384)
+ 	{
+ 	  error (0, 0, "too many directories in \"%s\"", loc_path);
++	  free (path);
+ 	  break;
+ 	}
+-      list[cnt] = strdup (path);
+-      if (list[cnt] == NULL)
+-	{
+-	  error (0, errno, "cannot add file to list \"%s\"", path);
+-	  continue;
+-	}
++      list[cnt] = path;
+       if (primary != NULL && cnt > 0 && strcmp (primary, d->d_name) == 0)
+ 	{
+ 	  char *p = list[0];
+@@ -836,7 +838,7 @@ int main (int argc, char *argv[])
+   closedir (dirp);
+   /* Store the archive to the file specified as the second argument on the
+      command line or the default locale archive.  */
+-  fill_archive (&tmpl_ah, new_locar_fname,
++  fill_archive (&tmpl_ah,
+                 install_langs_count, install_langs_list,
+                 cnt, list, primary);
+   close_archive (&tmpl_ah);

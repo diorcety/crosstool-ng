@@ -1,0 +1,304 @@
+From f4f918430b6b74f1801ebe39a8824cc5437ba9d4 Mon Sep 17 00:00:00 2001
+From: "Paul E. Murphy" <murphyp@linux.vnet.ibm.com>
+Date: Mon, 25 Apr 2016 09:11:02 -0500
+Subject: [PATCH] powerpc: Add optimized strcspn for P8
+
+A few minor adjustments to the P8 strspn gives us
+an almost equally optimized P8 strcspn.
+
+(cherry picked from commit 8f1b841e452dbb083112fd036033b7f4af506ba0)
+---
+ ChangeLog                                          | 25 ++++++++++++
+ sysdeps/powerpc/powerpc64/multiarch/Makefile       |  4 +-
+ .../powerpc/powerpc64/multiarch/ifunc-impl-list.c  |  8 ++++
+ .../powerpc/powerpc64/multiarch/strcspn-power8.S   | 25 ++++++++++++
+ .../powerpc/powerpc64/multiarch/strcspn-ppc64.c    | 26 +++++++++++++
+ sysdeps/powerpc/powerpc64/multiarch/strcspn.c      | 35 +++++++++++++++++
+ .../powerpc/powerpc64/multiarch/strspn-power8.S    | 17 +-------
+ sysdeps/powerpc/powerpc64/power8/strcspn.S         | 20 ++++++++++
+ sysdeps/powerpc/powerpc64/power8/strspn.S          | 45 ++++++++++++++++------
+ 9 files changed, 176 insertions(+), 29 deletions(-)
+ create mode 100644 sysdeps/powerpc/powerpc64/multiarch/strcspn-power8.S
+ create mode 100644 sysdeps/powerpc/powerpc64/multiarch/strcspn-ppc64.c
+ create mode 100644 sysdeps/powerpc/powerpc64/multiarch/strcspn.c
+ create mode 100644 sysdeps/powerpc/powerpc64/power8/strcspn.S
+
+diff --git a/ChangeLog b/ChangeLog
+index 6677ea2..5537fc6 100644
+diff --git a/sysdeps/powerpc/powerpc64/multiarch/Makefile b/sysdeps/powerpc/powerpc64/multiarch/Makefile
+index 7f70ceb..9ee9bc2 100644
+--- a/sysdeps/powerpc/powerpc64/multiarch/Makefile
++++ b/sysdeps/powerpc/powerpc64/multiarch/Makefile
+@@ -20,6 +20,7 @@ sysdep_routines += memcpy-power7 memcpy-a2 memcpy-power6 memcpy-cell \
+                   strcat-power8 strcat-power7 strcat-ppc64 \
+                   strcmp-power8 strcmp-power7 strcmp-ppc64 \
+                   strcpy-power8 strcpy-power7 strcpy-ppc64 \
++                  strcspn-power8 strcspn-ppc64 \
+                   stpncpy-power8 stpncpy-power7 stpncpy-ppc64 \
+                   strncpy-power8 strncpy-power7 strncpy-ppc64 \
+                   strncat-power7 \
+diff --git a/sysdeps/powerpc/powerpc64/multiarch/ifunc-impl-list.c b/sysdeps/powerpc/powerpc64/multiarch/ifunc-impl-list.c
+index 994e852..228891f 100644
+--- a/sysdeps/powerpc/powerpc64/multiarch/ifunc-impl-list.c
++++ b/sysdeps/powerpc/powerpc64/multiarch/ifunc-impl-list.c
+@@ -332,6 +332,14 @@ __libc_ifunc_impl_list (const char *name, struct libc_ifunc_impl *array,
+              IFUNC_IMPL_ADD (array, i, strspn, 1,
+                              __strspn_ppc))
+ 
++  /* Support sysdeps/powerpc/powerpc64/multiarch/strcspn.c.  */
++  IFUNC_IMPL (i, name, strcspn,
++             IFUNC_IMPL_ADD (array, i, strcspn,
++                             hwcap2 & PPC_FEATURE2_ARCH_2_07,
++                             __strcspn_power8)
++             IFUNC_IMPL_ADD (array, i, strcspn, 1,
++                             __strcspn_ppc))
++
+   /* Support sysdeps/powerpc/powerpc64/multiarch/strstr.c.  */
+   IFUNC_IMPL (i, name, strstr,
+              IFUNC_IMPL_ADD (array, i, strstr,
+diff --git a/sysdeps/powerpc/powerpc64/multiarch/strcspn-power8.S b/sysdeps/powerpc/powerpc64/multiarch/strcspn-power8.S
+new file mode 100644
+index 0000000..25545f8
+--- /dev/null
++++ b/sysdeps/powerpc/powerpc64/multiarch/strcspn-power8.S
+@@ -0,0 +1,25 @@
++/* Optimized strcspn implementation for POWER8.
++   Copyright (C) 2016 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <sysdep.h>
++
++#define STRSPN __strcspn_power8
++#undef libc_hidden_builtin_def
++#define libc_hidden_builtin_def(name)
++
++#include <sysdeps/powerpc/powerpc64/power8/strcspn.S>
+diff --git a/sysdeps/powerpc/powerpc64/multiarch/strcspn-ppc64.c b/sysdeps/powerpc/powerpc64/multiarch/strcspn-ppc64.c
+new file mode 100644
+index 0000000..4c16386
+--- /dev/null
++++ b/sysdeps/powerpc/powerpc64/multiarch/strcspn-ppc64.c
+@@ -0,0 +1,26 @@
++/* Default strcspn implementation for PowerPC64.
++   Copyright (C) 2016 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#define STRCSPN __strcspn_ppc
++
++#ifdef SHARED
++#  undef libc_hidden_def
++#  define libc_hidden_def(name)
++#endif
++
++#include <string/strcspn.c>
+diff --git a/sysdeps/powerpc/powerpc64/multiarch/strcspn.c b/sysdeps/powerpc/powerpc64/multiarch/strcspn.c
+new file mode 100644
+index 0000000..e7343ee
+--- /dev/null
++++ b/sysdeps/powerpc/powerpc64/multiarch/strcspn.c
+@@ -0,0 +1,35 @@
++/* Multiple versions of strcspn. PowerPC64 version.
++   Copyright (C) 2016 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <string.h>
++#include <shlib-compat.h>
++#include "init-arch.h"
++
++#undef strcspn
++extern __typeof (strcspn) __libc_strcspn;
++
++extern __typeof (strcspn) __strcspn_ppc attribute_hidden;
++extern __typeof (strcspn) __strcspn_power8 attribute_hidden;
++
++libc_ifunc (__libc_strcspn,
++	    (hwcap2 & PPC_FEATURE2_ARCH_2_07)
++	    ? __strcspn_power8
++	    : __strcspn_ppc);
++
++weak_alias (__libc_strcspn, strcspn)
++libc_hidden_builtin_def (strcspn)
+diff --git a/sysdeps/powerpc/powerpc64/multiarch/strspn-power8.S b/sysdeps/powerpc/powerpc64/multiarch/strspn-power8.S
+index 86a4e09..27d25e0 100644
+--- a/sysdeps/powerpc/powerpc64/multiarch/strspn-power8.S
++++ b/sysdeps/powerpc/powerpc64/multiarch/strspn-power8.S
+@@ -18,22 +18,7 @@
+ 
+ #include <sysdep.h>
+ 
+-#undef EALIGN
+-#define EALIGN(name, alignt, words)				\
+-  .section ".text";						\
+-  ENTRY_2(__strspn_power8)					\
+-  .align ALIGNARG(alignt);					\
+-  EALIGN_W_##words;						\
+-  BODY_LABEL(__strspn_power8):					\
+-  cfi_startproc;						\
+-  LOCALENTRY(__strspn_power8)
+-
+-#undef END
+-#define END(name)						\
+-  cfi_endproc;							\
+-  TRACEBACK(__strspn_power8)					\
+-  END_2(__strspn_power8)
+-
++#define STRSPN __strspn_power8
+ #undef libc_hidden_builtin_def
+ #define libc_hidden_builtin_def(name)
+ 
+diff --git a/sysdeps/powerpc/powerpc64/power8/strcspn.S b/sysdeps/powerpc/powerpc64/power8/strcspn.S
+new file mode 100644
+index 0000000..bfc58a8
+--- /dev/null
++++ b/sysdeps/powerpc/powerpc64/power8/strcspn.S
+@@ -0,0 +1,20 @@
++/* Optimized strcspn implementation for PowerPC64/POWER8.
++   Copyright (C) 2016 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#define USE_AS_STRCSPN 1
++#include <sysdeps/powerpc/powerpc64/power8/strspn.S>
+diff --git a/sysdeps/powerpc/powerpc64/power8/strspn.S b/sysdeps/powerpc/powerpc64/power8/strspn.S
+index 0dda437..011081d 100644
+--- a/sysdeps/powerpc/powerpc64/power8/strspn.S
++++ b/sysdeps/powerpc/powerpc64/power8/strspn.S
+@@ -33,6 +33,21 @@
+ 
+ #include "sysdep.h"
+ 
++#ifndef USE_AS_STRCSPN
++#  define USE_AS_STRCSPN 0
++#  ifndef STRSPN
++#    define STRSPN strspn
++#  endif
++#  define INITIAL_MASK 0
++#  define UPDATE_MASK(RA, RS, RB) or	RA, RS, RB
++#else
++#  ifndef STRSPN
++#    define STRSPN strcspn
++#  endif
++#  define INITIAL_MASK -1
++#  define UPDATE_MASK(RA, RS, RB) andc	RA, RS, RB
++#endif
++
+ /* Simple macro to use VSX instructions in overlapping VR's.  */
+ #define XXVR(insn, vrt, vra, vrb) \
+ 	insn 32+vrt, 32+vra, 32+vrb
+@@ -53,7 +68,7 @@
+ 	/* This can be updated to power8 once the minimum version of
+ 	   binutils supports power8 and the above instructions.  */
+ 	.machine power7
+-EALIGN(strspn, 4, 0)
++EALIGN(STRSPN, 4, 0)
+ 	CALL_MCOUNT 2
+ 
+ 	/* Generate useful constants for later on.  */
+@@ -66,10 +81,18 @@ EALIGN(strspn, 4, 0)
+ 
+ 	/* Prepare to compute 256b mask.  */
+ 	addi	r4, r4, -1
+-	li	r5, 0
+-	li	r6, 0
+-	li	r7, 0
+-	li	r8, 0
++	li	r5, INITIAL_MASK
++	li	r6, INITIAL_MASK
++	li	r7, INITIAL_MASK
++	li	r8, INITIAL_MASK
++
++#if USE_AS_STRCSPN
++	/* Ensure the null character never matches by clearing ISA bit 0 in
++	   in r5 which is the bit which will check for it in the later usage
++	   of vbpermq.  */
++	srdi	r5, r5, 1
++#endif
++
+ 	li	r11, 1
+ 	sldi	r11, r11, 63
+ 
+@@ -97,14 +120,14 @@ L(next_needle):
+ 
+ 	/* Now, or the value into the correct GPR.  */
+ 	bge cr1,L(needle_gt128)
+-	or	r5, r5, r10	/* 0 - 63.  */
+-	or	r6, r6, r12	/* 64 - 127.  */
++	UPDATE_MASK (r5, r5, r10)	/* 0 - 63.  */
++	UPDATE_MASK (r6, r6, r12)	/* 64 - 127.  */
+ 	b L(next_needle)
+ 
+ 	.align 4
+ L(needle_gt128):
+-	or	r7, r7, r10	/* 128 - 191.  */
+-	or	r8, r8, r12	/* 192 - 255.  */
++	UPDATE_MASK (r7, r7, r10)	/* 128 - 191.  */
++	UPDATE_MASK (r8, r8, r12)	/* 192 - 255.  */
+ 	b L(next_needle)
+ 
+ 
+@@ -175,5 +198,5 @@ L(done):
+ 	add	r3, r3, r10
+ 	blr
+ 
+-END(strspn)
+-libc_hidden_builtin_def (strspn)
++END(STRSPN)
++libc_hidden_builtin_def (STRSPN)
+-- 
+2.1.0
+

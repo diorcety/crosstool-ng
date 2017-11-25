@@ -1,0 +1,18 @@
+commit ace4acc8ace692f64051594afe47efb1135b3c29
+Author: Siddhesh Poyarekar <siddhesh@redhat.com>
+Date:   Fri Mar 1 20:45:17 2013 +0530
+
+    Fix build warning
+
+Index: b/nptl/tst-oddstacklimit.c
+===================================================================
+--- a/nptl/tst-oddstacklimit.c
++++ b/nptl/tst-oddstacklimit.c
+@@ -21,6 +21,7 @@
+ #include <string.h>
+ #include <sys/resource.h>
+ #include <sys/wait.h>
++#include <stdlib.h>
+ 
+ /* This sets the stack resource limit to 1023kb, which is not a multiple
+    of the page size since every architecture's page size is > 1k.  */

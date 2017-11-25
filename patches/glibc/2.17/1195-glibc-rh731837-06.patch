@@ -1,0 +1,202 @@
+From 6a69f5d33526bf8dafd65f3b53719402ce09d566 Mon Sep 17 00:00:00 2001
+From: Rajalakshmi Srinivasaraghavan <raji@linux.vnet.ibm.com>
+Date: Wed, 30 Jul 2014 05:31:40 -0500
+Subject: [PATCH] PowerPC: multiarch memrchr for PowerPC64
+
+commit 1fd005ad2f8ca30d44d5bfa036422b4ec281ea4a
+Author: Adhemerval Zanella <azanella@linux.vnet.ibm.com>
+Date:   Fri Dec 13 14:37:26 2013 -0500
+
+Added sysdeps/powerpc/powerpc32/power4/multiarch/memrchr-ppc32.c
+apart from original commit
+---
+ .../powerpc32/power4/multiarch/memrchr-ppc32.c     | 25 ++++++++++++++
+ sysdeps/powerpc/powerpc64/multiarch/Makefile       |  3 +-
+ .../powerpc/powerpc64/multiarch/ifunc-impl-list.c  |  8 +++++
+ .../powerpc/powerpc64/multiarch/memrchr-power7.S   | 40 ++++++++++++++++++++++
+ .../powerpc/powerpc64/multiarch/memrchr-ppc64.c    | 19 ++++++++++
+ sysdeps/powerpc/powerpc64/multiarch/memrchr.c      | 37 ++++++++++++++++++++
+ 6 files changed, 131 insertions(+), 1 deletion(-)
+ create mode 100644 sysdeps/powerpc/powerpc32/power4/multiarch/memrchr-ppc32.c
+ create mode 100644 sysdeps/powerpc/powerpc64/multiarch/memrchr-power7.S
+ create mode 100644 sysdeps/powerpc/powerpc64/multiarch/memrchr-ppc64.c
+ create mode 100644 sysdeps/powerpc/powerpc64/multiarch/memrchr.c
+
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc32/power4/multiarch/memrchr-ppc32.c glibc-2.17-c758a686/sysdeps/powerpc/powerpc32/power4/multiarch/memrchr-ppc32.c
+new file mode 100644
+index 0000000..c30e7d6
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc32/power4/multiarch/memrchr-ppc32.c
+@@ -0,0 +1,25 @@
++/* PowerPC32 default implementation of memrchr.
++   Copyright (C) 2013-2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#ifndef NOT_IN_libc
++# define MEMRCHR  __memrchr_ppc
++# include <string.h>
++extern void *__memrchr_ppc (const void *, int, size_t);
++#endif
++
++#include <string/memrchr.c>
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/Makefile glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/Makefile
+index b2815e7..db765f2 100644
+--- glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/Makefile
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/Makefile
+@@ -3,5 +3,6 @@ sysdep_routines += memcpy-power7 memcpy-a2 memcpy-power6 memcpy-cell \
+                   memcpy-power4 memcpy-ppc64 memcmp-power7 memcmp-power4 \
+                   memcmp-ppc64 memset-power7 memset-power6 memset-power4 \
+                   memset-ppc64 bzero-power4 bzero-power6 bzero-power7 \
+-                  mempcpy-power7 mempcpy-ppc64 memchr-power7 memchr-ppc64
++                  mempcpy-power7 mempcpy-ppc64 memchr-power7 memchr-ppc64 \
++                  memrchr-power7 memrchr-ppc64
+ endif
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/ifunc-impl-list.c glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/ifunc-impl-list.c
+index 663e294..a0700dc 100644
+--- glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/ifunc-impl-list.c
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/ifunc-impl-list.c
+@@ -106,5 +106,13 @@ __libc_ifunc_impl_list (const char *name, struct libc_ifunc_impl *array,
+              IFUNC_IMPL_ADD (array, i, memchr, 1,
+                              __memchr_ppc))
+ 
++  /* Support sysdeps/powerpc/powerpc64/multiarch/memrchr.c.  */
++  IFUNC_IMPL (i, name, memrchr,
++             IFUNC_IMPL_ADD (array, i, memrchr,
++                             hwcap & PPC_FEATURE_HAS_VSX,
++                             __memrchr_power7)
++             IFUNC_IMPL_ADD (array, i, memrchr, 1,
++                             __memrchr_ppc))
++
+   return i;
+ }
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/memrchr-power7.S glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/memrchr-power7.S
+new file mode 100644
+index 0000000..42ee8e2
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/memrchr-power7.S
+@@ -0,0 +1,40 @@
++/* Optimized memrchr implementation for PowerPC64/POWER7.
++   Copyright (C) 2013-2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <sysdep.h>
++
++#undef ENTRY
++#define ENTRY(name)						\
++  .section ".text";						\
++  ENTRY_2(__memrchr_power7)					\
++  .align ALIGNARG(2);						\
++  BODY_LABEL(__memrchr_power7):					\
++  cfi_startproc;
++
++#undef END
++#define END(name)						\
++  cfi_endproc;							\
++  TRACEBACK(__memrchr_power7)					\
++  END_2(__memrchr_power7)
++
++#undef libc_hidden_builtin_def
++#define libc_hidden_builtin_def(name)
++#undef weak_alias
++#define weak_alias(name,alias)
++
++#include <sysdeps/powerpc/powerpc64/power7/memrchr.S>
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/memrchr-ppc64.c glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/memrchr-ppc64.c
+new file mode 100644
+index 0000000..c2ee4be
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/memrchr-ppc64.c
+@@ -0,0 +1,19 @@
++/* PowerPC64 default implementation of memrchr.
++   Copyright (C) 2013-2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <sysdeps/powerpc/powerpc32/power4/multiarch/memrchr-ppc32.c>
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/memrchr.c glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/memrchr.c
+new file mode 100644
+index 0000000..610a957
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/memrchr.c
+@@ -0,0 +1,37 @@
++/* Multiple versions of memrchr.
++   Copyright (C) 2013-2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#ifndef NOT_IN_libc
++# include <string.h>
++# include <shlib-compat.h>
++# include "init-arch.h"
++
++extern __typeof (__memrchr) __memrchr_ppc attribute_hidden;
++extern __typeof (__memrchr) __memrchr_power7 attribute_hidden;
++
++/* Avoid DWARF definition DIE on ifunc symbol so that GDB can handle
++   ifunc symbol properly.  */
++libc_ifunc (__memrchr,
++	    (hwcap & PPC_FEATURE_HAS_VSX)
++            ? __memrchr_power7
++            : __memrchr_ppc);
++
++weak_alias (__memrchr, memrchr)
++#else
++#include <string/memrchr.c>
++#endif
+-- 
+1.8.3.1
+

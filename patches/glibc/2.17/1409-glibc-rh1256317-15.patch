@@ -1,0 +1,220 @@
+commit 130ac68ca25c9aa65e027e3e37337bc048205c69
+Author: Siddhesh Poyarekar <siddhesh@redhat.com>
+Date:   Wed Nov 19 12:16:00 2014 +0530
+
+    Auto-generate libc-modules.h
+    
+    Remove libc-modules.h from the tree and auto-generate it from
+    soversions.i and the list of modules in the built-modules variable
+    defined in Makeconfig.  Macros generated have increasing numbered
+    values, with built-modules having lower values starting from 1,
+    following which a separator value LIBS_BEGIN is added and then finally
+    the library names from soversions.i are appended to the list.  This
+    allows us to conveniently differentiate between the versioned
+    libraries and other built modules, which is needed in errno.h and
+    netdb.h to decide whether to use an internal symbol or an external
+    one.
+    
+    Verified that generated code remains unchanged on x86_64.
+    
+    	* Makeconfig (built-modules): List non-library modules to be
+    	built.
+    	(module-cppflags): Include libc-modules.h for
+    	everything except shlib-versions.v.i.
+    	(CPPFLAGS): Use it.
+    	(before-compile): Add libc-modules.h.
+    	($(common-objpfx)libc-modules.h,
+    	$(common-objpfx)libc-modules.stmp): New targets.
+    	(common-generated): Add libc-modules.h and libc-modules.stmp.
+    	($(common-objpfx)Versions.v.i): Depend on libc-modules.h.
+    	* include/libc-symbols.h: Don't include libc-modules.h.
+    	* include/libc-modules.h: Remove file.
+    	* scripts/gen-libc-modules.awk: New script to generate
+    	libc-modules.h.
+    	* sysdeps/unix/Makefile ($(common-objpfx)sysd-syscalls):
+    	Depend on libc-modules.stmp.
+
+commit 8a257e2cb50cd8e8e3e2368d80bf325ea4086cf9
+Author: Roland McGrath <roland@hack.frob.com>
+Date:   Thu Apr 9 14:42:29 2015 -0700
+
+    Omit libc-modules.h for all .v.i files.
+
+Index: glibc-2.17-c758a686/Makeconfig
+===================================================================
+--- glibc-2.17-c758a686.orig/Makeconfig
++++ glibc-2.17-c758a686/Makeconfig
+@@ -730,19 +730,34 @@ endif	# $(+cflags) == ""
+ # of many little headers in the include directory.
+ libio-include = -I$(..)libio
+ 
++# List of non-library modules that we build.
++built-modules = iconvprogs iconvdata ldconfig lddlibc4 libmemusage \
++		libSegFault libpcprofile librpcsvc locale-programs \
++		memusagestat nonlib nscd extramodules libnldbl
++
+ in-module = $(subst -,_,$(firstword $(libof-$(basename $(@F))) \
+ 				    $(libof-$(<F)) \
+ 				    $(libof-$(@F)) \
+ 				    libc))
+ 
++module-cppflags-real = -include $(common-objpfx)libc-modules.h \
++		       -DIN_MODULE=MODULE_$(in-module)
++
++# We don't need libc-modules.h and the MODULE_NAME definition for .v.i
++# files.  These targets don't (and will likely never need to) use the IS_IN
++# facility.  In fact, shlib-versions should not use it because that will
++# create a circular dependency as libc-modules.h is generated from
++# shlib-versions.
++module-cppflags = $(if $(filter %.v.i,$(@F)),,$(module-cppflags-real))
++
+ # These are the variables that the implicit compilation rules use.
+ # Note that we can't use -std=* in CPPFLAGS, because it overrides
+ # the implicit -lang-asm and breaks cpp behavior for .S files--notably
+ # it causes cpp to stop predefining __ASSEMBLER__.
+ CPPFLAGS = $(CPPUNDEFS) $(CPPFLAGS-config) $($(subdir)-CPPFLAGS) \
+-	   $(+includes) $(defines) \
++	   $(+includes) $(defines) $(module-cppflags) \
+ 	   -include $(..)include/libc-symbols.h $(sysdep-CPPFLAGS) \
+-	   $(CPPFLAGS-$(suffix $@)) -DIN_MODULE=MODULE_$(in-module) \
++	   $(CPPFLAGS-$(suffix $@)) \
+ 	   $(foreach lib,$(libof-$(basename $(@F))) \
+ 			 $(libof-$(<F)) $(libof-$(@F)),$(CPPFLAGS-$(lib))) \
+ 	   $(CPPFLAGS-$(<F)) $(CPPFLAGS-$(@F)) $(CPPFLAGS-$(basename $(@F)))
+@@ -922,6 +937,23 @@ endif
+ postclean-generated += soversions.mk soversions.i \
+ 		       shlib-versions.v shlib-versions.v.i
+ 
++before-compile += $(common-objpfx)libc-modules.h
++ifeq ($(soversions.mk-done),t)
++# Generate a header with macro definitions for use with the IS_IN macro.
++# These are the possible values for the IN_MODULE macro defined when building
++# sources, to identify which module the translation unit is going to be built
++# into.
++$(common-objpfx)libc-modules.h: $(common-objpfx)libc-modules.stmp; @:
++$(common-objpfx)libc-modules.stmp: $(..)scripts/gen-libc-modules.awk \
++				   $(common-objpfx)soversions.i
++	$(AWK) -v buildlist="$(subst -,_,$(built-modules))" -f $^ > ${@:stmp=T}
++	$(move-if-change) ${@:stmp=T} ${@:stmp=h}
++	touch $@
++
++endif
++
++common-generated += libc-modules.h libc-modules.stmp
++
+ # Generate the header containing the names of all shared libraries.
+ # We use a stamp file to avoid unnecessary recompilations.
+ before-compile += $(common-objpfx)gnu/lib-names.h
+Index: glibc-2.17-c758a686/include/libc-modules.h
+===================================================================
+--- glibc-2.17-c758a686.orig/include/libc-modules.h
++++ /dev/null
+@@ -1,41 +0,0 @@
+-/* Valid values for the IN_MODULE macro, which is defined for each source file
+-   during compilation to indicate which module it is to be built into.
+-
+-   TODO: This file should eventually be auto-generated.  */
+-#define MODULE_libc		1
+-#define MODULE_libpthread	2
+-#define MODULE_rtld		3
+-#define MODULE_libdl		4
+-#define MODULE_libm		5
+-#define MODULE_iconvprogs	6
+-#define MODULE_iconvdata	7
+-#define MODULE_lddlibc4		8
+-#define MODULE_locale_programs	9
+-#define MODULE_memusagestat	10
+-#define MODULE_libutil		12
+-#define MODULE_libBrokenLocale	13
+-#define MODULE_libmemusage	15
+-#define MODULE_libresolv	16
+-#define MODULE_libnss_db	17
+-#define MODULE_libnss_files	18
+-#define	MODULE_libnss_dns	19
+-#define MODULE_libnss_compat	20
+-#define MODULE_libnss_hesiod	21
+-#define MODULE_libnss_nis	22
+-#define MODULE_libnss_nisplus	23
+-#define MODULE_libanl		24
+-#define MODULE_librt		25
+-#define MODULE_libSegFault	26
+-#define MODULE_libthread_db	27
+-#define MODULE_libcidn		28
+-#define MODULE_libcrypt		29
+-#define MODULE_libnsl		30
+-#define MODULE_libpcprofile	31
+-#define MODULE_librpcsvc	32
+-#define MODULE_nscd		33
+-#define MODULE_ldconfig 	34
+-#define MODULE_libnldbl 	35
+-
+-/* Catch-all for test modules and other binaries.  */
+-#define MODULE_nonlib		98
+-#define MODULE_extramodules	99
+Index: glibc-2.17-c758a686/include/libc-symbols.h
+===================================================================
+--- glibc-2.17-c758a686.orig/include/libc-symbols.h
++++ glibc-2.17-c758a686/include/libc-symbols.h
+@@ -20,9 +20,6 @@
+ #ifndef _LIBC_SYMBOLS_H
+ #define _LIBC_SYMBOLS_H	1
+ 
+-/* Pull in definitions for the MODULE_* macros.  */
+-#include <libc-modules.h>
+-
+ #define IS_IN(lib) (IN_MODULE == MODULE_##lib)
+ 
+ /* This file's macros are included implicitly in the compilation of every
+Index: glibc-2.17-c758a686/scripts/gen-libc-modules.awk
+===================================================================
+--- /dev/null
++++ glibc-2.17-c758a686/scripts/gen-libc-modules.awk
+@@ -0,0 +1,34 @@
++# Generate a header file that defines the MODULE_* macros for each library and
++# module we build in glibc.  The library names are pulled in from soversions.i
++# and the additional modules are passed in the BUILDLIST variable.
++BEGIN {
++  # BUILDLIST is set from the build-list variable in Makeconfig and is a space
++  # separated list of non-library modules that we build in glibc.
++  num = split (buildlist, libs, " ")
++  # Separate the built modules from the libraries.
++  libs[++num] = "LIBS_BEGIN"
++}
++
++# Skip over comments.
++$1 == "#" {
++  next
++}
++
++# We have only one special case in soversions.i parsing, which is to replace ld
++# with rtld since that's what we call it throughout the sources.
++match (FILENAME, ".*soversions.i") {
++  name = $2
++  if (name == "ld")
++    name = "rtld"
++
++  # Library names are not duplicated in soversions.i.
++  libs[++num] = name
++}
++
++# Finally, print out the header file.
++END {
++  printf ("/* AUTOGENERATED BY gen-libc-modules.awk, DO NOT EDIT.  */\n\n")
++  for (l in libs) {
++    printf ("#define MODULE_%s %d\n", libs[l], l)
++  }
++}
+Index: glibc-2.17-c758a686/sysdeps/unix/Makefile
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/unix/Makefile
++++ glibc-2.17-c758a686/sysdeps/unix/Makefile
+@@ -77,7 +77,8 @@ compile-syscall = $(COMPILE.S) -o $@ -x
+ 
+ ifndef avoid-generated
+ $(common-objpfx)sysd-syscalls: $(..)sysdeps/unix/make-syscalls.sh \
+-			       $(wildcard $(+sysdep_dirs:%=%/syscalls.list))
++			       $(wildcard $(+sysdep_dirs:%=%/syscalls.list)) \
++			       $(common-objpfx)libc-modules.stmp
+ 	for dir in $(+sysdep_dirs); do \
+ 	  test -f $$dir/syscalls.list && \
+ 	  { sysdirs='$(sysdirs)' \

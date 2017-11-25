@@ -1,0 +1,20 @@
+commit 2959eda9272a033863c271aff62095abd01bd4e3
+Author: Arjun Shankar <arjun.is@lostca.se>
+Date:   Tue Apr 21 14:06:31 2015 +0200
+
+    CVE-2015-1781: resolv/nss_dns/dns-host.c buffer overflow [BZ#18287]
+
+diff --git glibc-2.17-c758a686/resolv/nss_dns/dns-host.c glibc-2.17-c758a686/resolv/nss_dns/dns-host.c
+index b16b0dd..d8c5579 100644
+--- glibc-2.17-c758a686/resolv/nss_dns/dns-host.c
++++ glibc-2.17-c758a686/resolv/nss_dns/dns-host.c
+@@ -613,7 +613,8 @@
+   int have_to_map = 0;
+   uintptr_t pad = -(uintptr_t) buffer % __alignof__ (struct host_data);
+   buffer += pad;
+-  if (__builtin_expect (buflen < sizeof (struct host_data) + pad, 0))
++  buflen = buflen > pad ? buflen - pad : 0;
++  if (__builtin_expect (buflen < sizeof (struct host_data), 0))
+     {
+       /* The buffer is too small.  */
+     too_small:

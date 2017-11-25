@@ -1,0 +1,46 @@
+commit 7a9ebfa159f392fcf1c3aa172fc5bd6bd1eeea63
+Author: Siddhesh Poyarekar <siddhesh@redhat.com>
+Date:   Mon Nov 24 15:24:34 2014 +0530
+
+    Use IS_IN internally only
+    
+    This change is only useful for the conformance tests since the headers
+    changed are not installed.  The conformance tests fail due to IS_IN
+    not being defined, so wrap it with a check to make sure that _ISOMAC
+    is defined.
+    
+    	* include/bits/stdlib-float.h: Use IS_IN only if _ISOMAC is
+    	defined.
+    	* include/mqueue.h: Likewise.
+    	* include/stdlib.h: Likewise.
+
+Index: glibc-2.17-c758a686/include/bits/stdlib-float.h
+===================================================================
+--- glibc-2.17-c758a686.orig/include/bits/stdlib-float.h
++++ glibc-2.17-c758a686/include/bits/stdlib-float.h
+@@ -1,4 +1,8 @@
+-/* No floating-point inline functions in rtld.  */
+-#if !IS_IN (rtld)
++/* No floating-point inline functions in rtld and for the conform tests.  */
++#ifdef _ISOMAC
+ # include <stdlib/bits/stdlib-float.h>
++#else
++# if !IS_IN (rtld)
++#  include <stdlib/bits/stdlib-float.h>
++# endif
+ #endif
+Index: glibc-2.17-c758a686/include/mqueue.h
+===================================================================
+--- glibc-2.17-c758a686.orig/include/mqueue.h
++++ glibc-2.17-c758a686/include/mqueue.h
+@@ -1,7 +1,9 @@
+ #include <rt/mqueue.h>
+ 
+-#if IS_IN (librt)
++#ifndef _ISOMAC
++# if IS_IN (librt)
+ hidden_proto (mq_timedsend)
+ hidden_proto (mq_timedreceive)
+ hidden_proto (mq_setattr)
++# endif
+ #endif

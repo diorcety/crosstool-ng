@@ -1,0 +1,44 @@
+From 7dfe8a35215a019f552f117d907eca294225c121 Mon Sep 17 00:00:00 2001
+From: Adhemerval Zanella <azanella@linux.vnet.ibm.com>
+Date: Wed, 12 Jun 2013 10:21:22 -0500
+Subject: [PATCH 35/42] Fix unsafe compiler optimization
+
+GCC 4.8 enables -ftree-loop-distribute-patterns at -O3 by default and
+this optimization may transform loops into memset/memmove calls. Without
+proper handling this may generate unexpected PLT calls on GLIBC.
+This patch fixes by create memset/memmove alias to internal GLIBC
+__GI_memset/__GI_memmove symbols.
+(cherry picked from commit 6a97b62a5b4f18aea849d6f4d8de58d1469d2521)
+---
+ sysdeps/generic/symbol-hacks.h     | 7 ++++++-
+ sysdeps/wordsize-32/symbol-hacks.h | 2 ++
+ 3 files changed, 16 insertions(+), 1 deletion(-)
+
+diff --git glibc-2.17-c758a686/sysdeps/generic/symbol-hacks.h glibc-2.17-c758a686/sysdeps/generic/symbol-hacks.h
+index bc7b4c4..9eaf014 100644
+--- glibc-2.17-c758a686/sysdeps/generic/symbol-hacks.h
++++ glibc-2.17-c758a686/sysdeps/generic/symbol-hacks.h
+@@ -1 +1,6 @@
+-/* Fortunately nothing to do.  */
++/* Some compiler optimizations may transform loops into memset/memmove
++   calls and without proper declaration it may generate PLT calls.  */
++#if !defined __ASSEMBLER__ && !defined NOT_IN_libc && defined SHARED
++asm ("memmove = __GI_memmove");
++asm ("memset = __GI_memset");
++#endif
+diff --git glibc-2.17-c758a686/sysdeps/wordsize-32/symbol-hacks.h glibc-2.17-c758a686/sysdeps/wordsize-32/symbol-hacks.h
+index 52a14fc..ad5b231 100644
+--- glibc-2.17-c758a686/sysdeps/wordsize-32/symbol-hacks.h
++++ glibc-2.17-c758a686/sysdeps/wordsize-32/symbol-hacks.h
+@@ -16,6 +16,8 @@
+    License along with the GNU C Library; if not, see
+    <http://www.gnu.org/licenses/>.  */
+ 
++#include_next "symbol-hacks.h"
++
+ /* A very dirty trick: gcc emits references to __divdi3, __udivdi3,
+    __moddi3, and __umoddi3.  These functions are exported and
+    therefore we get PLTs.  Unnecessarily so.  Changing gcc is a big
+-- 
+1.7.11.7
+

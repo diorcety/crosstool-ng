@@ -1,0 +1,251 @@
+From 9c2d0f05544d22786bff9324fbd24e6bed8839c4 Mon Sep 17 00:00:00 2001
+From: Rajalakshmi Srinivasaraghavan <raji@linux.vnet.ibm.com>
+Date: Wed, 30 Jul 2014 11:36:27 -0500
+Subject: [PATCH] PowerPC: multiarch isinf/isinff for PowerPC64
+
+commit 8fdad1237900e10b3b263b18bf6ca4c092e2c609
+Author: Adhemerval Zanella <azanella@linux.vnet.ibm.com>
+Date:   Fri Dec 13 15:35:44 2013 -0500
+---
+ sysdeps/powerpc/powerpc64/fpu/multiarch/Makefile   |  6 ++-
+ .../powerpc64/fpu/multiarch/s_isinf-power7.S       | 33 ++++++++++++++++
+ .../powerpc64/fpu/multiarch/s_isinf-ppc64.c        | 33 ++++++++++++++++
+ sysdeps/powerpc/powerpc64/fpu/multiarch/s_isinf.c  | 44 ++++++++++++++++++++++
+ .../powerpc64/fpu/multiarch/s_isinff-ppc64.c       | 31 +++++++++++++++
+ sysdeps/powerpc/powerpc64/fpu/multiarch/s_isinff.c | 33 ++++++++++++++++
+ 6 files changed, 178 insertions(+), 2 deletions(-)
+ create mode 100644 sysdeps/powerpc/powerpc64/fpu/multiarch/s_isinf-power7.S
+ create mode 100644 sysdeps/powerpc/powerpc64/fpu/multiarch/s_isinf-ppc64.c
+ create mode 100644 sysdeps/powerpc/powerpc64/fpu/multiarch/s_isinf.c
+ create mode 100644 sysdeps/powerpc/powerpc64/fpu/multiarch/s_isinff-ppc64.c
+ create mode 100644 sysdeps/powerpc/powerpc64/fpu/multiarch/s_isinff.c
+
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/Makefile glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/Makefile
+index 1c23ddc..64dd85f 100644
+--- glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/Makefile
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/Makefile
+@@ -2,7 +2,8 @@ ifeq ($(subdir),math)
+ sysdep_routines += s_isnan-power7 s_isnan-power6x s_isnan-power6 \
+                   s_isnan-power5 s_isnan-ppc64 s_copysign-power6 \
+                   s_copysign-ppc64 s_finite-power7 s_finite-ppc64 \
+-                  s_finitef-ppc64
++                  s_finitef-ppc64 s_isinff-ppc64 s_isinf-power7 \
++                  s_isinf-ppc64
+ 
+ libm-sysdep_routines += s_isnan-power7 s_isnan-power6x s_isnan-power6 \
+                        s_isnan-power5 s_isnan-ppc64 s_llround-power6x \
+@@ -14,5 +15,6 @@ libm-sysdep_routines += s_isnan-power7 s_isnan-power6x s_isnan-power6 \
+                        s_trunc-ppc64 s_truncf-power5+ s_truncf-ppc64 \
+                        s_copysign-power6 s_copysign-ppc64 s_llrint-power6x \
+                        s_llrint-ppc64 s_finite-power7 s_finite-ppc64 \
+-                       s_finitef-ppc64
++                       s_finitef-ppc64 s_isinff-ppc64 s_isinf-power7 \
++                       s_isinf-ppc64
+ endif
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_isinf-power7.S glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_isinf-power7.S
+new file mode 100644
+index 0000000..80a682a
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_isinf-power7.S
+@@ -0,0 +1,33 @@
++/* isinf().  PowerPC64/POWER7 version.
++   Copyright (C) 2013-2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <sysdep.h>
++#include <math_ldbl_opt.h>
++
++#undef hidden_def
++#define hidden_def(name)
++#undef weak_alias
++#define weak_alias(name, alias)
++#undef strong_alias
++#define strong_alias(name, alias)
++#undef compat_symbol
++#define compat_symbol(lib, name, alias, ver)
++
++#define __isinf __isinf_power7
++
++#include <sysdeps/powerpc/powerpc64/power7/fpu/s_isinf.S>
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_isinf-ppc64.c glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_isinf-ppc64.c
+new file mode 100644
+index 0000000..28c5602
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_isinf-ppc64.c
+@@ -0,0 +1,33 @@
++/* isinf().  PowerPC64 default version.
++   Copyright (C) 2013-2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <math.h>
++
++#undef weak_alias
++#define weak_alias(a, b)
++#undef strong_alias
++#define strong_alias(a, b)
++
++#define __isinf __isinf_ppc64
++#ifdef SHARED
++# undef hidden_def
++# define hidden_def(a) \
++   __hidden_ver1 (__isinf_ppc64, __GI___isinf, __isinf_ppc64);
++#endif
++
++#include <sysdeps/ieee754/dbl-64/s_isinf.c>
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_isinf.c glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_isinf.c
+new file mode 100644
+index 0000000..1ee230b
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_isinf.c
+@@ -0,0 +1,44 @@
++/* Multiple versions of isinf.
++   Copyright (C) 2013-2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <math.h>
++#include <math_ldbl_opt.h>
++#include <shlib-compat.h>
++#include "init-arch.h"
++
++extern __typeof (__isinf) __isinf_ppc64 attribute_hidden;
++extern __typeof (__isinf) __isinf_power7 attribute_hidden;
++
++libc_ifunc (__isinf,
++	    (hwcap & PPC_FEATURE_ARCH_2_06)
++	    ? __isinf_power7
++            : __isinf_ppc64);
++
++weak_alias (__isinf, isinf)
++
++#ifdef NO_LONG_DOUBLE
++strong_alias (__isinf, __isinfl)
++weak_alias (__isinf, isinfl)
++#endif
++
++#ifndef IS_IN_libm
++# if LONG_DOUBLE_COMPAT (libc, GLIBC_2_0)
++compat_symbol (libc, __isinf, __isinfl, GLIBC_2_0);
++compat_symbol (libc, isinf, isinfl, GLIBC_2_0);
++# endif
++#endif
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_isinff-ppc64.c glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_isinff-ppc64.c
+new file mode 100644
+index 0000000..c2559d7
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_isinff-ppc64.c
+@@ -0,0 +1,31 @@
++/* isinff().  PowerPC64 default version.
++   Copyright (C) 2013-2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <math.h>
++
++#undef weak_alias
++#define weak_alias(a, b)
++
++#define __isinff __isinff_ppc64
++#ifdef SHARED
++# undef hidden_def
++# define hidden_def(a) \
++   __hidden_ver1 (__isinff_ppc64, __GI___isinff, __isinff_ppc64);
++#endif
++
++#include <sysdeps/ieee754/flt-32/s_isinff.c>
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_isinff.c glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_isinff.c
+new file mode 100644
+index 0000000..1336feb
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_isinff.c
+@@ -0,0 +1,33 @@
++/* Multiple versions of isinf.
++   Copyright (C) 2013-2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <math.h>
++#include <math_ldbl_opt.h>
++#include <shlib-compat.h>
++#include "init-arch.h"
++
++extern __typeof (__isinff) __isinff_ppc64 attribute_hidden;
++/* The double-precision version also works for single-precision.  */
++extern __typeof (__isinff) __isinf_power7 attribute_hidden;
++
++libc_ifunc (__isinff,
++	    (hwcap & PPC_FEATURE_ARCH_2_06)
++	    ? __isinf_power7
++            : __isinff_ppc64);
++
++weak_alias (__isinff, isinff)
+-- 
+1.8.3.1
+

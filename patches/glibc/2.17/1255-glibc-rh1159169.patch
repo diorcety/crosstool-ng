@@ -1,0 +1,42 @@
+commit ed6b0fe710b631b99ed9fc28cefedfe69a16dc55
+Author: Brad Hubbard <bhubbard@redhat.com>
+Date:   Wed Mar 18 14:51:26 2015 +0530
+
+    Use calloc to allocate xports (BZ #17542)
+    
+    If xports is NULL in xprt_register we malloc it but if sock >
+    _rpc_dtablesize() that memory does not get initialised and may in theory
+    contain any value. Later we make a conditional jump in svc_getreq_common
+    based on the uninitialised memory and this caused a general protection
+    fault in rpc.statd on an older version of glibc but this code has not
+    changed since that version.
+    
+    Following is the valgrind warning.
+    
+    ==26802== Conditional jump or move depends on uninitialised value(s)
+    ==26802==    at 0x5343A25: svc_getreq_common (in /lib64/libc-2.5.so)
+    ==26802==    by 0x534357B: svc_getreqset (in /lib64/libc-2.5.so)
+    ==26802==    by 0x10DE1F: ??? (in /sbin/rpc.statd)
+    ==26802==    by 0x10D0EF: main (in /sbin/rpc.statd)
+    ==26802==  Uninitialised value was created by a heap allocation
+    ==26802==    at 0x4C2210C: malloc (vg_replace_malloc.c:195)
+    ==26802==    by 0x53438BE: xprt_register (in /lib64/libc-2.5.so)
+    ==26802==    by 0x53450DF: svcudp_bufcreate (in /lib64/libc-2.5.so)
+    ==26802==    by 0x10FE32: ??? (in /sbin/rpc.statd)
+    ==26802==    by 0x10D13E: main (in /sbin/rpc.statd)
+
+diff --git glibc-2.17-c758a686/sunrpc/svc.c glibc-2.17-c758a686/sunrpc/svc.c
+index 8c4e8a5..c6ccf10 100644
+--- glibc-2.17-c758a686/sunrpc/svc.c
++++ glibc-2.17-c758a686/sunrpc/svc.c
+@@ -97,8 +97,8 @@ xprt_register (SVCXPRT *xprt)
+ 
+   if (xports == NULL)
+     {
+-      xports = (SVCXPRT **) malloc (_rpc_dtablesize () * sizeof (SVCXPRT *));
+-      if (xports == NULL) /* Don´t add handle */
++      xports = (SVCXPRT **) calloc (_rpc_dtablesize (), sizeof (SVCXPRT *));
++      if (xports == NULL) /* Don't add handle */
+ 	return;
+     }
+ 

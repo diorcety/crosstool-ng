@@ -1,0 +1,123 @@
+From e883cafe35f52b3e511dbaf85052f8dddd395a2e Mon Sep 17 00:00:00 2001
+From: Tulio Magno Quites Machado Filho <tuliom@linux.vnet.ibm.com>
+Date: Mon, 30 May 2016 18:00:57 -0300
+Subject: [PATCH] powerpc: Fix --disable-multi-arch build on POWER8
+
+Add missing symbols of stpncpy and strcasestr when multi-arch is
+disabled.
+Fix memset call from strncpy/stpncpy when multi-arch is disabled.
+
+(cherry picked from commit c24480ce3b5fed848243fc9642932ef2fa670109)
+---
+ ChangeLog                                            | 15 +++++++++++++++
+ sysdeps/powerpc/powerpc64/multiarch/stpncpy-power8.S |  3 +++
+ sysdeps/powerpc/powerpc64/multiarch/strncpy-power8.S |  3 +++
+ sysdeps/powerpc/powerpc64/power8/stpncpy.S           |  4 ++++
+ sysdeps/powerpc/powerpc64/power8/strcasestr.S        |  7 +++++--
+ sysdeps/powerpc/powerpc64/power8/strncpy.S           | 16 ++++++++++++----
+ 6 files changed, 42 insertions(+), 6 deletions(-)
+
+diff --git a/ChangeLog b/ChangeLog
+index 8d0e296..c01d1a0 100644
+diff --git a/sysdeps/powerpc/powerpc64/multiarch/stpncpy-power8.S b/sysdeps/powerpc/powerpc64/multiarch/stpncpy-power8.S
+index d5d835d..d9babb5 100644
+--- a/sysdeps/powerpc/powerpc64/multiarch/stpncpy-power8.S
++++ b/sysdeps/powerpc/powerpc64/multiarch/stpncpy-power8.S
+@@ -36,4 +36,7 @@
+   TRACEBACK(__stpncpy_power8)					\
+   END_2(__stpncpy_power8)
+ 
++#undef libc_hidden_builtin_def
++#define libc_hidden_builtin_def(name)
++
+ #include <sysdeps/powerpc/powerpc64/power8/stpncpy.S>
+diff --git a/sysdeps/powerpc/powerpc64/multiarch/strncpy-power8.S b/sysdeps/powerpc/powerpc64/multiarch/strncpy-power8.S
+index ed906a4..f86a0f0 100644
+--- a/sysdeps/powerpc/powerpc64/multiarch/strncpy-power8.S
++++ b/sysdeps/powerpc/powerpc64/multiarch/strncpy-power8.S
+@@ -37,4 +37,7 @@
+ #undef libc_hidden_builtin_def
+ #define libc_hidden_builtin_def(name)
+ 
++/* memset is used to pad the end of the string.  */
++#define MEMSET __memset_power8
++
+ #include <sysdeps/powerpc/powerpc64/power8/strncpy.S>
+diff --git a/sysdeps/powerpc/powerpc64/power8/stpncpy.S b/sysdeps/powerpc/powerpc64/power8/stpncpy.S
+index 76a1466..e66bd0a 100644
+--- a/sysdeps/powerpc/powerpc64/power8/stpncpy.S
++++ b/sysdeps/powerpc/powerpc64/power8/stpncpy.S
+@@ -18,3 +18,7 @@
+ 
+ #define USE_AS_STPNCPY
+ #include <sysdeps/powerpc/powerpc64/power8/strncpy.S>
++
++weak_alias (__stpncpy, stpncpy)
++libc_hidden_def (__stpncpy)
++libc_hidden_builtin_def (stpncpy)
+diff --git a/sysdeps/powerpc/powerpc64/power8/strcasestr.S b/sysdeps/powerpc/powerpc64/power8/strcasestr.S
+index 24b2b76..60015ae 100644
+--- a/sysdeps/powerpc/powerpc64/power8/strcasestr.S
++++ b/sysdeps/powerpc/powerpc64/power8/strcasestr.S
+@@ -81,7 +81,7 @@
+ /* TODO: change this to .machine power8 when the minimum required binutils
+    allows it.  */
+ 	.machine  power7
+-EALIGN (strcasestr, 4, 0)
++EALIGN (__strcasestr, 4, 0)
+ 	CALL_MCOUNT 2
+ 	mflr	r0			/* Load link register LR to r0.  */
+ 	std	r31, -8(r1)		/* Save callers register r31.  */
+@@ -527,5 +527,8 @@ L(end):
+ 	cfi_restore(r31)
+ 	mtlr	r0		/* Branch to link register.  */
+ 	blr
+-END (strcasestr)
++END (__strcasestr)
++
++weak_alias (__strcasestr, strcasestr)
++libc_hidden_def (__strcasestr)
+ libc_hidden_builtin_def (strcasestr)
+diff --git a/sysdeps/powerpc/powerpc64/power8/strncpy.S b/sysdeps/powerpc/powerpc64/power8/strncpy.S
+index 80136cc..05c7d8a 100644
+--- a/sysdeps/powerpc/powerpc64/power8/strncpy.S
++++ b/sysdeps/powerpc/powerpc64/power8/strncpy.S
+@@ -24,6 +24,16 @@
+ # define FUNC_NAME strncpy
+ #endif
+ 
++#ifndef MEMSET
++/* For builds without IFUNC support, local calls should be made to internal
++   GLIBC symbol (created by libc_hidden_builtin_def).  */
++# ifdef SHARED
++#  define MEMSET   __GI_memset
++# else
++#  define MEMSET   memset
++# endif
++#endif
++
+ #define FRAMESIZE (FRAME_MIN_SIZE+48)
+ 
+ /* Implements the function
+@@ -187,7 +197,7 @@ L(zero_pad_start_1):
+ 	stdu	r1,-FRAMESIZE(r1)
+ 	cfi_adjust_cfa_offset(FRAMESIZE)
+ 
+-	bl	__memset_power8
++	bl	MEMSET
+ 	nop
+ 
+ 	/* Restore the stack frame.  */
+@@ -406,8 +416,6 @@ L(zero_pad_start_prepare_1):
+ 	b	L(zero_pad_start_1)
+ END (FUNC_NAME)
+ 
+-#ifdef USE_AS_STPNCPY
+-libc_hidden_def (__stpncpy)
+-#else
++#ifndef USE_AS_STPNCPY
+ libc_hidden_builtin_def (strncpy)
+ #endif
+-- 
+2.1.0
+

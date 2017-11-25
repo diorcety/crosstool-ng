@@ -1,0 +1,19 @@
+commit 59b61c82fe18e612058302e4c726385c4eb301d8
+Author: Andreas Schwab <schwab@suse.de>
+Date:   Sun Feb 1 14:04:15 2015 +0100
+
+    Fix value of O_TMPFILE for architectures with non-default O_DIRECTORY (bug 17912)
+
+diff --git a/sysdeps/unix/sysv/linux/bits/fcntl-linux.h b/sysdeps/unix/sysv/linux/bits/fcntl-linux.h
+index 3d28c84..d2baeb3 100644
+--- a/sysdeps/unix/sysv/linux/bits/fcntl-linux.h
++++ b/sysdeps/unix/sysv/linux/bits/fcntl-linux.h
+@@ -97,7 +97,7 @@
+ # define __O_DSYNC	 010000
+ #endif
+ #ifndef __O_TMPFILE
+-# define __O_TMPFILE   020200000
++# define __O_TMPFILE   (020000000 | __O_DIRECTORY)
+ #endif
+ 
+ #ifndef F_GETLK

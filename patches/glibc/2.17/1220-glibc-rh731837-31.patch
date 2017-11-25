@@ -1,0 +1,308 @@
+From e7197c1f8c4c30734723059c97b6e7a8f58fb171 Mon Sep 17 00:00:00 2001
+From: Rajalakshmi Srinivasaraghavan <raji@linux.vnet.ibm.com>
+Date: Wed, 30 Jul 2014 11:33:51 -0500
+Subject: [PATCH] PowerPC: multiarch finite/finitef for PowerPC64
+
+commit 1481d7066c4ce697ada1f33c8c7f97b46ef685e3
+Author: Adhemerval Zanella <azanella@linux.vnet.ibm.com>
+Date:   Fri Dec 13 15:34:52 2013 -0500
+
+Modified the following files apart from the original commit.
+sysdeps/ieee754/dbl-64/s_finite.c
+sysdeps/ieee754/flt-32/s_finitef.c
+---
+ sysdeps/ieee754/dbl-64/s_finite.c                  | 13 ++++--
+ sysdeps/ieee754/flt-32/s_finitef.c                 |  7 ++-
+ sysdeps/powerpc/powerpc64/fpu/multiarch/Makefile   |  6 ++-
+ .../powerpc64/fpu/multiarch/s_finite-power7.S      | 33 ++++++++++++++
+ .../powerpc64/fpu/multiarch/s_finite-ppc64.c       | 34 +++++++++++++++
+ sysdeps/powerpc/powerpc64/fpu/multiarch/s_finite.c | 51 ++++++++++++++++++++++
+ .../powerpc64/fpu/multiarch/s_finitef-ppc64.c      | 32 ++++++++++++++
+ .../powerpc/powerpc64/fpu/multiarch/s_finitef.c    | 32 ++++++++++++++
+ 8 files changed, 201 insertions(+), 7 deletions(-)
+ create mode 100644 sysdeps/powerpc/powerpc64/fpu/multiarch/s_finite-power7.S
+ create mode 100644 sysdeps/powerpc/powerpc64/fpu/multiarch/s_finite-ppc64.c
+ create mode 100644 sysdeps/powerpc/powerpc64/fpu/multiarch/s_finite.c
+ create mode 100644 sysdeps/powerpc/powerpc64/fpu/multiarch/s_finitef-ppc64.c
+ create mode 100644 sysdeps/powerpc/powerpc64/fpu/multiarch/s_finitef.c
+
+diff --git glibc-2.17-c758a686/sysdeps/ieee754/dbl-64/s_finite.c glibc-2.17-c758a686/sysdeps/ieee754/dbl-64/s_finite.c
+index 47dad5d..49986bb 100644
+--- glibc-2.17-c758a686/sysdeps/ieee754/dbl-64/s_finite.c
++++ glibc-2.17-c758a686/sysdeps/ieee754/dbl-64/s_finite.c
+@@ -23,11 +23,16 @@ static char rcsid[] = "$NetBSD: s_finite.c,v 1.8 1995/05/10 20:47:17 jtc Exp $";
+ #include <math_private.h>
+ 
+ #undef __finite
+-int __finite(double x)
++
++#ifndef FINITE
++# define FINITE __finite
++#endif
++
++int FINITE(double x)
+ {
+-	int32_t hx;
+-	GET_HIGH_WORD(hx,x);
+-	return (int)((u_int32_t)((hx&0x7fffffff)-0x7ff00000)>>31);
++  int32_t hx;
++  GET_HIGH_WORD (hx, x);
++  return (int) ((u_int32_t) ((hx & 0x7fffffff) - 0x7ff00000) >> 31);
+ }
+ hidden_def (__finite)
+ weak_alias (__finite, finite)
+diff --git glibc-2.17-c758a686/sysdeps/ieee754/flt-32/s_finitef.c glibc-2.17-c758a686/sysdeps/ieee754/flt-32/s_finitef.c
+index dfdf4ad..4ea270a 100644
+--- glibc-2.17-c758a686/sysdeps/ieee754/flt-32/s_finitef.c
++++ glibc-2.17-c758a686/sysdeps/ieee754/flt-32/s_finitef.c
+@@ -26,7 +26,12 @@ static char rcsid[] = "$NetBSD: s_finitef.c,v 1.4 1995/05/10 20:47:18 jtc Exp $"
+ #include <math_private.h>
+ 
+ #undef __finitef
+-int __finitef(float x)
++
++#ifndef FINITEF
++# define FINITEF __finitef
++#endif
++
++int FINITEF(float x)
+ {
+ 	int32_t ix;
+ 	GET_FLOAT_WORD(ix,x);
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/Makefile glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/Makefile
+index 10d0ac9..1c23ddc 100644
+--- glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/Makefile
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/Makefile
+@@ -1,7 +1,8 @@
+ ifeq ($(subdir),math)
+ sysdep_routines += s_isnan-power7 s_isnan-power6x s_isnan-power6 \
+                   s_isnan-power5 s_isnan-ppc64 s_copysign-power6 \
+-                  s_copysign-ppc64
++                  s_copysign-ppc64 s_finite-power7 s_finite-ppc64 \
++                  s_finitef-ppc64
+ 
+ libm-sysdep_routines += s_isnan-power7 s_isnan-power6x s_isnan-power6 \
+                        s_isnan-power5 s_isnan-ppc64 s_llround-power6x \
+@@ -12,5 +13,6 @@ libm-sysdep_routines += s_isnan-power7 s_isnan-power6x s_isnan-power6 \
+                        s_roundf-power5+ s_roundf-ppc64 s_trunc-power5+ \
+                        s_trunc-ppc64 s_truncf-power5+ s_truncf-ppc64 \
+                        s_copysign-power6 s_copysign-ppc64 s_llrint-power6x \
+-                       s_llrint-ppc64
++                       s_llrint-ppc64 s_finite-power7 s_finite-ppc64 \
++                       s_finitef-ppc64
+ endif
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_finite-power7.S glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_finite-power7.S
+new file mode 100644
+index 0000000..ac2244b
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_finite-power7.S
+@@ -0,0 +1,33 @@
++/* isnan().  PowerPC64/POWER7 version.
++   Copyright (C) 2013-2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <sysdep.h>
++#include <math_ldbl_opt.h>
++
++#undef hidden_def
++#define hidden_def(name)
++#undef weak_alias
++#define weak_alias(name, alias)
++#undef strong_alias
++#define strong_alias(name, alias)
++#undef compat_symbol
++#define compat_symbol(lib, name, symbol, ver)
++
++#define __finite __finite_power7
++
++#include <sysdeps/powerpc/powerpc64/power7/fpu/s_finite.S>
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_finite-ppc64.c glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_finite-ppc64.c
+new file mode 100644
+index 0000000..1922e2b
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_finite-ppc64.c
+@@ -0,0 +1,34 @@
++/* finite().  PowerPC64 default version.
++   Copyright (C) 2013-2014 Free Software Foundation, Inc.
++   Contributed by Luis Machado <luisgpm@br.ibm.com>.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <math.h>
++
++#undef weak_alias
++#define weak_alias(a, b)
++#undef strong_alias
++#define strong_alias(a, b)
++
++#define FINITE __finite_ppc64
++#ifdef SHARED
++# undef hidden_def
++# define hidden_def(a) \
++   __hidden_ver1 (__finite_ppc64, __GI___finite, __finite_ppc64);
++#endif
++
++#include <sysdeps/ieee754/dbl-64/s_finite.c>
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_finite.c glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_finite.c
+new file mode 100644
+index 0000000..f79a93e
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_finite.c
+@@ -0,0 +1,51 @@
++/* Multiple versions of finite.
++   Copyright (C) 2013-2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <math.h>
++#include <math_ldbl_opt.h>
++#include <shlib-compat.h>
++#include "init-arch.h"
++
++extern __typeof (__finite) __finite_ppc64 attribute_hidden;
++extern __typeof (__finite) __finite_power7 attribute_hidden;
++
++libc_ifunc (__finite,
++	    (hwcap & PPC_FEATURE_ARCH_2_06)
++	    ? __finite_power7
++            : __finite_ppc64);
++
++weak_alias (__finite, finite)
++
++#ifdef NO_LONG_DOUBLE
++strong_alias (__finite, __finitel)
++weak_alias (__finite, finitel)
++#endif
++
++#ifdef IS_IN_libm
++# if LONG_DOUBLE_COMPAT (libm, GLIBC_2_0)
++compat_symbol (libm, finite, finitel, GLIBC_2_0);
++# endif
++# if LONG_DOUBLE_COMPAT (libm, GLIBC_2_1)
++compat_symbol (libm, __finite, __finitel, GLIBC_2_1);
++# endif
++#else
++# if LONG_DOUBLE_COMPAT (libc, GLIBC_2_0)
++compat_symbol (libc, __finite, __finitel, GLIBC_2_0);
++compat_symbol (libc, finite, finitel, GLIBC_2_0);
++# endif
++#endif
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_finitef-ppc64.c glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_finitef-ppc64.c
+new file mode 100644
+index 0000000..63dd003
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_finitef-ppc64.c
+@@ -0,0 +1,32 @@
++/* finitef().  PowerPC64 default version.
++   Copyright (C) 2013-2014 Free Software Foundation, Inc.
++   Contributed by Luis Machado <luisgpm@br.ibm.com>.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <math.h>
++
++#undef weak_alias
++#define weak_alias(a, b)
++
++#define FINITEF __finitef_ppc64
++#ifdef SHARED
++# undef hidden_def
++# define hidden_def(a) \
++   __hidden_ver1 (__finitef_ppc64, __GI___finitef, __finitef_ppc64);
++#endif
++
++#include <sysdeps/ieee754/flt-32/s_finitef.c>
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_finitef.c glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_finitef.c
+new file mode 100644
+index 0000000..a7243b5
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_finitef.c
+@@ -0,0 +1,32 @@
++/* Multiple versions of finitef.
++   Copyright (C) 2013-2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <math.h>
++#include <shlib-compat.h>
++#include "init-arch.h"
++
++extern __typeof (__finitef) __finitef_ppc64 attribute_hidden;
++/* The double-precision version also works for single-precision.  */
++extern __typeof (__finitef) __finite_power7 attribute_hidden;
++
++libc_ifunc (__finitef,
++	    (hwcap & PPC_FEATURE_ARCH_2_06)
++	    ? __finite_power7
++            : __finitef_ppc64);
++
++weak_alias (__finitef, finitef)
+-- 
+1.8.3.1
+

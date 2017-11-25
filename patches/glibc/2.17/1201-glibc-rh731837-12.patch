@@ -1,0 +1,237 @@
+From fda2d6aca32ad6a4d546ab3a7dd708de78e18c3a Mon Sep 17 00:00:00 2001
+From: Rajalakshmi Srinivasaraghavan <raji@linux.vnet.ibm.com>
+Date: Wed, 30 Jul 2014 05:49:36 -0500
+Subject: [PATCH] PowerPC: multiarch strncmp for PowerPC64
+
+commit 24c2c3b99699b7cb7cc3c251d9bd504b2cde6a45
+Author: Adhemerval Zanella <azanella@linux.vnet.ibm.com>
+Date:   Fri Dec 13 14:48:48 2013 -0500
+---
+ sysdeps/powerpc/powerpc64/multiarch/Makefile       |  3 +-
+ .../powerpc/powerpc64/multiarch/ifunc-impl-list.c  |  9 +++++
+ .../powerpc/powerpc64/multiarch/strncmp-power4.S   | 38 ++++++++++++++++++++
+ .../powerpc/powerpc64/multiarch/strncmp-power7.S   | 39 ++++++++++++++++++++
+ .../powerpc/powerpc64/multiarch/strncmp-ppc64.S    | 41 ++++++++++++++++++++++
+ sysdeps/powerpc/powerpc64/multiarch/strncmp.c      | 37 +++++++++++++++++++
+ 6 files changed, 166 insertions(+), 1 deletion(-)
+ create mode 100644 sysdeps/powerpc/powerpc64/multiarch/strncmp-power4.S
+ create mode 100644 sysdeps/powerpc/powerpc64/multiarch/strncmp-power7.S
+ create mode 100644 sysdeps/powerpc/powerpc64/multiarch/strncmp-ppc64.S
+ create mode 100644 sysdeps/powerpc/powerpc64/multiarch/strncmp.c
+
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/Makefile glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/Makefile
+index 4dca756..22baf1c 100644
+--- glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/Makefile
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/Makefile
+@@ -7,7 +7,8 @@ sysdep_routines += memcpy-power7 memcpy-a2 memcpy-power6 memcpy-cell \
+                   memrchr-power7 memrchr-ppc64 rawmemchr-power7 \
+                   rawmemchr-ppc64 strlen-power7 strlen-ppc64 strnlen-power7 \
+                   strnlen-ppc64 strcasecmp-power7 strcasecmp_l-power7 \
+-                  strncase-power7 strncase_l-power7
++                  strncase-power7 strncase_l-power7 strncmp-power7 \
++                  strncmp-power4 strncmp-ppc64
+ 
+ CFLAGS-strncase-power7.c += -mcpu=power7 -funroll-loops
+ CFLAGS-strncase_l-power7.c += -mcpu=power7 -funroll-loops
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/ifunc-impl-list.c glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/ifunc-impl-list.c
+index 4b8fb22..67f75a5 100644
+--- glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/ifunc-impl-list.c
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/ifunc-impl-list.c
+@@ -77,6 +77,15 @@ __libc_ifunc_impl_list (const char *name, struct libc_ifunc_impl *array,
+                              __strlen_power7)
+              IFUNC_IMPL_ADD (array, i, strlen, 1,
+                              __strlen_ppc))
++
++  /* Support sysdeps/powerpc/powerpc64/multiarch/strncmp.c.  */
++  IFUNC_IMPL (i, name, strncmp,
++             IFUNC_IMPL_ADD (array, i, strncmp, hwcap & PPC_FEATURE_HAS_VSX,
++                             __strncmp_power7)
++             IFUNC_IMPL_ADD (array, i, strncmp, hwcap & PPC_FEATURE_POWER4,
++                             __strncmp_power4)
++             IFUNC_IMPL_ADD (array, i, strncmp, 1,
++                             __strncmp_ppc))
+ #endif
+ 
+   /* Support sysdeps/powerpc/powerpc64/multiarch/memcmp.c.  */
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/strncmp-power4.S glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/strncmp-power4.S
+new file mode 100644
+index 0000000..62cebbc
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/strncmp-power4.S
+@@ -0,0 +1,38 @@
++/* Copyright (C) 2013-2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <sysdep.h>
++
++#undef EALIGN
++#define EALIGN(name,alignt,words)				\
++  .section ".text";						\
++  ENTRY_2(__strncmp_power4)					\
++  .align ALIGNARG(alignt);					\
++  EALIGN_W_##words;						\
++  BODY_LABEL(__strncmp_power4):					\
++  cfi_startproc;
++
++#undef END
++#define END(name)						\
++  cfi_endproc;							\
++  TRACEBACK(__strncmp_power4)					\
++  END_2(__strncmp_power4)
++
++#undef libc_hidden_builtin_def
++#define libc_hidden_builtin_def(name)
++
++#include <sysdeps/powerpc/powerpc64/power4/strncmp.S>
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/strncmp-power7.S glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/strncmp-power7.S
+new file mode 100644
+index 0000000..b0d607a
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/strncmp-power7.S
+@@ -0,0 +1,39 @@
++/* Copyright (C) 2013-2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <sysdep.h>
++
++#undef EALIGN
++#define EALIGN(name,alignt,words)				\
++  .section ".text";						\
++  ENTRY_2(__strncmp_power7)					\
++  .align ALIGNARG(alignt);					\
++  EALIGN_W_##words;						\
++  BODY_LABEL(__strncmp_power7):					\
++  cfi_startproc;
++
++#undef END
++#define END(name)						\
++  cfi_endproc;							\
++  TRACEBACK(__strncmp_power7)					\
++  END_2(__strncmp_power7)
++
++
++#undef libc_hidden_builtin_def
++#define libc_hidden_builtin_def(name)
++
++#include <sysdeps/powerpc/powerpc64/power7/strncmp.S>
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/strncmp-ppc64.S glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/strncmp-ppc64.S
+new file mode 100644
+index 0000000..25b7f26
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/strncmp-ppc64.S
+@@ -0,0 +1,41 @@
++/* Copyright (C) 2013-2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <sysdep.h>
++
++#if defined SHARED && !defined NOT_IN_libc
++#undef EALIGN
++#define EALIGN(name,alignt,words)				\
++  .section ".text";						\
++  ENTRY_2(__strncmp_ppc)					\
++  .align ALIGNARG(alignt);					\
++  EALIGN_W_##words;						\
++  BODY_LABEL(__strncmp_ppc):					\
++  cfi_startproc;
++
++#undef END
++#define END(name)						\
++  cfi_endproc;							\
++  TRACEBACK(__strncmp_ppc)					\
++  END_2(__strncmp_ppc)
++
++# undef libc_hidden_builtin_def
++# define libc_hidden_builtin_def(name)				\
++    .globl __GI_strncmp; __GI_strncmp = __strncmp_ppc
++#endif
++
++#include <sysdeps/powerpc/powerpc64/strncmp.S>
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/strncmp.c glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/strncmp.c
+new file mode 100644
+index 0000000..9829d69
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/strncmp.c
+@@ -0,0 +1,37 @@
++/* Multiple versions of strncmp.
++   Copyright (C) 2013-2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++/* Define multiple versions only for definition in libc.  */
++#if defined SHARED && !defined NOT_IN_libc
++# include <string.h>
++# include <shlib-compat.h>
++# include "init-arch.h"
++
++extern __typeof (strncmp) __strncmp_ppc attribute_hidden;
++extern __typeof (strncmp) __strncmp_power4 attribute_hidden;
++extern __typeof (strncmp) __strncmp_power7 attribute_hidden;
++
++/* Avoid DWARF definition DIE on ifunc symbol so that GDB can handle
++   ifunc symbol properly.  */
++libc_ifunc (strncmp,
++            (hwcap & PPC_FEATURE_HAS_VSX)
++            ? __strncmp_power7 :
++	      (hwcap & PPC_FEATURE_POWER4)
++		? __strncmp_power4
++            : __strncmp_ppc);
++#endif
+-- 
+1.8.3.1
+

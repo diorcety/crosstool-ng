@@ -1,0 +1,26 @@
+commit a4754272958a8368701bb2a8d6b0c224fe3b4e73
+Author: H.J. Lu <hjl.tools@gmail.com>
+Date:   Thu Mar 3 14:51:40 2016 -0800
+
+    Or bit_Prefer_MAP_32BIT_EXEC in EXTRA_LD_ENVVARS
+    
+    We should turn on bit_Prefer_MAP_32BIT_EXEC in EXTRA_LD_ENVVARS without
+    overriding other bits.
+    
+      [BZ #19758]
+      * sysdeps/unix/sysv/linux/x86_64/64/dl-librecon.h
+      (EXTRA_LD_ENVVARS): Or bit_Prefer_MAP_32BIT_EXEC.
+
+diff --git a/sysdeps/unix/sysv/linux/x86_64/64/dl-librecon.h b/sysdeps/unix/sysv/linux/x86_64/64/dl-librecon.h
+index c9db5ea..a759934 100644
+--- a/sysdeps/unix/sysv/linux/x86_64/64/dl-librecon.h
++++ b/sysdeps/unix/sysv/linux/x86_64/64/dl-librecon.h
+@@ -33,7 +33,7 @@
+   case 21:							      \
+     if (memcmp (envline, "PREFER_MAP_32BIT_EXEC", 21) == 0)	      \
+       GLRO(dl_x86_cpu_features).feature[index_Prefer_MAP_32BIT_EXEC]  \
+-	= bit_Prefer_MAP_32BIT_EXEC;				      \
++	|= bit_Prefer_MAP_32BIT_EXEC;				      \
+     break;
+ 
+ /* Extra unsecure variables.  The names are all stuffed in a single

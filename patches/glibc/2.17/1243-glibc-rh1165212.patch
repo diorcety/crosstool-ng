@@ -1,0 +1,328 @@
+#
+# This is a special patch for rhel-6 to fix recursive dlopen.
+# It is likely the upstream patch will always be too risky for
+# rhel-6 and will involve reorganizing the way in which recursive
+# dlopen is allowed to operate and how the _r_debug and stap
+# points are used by gdb for the recursive case.
+#
+# This fix changes the internal API to duplicate the ldconfig
+# cache data. This means that at any point the cache can be
+# unmapped without any consequences. The caller is responsible
+# fore freeing the returned string.
+#
+# A regression test is added to verify the assertion for _r_debug
+# is no longer triggered due to the recursive dlopen. The test to
+# verify the fix in _dl_load_cache_lookup is not automated and
+# has to be run by hand.
+#
+# The original version of this patch was based on the first version
+# of the upstream patch posted here:
+#   https://sourceware.org/ml/libc-alpha/2014-12/msg00446.html
+# The current version has been modified to reflect the changes
+# made in the revision of the patch committed to trunk after
+# being posted for review here:
+#   https://sourceware.org/ml/libc-alpha/2014-12/msg00483.html
+
+--- glibc-2.17-c758a686/dlfcn/Makefile	2012-12-24 22:02:13.000000000 -0500
++++ glibc-2.17-c758a686/dlfcn/Makefile	2015-06-22 12:44:41.000000000 -0400
+@@ -35,12 +35,12 @@ endif
+ ifeq (yes,$(build-shared))
+ tests = glrefmain failtest tst-dladdr default errmsg1 tstcxaatexit \
+ 	bug-dlopen1 bug-dlsym1 tst-dlinfo bug-atexit1 bug-atexit2 \
+-	bug-atexit3 tstatexit
++	bug-atexit3 tstatexit tst-rec-dlopen
+ endif
+ modules-names = glreflib1 glreflib2 glreflib3 failtestmod defaultmod1 \
+ 		defaultmod2 errmsg1mod modatexit modcxaatexit \
+ 		bug-dlsym1-lib1 bug-dlsym1-lib2 bug-atexit1-lib \
+-		bug-atexit2-lib bug-atexit3-lib
++		bug-atexit2-lib bug-atexit3-lib moddummy1 moddummy2
+ 
+ failtestmod.so-no-z-defs = yes
+ glreflib2.so-no-z-defs = yes
+@@ -122,6 +122,8 @@ LDLIBS-bug-atexit3-lib.so = -lstdc++ -lg
+ $(objpfx)bug-atexit3: $(libdl)
+ $(objpfx)bug-atexit3.out: $(objpfx)bug-atexit3-lib.so
+ 
++$(objpfx)tst-rec-dlopen: $(libdl)
++$(objpfx)tst-rec-dlopen.out: $(objpfx)moddummy1.so $(objpfx)moddummy2.so
+ 
+ # Depend on libc.so so a DT_NEEDED is generated in the shared objects.
+ # This ensures they will load libc.so for needed symbols if loaded by
+--- glibc-2.17-c758a686/elf/dl-cache.c	2012-12-24 22:02:13.000000000 -0500
++++ glibc-2.17-c758a686/elf/dl-cache.c	2015-06-22 12:44:39.000000000 -0400
+@@ -174,9 +174,12 @@ _dl_cache_libcmp (const char *p1, const
+ 
+ 
+ /* Look up NAME in ld.so.cache and return the file name stored there,
+-   or null if none is found.  */
+-
+-const char *
++   or null if none is found. 
++   The caller is responsible for freeing the returned string.  The ld.so.cache
++   may be unmapped at any time by a completing recursive dlopen and
++   this function must take care that it does not return references to
++   any data in the mapping.  */
++char *
+ internal_function
+ _dl_load_cache_lookup (const char *name)
+ {
+@@ -289,7 +292,17 @@ _dl_load_cache_lookup (const char *name)
+       && best != NULL)
+     _dl_debug_printf ("  trying file=%s\n", best);
+ 
+-  return best;
++  if (best == NULL)
++    return NULL;
++
++  /* The double copy is *required* since malloc may be interposed
++     and call dlopen itself whose completion would unmap the data
++     we are accessing. Therefore we must make the copy of the
++     mapping data without using malloc.  */
++  char *temp;
++  temp = alloca (strlen (best) + 1);
++  strcpy (temp, best);
++  return strdup (temp);
+ }
+ 
+ #ifndef MAP_COPY
+--- glibc-2.17-c758a686/elf/dl-load.c	2015-06-22 12:41:10.748836414 -0400
++++ glibc-2.17-c758a686/elf/dl-load.c	2015-06-22 12:44:39.000000000 -0400
+@@ -2232,7 +2232,7 @@ _dl_map_object (struct link_map *loader,
+ 	{
+ 	  /* Check the list of libraries in the file /etc/ld.so.cache,
+ 	     for compatibility with Linux's ldconfig program.  */
+-	  const char *cached = _dl_load_cache_lookup (name);
++	  char *cached = _dl_load_cache_lookup (name);
+ 
+ 	  if (cached != NULL)
+ 	    {
+@@ -2262,6 +2262,7 @@ _dl_map_object (struct link_map *loader,
+ 		      if (memcmp (cached, dirp, system_dirs_len[cnt]) == 0)
+ 			{
+ 			  /* The prefix matches.  Don't use the entry.  */
++			  free (cached);
+ 			  cached = NULL;
+ 			  break;
+ 			}
+@@ -2278,14 +2279,9 @@ _dl_map_object (struct link_map *loader,
+ 				    &fb, loader ?: GL(dl_ns)[nsid]._ns_loaded,
+ 				    LA_SER_CONFIG, &found_other_class, false);
+ 		  if (__builtin_expect (fd != -1, 1))
+-		    {
+-		      realname = local_strdup (cached);
+-		      if (realname == NULL)
+-			{
+-			  __close (fd);
+-			  fd = -1;
+-			}
+-		    }
++		    realname = cached;
++		  else
++		    free (cached);
+ 		}
+ 	    }
+ 	}
+--- glibc-2.17-c758a686/elf/dl-open.c	2015-06-22 12:41:16.348913620 -0400
++++ glibc-2.17-c758a686/elf/dl-open.c	2015-06-22 12:44:40.000000000 -0400
+@@ -221,7 +221,11 @@ dl_open_worker (void *a)
+ 	}
+     }
+ 
+-  assert (_dl_debug_initialize (0, args->nsid)->r_state == RT_CONSISTENT);
++  /* One might be tempted to assert that we are RT_CONSISTENT at this point, but that
++     may not be true if this is a recursive call to dlopen.
++     TODO: Fix all of the debug state so we end up at RT_CONSISTENT only when the last
++     recursive dlopen completes.  */
++  _dl_debug_initialize (0, args->nsid);
+ 
+   /* Load the named object.  */
+   struct link_map *new;
+--- glibc-2.17-c758a686/sysdeps/generic/ldsodefs.h	2015-06-22 12:41:16.328913344 -0400
++++ glibc-2.17-c758a686/sysdeps/generic/ldsodefs.h	2015-06-22 12:44:41.000000000 -0400
+@@ -895,8 +895,8 @@
+      internal_function;
+ 
+ /* Look up NAME in ld.so.cache and return the file name stored there,
+-   or null if none is found.  */
+-extern const char *_dl_load_cache_lookup (const char *name)
++   or null if none is found.  Caller must free returned string.  */
++extern char *_dl_load_cache_lookup (const char *name)
+      internal_function;
+ 
+ /* If the system does not support MAP_COPY we cannot leave the file open
+--- glibc-2.17-c758a686/dlfcn/tst-rec-dlopen.c	1969-12-31 19:00:00.000000000 -0500
++++ glibc-2.17-c758a686/dlfcn/tst-rec-dlopen.c	2015-06-22 12:44:41.000000000 -0400
+@@ -0,0 +1,143 @@
++/* Test recursive dlopen using malloc hooks.
++   Copyright (C) 2015 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <stdio.h>
++#include <stdlib.h>
++#include <malloc.h>
++#include <dlfcn.h>
++
++#define DSO "moddummy1.so"
++#define FUNC "dummy1"
++
++#define DSO1 "moddummy2.so"
++#define FUNC1 "dummy2"
++
++/* Result of the called function.  */
++int func_result;
++
++/* Prototype for my hook.  */
++void *custom_malloc_hook (size_t, const void *);
++
++/* Pointer to old malloc hooks.  */
++void *(*old_malloc_hook) (size_t, const void *);
++
++/* Call function func_name in DSO dso_name via dlopen.  */
++void
++call_func (const char *dso_name, const char *func_name)
++{
++  int ret;
++  void *dso;
++  int (*func) (void);
++  char *err;
++
++  /* Open the DSO.  */
++  dso = dlopen (dso_name, RTLD_NOW|RTLD_GLOBAL);
++  if (dso == NULL)
++    {
++      err = dlerror ();
++      fprintf (stderr, "%s\n", err);
++      exit (1);
++    }
++  /* Clear any errors.  */
++  dlerror ();
++
++  /* Lookup func.  */
++  func = (int (*) (void)) dlsym (dso, func_name);
++  if (func == NULL)
++    {
++      err = dlerror ();
++      if (err != NULL)
++        {
++	  fprintf (stderr, "%s\n", err);
++	  exit (1);
++        }
++    }
++  /* Call func.  */
++  func_result = (*func) ();
++
++  /* Close the library and look for errors too.  */
++  ret = dlclose (dso);
++  if (ret != 0)
++    {
++      err = dlerror ();
++      fprintf (stderr, "%s\n", err);
++      exit (1);
++    }
++
++}
++
++/* Empty hook that does nothing.  */
++void *
++custom_malloc_hook (size_t size, const void *caller)
++{
++  void *result;
++  /* Restore old hooks.  */
++  __malloc_hook = old_malloc_hook;
++  /* First call a function in another library via dlopen.  */
++  call_func (DSO1, FUNC1);
++  /* Called recursively.  */
++  result = malloc (size);
++  /* Restore new hooks.  */
++  __malloc_hook = custom_malloc_hook;
++  return result;
++}
++
++static int
++do_test (void)
++{
++  /* Save old hook.  */
++  old_malloc_hook = __malloc_hook;
++  /* Install new hook.  */
++  __malloc_hook = custom_malloc_hook;
++
++  /* Bug 17702 fixes two things:
++       * A recursive dlopen unmapping the ld.so.cache.
++       * An assertion that _r_debug is RT_CONSISTENT at entry to dlopen.
++     We can only test the latter. Testing the former requires modifying
++     ld.so.conf to cache the dummy libraries, then running ldconfig,
++     then run the test. If you do all of that (and glibc's test
++     infrastructure doesn't support that yet) then the test will
++     SEGFAULT without the fix. If you don't do that, then the test
++     will abort because of the assert described in detail below.  */
++  call_func (DSO, FUNC);
++
++  /* Restore old hook.  */
++  __malloc_hook = old_malloc_hook;
++
++  /* The function dummy2() is called by the malloc hook. Check to
++     see that it was called. This ensures the second recursive
++     dlopen happened and we called the function in that library.
++     Before the fix you either get a SIGSEGV when accessing mmap'd
++     ld.so.cache data or an assertion failure about _r_debug not
++     beint RT_CONSISTENT.  We don't test for the SIGSEGV since it
++     would require finding moddummy1 or moddummy2 in the cache and
++     we don't have any infrastructure to test that, but the _r_debug
++     assertion triggers.  */
++  printf ("Returned result is %d\n", func_result);
++  if (func_result <= 0)
++    {
++      printf ("FAIL: Function call_func() not called.\n");
++      exit (1);
++    }
++
++  printf ("PASS: Function call_func() called more than once.\n");
++  return 0;
++}
++
++#define TEST_FUNCTION do_test ()
++#include "../test-skeleton.c"
+--- glibc-2.17-c758a686/dlfcn/moddummy1.c	1969-12-31 19:00:00.000000000 -0500
++++ glibc-2.17-c758a686/dlfcn/moddummy1.c	2015-06-22 12:44:41.000000000 -0400
+@@ -0,0 +1,10 @@
++/* Provide a dummy DSO for tst-rec-dlopen to use.  */
++#include <stdio.h>
++#include <stdlib.h>
++
++int
++dummy1 (void)
++{
++  printf ("Called dummy1()\n");
++  return 1;
++}
+--- glibc-2.17-c758a686/dlfcn/moddummy2.c	1969-12-31 19:00:00.000000000 -0500
++++ glibc-2.17-c758a686/dlfcn/moddummy2.c	2015-06-22 12:44:41.000000000 -0400
+@@ -0,0 +1,13 @@
++/* Provide a dummy DSO for tst-rec-dlopen to use.  */
++#include <stdio.h>
++#include <stdlib.h>
++
++int
++dummy2 (void)
++{
++  printf ("Called dummy2()\n");
++  /* If the outer dlopen is not dummy1 (becuase of some error)
++     then tst-rec-dlopen will see a value of -1 as the returned
++     result and fail.  */
++  return -1;
++}

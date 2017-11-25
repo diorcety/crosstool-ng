@@ -1,0 +1,457 @@
+commit cc0e6ed81fa3ab0eeecfc576098b4522f0323c4b
+Author: Roland McGrath <roland@hack.frob.com>
+Date:   Fri May 3 16:33:26 2013 -0700
+
+    Consolidate definitions of _FORTIFY_SOURCE wrappers for open{,64}{,at}.
+
+Index: b/io/Makefile
+===================================================================
+--- a/io/Makefile
++++ b/io/Makefile
+@@ -36,10 +36,10 @@ routines :=								\
+ 	statvfs fstatvfs statvfs64 fstatvfs64				\
+ 	umask chmod fchmod lchmod fchmodat				\
+ 	mkdir mkdirat							\
+-	open open64 openat openat64 close				\
++	open open_2 open64 open64_2 openat openat_2 openat64 openat64_2	\
+ 	read write lseek lseek64 access euidaccess faccessat		\
+ 	fcntl flock lockf lockf64					\
+-	dup dup2 dup3 pipe pipe2					\
++	close dup dup2 dup3 pipe pipe2					\
+ 	creat creat64							\
+ 	chdir fchdir							\
+ 	getcwd getwd getdirname						\
+Index: b/io/open.c
+===================================================================
+--- a/io/open.c
++++ b/io/open.c
+@@ -22,7 +22,6 @@
+ #include <stddef.h>
+ #include <stdio.h>
+ 
+-extern char **__libc_argv attribute_hidden;
+ 
+ /* Open FILE with access OFLAG.  If OFLAG includes O_CREAT,
+    a third argument is the file protection.  */
+@@ -57,15 +56,6 @@ weak_alias (__libc_open, open)
+ 
+ stub_warning (open)
+ 
+-
+-int
+-__open_2 (file, oflag)
+-     const char *file;
+-     int oflag;
+-{
+-  if (oflag & O_CREAT)
+-    __fortify_fail ("invalid open call: O_CREAT without mode");
+-
+-  return __open (file, oflag);
+-}
++/* __open_2 is a generic wrapper that calls __open.
++   So give a stub warning for that symbol too.  */
+ stub_warning (__open_2)
+Index: b/io/open64.c
+===================================================================
+--- a/io/open64.c
++++ b/io/open64.c
+@@ -54,15 +54,6 @@ weak_alias (__libc_open64, open64)
+ 
+ stub_warning (open64)
+ 
+-
+-int
+-__open64_2 (file, oflag)
+-     const char *file;
+-     int oflag;
+-{
+-  if (oflag & O_CREAT)
+-    __fortify_fail ("invalid open64 call: O_CREAT without mode");
+-
+-  return __open64 (file, oflag);
+-}
++/* __open64_2 is a generic wrapper that calls __open64.
++   So give a stub warning for that symbol too.  */
+ stub_warning (__open64_2)
+Index: b/io/open64_2.c
+===================================================================
+--- /dev/null
++++ b/io/open64_2.c
+@@ -0,0 +1,29 @@
++/* _FORTIFY_SOURCE wrapper for open64.
++   Copyright (C) 2013 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <fcntl.h>
++#include <stdio.h>
++
++int
++__open64_2 (const char *file, int oflag)
++{
++  if (oflag & O_CREAT)
++    __fortify_fail ("invalid open64 call: O_CREAT without mode");
++
++  return __open64 (file, oflag);
++}
+Index: b/io/open_2.c
+===================================================================
+--- /dev/null
++++ b/io/open_2.c
+@@ -0,0 +1,29 @@
++/* _FORTIFY_SOURCE wrapper for open.
++   Copyright (C) 2013 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <fcntl.h>
++#include <stdio.h>
++
++int
++__open_2 (const char *file, int oflag)
++{
++  if (oflag & O_CREAT)
++    __fortify_fail ("invalid open call: O_CREAT without mode");
++
++  return __open (file, oflag);
++}
+Index: b/io/openat.c
+===================================================================
+--- a/io/openat.c
++++ b/io/openat.c
+@@ -75,16 +75,6 @@ libc_hidden_def (__openat)
+ weak_alias (__openat, openat)
+ stub_warning (openat)
+ 
+-
+-int
+-__openat_2 (fd, file, oflag)
+-     int fd;
+-     const char *file;
+-     int oflag;
+-{
+-  if (oflag & O_CREAT)
+-    __fortify_fail ("invalid openat call: O_CREAT without mode");
+-
+-  return __openat (fd, file, oflag);
+-}
++/* __openat_2 is a generic wrapper that calls __openat.
++   So give a stub warning for that symbol too.  */
+ stub_warning (__openat_2)
+Index: b/io/openat64.c
+===================================================================
+--- a/io/openat64.c
++++ b/io/openat64.c
+@@ -68,16 +68,6 @@ libc_hidden_def (__openat64)
+ weak_alias (__openat64, openat64)
+ stub_warning (openat64)
+ 
+-
+-int
+-__openat64_2 (fd, file, oflag)
+-     int fd;
+-     const char *file;
+-     int oflag;
+-{
+-  if (oflag & O_CREAT)
+-    __fortify_fail ("invalid openat64 call: O_CREAT without mode");
+-
+-  return __openat64 (fd, file, oflag);
+-}
++/* __openat64_2 is a generic wrapper that calls __openat64.
++   So give a stub warning for that symbol too.  */
+ stub_warning (__openat_2)
+Index: b/io/openat64_2.c
+===================================================================
+--- /dev/null
++++ b/io/openat64_2.c
+@@ -0,0 +1,29 @@
++/* _FORTIFY_SOURCE wrapper for openat64.
++   Copyright (C) 2013 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <fcntl.h>
++#include <stdio.h>
++
++int
++__openat64_2 (int fd, const char *file, int oflag)
++{
++  if (oflag & O_CREAT)
++    __fortify_fail ("invalid openat64 call: O_CREAT without mode");
++
++  return __openat64 (fd, file, oflag);
++}
+Index: b/io/openat_2.c
+===================================================================
+--- /dev/null
++++ b/io/openat_2.c
+@@ -0,0 +1,29 @@
++/* _FORTIFY_SOURCE wrapper for openat.
++   Copyright (C) 2013 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <fcntl.h>
++#include <stdio.h>
++
++int
++__openat_2 (int fd, const char *file, int oflag)
++{
++  if (oflag & O_CREAT)
++    __fortify_fail ("invalid openat call: O_CREAT without mode");
++
++  return __openat (fd, file, oflag);
++}
+Index: b/sysdeps/mach/hurd/open.c
+===================================================================
+--- a/sysdeps/mach/hurd/open.c
++++ b/sysdeps/mach/hurd/open.c
+@@ -52,20 +52,9 @@ weak_alias (__libc_open, __open)
+ libc_hidden_weak (__open)
+ weak_alias (__libc_open, open)
+ 
+-int
+-__open_2 (file, oflag)
+-     const char *file;
+-     int oflag;
+-{
+-  if (oflag & O_CREAT)
+-    __fortify_fail ("invalid open call: O_CREAT without mode");
+-
+-  return __open (file, oflag);
+-}
+ 
+ /* open64 is just the same as open for us.  */
+ weak_alias (__libc_open, __libc_open64)
+ weak_alias (__libc_open, __open64)
+ libc_hidden_weak (_open64)
+ weak_alias (__libc_open, open64)
+-strong_alias (__open_2, __open64_2)
+Index: b/sysdeps/mach/hurd/openat.c
+===================================================================
+--- a/sysdeps/mach/hurd/openat.c
++++ b/sysdeps/mach/hurd/openat.c
+@@ -56,20 +56,7 @@ __openat (fd, file, oflag)
+ libc_hidden_def (__openat)
+ weak_alias (__openat, openat)
+ 
+-int
+-__openat_2 (fd, file, oflag)
+-     int fd;
+-     const char *file;
+-     int oflag;
+-{
+-  if (oflag & O_CREAT)
+-    __fortify_fail ("invalid openat call: O_CREAT without mode");
+-
+-  return __openat (fd, file, oflag);
+-}
+-
+ /* openat64 is just the same as openat for us.  */
+ weak_alias (__openat, __openat64)
+ libc_hidden_weak (__openat64)
+ weak_alias (__openat, openat64)
+-strong_alias (__openat_2, __openat64_2)
+Index: b/sysdeps/unix/sysv/linux/Makefile
+===================================================================
+--- a/sysdeps/unix/sysv/linux/Makefile
++++ b/sysdeps/unix/sysv/linux/Makefile
+@@ -158,7 +158,7 @@ endif
+ 
+ ifeq ($(subdir),io)
+ sysdep_routines += xstatconv internal_statvfs internal_statvfs64 \
+-		   sync_file_range open_2 open64_2 fallocate fallocate64
++		   sync_file_range fallocate fallocate64
+ sysdep_headers += bits/fcntl-linux.h
+ endif
+ 
+Index: b/sysdeps/unix/sysv/linux/open64_2.c
+===================================================================
+--- a/sysdeps/unix/sysv/linux/open64_2.c
++++ /dev/null
+@@ -1,31 +0,0 @@
+-/* Copyright (C) 2007 Free Software Foundation, Inc.
+-   This file is part of the GNU C Library.
+-
+-   The GNU C Library is free software; you can redistribute it and/or
+-   modify it under the terms of the GNU Lesser General Public
+-   License as published by the Free Software Foundation; either
+-   version 2.1 of the License, or (at your option) any later version.
+-
+-   The GNU C Library is distributed in the hope that it will be useful,
+-   but WITHOUT ANY WARRANTY; without even the implied warranty of
+-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+-   Lesser General Public License for more details.
+-
+-   You should have received a copy of the GNU Lesser General Public
+-   License along with the GNU C Library; if not, see
+-   <http://www.gnu.org/licenses/>.  */
+-
+-#include <fcntl.h>
+-#include <stdio.h>
+-
+-
+-int
+-__open64_2 (file, oflag)
+-     const char *file;
+-     int oflag;
+-{
+-  if (oflag & O_CREAT)
+-    __fortify_fail ("invalid open64 call: O_CREAT without mode");
+-
+-  return __open64 (file, oflag);
+-}
+Index: b/sysdeps/unix/sysv/linux/open_2.c
+===================================================================
+--- a/sysdeps/unix/sysv/linux/open_2.c
++++ /dev/null
+@@ -1,31 +0,0 @@
+-/* Copyright (C) 2007 Free Software Foundation, Inc.
+-   This file is part of the GNU C Library.
+-
+-   The GNU C Library is free software; you can redistribute it and/or
+-   modify it under the terms of the GNU Lesser General Public
+-   License as published by the Free Software Foundation; either
+-   version 2.1 of the License, or (at your option) any later version.
+-
+-   The GNU C Library is distributed in the hope that it will be useful,
+-   but WITHOUT ANY WARRANTY; without even the implied warranty of
+-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+-   Lesser General Public License for more details.
+-
+-   You should have received a copy of the GNU Lesser General Public
+-   License along with the GNU C Library; if not, see
+-   <http://www.gnu.org/licenses/>.  */
+-
+-#include <fcntl.h>
+-#include <stdio.h>
+-
+-
+-int
+-__open_2 (file, oflag)
+-     const char *file;
+-     int oflag;
+-{
+-  if (oflag & O_CREAT)
+-    __fortify_fail ("invalid open call: O_CREAT without mode");
+-
+-  return __open (file, oflag);
+-}
+Index: b/sysdeps/unix/sysv/linux/openat.c
+===================================================================
+--- a/sysdeps/unix/sysv/linux/openat.c
++++ b/sysdeps/unix/sysv/linux/openat.c
+@@ -29,7 +29,6 @@
+ 
+ #ifndef OPENAT
+ # define OPENAT openat
+-# define __OPENAT_2 __openat_2
+ 
+ # ifndef __ASSUME_ATFCTS
+ /* Set errno after a failed call.  If BUF is not null,
+@@ -179,18 +178,3 @@ __OPENAT (fd, file, oflag)
+ }
+ libc_hidden_def (__OPENAT)
+ weak_alias (__OPENAT, OPENAT)
+-
+-
+-int
+-__OPENAT_2 (fd, file, oflag)
+-     int fd;
+-     const char *file;
+-     int oflag;
+-{
+-  if (oflag & O_CREAT)
+-#define MSG(s) MSG2 (s)
+-#define MSG2(s) "invalid " #s " call: O_CREAT without mode"
+-    __fortify_fail (MSG (OPENAT));
+-
+-  return __OPENAT (fd, file, oflag);
+-}
+Index: b/sysdeps/unix/sysv/linux/openat64.c
+===================================================================
+--- a/sysdeps/unix/sysv/linux/openat64.c
++++ b/sysdeps/unix/sysv/linux/openat64.c
+@@ -1,5 +1,4 @@
+ #define OPENAT openat64
+-#define __OPENAT_2 __openat64_2
+ #define MORE_OFLAGS O_LARGEFILE
+ 
+ #include "openat.c"
+Index: b/sysdeps/unix/sysv/linux/wordsize-64/openat.c
+===================================================================
+--- a/sysdeps/unix/sysv/linux/wordsize-64/openat.c
++++ b/sysdeps/unix/sysv/linux/wordsize-64/openat.c
+@@ -1,16 +1,14 @@
+ #define __openat64 __rename___openat64
+-#define __openat64_2 __rename___openat64_2
+ #define __openat64_nocancel __rename___openat64_nocancel
+ #define openat64 __rename_openat64
+ 
+ #include "../openat.c"
+ 
+ #undef __openat64
+-#undef __openat64_2
+ #undef __openat64_nocancel
+ #undef openat64
+ 
+-weak_alias (__openat, __openat64)
+-weak_alias (__openat_2, __openat64_2)
+-weak_alias (__openat_nocancel, __openat64_nocancel)
++strong_alias (__openat, __openat64)
++hidden_ver (__openat, __openat64)
++strong_alias (__openat_nocancel, __openat64_nocancel)
+ weak_alias (openat, openat64)

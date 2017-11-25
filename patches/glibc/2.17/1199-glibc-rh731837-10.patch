@@ -1,0 +1,248 @@
+From 4a6eeaf792815ff197f683e424d64cc3a9e16a66 Mon Sep 17 00:00:00 2001
+From: Rajalakshmi Srinivasaraghavan <raji@linux.vnet.ibm.com>
+Date: Wed, 30 Jul 2014 05:47:00 -0500
+Subject: [PATCH] PowerPC: multiarch strcasecmp for PowerPC64
+
+commit 17de3ee3c109a13ecec60b8bc9514f33c5b42178
+Author: Adhemerval Zanella <azanella@linux.vnet.ibm.com>
+Date:   Fri Dec 13 14:39:51 2013 -0500
+---
+ sysdeps/powerpc/powerpc64/multiarch/Makefile       |  2 +-
+ .../powerpc/powerpc64/multiarch/ifunc-impl-list.c  | 15 ++++++++
+ .../powerpc64/multiarch/strcasecmp-power7.S        | 41 +++++++++++++++++++++
+ sysdeps/powerpc/powerpc64/multiarch/strcasecmp.c   | 40 ++++++++++++++++++++
+ .../powerpc64/multiarch/strcasecmp_l-power7.S      | 43 ++++++++++++++++++++++
+ sysdeps/powerpc/powerpc64/multiarch/strcasecmp_l.c | 40 ++++++++++++++++++++
+ 6 files changed, 180 insertions(+), 1 deletion(-)
+ create mode 100644 sysdeps/powerpc/powerpc64/multiarch/strcasecmp-power7.S
+ create mode 100644 sysdeps/powerpc/powerpc64/multiarch/strcasecmp.c
+ create mode 100644 sysdeps/powerpc/powerpc64/multiarch/strcasecmp_l-power7.S
+ create mode 100644 sysdeps/powerpc/powerpc64/multiarch/strcasecmp_l.c
+
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/Makefile glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/Makefile
+index 3285fd7..5e172da 100644
+--- glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/Makefile
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/Makefile
+@@ -6,5 +6,5 @@ sysdep_routines += memcpy-power7 memcpy-a2 memcpy-power6 memcpy-cell \
+                   mempcpy-power7 mempcpy-ppc64 memchr-power7 memchr-ppc64 \
+                   memrchr-power7 memrchr-ppc64 rawmemchr-power7 \
+                   rawmemchr-ppc64 strlen-power7 strlen-ppc64 strnlen-power7 \
+-                  strnlen-ppc64
++                  strnlen-ppc64 strcasecmp-power7 strcasecmp_l-power7
+ endif
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/ifunc-impl-list.c glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/ifunc-impl-list.c
+index c9125b8..ba78d97 100644
+--- glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/ifunc-impl-list.c
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/ifunc-impl-list.c
+@@ -136,5 +136,20 @@ __libc_ifunc_impl_list (const char *name, struct libc_ifunc_impl *array,
+              IFUNC_IMPL_ADD (array, i, strnlen, 1,
+                              __strnlen_ppc))
+ 
++  /* Support sysdeps/powerpc/powerpc64/multiarch/strcasecmp.c.  */
++  IFUNC_IMPL (i, name, strcasecmp,
++             IFUNC_IMPL_ADD (array, i, strcasecmp,
++                             hwcap & PPC_FEATURE_HAS_VSX,
++                             __strcasecmp_power7)
++             IFUNC_IMPL_ADD (array, i, strcasecmp, 1, __strcasecmp_ppc))
++
++  /* Support sysdeps/powerpc/powerpc64/multiarch/strcasecmp_l.c.  */
++  IFUNC_IMPL (i, name, strcasecmp_l,
++             IFUNC_IMPL_ADD (array, i, strcasecmp_l,
++                             hwcap & PPC_FEATURE_HAS_VSX,
++                             __strcasecmp_l_power7)
++             IFUNC_IMPL_ADD (array, i, strcasecmp_l, 1,
++                             __strcasecmp_l_ppc))
++
+   return i;
+ }
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/strcasecmp-power7.S glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/strcasecmp-power7.S
+new file mode 100644
+index 0000000..9714f88
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/strcasecmp-power7.S
+@@ -0,0 +1,41 @@
++/* Optimized strcasecmp implementation foOWER7.
++   Copyright (C) 2013-2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <sysdep.h>
++
++#undef ENTRY
++#define ENTRY(name)						\
++  .section ".text";						\
++  ENTRY_2(__strcasecmp_power7)					\
++  .align ALIGNARG(2);						\
++  BODY_LABEL(__strcasecmp_power7):				\
++  cfi_startproc;
++
++#undef END
++#define END(name)						\
++  cfi_endproc;							\
++  TRACEBACK(__strcasecmp_power7)				\
++  END_2(__strcasecmp_power7)
++
++#undef weak_alias
++#define weak_alias(name, alias)
++
++#undef libc_hidden_builtin_def
++#define libc_hidden_builtin_def(name)
++
++#include <sysdeps/powerpc/powerpc64/power7/strcasecmp.S>
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/strcasecmp.c glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/strcasecmp.c
+new file mode 100644
+index 0000000..7f02a25
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/strcasecmp.c
+@@ -0,0 +1,40 @@
++/* Multiple versions of strcasecmp.
++   Copyright (C) 2013-2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#ifndef NOT_IN_libc
++# include <string.h>
++# define strcasecmp __strcasecmp_ppc
++extern __typeof (__strcasecmp) __strcasecmp_ppc attribute_hidden;
++extern __typeof (__strcasecmp) __strcasecmp_power7 attribute_hidden;
++#endif
++
++#include <string/strcasecmp.c>
++#undef strcasecmp
++
++#ifndef NOT_IN_libc
++# include <shlib-compat.h>
++# include "init-arch.h"
++
++extern __typeof (__strcasecmp) __libc_strcasecmp;
++libc_ifunc (__libc_strcasecmp,
++	    (hwcap & PPC_FEATURE_HAS_VSX)
++            ? __strcasecmp_power7
++            : __strcasecmp_ppc);
++
++weak_alias (__libc_strcasecmp, strcasecmp)
++#endif
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/strcasecmp_l-power7.S glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/strcasecmp_l-power7.S
+new file mode 100644
+index 0000000..117e464
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/strcasecmp_l-power7.S
+@@ -0,0 +1,43 @@
++/* Optimized strcasecmp_l implementation for POWER7.
++   Copyright (C) 2013-2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <sysdep.h>
++
++#undef ENTRY
++#define ENTRY(name)						\
++  .section ".text";						\
++  ENTRY_2(__strcasecmp_l_power7)				\
++  .align ALIGNARG(2);						\
++  BODY_LABEL(__strcasecmp_l_power7):				\
++  cfi_startproc;
++
++#undef END
++#define END(name)						\
++  cfi_endproc;							\
++  TRACEBACK(__strcasecmp_l_power7)				\
++  END_2(__strcasecmp_l_power7)
++
++#undef weak_alias
++#define weak_alias(name, alias)
++
++#undef libc_hidden_builtin_def
++#define libc_hidden_builtin_def(name)
++
++#define USE_IN_EXTENDED_LOCALE_MODEL
++
++#include <sysdeps/powerpc/powerpc64/power7/strcasecmp.S>
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/strcasecmp_l.c glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/strcasecmp_l.c
+new file mode 100644
+index 0000000..a3374c3
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/strcasecmp_l.c
+@@ -0,0 +1,40 @@
++/* Multiple versions of strcasecmp_l.
++   Copyright (C) 2013-2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#ifndef NOT_IN_libc
++# include <string.h>
++# define strcasecmp_l __strcasecmp_l_ppc
++extern __typeof (__strcasecmp_l) __strcasecmp_l_ppc attribute_hidden;
++extern __typeof (__strcasecmp_l) __strcasecmp_l_power7 attribute_hidden;
++#endif
++
++#include <string/strcasecmp_l.c>
++#undef strcasecmp_l
++
++#ifndef NOT_IN_libc
++# include <shlib-compat.h>
++# include "init-arch.h"
++
++extern __typeof (__strcasecmp_l) __libc_strcasecmp_l;
++libc_ifunc (__libc_strcasecmp_l,
++	    (hwcap & PPC_FEATURE_HAS_VSX)
++            ? __strcasecmp_l_power7
++            : __strcasecmp_l_ppc);
++
++weak_alias (__libc_strcasecmp_l, strcasecmp_l)
++#endif
+-- 
+1.8.3.1
+

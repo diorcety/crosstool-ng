@@ -1,0 +1,263 @@
+From 02a611b03a24e6b67e3f683d05ea374443c7523d Mon Sep 17 00:00:00 2001
+From: Rajalakshmi Srinivasaraghavan <raji@linux.vnet.ibm.com>
+Date: Wed, 30 Jul 2014 10:49:57 -0500
+Subject: [PATCH] PowerPC: multiarch floor/floorf for PowerPC64
+
+commit 357fd3b40a59df16191df23439411c1342cc1ba5
+Author: Adhemerval Zanella <azanella@linux.vnet.ibm.com>
+Date:   Fri Dec 13 15:04:04 2013 -0500
+---
+ sysdeps/powerpc/powerpc64/fpu/multiarch/Makefile   |  4 ++-
+ .../powerpc64/fpu/multiarch/s_floor-power5+.S      | 31 +++++++++++++++++
+ .../powerpc64/fpu/multiarch/s_floor-ppc64.S        | 31 +++++++++++++++++
+ sysdeps/powerpc/powerpc64/fpu/multiarch/s_floor.c  | 40 ++++++++++++++++++++++
+ .../powerpc64/fpu/multiarch/s_floorf-power5+.S     | 26 ++++++++++++++
+ .../powerpc64/fpu/multiarch/s_floorf-ppc64.S       | 27 +++++++++++++++
+ sysdeps/powerpc/powerpc64/fpu/multiarch/s_floorf.c | 32 +++++++++++++++++
+ 7 files changed, 190 insertions(+), 1 deletion(-)
+ create mode 100644 sysdeps/powerpc/powerpc64/fpu/multiarch/s_floor-power5+.S
+ create mode 100644 sysdeps/powerpc/powerpc64/fpu/multiarch/s_floor-ppc64.S
+ create mode 100644 sysdeps/powerpc/powerpc64/fpu/multiarch/s_floor.c
+ create mode 100644 sysdeps/powerpc/powerpc64/fpu/multiarch/s_floorf-power5+.S
+ create mode 100644 sysdeps/powerpc/powerpc64/fpu/multiarch/s_floorf-ppc64.S
+ create mode 100644 sysdeps/powerpc/powerpc64/fpu/multiarch/s_floorf.c
+
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/Makefile glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/Makefile
+index 9eb69af..d3d230d 100644
+--- glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/Makefile
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/Makefile
+@@ -5,5 +5,7 @@ sysdep_routines += s_isnan-power7 s_isnan-power6x s_isnan-power6 \
+ libm-sysdep_routines += s_isnan-power7 s_isnan-power6x s_isnan-power6 \
+                        s_isnan-power5 s_isnan-ppc64 s_llround-power6x \
+                        s_llround-power5+ s_llround-ppc64 s_ceil-power5+ \
+-                       s_ceil-ppc64 s_ceilf-power5+ s_ceilf-ppc64
++                       s_ceil-ppc64 s_ceilf-power5+ s_ceilf-ppc64 \
++                       s_floor-power5+ s_floor-ppc64 s_floorf-power5+ \
++                       s_floorf-ppc64
+ endif
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_floor-power5+.S glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_floor-power5+.S
+new file mode 100644
+index 0000000..a1550e9
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_floor-power5+.S
+@@ -0,0 +1,31 @@
++/* floor function.  PowerPC64/power5+ version.
++   Copyright (C) 2013-2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <sysdep.h>
++#include <math_ldbl_opt.h>
++
++#undef weak_alias
++#define weak_alias(a,b)
++#undef strong_alias
++#define strong_alias(a,b)
++#undef compat_symbol
++#define compat_symbol(a,b,c,d)
++
++#define __floor __floor_power5plus
++
++#include <sysdeps/powerpc/powerpc64/power5+/fpu/s_floor.S>
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_floor-ppc64.S glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_floor-ppc64.S
+new file mode 100644
+index 0000000..b5c232c
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_floor-ppc64.S
+@@ -0,0 +1,31 @@
++/* floor function.  PowerPC64 default version.
++   Copyright (C) 2013-2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <sysdep.h>
++#include <math_ldbl_opt.h>
++
++#undef weak_alias
++#define weak_alias(a,b)
++#undef strong_alias
++#define strong_alias(a,b)
++#undef compat_symbol
++#define compat_symbol(a,b,c,d)
++
++#define __floor __floor_ppc64
++
++#include <sysdeps/powerpc/powerpc64/fpu/s_floor.S>
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_floor.c glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_floor.c
+new file mode 100644
+index 0000000..f43976a
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_floor.c
+@@ -0,0 +1,40 @@
++/* Multiple versions of floor.
++   Copyright (C) 2013-2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <math.h>
++#include <math_ldbl_opt.h>
++#include <shlib-compat.h>
++#include "init-arch.h"
++
++extern __typeof (__floor) __floor_ppc64 attribute_hidden;
++extern __typeof (__floor) __floor_power5plus attribute_hidden;
++
++libc_ifunc (__floor,
++	    (hwcap & PPC_FEATURE_POWER5_PLUS)
++	    ? __floor_power5plus
++            : __floor_ppc64);
++
++weak_alias (__floor, floor)
++
++#ifdef NO_LONG_DOUBLE
++strong_alias (__floor, __floorl)
++weak_alias (__floor, floorl)
++#endif
++#if LONG_DOUBLE_COMPAT(libm, GLIBC_2_0)
++compat_symbol (libm, __floor, floorl, GLIBC_2_0);
++#endif
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_floorf-power5+.S glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_floorf-power5+.S
+new file mode 100644
+index 0000000..d371708
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_floorf-power5+.S
+@@ -0,0 +1,26 @@
++/* floorf function.  PowerPC64/power5+ version.
++   Copyright (C) 2013-2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <sysdep.h>
++
++#undef weak_alias
++#define weak_alias(a,b)
++
++#define __floorf __floorf_power5plus
++
++#include <sysdeps/powerpc/powerpc64/power5+/fpu/s_floorf.S>
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_floorf-ppc64.S glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_floorf-ppc64.S
+new file mode 100644
+index 0000000..dc81dea
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_floorf-ppc64.S
+@@ -0,0 +1,27 @@
++/* floorf function.  PowerPC64 default version.
++   Copyright (C) 2013-2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <sysdep.h>
++#include <math_ldbl_opt.h>
++
++#undef weak_alias
++#define weak_alias(a,b)
++
++#define __floorf __floorf_ppc64
++
++#include <sysdeps/powerpc/powerpc64/fpu/s_floorf.S>
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_floorf.c glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_floorf.c
+new file mode 100644
+index 0000000..08fc95e
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_floorf.c
+@@ -0,0 +1,32 @@
++/* Multiple versions of floorf.
++   Copyright (C) 2013-2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <math.h>
++#include <math_ldbl_opt.h>
++#include <shlib-compat.h>
++#include "init-arch.h"
++
++extern __typeof (__floorf) __floorf_ppc64 attribute_hidden;
++extern __typeof (__floorf) __floorf_power5plus attribute_hidden;
++
++libc_ifunc (__floorf,
++	    (hwcap & PPC_FEATURE_POWER5_PLUS)
++	    ? __floorf_power5plus
++            : __floorf_ppc64);
++
++weak_alias (__floorf, floorf)
+-- 
+1.8.3.1
+

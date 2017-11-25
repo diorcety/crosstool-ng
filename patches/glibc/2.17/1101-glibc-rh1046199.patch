@@ -1,0 +1,17 @@
+diff -pruN glibc-2.17-c758a686/nscd/netgroupcache.c glibc-2.17-c758a686/nscd/netgroupcache.c
+--- glibc-2.17-c758a686/nscd/netgroupcache.c	2013-12-20 04:38:40.432000000 -0500
++++ glibc-2.17-c758a686/nscd/netgroupcache.c	2013-12-20 04:37:29.945000000 -0500
+@@ -204,9 +204,10 @@ addgetnetgrentX (struct database_dyn *db
+ 		    int e;
+ 		    status = getfct.f (&data, buffer + buffilled,
+ 				       buflen - buffilled, &e);
+-		    if (status == NSS_STATUS_RETURN)
+-		      /* This was the last one for this group.  Look
+-			 at next group if available.  */
++		    if (status == NSS_STATUS_RETURN
++			|| status == NSS_STATUS_NOTFOUND)
++		      /* This was either the last one for this group or the
++			 group was empty.  Look at next group if available.  */
+ 		      break;
+ 		    if (status == NSS_STATUS_SUCCESS)
+ 		      {

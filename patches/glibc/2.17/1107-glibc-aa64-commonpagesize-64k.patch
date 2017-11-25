@@ -1,0 +1,11 @@
+--- glibc-2.17-c758a686/ports/sysdeps/aarch64/preconfigure	2012-12-24 22:02:13.000000000 -0500
++++ glibc-2.17-c758a686/ports/sysdeps/aarch64/preconfigure	2014-05-12 14:29:52.007239252 -0400
+@@ -8,7 +8,7 @@
+ case "$machine" in
+ aarch64*)
+ 	# Parameters to allow auto-detection of -z relro.
+-	libc_commonpagesize=0x1000
++	libc_commonpagesize=0x10000
+ 	libc_relro_required=yes
+ 	;;
+ esac

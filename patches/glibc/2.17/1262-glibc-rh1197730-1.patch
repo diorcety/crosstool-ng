@@ -1,0 +1,104 @@
+commit b3a9f56ba59c3d8eadd3135a1c25c37a63151450
+Author: Andreas Schwab <schwab@suse.de>
+Date:   Wed Jun 18 11:58:45 2014 +0200
+
+    Don't read past end of pattern in fnmatch (BZ #17062)
+
+diff --git glibc-2.17-c758a686/posix/fnmatch_loop.c glibc-2.17-c758a686/posix/fnmatch_loop.c
+index f79d051..544769b 100644
+--- glibc-2.17-c758a686/posix/fnmatch_loop.c
++++ glibc-2.17-c758a686/posix/fnmatch_loop.c
+@@ -899,11 +899,8 @@ FCT (pattern, string, string_end, no_leading_period, flags, ends, alloca_used)
+ 
+ 	  matched:
+ 	    /* Skip the rest of the [...] that already matched.  */
+-	    do
++	    while ((c = *p++) != L (']'))
+ 	      {
+-	      ignore_next:
+-		c = *p++;
+-
+ 		if (c == L('\0'))
+ 		  /* [... (unterminated) loses.  */
+ 		  return FNM_NOMATCH;
+@@ -931,12 +928,11 @@ FCT (pattern, string, string_end, no_leading_period, flags, ends, alloca_used)
+ 
+ 			if (c < L('a') || c >= L('z'))
+ 			  {
+-			    p = startp;
+-			    goto ignore_next;
++			    p = startp - 2;
++			    break;
+ 			  }
+ 		      }
+ 		    p += 2;
+-		    c = *p++;
+ 		  }
+ 		else if (c == L('[') && *p == L('='))
+ 		  {
+@@ -947,7 +943,6 @@ FCT (pattern, string, string_end, no_leading_period, flags, ends, alloca_used)
+ 		    if (c != L('=') || p[1] != L(']'))
+ 		      return FNM_NOMATCH;
+ 		    p += 2;
+-		    c = *p++;
+ 		  }
+ 		else if (c == L('[') && *p == L('.'))
+ 		  {
+@@ -962,10 +957,8 @@ FCT (pattern, string, string_end, no_leading_period, flags, ends, alloca_used)
+ 			  break;
+ 		      }
+ 		    p += 2;
+-		    c = *p++;
+ 		  }
+ 	      }
+-	    while (c != L(']'));
+ 	    if (not)
+ 	      return FNM_NOMATCH;
+ 	  }
+diff --git glibc-2.17-c758a686/posix/tst-fnmatch3.c glibc-2.17-c758a686/posix/tst-fnmatch3.c
+new file mode 100644
+index 0000000..2a83c1b
+--- /dev/null
++++ glibc-2.17-c758a686/posix/tst-fnmatch3.c
+@@ -0,0 +1,30 @@
++/* Test for fnmatch not reading past the end of the pattern.
++   Copyright (C) 2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <fnmatch.h>
++
++int
++do_test (void)
++{
++  const char *pattern = "[[:alpha:]'[:alpha:]\0]";
++
++  return fnmatch (pattern, "a", 0) != FNM_NOMATCH;
++}
++
++#define TEST_FUNCTION do_test ()
++#include "../test-skeleton.c"
+--- glibc-2.17-c758a686/posix/Makefile	2015-05-15 16:00:01.000000000 -0400
++++ glibc-2.17-c758a686/posix/Makefile	2015-05-29 18:34:07.507240952 -0400
+@@ -87,7 +87,7 @@
+ 		   tst-getaddrinfo3 tst-fnmatch2 tst-cpucount tst-cpuset \
+ 		   bug-getopt1 bug-getopt2 bug-getopt3 bug-getopt4 \
+ 		   bug-getopt5 tst-getopt_long1 bug-regex34 \
+-		   tst-pathconf
++		   tst-pathconf tst-fnmatch3
+ xtests		:= bug-ga2
+ ifeq (yes,$(build-shared))
+ test-srcs	:= globtest

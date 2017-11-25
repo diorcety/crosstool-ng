@@ -1,0 +1,18 @@
+commit aba8ef95b56313269512f5ec449e0d9c74d2a1e2
+Author: Roland McGrath <roland@hack.frob.com>
+Date:   Mon Jun 23 14:07:59 2014 -0700
+
+    Add missing #include in get-rounding-mode.h
+
+Index: b/sysdeps/generic/get-rounding-mode.h
+===================================================================
+--- a/sysdeps/generic/get-rounding-mode.h
++++ b/sysdeps/generic/get-rounding-mode.h
+@@ -20,6 +20,7 @@
+ #define _GET_ROUNDING_MODE_H	1
+ 
+ #include <fpu_control.h>
++#include <stdlib.h>
+ 
+ /* Define values for FE_* modes not defined for this architecture.  */
+ #ifdef FE_DOWNWARD

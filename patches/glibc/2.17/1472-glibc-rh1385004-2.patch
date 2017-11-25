@@ -1,0 +1,73 @@
+From c86e89a09d187da3aca1ee7ff9bfee4957fe70ff Mon Sep 17 00:00:00 2001
+From: Adhemerval Zanella <adhemerval.zanella@linaro.org>
+Date: Tue, 28 Jul 2015 15:34:25 -0300
+Subject: [PATCH] powerpc: Fix strstr/power7 build
+
+This patch fixes the strstr build with --disable-multi-arch option.
+The optimization calls the __strstr_ppc symbol, which always build
+for multiarch config but not if it is disable.  This patch fixes it
+by adding the default C implementation object with the expected
+symbol name.
+
+	* sysdeps/powerpc/powerpc64/power7/Makefile [$(subdir) = string]
+	(sysdep_routines): Add strstr-ppc64.
+	* sysdeps/powerpc/powerpc64/power7/strstr-ppc64.c: New file.
+
+(cherry picked from commit 357bb400f1b25e48e265fd55b5996328d2a8c142)
+---
+ ChangeLog                                       |  6 ++++++
+ sysdeps/powerpc/powerpc64/power7/Makefile       |  1 +
+ sysdeps/powerpc/powerpc64/power7/strstr-ppc64.c | 27 +++++++++++++++++++++++++
+ 3 files changed, 34 insertions(+)
+ create mode 100644 sysdeps/powerpc/powerpc64/power7/strstr-ppc64.c
+
+diff --git a/ChangeLog b/ChangeLog
+index 8e98192..d70df5c 100644
+diff --git a/sysdeps/powerpc/powerpc64/power7/Makefile b/sysdeps/powerpc/powerpc64/power7/Makefile
+index 40aacfa..89a2296 100644
+--- a/sysdeps/powerpc/powerpc64/power7/Makefile
++++ b/sysdeps/powerpc/powerpc64/power7/Makefile
+@@ -5,6 +5,7 @@ CFLAGS-rtld.c += -mno-vsx
+ endif
+ 
+ ifeq ($(subdir),string)
++sysdep_routines += strstr-ppc64
+ CFLAGS-strncase.c += -funroll-loops
+ CFLAGS-strncase_l.c += -funroll-loops
+ endif
+diff --git a/sysdeps/powerpc/powerpc64/power7/strstr-ppc64.c b/sysdeps/powerpc/powerpc64/power7/strstr-ppc64.c
+new file mode 100644
+index 0000000..bbab92d
+--- /dev/null
++++ b/sysdeps/powerpc/powerpc64/power7/strstr-ppc64.c
+@@ -0,0 +1,27 @@
++/* Optimized strstr implementation for PowerPC64/POWER7.
++   Copyright (C) 2015 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <string.h>
++
++#define STRSTR __strstr_ppc
++#undef libc_hidden_builtin_def
++#define libc_hidden_builtin_def(__name)
++
++extern __typeof (strstr) __strstr_ppc attribute_hidden;
++
++#include <string/strstr.c>
+-- 
+2.1.0
+

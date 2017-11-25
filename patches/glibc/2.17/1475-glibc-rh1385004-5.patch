@@ -1,0 +1,69 @@
+From de9b90366c27db80777d5099e4b22298f0b61a29 Mon Sep 17 00:00:00 2001
+From: Carlos Eduardo Seo <cseo@linux.vnet.ibm.com>
+Date: Thu, 13 Aug 2015 14:33:06 -0300
+Subject: [PATCH] powerpc: Add missing hwcap strings.
+
+Some features in hwcap.h do not have matching string descriptors
+to be displayed when LD_SHOW_AUXV=1.  This patch fixes the problem.
+
+2015-08-13  Carlos Eduardo Seo  <cseo@linux.vnet.ibm.com>
+
+	* sysdeps/powerpc/dl-procinfo.c:
+	(_dl_powerpc_cap_flags): Added missing strings for some
+	hwcap features.
+	* sysdeps/powerpc/dl-procinfo.h: Updated hwcap bit count.
+
+(cherry picked from commit 94ec7e007f4845de284d4f7569721b225ba77572)
+---
+ ChangeLog                     | 7 +++++++
+ sysdeps/powerpc/dl-procinfo.c | 6 +++---
+ sysdeps/powerpc/dl-procinfo.h | 4 ++--
+ 3 files changed, 12 insertions(+), 5 deletions(-)
+
+diff --git a/ChangeLog b/ChangeLog
+index 5cbd6d6..d9d3659 100644
+diff --git a/sysdeps/powerpc/dl-procinfo.c b/sysdeps/powerpc/dl-procinfo.c
+index 3a8cc41..6eda5d9 100644
+--- a/sysdeps/powerpc/dl-procinfo.c
++++ b/sysdeps/powerpc/dl-procinfo.c
+@@ -45,11 +45,11 @@
+ #if !defined PROCINFO_DECL && defined SHARED
+   ._dl_powerpc_cap_flags
+ #else
+-PROCINFO_CLASS const char _dl_powerpc_cap_flags[57][10]
++PROCINFO_CLASS const char _dl_powerpc_cap_flags[60][10]
+ #endif
+ #ifndef PROCINFO_DECL
+ = {
+-    "vsx", 
++    "ppcle", "true_le", "archpmu", "vsx",
+     "arch_2_06", "power6x", "dfp", "pa6t",
+     "arch_2_05", "ic_snoop", "smt", "booke",
+     "cellbe", "power5+", "power5", "power4",
+@@ -62,7 +62,7 @@ PROCINFO_CLASS const char _dl_powerpc_cap_flags[57][10]
+     "", "", "", "",
+     "", "", "", "",
+     "", "", "", "",
+-    "", "", "tar", "isel",
++    "", "vcrypto", "tar", "isel",
+     "ebb", "dscr", "htm", "arch_2_07",
+   }
+ #endif
+diff --git a/sysdeps/powerpc/dl-procinfo.h b/sysdeps/powerpc/dl-procinfo.h
+index cf167b0..36873cf 100644
+--- a/sysdeps/powerpc/dl-procinfo.h
++++ b/sysdeps/powerpc/dl-procinfo.h
+@@ -22,8 +22,8 @@
+ #include <ldsodefs.h>
+ #include <sysdep.h>	/* This defines the PPC_FEATURE[2]_* macros.  */
+ 
+-/* There are 25 bits used, but they are bits 7..31.  */
+-#define _DL_HWCAP_FIRST		7
++/* There are 28 bits used, but they are bits 4..31.  */
++#define _DL_HWCAP_FIRST		4
+ 
+ /* The total number of available bits (including those prior to
+    _DL_HWCAP_FIRST).  Some of these bits might not be used.  */
+-- 
+2.1.0
+

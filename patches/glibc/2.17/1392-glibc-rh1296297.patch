@@ -1,0 +1,356 @@
+Adds --install-langs support build-locale-archive.
+
+commit 0457f649e3fe6299efe384da13dfc923bbe65707
+Author: Carlos O'Donell <carlos@systemhalted.org>
+Date:   Thu Sep 17 12:24:49 2015 -0400
+
+[snip]
+    - Fix --install-langs bug which causes SIGABRT (#1262040).
+
+commit 91764bd9ec690d4b8a886c0a3a104aac12d340d2
+Author: Carlos O'Donell <carlos@systemhalted.org>
+Date:   Thu Mar 5 16:05:43 2015 -0500
+
+    Resolves: #156477
+    
+    - Support installing only those locales specified by the RPM macro
+      %%_install_langs (#156477).
+
+Index: glibc-2.17-c758a686/releng/build-locale-archive.c
+===================================================================
+--- glibc-2.17-c758a686.orig/releng/build-locale-archive.c
++++ glibc-2.17-c758a686/releng/build-locale-archive.c
+@@ -8,6 +8,7 @@
+ #include <stdbool.h>
+ #include <stdio.h>
+ #include <stdlib.h>
++#include <getopt.h>
+ #include <string.h>
+ #include <sys/mman.h>
+ #include <sys/stat.h>
+@@ -21,6 +22,7 @@ const char *alias_file = DATADIR "/local
+ const char *locar_file = PREFIX "/lib/locale/locale-archive";
+ const char *tmpl_file = PREFIX "/lib/locale/locale-archive.tmpl";
+ const char *loc_path = PREFIX "/lib/locale/";
++/* Flags set by `--verbose` option.  */
+ int be_quiet = 1;
+ int verbose = 0;
+ int max_locarchive_open_retry = 10;
+@@ -96,7 +98,7 @@ open_tmpl_archive (struct locarhandle *a
+   struct stat64 st;
+   int fd;
+   struct locarhead head;
+-  const char *archivefname = tmpl_file;
++  const char *archivefname = ah->fname == NULL ? tmpl_file : ah->fname;
+ 
+   /* Open the archive.  We must have exclusive write access.  */
+   fd = open64 (archivefname, O_RDONLY);
+@@ -116,7 +118,7 @@ open_tmpl_archive (struct locarhandle *a
+   ah->mmaped = (head.sumhash_offset
+ 		+ head.sumhash_size * sizeof (struct sumhashent));
+   if (ah->mmaped > (unsigned long) st.st_size)
+-    error (EXIT_FAILURE, 0, "locale archite template file truncated");
++    error (EXIT_FAILURE, 0, "locale archive template file truncated");
+   ah->mmaped = st.st_size;
+   ah->reserved = st.st_size;
+ 
+@@ -250,7 +252,10 @@ compute_data (struct locarhandle *ah, st
+ }
+ 
+ static int
+-fill_archive (struct locarhandle *tmpl_ah, size_t nlist, char *list[],
++fill_archive (struct locarhandle *tmpl_ah,
++	      const char *fname,
++	      size_t install_langs_count, char *install_langs_list[],
++	      size_t nlist, char *list[],
+ 	      const char *primary)
+ {
+   struct locarhandle ah;
+@@ -281,11 +286,40 @@ fill_archive (struct locarhandle *tmpl_a
+   for (cnt = used = 0; cnt < head->namehash_size; ++cnt)
+     if (namehashtab[cnt].locrec_offset != 0)
+       {
++	char * name;
++	int i;
+ 	assert (used < head->namehash_used);
+-	names[used].name = tmpl_ah->addr + namehashtab[cnt].name_offset;
+-	names[used++].locrec
+-	  = (struct locrecent *) ((char *) tmpl_ah->addr +
+-				  namehashtab[cnt].locrec_offset);
++        name = tmpl_ah->addr + namehashtab[cnt].name_offset;
++        if (install_langs_count == 0)
++          {
++	    /* Always intstall the entry.  */
++            names[used].name = name;
++            names[used++].locrec
++                = (struct locrecent *) ((char *) tmpl_ah->addr +
++                                        namehashtab[cnt].locrec_offset);
++          }
++        else
++          {
++	    /* Only install the entry if the user asked for it via
++	       --install-langs.  */
++            for (i = 0; i < install_langs_count; i++)
++              {
++		/* Add one for "_" and one for the null terminator.  */
++		size_t len = strlen (install_langs_list[i]) + 2;
++		char *install_lang = (char *)xmalloc (len);
++                strcpy (install_lang, install_langs_list[i]);
++                if (strchr (install_lang, '_') == NULL)
++                  strcat (install_lang, "_");
++                if (strncmp (name, install_lang, strlen (install_lang)) == 0)
++                  {
++                    names[used].name = name;
++                    names[used++].locrec
++		      = (struct locrecent *) ((char *)tmpl_ah->addr
++					      + namehashtab[cnt].locrec_offset);
++                  }
++		free (install_lang);
++              }
++          }
+       }
+ 
+   /* Sort the names.  */
+@@ -304,6 +338,9 @@ fill_archive (struct locarhandle *tmpl_a
+ 
+   /* Open the archive.  This call never returns if we cannot
+      successfully open the archive.  */
++  ah.fname = NULL;
++  if (fname != NULL)
++    ah.fname = fname;
+   open_archive (&ah, false);
+ 
+   if (primary != NULL)
+@@ -532,24 +569,197 @@ fill_archive (struct locarhandle *tmpl_a
+   return result;
+ }
+ 
+-int main ()
++void usage()
++{
++  printf ("\
++Usage: build-locale-archive [OPTION]... [TEMPLATE-FILE] [ARCHIVE-FILE]\n\
++ Builds a locale archive from a template file.\n\
++ Options:\n\
++  -h, --help                 Print this usage message.\n\
++  -v, --verbose              Verbose execution.\n\
++  -l, --install-langs=LIST   Only include locales given in LIST into the \n\
++                             locale archive.  LIST is a colon separated list\n\
++                             of locale prefixes, for example \"de:en:ja\".\n\
++                             The special argument \"all\" means to install\n\
++                             all languages and it must be present by itself.\n\
++                             If \"all\" is present with any other language it\n\
++                             will be treated as the name of a locale.\n\
++                             If the --install-langs option is missing, all\n\
++                             locales are installed. The colon separated list\n\
++                             can contain any strings matching the beginning of\n\
++                             locale names.\n\
++                             If a string does not contain a \"_\", it is added.\n\
++                             Examples:\n\
++                               --install-langs=\"en\"\n\
++                                 installs en_US, en_US.iso88591,\n\
++                                 en_US.iso885915, en_US.utf8,\n\
++                                 en_GB ...\n\
++                               --install-langs=\"en_US.utf8\"\n\
++                                 installs only en_US.utf8.\n\
++                               --install-langs=\"ko\"\n\
++                                 installs ko_KR, ko_KR.euckr,\n\
++                                 ko_KR.utf8 but *not* kok_IN\n\
++                                 because \"ko\" does not contain\n\
++                                 \"_\" and it is silently added\n\
++                               --install-langs\"ko:kok\"\n\
++                                 installs ko_KR, ko_KR.euckr,\n\
++                                 ko_KR.utf8, kok_IN, and\n\
++                                 kok_IN.utf8.\n\
++                               --install-langs=\"POSIX\" will\n\
++                                 installs *no* locales at all\n\
++                                 because POSIX matches none of\n\
++                                 the locales. Actually, any string\n\
++                                 matching nothing will do that.\n\
++                                 POSIX and C will always be\n\
++                                 available because they are\n\
++                                 builtin.\n\
++                             Aliases are installed as well,\n\
++                             i.e. --install-langs=\"de\"\n\
++                             will install not only every locale starting with\n\
++                             \"de\" but also the aliases \"deutsch\"\n\
++                             and and \"german\" although the latter does not\n\
++                             start with \"de\".\n\
++\n\
++  If the arguments TEMPLATE-FILE and ARCHIVE-FILE are not given the locations\n\
++  where the glibc used expects these files are used by default.\n\
++");
++}
++
++int main (int argc, char *argv[])
+ {
+   char path[4096];
+   DIR *dirp;
+   struct dirent64 *d;
+   struct stat64 st;
+   char *list[16384], *primary;
++  char *lang;
++  int install_langs_count = 0;
++  int i;
++  char *install_langs_arg, *ila_start;
++  char **install_langs_list;
+   unsigned int cnt = 0;
+   struct locarhandle tmpl_ah;
++  char *new_locar_fname = NULL;
+   size_t loc_path_len = strlen (loc_path);
+ 
++  while (1)
++    {
++      int c;
++
++      static struct option long_options[] =
++        {
++            {"help",            no_argument,       0, 'h'},
++            {"verbose",         no_argument,       0, 'v'},
++            {"install-langs",   required_argument, 0, 'l'},
++            {0, 0, 0, 0}
++        };
++      /* getopt_long stores the option index here. */
++      int option_index = 0;
++
++      c = getopt_long (argc, argv, "vhl:",
++                       long_options, &option_index);
++
++      /* Detect the end of the options. */
++      if (c == -1)
++        break;
++
++      switch (c)
++        {
++        case 0:
++          printf ("unknown option %s", long_options[option_index].name);
++          if (optarg)
++            printf (" with arg %s", optarg);
++          printf ("\n");
++          usage ();
++          exit (1);
++
++        case 'v':
++          verbose = 1;
++          be_quiet = 0;
++          break;
++
++        case 'h':
++          usage ();
++          exit (0);
++
++        case 'l':
++          install_langs_arg = ila_start = strdup (optarg);
++          /* If the argument to --install-lang is "all", do
++             not limit the list of languages to install and install
++             them all.  We do not support installing a single locale
++	     called "all".  */
++#define MAGIC_INSTALL_ALL "all"
++          if (install_langs_arg != NULL
++	      && install_langs_arg[0] != '\0'
++	      && !(strncmp(install_langs_arg, MAGIC_INSTALL_ALL,
++			   strlen(MAGIC_INSTALL_ALL)) == 0
++		   && strlen (install_langs_arg) == 3))
++            {
++	      /* Count the number of languages we will install.  */
++              while (true)
++                {
++                  lang = strtok(install_langs_arg, ":;,");
++                  if (lang == NULL)
++                    break;
++                  install_langs_count++;
++                  install_langs_arg = NULL;
++                }
++	      free (ila_start);
++	      /* Copy the list.  */
++	      install_langs_list = (char **)xmalloc (sizeof(char *) * install_langs_count);
++	      install_langs_arg = ila_start = strdup (optarg);
++	      install_langs_count = 0;
++	      while (true)
++                {
++                  lang = strtok(install_langs_arg, ":;,");
++                  if (lang == NULL)
++                    break;
++                  install_langs_list[install_langs_count] = lang;
++		  install_langs_count++;
++                  install_langs_arg = NULL;
++                }
++            }
++          break;
++
++        case '?':
++          /* getopt_long already printed an error message. */
++          usage ();
++          exit (0);
++
++        default:
++          abort ();
++        }
++    }
++  tmpl_ah.fname = NULL;
++  if (optind < argc)
++    tmpl_ah.fname = argv[optind];
++  if (optind + 1 < argc)
++    new_locar_fname = argv[optind + 1];
++  if (verbose)
++    {
++      if (tmpl_ah.fname)
++        printf("input archive file specified on command line: %s\n",
++               tmpl_ah.fname);
++      else
++        printf("using default input archive file.\n");
++      if (new_locar_fname)
++        printf("output archive file specified on command line: %s\n",
++               new_locar_fname);
++      else
++        printf("using default output archive file.\n");
++    }
++
+   dirp = opendir (loc_path);
+   if (dirp == NULL)
+     error (EXIT_FAILURE, errno, "cannot open directory \"%s\"", loc_path);
+ 
+   open_tmpl_archive (&tmpl_ah);
+ 
+-  unlink (locar_file);
++  if (new_locar_fname)
++    unlink (new_locar_fname);
++  else
++    unlink (locar_file);
++
+   primary = getenv ("LC_ALL");
+   if (primary == NULL)
+     primary = getenv ("LANG");
+@@ -560,7 +770,8 @@ int main ()
+ 	  && strncmp (primary, "zh", 2) != 0)
+ 	{
+ 	  char *ptr = malloc (strlen (primary) + strlen (".utf8") + 1), *p, *q;
+-
++	  /* This leads to invalid locales sometimes:
++	     de_DE.iso885915@euro -> de_DE.utf8@euro */
+ 	  if (ptr != NULL)
+ 	    {
+ 	      p = ptr;
+@@ -623,10 +834,19 @@ int main ()
+       cnt++;
+     }
+   closedir (dirp);
+-  fill_archive (&tmpl_ah, cnt, list, primary);
++  /* Store the archive to the file specified as the second argument on the
++     command line or the default locale archive.  */
++  fill_archive (&tmpl_ah, new_locar_fname,
++                install_langs_count, install_langs_list,
++                cnt, list, primary);
+   close_archive (&tmpl_ah);
+   truncate (tmpl_file, 0);
+-  char *argv[] = { "/usr/sbin/tzdata-update", NULL };
+-  execve (argv[0], (char *const *)argv, (char *const *)&argv[1]);
++  if (install_langs_count > 0)
++    {
++      free (ila_start);
++      free (install_langs_list);
++    }
++  char *tz_argv[] = { "/usr/sbin/tzdata-update", NULL };
++  execve (tz_argv[0], (char *const *)tz_argv, (char *const *)&tz_argv[1]);
+   exit (0);
+ }

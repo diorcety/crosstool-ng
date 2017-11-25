@@ -1,0 +1,263 @@
+diff -Nru glibc-2.17-c758a686/po/de.po glibc-2.17-c758a686/po/de.po
+--- glibc-2.17-c758a686/po/de.po	2012-12-24 22:02:13.000000000 -0500
++++ glibc-2.17-c758a686/po/de.po	2013-08-22 00:23:19.550362503 -0400
+@@ -6342,13 +6342,14 @@ msgstr "Zu viele Benutzer"
+ msgid "Disk quota exceeded"
+ msgstr "Der zugewiesene Plattenplatz (Quota) ist überschritten"
+ 
+-#. TRANS Stale NFS file handle.  This indicates an internal confusion in the NFS
+-#. TRANS system which is due to file system rearrangements on the server host.
+-#. TRANS Repairing this condition usually requires unmounting and remounting
+-#. TRANS the NFS file system on the local host.
++#. TRANS Stale file handle.  This indicates an internal confusion in the
++#. TRANS file system which is due to file system rearrangements on the server host
++#. TRANS for NFS filesystems or corruption in other filesystems.
++#. TRANS Repairing this condition usually requires unmounting, possibly
++#. TRANS repairing and remounting the file system.
+ #: sysdeps/gnu/errlist.c:787
+-msgid "Stale NFS file handle"
+-msgstr "Veraltete NFS-Dateizugriffsnummer"
++msgid "Stale file handle"
++msgstr "Veraltetes Datei-Handle"
+ 
+ #. TRANS An attempt was made to NFS-mount a remote file system with a file name that
+ #. TRANS already specifies an NFS-mounted file.
+diff -Nru glibc-2.17-c758a686/po/es.po glibc-2.17-c758a686/po/es.po
+--- glibc-2.17-c758a686/po/es.po	2012-12-24 22:02:13.000000000 -0500
++++ glibc-2.17-c758a686/po/es.po	2013-08-22 00:26:06.924362114 -0400
+@@ -6419,13 +6419,14 @@ msgstr "Se ha excedido la cuota de disco
+ # Muy bien, he buscado "stale" y por lo que parece es algo que "caduca"
+ # o que "vence", como las letras comerciales. Me he decidido por "en desuso".
+ #
+-#. TRANS Stale NFS file handle.  This indicates an internal confusion in the NFS
+-#. TRANS system which is due to file system rearrangements on the server host.
+-#. TRANS Repairing this condition usually requires unmounting and remounting
+-#. TRANS the NFS file system on the local host.
++#. TRANS Stale file handle.  This indicates an internal confusion in the
++#. TRANS file system which is due to file system rearrangements on the server host
++#. TRANS for NFS filesystems or corruption in other filesystems.
++#. TRANS Repairing this condition usually requires unmounting, possibly
++#. TRANS repairing and remounting the file system.
+ #: sysdeps/gnu/errlist.c:787
+-msgid "Stale NFS file handle"
+-msgstr "`handle' de fichero NFS en desuso"
++msgid "Stale file handle"
++msgstr "Identificador de archivos obsoletos"
+ 
+ #. TRANS An attempt was made to NFS-mount a remote file system with a file name that
+ #. TRANS already specifies an NFS-mounted file.
+diff -Nru glibc-2.17-c758a686/po/fr.po glibc-2.17-c758a686/po/fr.po
+--- glibc-2.17-c758a686/po/fr.po	2012-12-24 22:02:13.000000000 -0500
++++ glibc-2.17-c758a686/po/fr.po	2013-08-22 00:27:48.381361856 -0400
+@@ -6236,13 +6236,14 @@ msgstr "Trop d'usagers"
+ msgid "Disk quota exceeded"
+ msgstr "Débordement du quota d'espace disque"
+ 
+-#. TRANS Stale NFS file handle.  This indicates an internal confusion in the NFS
+-#. TRANS system which is due to file system rearrangements on the server host.
+-#. TRANS Repairing this condition usually requires unmounting and remounting
+-#. TRANS the NFS file system on the local host.
++#. TRANS Stale file handle.  This indicates an internal confusion in the
++#. TRANS file system which is due to file system rearrangements on the server host
++#. TRANS for NFS filesystems or corruption in other filesystems.
++#. TRANS Repairing this condition usually requires unmounting, possibly
++#. TRANS repairing and remounting the file system.
+ #: sysdeps/gnu/errlist.c:787
+-msgid "Stale NFS file handle"
+-msgstr "Panne d'accès au fichier NFS"
++msgid "Stale file handle"
++msgstr "Gestionnaire de fichiers périmés"
+ 
+ #. TRANS An attempt was made to NFS-mount a remote file system with a file name that
+ #. TRANS already specifies an NFS-mounted file.
+diff -Nru glibc-2.17-c758a686/po/it.po glibc-2.17-c758a686/po/it.po
+--- glibc-2.17-c758a686/po/it.po	2012-12-24 22:02:13.000000000 -0500
++++ glibc-2.17-c758a686/po/it.po	2013-08-22 00:31:45.643299312 -0400
+@@ -6488,13 +6488,14 @@ msgstr "Troppi utenti"
+ msgid "Disk quota exceeded"
+ msgstr "Quota disco superata"
+ 
+-#. TRANS Stale NFS file handle.  This indicates an internal confusion in the NFS
+-#. TRANS system which is due to file system rearrangements on the server host.
+-#. TRANS Repairing this condition usually requires unmounting and remounting
+-#. TRANS the NFS file system on the local host.
++#. TRANS Stale file handle.  This indicates an internal confusion in the
++#. TRANS file system which is due to file system rearrangements on the server host
++#. TRANS for NFS filesystems or corruption in other filesystems.
++#. TRANS Repairing this condition usually requires unmounting, possibly
++#. TRANS repairing and remounting the file system.
+ #: sysdeps/gnu/errlist.c:787
+-msgid "Stale NFS file handle"
+-msgstr "Gestione del file NFS interrotta"
++msgid "Stale file handle"
++msgstr "Gestione file obsoleti"
+ 
+ # lf
+ #. TRANS An attempt was made to NFS-mount a remote file system with a file name that
+diff -Nru glibc-2.17-c758a686/po/ja.po glibc-2.17-c758a686/po/ja.po
+--- glibc-2.17-c758a686/po/ja.po	2012-12-24 22:02:13.000000000 -0500
++++ glibc-2.17-c758a686/po/ja.po	2013-08-22 00:40:52.870361885 -0400
+@@ -6060,13 +6060,14 @@ msgstr "ユーザが多すぎます"
+ msgid "Disk quota exceeded"
+ msgstr "ディスク使用量制限を超過しました"
+ 
+-#. TRANS Stale NFS file handle.  This indicates an internal confusion in the NFS
+-#. TRANS system which is due to file system rearrangements on the server host.
+-#. TRANS Repairing this condition usually requires unmounting and remounting
+-#. TRANS the NFS file system on the local host.
++#. TRANS Stale file handle.  This indicates an internal confusion in the
++#. TRANS file system which is due to file system rearrangements on the server host
++#. TRANS for NFS filesystems or corruption in other filesystems.
++#. TRANS Repairing this condition usually requires unmounting, possibly
++#. TRANS repairing and remounting the file system.
+ #: sysdeps/gnu/errlist.c:787
+-msgid "Stale NFS file handle"
+-msgstr "実効性のないNFSファイルハンドルです"
++msgid "Stale file handle"
++msgstr "古いファイルハンドルです"
+ 
+ #. TRANS An attempt was made to NFS-mount a remote file system with a file name that
+ #. TRANS already specifies an NFS-mounted file.
+diff -Nru glibc-2.17-c758a686/po/ko.po glibc-2.17-c758a686/po/ko.po
+--- glibc-2.17-c758a686/po/ko.po	2012-12-24 22:02:13.000000000 -0500
++++ glibc-2.17-c758a686/po/ko.po	2013-08-22 01:26:54.047362067 -0400
+@@ -6076,13 +6076,14 @@ msgstr "사용자가 너무 많음"
+ msgid "Disk quota exceeded"
+ msgstr "디스크 할당량이 초과됨"
+ 
+-#. TRANS Stale NFS file handle.  This indicates an internal confusion in the NFS
+-#. TRANS system which is due to file system rearrangements on the server host.
+-#. TRANS Repairing this condition usually requires unmounting and remounting
+-#. TRANS the NFS file system on the local host.
++#. TRANS Stale file handle.  This indicates an internal confusion in the
++#. TRANS file system which is due to file system rearrangements on the server host
++#. TRANS for NFS filesystems or corruption in other filesystems.
++#. TRANS Repairing this condition usually requires unmounting, possibly
++#. TRANS repairing and remounting the file system.
+ #: sysdeps/gnu/errlist.c:787
+-msgid "Stale NFS file handle"
+-msgstr "끊어진 NFS 파일 핸들"
++msgid "Stale file handle"
++msgstr "오래된 파일 처리"
+ 
+ #. TRANS An attempt was made to NFS-mount a remote file system with a file name that
+ #. TRANS already specifies an NFS-mounted file.
+diff -Nru glibc-2.17-c758a686/po/libc.pot glibc-2.17-c758a686/po/libc.pot
+--- glibc-2.17-c758a686/po/libc.pot	2012-12-24 22:02:13.000000000 -0500
++++ glibc-2.17-c758a686/po/libc.pot	2013-08-22 01:28:04.037362480 -0400
+@@ -6120,12 +6120,13 @@ msgstr ""
+ msgid "Disk quota exceeded"
+ msgstr ""
+ 
+-#. TRANS Stale NFS file handle.  This indicates an internal confusion in the NFS
+-#. TRANS system which is due to file system rearrangements on the server host.
+-#. TRANS Repairing this condition usually requires unmounting and remounting
+-#. TRANS the NFS file system on the local host.
++#. TRANS Stale file handle.  This indicates an internal confusion in the
++#. TRANS file system which is due to file system rearrangements on the server host
++#. TRANS for NFS filesystems or corruption in other filesystems.
++#. TRANS Repairing this condition usually requires unmounting, possibly
++#. TRANS repairing and remounting the file system.
+ #: sysdeps/gnu/errlist.c:787
+-msgid "Stale NFS file handle"
++msgid "Stale file handle"
+ msgstr ""
+ 
+ #. TRANS An attempt was made to NFS-mount a remote file system with a file name that
+diff -Nru glibc-2.17-c758a686/po/pt_BR.po glibc-2.17-c758a686/po/pt_BR.po
+--- glibc-2.17-c758a686/po/pt_BR.po	2012-12-24 22:02:13.000000000 -0500
++++ glibc-2.17-c758a686/po/pt_BR.po	2013-08-22 00:57:47.845218981 -0400
+@@ -2287,13 +2287,14 @@ msgstr "Erro de Srmount"
+ msgid "Stack fault"
+ msgstr "Falha de pilha"
+ 
+-#. TRANS Stale NFS file handle.  This indicates an internal confusion in the NFS
+-#. TRANS system which is due to file system rearrangements on the server host.
+-#. TRANS Repairing this condition usually requires unmounting and remounting
+-#. TRANS the NFS file system on the local host.
+-#: stdio-common/../sysdeps/gnu/errlist.c:506
+-msgid "Stale NFS file handle"
+-msgstr "Manipulador de arquivo NFS corrompido"
++#. TRANS Stale file handle.  This indicates an internal confusion in the
++#. TRANS file system which is due to file system rearrangements on the server host
++#. TRANS for NFS filesystems or corruption in other filesystems.
++#. TRANS Repairing this condition usually requires unmounting, possibly
++#. TRANS repairing and remounting the file system.
++#: sysdeps/gnu/errlist.c:787
++msgid "Stale file handle"
++msgstr "Manipulador de arquivo obsoleto"
+ 
+ #: nscd/nscd.c:81
+ msgid "Start NUMBER threads"
+diff -Nru glibc-2.17-c758a686/po/ru.po glibc-2.17-c758a686/po/ru.po
+--- glibc-2.17-c758a686/po/ru.po	2012-12-24 22:02:13.000000000 -0500
++++ glibc-2.17-c758a686/po/ru.po	2013-08-22 01:00:36.824204890 -0400
+@@ -6243,13 +6243,14 @@ msgstr "Слишком много пол
+ msgid "Disk quota exceeded"
+ msgstr "Превышена дисковая квота"
+ 
+-#. TRANS Stale NFS file handle.  This indicates an internal confusion in the NFS
+-#. TRANS system which is due to file system rearrangements on the server host.
+-#. TRANS Repairing this condition usually requires unmounting and remounting
+-#. TRANS the NFS file system on the local host.
++#. TRANS Stale file handle.  This indicates an internal confusion in the
++#. TRANS file system which is due to file system rearrangements on the server host
++#. TRANS for NFS filesystems or corruption in other filesystems.
++#. TRANS Repairing this condition usually requires unmounting, possibly
++#. TRANS repairing and remounting the file system.
+ #: sysdeps/gnu/errlist.c:787
+-msgid "Stale NFS file handle"
+-msgstr "Устаревший дескриптор файла NFS"
++msgid "Stale file handle"
++msgstr "Устаревший дескриптор файла"
+ 
+ #. TRANS An attempt was made to NFS-mount a remote file system with a file name that
+ #. TRANS already specifies an NFS-mounted file.
+diff -Nru glibc-2.17-c758a686/po/zh_CN.po glibc-2.17-c758a686/po/zh_CN.po
+--- glibc-2.17-c758a686/po/zh_CN.po	2012-12-24 22:02:13.000000000 -0500
++++ glibc-2.17-c758a686/po/zh_CN.po	2013-08-22 01:02:42.089238124 -0400
+@@ -5519,13 +5519,14 @@ msgstr "用户过多"
+ msgid "Disk quota exceeded"
+ msgstr "超出磁盘限额"
+ 
+-#. TRANS Stale NFS file handle.  This indicates an internal confusion in the NFS
+-#. TRANS system which is due to file system rearrangements on the server host.
+-#. TRANS Repairing this condition usually requires unmounting and remounting
+-#. TRANS the NFS file system on the local host.
++#. TRANS Stale file handle.  This indicates an internal confusion in the
++#. TRANS file system which is due to file system rearrangements on the server host
++#. TRANS for NFS filesystems or corruption in other filesystems.
++#. TRANS Repairing this condition usually requires unmounting, possibly
++#. TRANS repairing and remounting the file system.
+ #: sysdeps/gnu/errlist.c:787
+-msgid "Stale NFS file handle"
+-msgstr ""
++msgid "Stale file handle"
++msgstr "失效文件句柄"
+ 
+ #. TRANS An attempt was made to NFS-mount a remote file system with a file name that
+ #. TRANS already specifies an NFS-mounted file.
+diff -Nru glibc-2.17-c758a686/po/zh_TW.po glibc-2.17-c758a686/po/zh_TW.po
+--- glibc-2.17-c758a686/po/zh_TW.po	2012-12-24 22:02:13.000000000 -0500
++++ glibc-2.17-c758a686/po/zh_TW.po	2013-08-22 01:05:36.949361791 -0400
+@@ -6060,13 +6060,14 @@ msgstr "太多使用者"
+ msgid "Disk quota exceeded"
+ msgstr "硬碟 quota 滿了"
+ 
+-#. TRANS Stale NFS file handle.  This indicates an internal confusion in the NFS
+-#. TRANS system which is due to file system rearrangements on the server host.
+-#. TRANS Repairing this condition usually requires unmounting and remounting
+-#. TRANS the NFS file system on the local host.
++#. TRANS Stale file handle.  This indicates an internal confusion in the
++#. TRANS file system which is due to file system rearrangements on the server host
++#. TRANS for NFS filesystems or corruption in other filesystems.
++#. TRANS Repairing this condition usually requires unmounting, possibly
++#. TRANS repairing and remounting the file system.
+ #: sysdeps/gnu/errlist.c:787
+-msgid "Stale NFS file handle"
+-msgstr "過舊的 NFS 檔案控制碼"
++msgid "Stale file handle"
++msgstr "過舊的檔案處理"
+ 
+ #. TRANS An attempt was made to NFS-mount a remote file system with a file name that
+ #. TRANS already specifies an NFS-mounted file.

@@ -1,0 +1,85 @@
+Based on the following commits:
+
+commit 2c41b52901331f5c761015af786a3976e225d779
+Author: Florian Weimer <fweimer@redhat.com>
+Date:   Mon Jun 13 13:08:39 2016 +0200
+
+    debug/tst-longjmp_chk2: Make signal handler more conservative [BZ #20248]
+    
+    Currently, printf needs more stack space than what is available with
+    SIGSTKSZ.  This commit use the the write system call directly instead.
+    
+    Also use sig_atomic_t for the “pass” variable (for general
+    correctness), and restore signal handlers to their defaults, to avoid
+    masking crashes.
+
+commit 5896c8bdd9f73cdc816a96e107ca1f7a6bc6921e
+Author: Mike Frysinger <vapier@gentoo.org>
+Date:   Sun Dec 29 16:30:35 2013 -0500
+
+    tst-longjmp_chk2: add comments/sanity check
+    
+    If the longjmp checking code is slightly broken, this code can loop
+    forever which isn't too helpful.  Add a sanity check to keep that
+    from happening.
+    
+    Signed-off-by: Mike Frysinger <vapier@gentoo.org>
+
+Index: b/debug/tst-longjmp_chk2.c
+===================================================================
+--- a/debug/tst-longjmp_chk2.c
++++ b/debug/tst-longjmp_chk2.c
+@@ -4,27 +4,36 @@
+ #include <signal.h>
+ #include <stdio.h>
+ #include <stdlib.h>
++#include <string.h>
+ #include <sys/types.h>
+ #include <sys/time.h>
+ #include <sys/resource.h>
++#include <unistd.h>
+ 
+ 
+ static jmp_buf mainloop;
+ static sigset_t mainsigset;
+-static int pass;
++static volatile sig_atomic_t pass;
+ 
++static void
++write_message (const char *message)
++{
++  ssize_t unused __attribute__ ((unused));
++  for (int i = 0; i < pass; ++i)
++    unused = write (STDOUT_FILENO, " ", 1);
++  unused = write (STDOUT_FILENO, message, strlen (message));
++}
+ 
+ static void
+ stackoverflow_handler (int sig)
+ {
+   stack_t altstack;
+   pass++;
++  assert (pass < 5);
+   sigaltstack (NULL, &altstack);
+-  /* Using printf is not really kosher in signal handlers but we know
+-     it will work.  */
+-  printf ("%*sin signal handler\n", pass, "");
++  write_message ("in signal handler\n");
+   if (altstack.ss_flags & SS_ONSTACK)
+-    printf ("%*son alternate stack\n", pass, "");
++    write_message ("on alternate stack\n");
+   siglongjmp (mainloop, pass);
+ }
+ 
+@@ -107,6 +116,11 @@ do_test (void)
+   else
+     printf ("disabling alternate stack succeeded \n");
+ 
++  /* Restore the signal handlers, in case we trigger a crash after the
++     tests above.  */
++  signal (SIGBUS, SIG_DFL);
++  signal (SIGSEGV, SIG_DFL);
++
+   return 0;
+ }
+ 

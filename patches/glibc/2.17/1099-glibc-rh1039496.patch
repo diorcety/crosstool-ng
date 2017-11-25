@@ -1,0 +1,102 @@
+diff -urNglibc-2.17-c758a686/libio/tst-widetext.inputglibc-2.17-c758a686/libio/tst-widetext.input
+--- glibc-2.17-c758a686/libio/tst-widetext.input	2012-12-24 22:02:13.000000000 -0500
++++ glibc-2.17-c758a686/libio/tst-widetext.input	2013-12-11 09:48:30.760084849 -0500
+@@ -126,7 +126,7 @@
+ ઀◌ઁ◌ંઃ઄અઆઇઈઉઊઋઌઍ઎એઐઑ઒ઓઔકખગઘઙચછજઝઞટઠડઢણતથદધન઩પફબભમયર઱લળ઴વશષસહ઺઻◌઼ઽાિ
+ ી◌ુ◌ૂ◌ૃ◌ૄ◌ૅ૆◌ે◌ૈૉ૊ોૌ◌્૎૏ૐ૑૒૓૔૕૖૗૘૙૚૛૜૝૞૟ૠૡૢૣ૤૥૦૧૨૩૪૫૬૭૮૯૰૱૲૳૴૵૶૷૸ૹૺૻૼ૽૾૿
+ 
+-Oriya (U+0B00-U+0B7F):
++Odia (U+0B00-U+0B7F):
+ 
+ ଀◌ଁଂଃ଄ଅଆଇଈଉଊଋଌ଍଎ଏଐ଑଒ଓଔକଖଗଘଙଚଛଜଝଞଟଠଡଢଣତଥଦଧନ଩ପଫବଭମଯର଱ଲଳ଴ଵଶଷସହ଺଻◌଼ଽା◌ି
+ ୀ◌ୁ◌ୂ◌ୃୄ୅୆େୈ୉୊ୋୌ◌୍୎୏୐୑୒୓୔୕◌ୖୗ୘୙୚୛ଡ଼ଢ଼୞ୟୠୡୢୣ୤୥୦୧୨୩୪୫୬୭୮୯୰ୱ୲୳୴୵୶୷୸୹୺୻୼୽୾୿
+diff -urNglibc-2.17-c758a686/locale/iso-639.defglibc-2.17-c758a686/locale/iso-639.def
+--- glibc-2.17-c758a686/locale/iso-639.def	2012-12-24 22:02:13.000000000 -0500
++++ glibc-2.17-c758a686/locale/iso-639.def	2013-12-11 09:58:58.414959856 -0500
+@@ -181,7 +181,7 @@
+ DEFINE_LANGUAGE_CODE ("Greek, Modern (1453-)", el, ell, gre)
+ DEFINE_LANGUAGE_CODE ("Guarani", gn, grn, grn)
+ DEFINE_LANGUAGE_CODE ("Gujarati", gu, guj, guj)
+-DEFINE_LANGUAGE_CODE3 ("Gwich�in", gwi, gwi)
++DEFINE_LANGUAGE_CODE3 ("Gwich´in", gwi, gwi)
+ DEFINE_LANGUAGE_CODE3 ("Haida", hai, hai)
+ DEFINE_LANGUAGE_CODE ("Haitian; Haitian Creole", ht, hat, hat)
+ DEFINE_LANGUAGE_CODE ("Hausa", ha, hau, hau)
+@@ -337,7 +337,7 @@
+ DEFINE_LANGUAGE_CODE3 ("North American Indian", nai, nai)
+ DEFINE_LANGUAGE_CODE ("Northern Sami", se, sme, sme)
+ DEFINE_LANGUAGE_CODE3 ("Northern Sotho; Pedi; Sepedi", nso, nso)
+-DEFINE_LANGUAGE_CODE ("Norwegian Bokm�l", nb, nob, nob)
++DEFINE_LANGUAGE_CODE ("Norwegian Bokmål", nb, nob, nob)
+ DEFINE_LANGUAGE_CODE ("Norwegian Nynorsk", nn, nno, nno)
+ DEFINE_LANGUAGE_CODE ("Norwegian", no, nor, nor)
+ DEFINE_LANGUAGE_CODE3 ("Nubian languages", nub, nub)
+@@ -345,9 +345,9 @@
+ DEFINE_LANGUAGE_CODE3 ("Nyankole", nyn, nyn)
+ DEFINE_LANGUAGE_CODE3 ("Nyoro", nyo, nyo)
+ DEFINE_LANGUAGE_CODE3 ("Nzima", nzi, nzi)
+-DEFINE_LANGUAGE_CODE ("Occitan (post 1500); Proven�al", oc, oci, oci)
++DEFINE_LANGUAGE_CODE ("Occitan (post 1500); Provençal", oc, oci, oci)
+ DEFINE_LANGUAGE_CODE ("Ojibwa", oj, oji, oji)
+-DEFINE_LANGUAGE_CODE ("Oriya", or, ori, ori)
++DEFINE_LANGUAGE_CODE ("Odia", or, ori, ori)
+ DEFINE_LANGUAGE_CODE ("Oromo", om, orm, orm)
+ DEFINE_LANGUAGE_CODE3 ("Osage", osa, osa)
+ DEFINE_LANGUAGE_CODE ("Ossetian; Ossetic", os, oss, oss)
+@@ -368,7 +368,7 @@
+ DEFINE_LANGUAGE_CODE ("Polish", pl, pol, pol)
+ DEFINE_LANGUAGE_CODE ("Portuguese", pt, por, por)
+ DEFINE_LANGUAGE_CODE3 ("Prakrit languages", pra, pra)
+-DEFINE_LANGUAGE_CODE3 ("Proven�al, Old (to 1500)", pro, pro)
++DEFINE_LANGUAGE_CODE3 ("Provençal, Old (to 1500)", pro, pro)
+ DEFINE_LANGUAGE_CODE ("Pushto", ps, pus, pus)
+ DEFINE_LANGUAGE_CODE ("Quechua", qu, que, que)
+ DEFINE_LANGUAGE_CODE ("Raeto-Romance", rm, roh, roh)
+@@ -476,7 +476,7 @@
+ DEFINE_LANGUAGE_CODE3 ("Vai", vai, vai)
+ DEFINE_LANGUAGE_CODE ("Venda", ve, ven, ven)
+ DEFINE_LANGUAGE_CODE ("Vietnamese", vi, vie, vie)
+-DEFINE_LANGUAGE_CODE ("Volap�k", vo, vol, vol)
++DEFINE_LANGUAGE_CODE ("Volapük", vo, vol, vol)
+ DEFINE_LANGUAGE_CODE3 ("Votic", vot, vot)
+ DEFINE_LANGUAGE_CODE3 ("Wakashan languages", wak, wak)
+ DEFINE_LANGUAGE_CODE3 ("Walser", wae, wae)
+diff -urNglibc-2.17-c758a686/localedata/locales/or_INglibc-2.17-c758a686/localedata/locales/or_IN
+--- glibc-2.17-c758a686/localedata/locales/or_IN	2012-12-24 22:02:13.000000000 -0500
++++ glibc-2.17-c758a686/localedata/locales/or_IN	2013-12-11 09:52:26.932931534 -0500
+@@ -1,19 +1,19 @@
+ comment_char %
+ escape_char /
+ 
+-% Oriya locale for India.
++% Odia locale for India.
+ % Contributed by Masahide Washizawa <washi at jp ibm com>
+ 
+ %%%%%%%%%%%%%
+ LC_IDENTIFICATION
+-title       "Oriya language locale for India"
++title       "Odia language locale for India"
+ source      "IBM AP Linux Technology Center, Yamato Software Laboratory"
+ address     "1623-14, Shimotsuruma, Yamato-shi, Kanagawa-ken, 242-8502, Japan"
+ contact     ""
+ email       "bug-glibc@gnu.org"
+ tel         ""
+ fax         ""
+-language    "Oriya"
++language    "Odia"
+ territory   "India"
+ revision    "1.0"
+ date        "2006-05-25"
+@@ -35,10 +35,10 @@
+ LC_CTYPE
+ copy "i18n"
+ 
+-% Oriya uses the alternate digits U+0B66..U+0B6F
++% Odia uses the alternate digits U+0B66..U+0B6F
+ outdigit <U0B66>..<U0B6F>
+ 
+-% This is used in the scanf family of functions to read Oriya numbers
++% This is used in the scanf family of functions to read Odia numbers
+ % using "%Id" and such.
+ map to_inpunct; /
+   (<U0030>,<U0B66>); /

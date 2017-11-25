@@ -1,0 +1,102 @@
+From 3f38cbfa2a44bf510122d3fcb0f0504a208dbf5e Mon Sep 17 00:00:00 2001
+From: Adhemerval Zanella <azanella@linux.vnet.ibm.com>
+Date: Fri, 15 Mar 2013 10:58:56 -0300
+Subject: [PATCH 19/42] PowerPC: gettimeofday optimization by using IFUNC
+ (backported from commit
+ ef26eece6331a1f6d959818e37c438cc7ce68e53)
+
+---
+ sysdeps/unix/sysv/linux/powerpc/bits/libc-vdso.h | 10 +++++
+ sysdeps/unix/sysv/linux/powerpc/gettimeofday.c   | 48 +++++++++++++++++-------
+ 3 files changed, 52 insertions(+), 13 deletions(-)
+
+diff --git glibc-2.17-c758a686/sysdeps/unix/sysv/linux/powerpc/bits/libc-vdso.h glibc-2.17-c758a686/sysdeps/unix/sysv/linux/powerpc/bits/libc-vdso.h
+index cda8491..e4ae630 100644
+--- glibc-2.17-c758a686/sysdeps/unix/sysv/linux/powerpc/bits/libc-vdso.h
++++ glibc-2.17-c758a686/sysdeps/unix/sysv/linux/powerpc/bits/libc-vdso.h
+@@ -32,6 +32,16 @@ extern void *__vdso_get_tbfreq;
+ 
+ extern void *__vdso_getcpu;
+ 
++/* This macro is needed for PPC64 to return a skeleton OPD entry of a vDSO
++   symbol.  This works because _dl_vdso_vsym always return the function
++   address, and no vDSO symbols use the TOC or chain pointers from the OPD
++   so we can allow them to be garbage.  */
++#if defined(__PPC64__) || defined(__powerpc64__)
++#define VDSO_IFUNC_RET(value)  &value
++#else
++#define VDSO_IFUNC_RET(value)  value
++#endif
++
+ #endif
+ 
+ #endif /* _LIBC_VDSO_H */
+diff --git glibc-2.17-c758a686/sysdeps/unix/sysv/linux/powerpc/gettimeofday.c glibc-2.17-c758a686/sysdeps/unix/sysv/linux/powerpc/gettimeofday.c
+index 7376135..4f4abbd 100644
+--- glibc-2.17-c758a686/sysdeps/unix/sysv/linux/powerpc/gettimeofday.c
++++ glibc-2.17-c758a686/sysdeps/unix/sysv/linux/powerpc/gettimeofday.c
+@@ -15,26 +15,48 @@
+    License along with the GNU C Library; if not, see
+    <http://www.gnu.org/licenses/>.  */
+ 
+-#include <sysdep.h>
+-#include <bp-checks.h>
+-#include <stddef.h>
+ #include <sys/time.h>
+-#include <time.h>
+-#include <hp-timing.h>
+ 
+-#include <bits/libc-vdso.h>
++#ifdef SHARED
+ 
+-/* Get the current time of day and timezone information,
+-   putting it into *TV and *TZ.  If TZ is NULL, *TZ is not filled.
+-   Returns 0 on success, -1 on errors.  */
++# include <dl-vdso.h>
++# include <bits/libc-vdso.h>
++
++void *gettimeofday_ifunc (void) __asm__ ("__gettimeofday");
++
++static int
++__gettimeofday_syscall (struct timeval *tv, struct timezone *tz)
++{
++  return INLINE_SYSCALL (gettimeofday, 2, tv, tz);
++}
++
++void *
++gettimeofday_ifunc (void)
++{
++  /* If the vDSO is not available we fall back syscall.  */
++  return (__vdso_gettimeofday ? VDSO_IFUNC_RET (__vdso_gettimeofday)
++	  : __gettimeofday_syscall);
++}
++asm (".type __gettimeofday, %gnu_indirect_function");
++
++/* This is doing "libc_hidden_def (__gettimeofday)" but the compiler won't
++   let us do it in C because it doesn't know we're defining __gettimeofday
++   here in this file.  */
++asm (".globl __GI___gettimeofday\n"
++     "__GI___gettimeofday = __gettimeofday");
++
++#else
++
++# include <sysdep.h>
++# include <errno.h>
+ 
+ int
+-__gettimeofday (tv, tz)
+-     struct timeval *tv;
+-     struct timezone *tz;
++__gettimeofday (struct timeval *tv, struct timezone *tz)
+ {
+-  return INLINE_VSYSCALL (gettimeofday, 2, CHECK_1 (tv), CHECK_1 (tz));
++  return INLINE_SYSCALL (gettimeofday, 2, tv, tz);
+ }
+ libc_hidden_def (__gettimeofday)
++
++#endif
+ weak_alias (__gettimeofday, gettimeofday)
+ libc_hidden_weak (gettimeofday)
+-- 
+1.7.11.7
+

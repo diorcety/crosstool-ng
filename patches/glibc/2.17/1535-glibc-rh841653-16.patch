@@ -1,0 +1,204 @@
+Index: glibc-2.17-c758a686/elf/rtld.c
+===================================================================
+--- glibc-2.17-c758a686.orig/elf/rtld.c
++++ glibc-2.17-c758a686/elf/rtld.c
+@@ -2478,6 +2478,11 @@ process_envvars (enum mode *modep)
+   GLRO(dl_profile_output)
+     = &"/var/tmp\0/var/profile"[INTUSE(__libc_enable_secure) ? 9 : 0];
+ 
++  /* RHEL 7 specific change:
++     Without the tunables farmework we simulate tunables only for
++     use with enabling transactional memory.  */
++  _dl_process_tunable_env_entries ();
++
+   while ((envline = _dl_next_ld_env_entry (&runp)) != NULL)
+     {
+       size_t len = 0;
+Index: glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/x86/elision-conf.c
+===================================================================
+--- glibc-2.17-c758a686.orig/nptl/sysdeps/unix/sysv/linux/x86/elision-conf.c
++++ glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/x86/elision-conf.c
+@@ -68,8 +68,18 @@ elision_init (int argc __attribute__ ((u
+ {
+   int elision_available = HAS_CPU_FEATURE (RTM);
+ #ifdef ENABLE_LOCK_ELISION
+-  __pthread_force_elision = __libc_enable_secure ? 0 : elision_available;
+-  __rwlock_rtm_enabled = __libc_enable_secure ? 0 : elision_available;
++  if (!__libc_enable_secure && elision_available)
++    {
++      /* RHEL 7 specific change: Check if elision is enabled for the
++	 process.  */
++      __pthread_force_elision = GLRO(dl_elision_enabled);
++      __rwlock_rtm_enabled = GLRO(dl_elision_enabled);
++    }
++  else
++    {
++      __pthread_force_elision = 0;
++      __rwlock_rtm_enabled = 0;
++    }
+ #endif
+ }
+ 
+Index: glibc-2.17-c758a686/sysdeps/generic/ldsodefs.h
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/generic/ldsodefs.h
++++ glibc-2.17-c758a686/sysdeps/generic/ldsodefs.h
+@@ -557,6 +557,9 @@ struct rtld_global_ro
+      platforms.  */
+   EXTERN uint64_t _dl_hwcap2;
+ 
++  /* RHEL 7 specific change: Is elision enabled for this process?  */
++  EXTERN bool _dl_elision_enabled;
++
+ #ifdef SHARED
+   /* We add a function table to _rtld_global which is then used to
+      call the function instead of going through the PLT.  The result
+@@ -893,6 +896,10 @@ extern void _dl_show_auxv (void) interna
+    other.  */
+ extern char *_dl_next_ld_env_entry (char ***position) internal_function;
+ 
++/* RHEL 7 specific change:
++   Manually process RHEL 7-specific tunable entries.  */
++extern void _dl_process_tunable_env_entries (void) internal_function;
++
+ /* Return an array with the names of the important hardware capabilities.  */
+ extern const struct r_strlenpair *_dl_important_hwcaps (const char *platform,
+ 							size_t paltform_len,
+Index: glibc-2.17-c758a686/elf/dl-support.c
+===================================================================
+--- glibc-2.17-c758a686.orig/elf/dl-support.c
++++ glibc-2.17-c758a686/elf/dl-support.c
+@@ -123,6 +123,10 @@ size_t _dl_phnum;
+ uint64_t _dl_hwcap __attribute__ ((nocommon));
+ uint64_t _dl_hwcap2 __attribute__ ((nocommon));
+ 
++/* RHEL 7-specific change: Is elision enabled for the process?
++   Static library definition.  */
++bool _dl_elision_enabled;
++
+ /* This is not initialized to HWCAP_IMPORTANT, matching the definition
+    of _dl_important_hwcaps, below, where no hwcap strings are ever
+    used.  This mask is still used to mediate the lookups in the cache
+@@ -289,6 +293,9 @@ _dl_non_dynamic_init (void)
+     _dl_profile_output
+       = &"/var/tmp\0/var/profile"[__libc_enable_secure ? 9 : 0];
+ 
++  /* RHEL 7 specific change: Process tunables at startup.  */
++  _dl_process_tunable_env_entries ();
++
+   if (__libc_enable_secure)
+     {
+       static const char unsecure_envvars[] =
+Index: glibc-2.17-c758a686/sysdeps/x86_64/multiarch/strstr-c.c
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/x86_64/multiarch/strstr-c.c
++++ glibc-2.17-c758a686/sysdeps/x86_64/multiarch/strstr-c.c
+@@ -17,6 +17,10 @@
+    License along with the GNU C Library; if not, see
+    <http://www.gnu.org/licenses/>.  */
+ 
++/* RHEL 7-specific: Define multiple versions only for the definition in
++   libc.  Don't define multiple versions for strstr in static library
++   since we need strstr before initialization has happened.  */
++#if defined SHARED && IS_IN (libc)
+ /* Redefine strstr so that the compiler won't complain about the type
+    mismatch with the IFUNC selector in strong_alias, below.  */
+ #undef  strstr
+@@ -30,9 +34,11 @@
+ # define libc_hidden_builtin_def(name) \
+   __hidden_ver1 (__strstr_sse2, __GI_strstr, __strstr_sse2);
+ #endif
++#endif
+ 
+ #include "string/strstr.c"
+ 
++#if defined SHARED && IS_IN (libc)
+ extern __typeof (__redirect_strstr) __strstr_sse42 attribute_hidden;
+ extern __typeof (__redirect_strstr) __strstr_sse2_unaligned attribute_hidden;
+ extern __typeof (__redirect_strstr) __strstr_sse2 attribute_hidden;
+@@ -48,3 +54,5 @@ libc_ifunc (__libc_strstr, HAS_CPU_FEATU
+ 
+ #undef strstr
+ strong_alias (__libc_strstr, strstr)
++#endif
++
+Index: glibc-2.17-c758a686/elf/Makefile
+===================================================================
+--- glibc-2.17-c758a686.orig/elf/Makefile
++++ glibc-2.17-c758a686/elf/Makefile
+@@ -35,6 +35,10 @@ dl-routines	= $(addprefix dl-,load looku
+ ifeq (yes,$(use-ldconfig))
+ dl-routines += dl-cache
+ endif
++
++# RHEL 7-specific change: Add rudimentary tunables support.
++dl-routines += dl-tunables
++
+ all-dl-routines = $(dl-routines) $(sysdep-dl-routines)
+ # But they are absent from the shared libc, because that code is in ld.so.
+ elide-routines.os = $(all-dl-routines) dl-support enbl-secure dl-origin \
+Index: glibc-2.17-c758a686/elf/dl-tunables.c
+===================================================================
+--- /dev/null
++++ glibc-2.17-c758a686/elf/dl-tunables.c
+@@ -0,0 +1,60 @@
++/* RHEL 7-specific rudimentary tunables handling.
++   Copyright (C) 2017 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <string.h>
++#include <unistd.h>
++#include <ldsodefs.h>
++#include <elision-conf.h>
++
++/* RHEL 7 specific change:
++   Manually process RHEL 7-specific tunable entries.  */
++void
++internal_function
++_dl_process_tunable_env_entries (void)
++{
++#if HAVE_ELISION
++  char **ep;
++  const char *envname = { "RHEL_GLIBC_TUNABLES" };
++# define TUNABLE_ELISION 0
++# define TUNABLE_MAX 1
++  const char *tunables[TUNABLE_MAX] = { "glibc.elision.enable=1" };
++
++  ep = __environ;
++  while (*ep != NULL)
++    {
++      size_t cnt = 0;
++
++      while ((*ep)[cnt] == envname[cnt] && envname[cnt] != '\0')
++        ++cnt;
++
++      if (envname[cnt] == '\0' && (*ep)[cnt] == '=')
++        {
++          /* Found it.  */
++          char *found;
++          found = strstr (*ep, tunables[TUNABLE_ELISION]);
++          /* Process TUNABLE_ELISION:
++             Note: elision-conf.c applies security checks.  */
++          if (found != NULL)
++	    GLRO(dl_elision_enabled) = true;
++          /* Continue the loop in case NAME appears again.  */
++        }
++
++      ++ep;
++    }
++#endif
++}

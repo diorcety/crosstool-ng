@@ -1,0 +1,183 @@
+commit b57525f1a376149840f740a31535681c07152ba4
+Author: Dmitry V. Levin <ldv@altlinux.org>
+Date:   Thu Jun 18 21:40:46 2015 +0000
+
+    Fix potential hanging of gethostbyaddr_r/gethostbyname_r
+    
+    When "reorder" resolver option is enabled, threads of a multi-threaded
+    process could hang in gethostbyaddr_r, gethostbyname_r, or
+    gethostbyname2_r.
+    
+    Due to a trivial bug in _res_hconf_reorder_addrs, simultaneous
+    invocations of this function in a multi-threaded process could result to
+    _res_hconf_reorder_addrs returning without releasing the lock it holds,
+    causing other threads to block indefinitely while waiting for the lock
+    that is not going to be released.
+    
+    [BZ #17977]
+    * resolv/res_hconf.c (_res_hconf_reorder_addrs): Fix unlocking
+    when initializing interface list, based on the bug analysis
+    and the patch proposed by Eric Newton.
+    * resolv/tst-res_hconf_reorder.c: New test.
+    * resolv/Makefile [$(have-thread-library) = yes] (tests): Add
+    tst-res_hconf_reorder.
+    ($(objpfx)tst-res_hconf_reorder): Depend on $(libdl)
+    and $(shared-thread-library).
+    (tst-res_hconf_reorder-ENV): New variable.
+
+Index: glibc-2.17-c758a686/resolv/Makefile
+===================================================================
+--- glibc-2.17-c758a686.orig/resolv/Makefile
++++ glibc-2.17-c758a686/resolv/Makefile
+@@ -40,6 +40,7 @@ extra-libs := libresolv libnss_dns
+ ifeq ($(have-thread-library),yes)
+ extra-libs += libanl
+ routines += gai_sigqueue
++tests += tst-res_hconf_reorder
+ endif
+ extra-libs-others = $(extra-libs)
+ libresolv-routines := gethnamaddr res_comp res_debug	\
+@@ -108,6 +108,9 @@ $(objpfx)libanl.so: $(common-objpfx)libc
+ 
+ $(objpfx)ga_test: $(objpfx)libanl.so $(shared-thread-library)
+ 
++$(objpfx)tst-res_hconf_reorder: $(libdl) $(shared-thread-library)
++tst-res_hconf_reorder-ENV = RESOLV_REORDER=on
++
+ $(objpfx)tst-leaks: $(objpfx)libresolv.so
+ tst-leaks-ENV = MALLOC_TRACE=$(objpfx)tst-leaks.mtrace
+ $(objpfx)mtrace-tst-leaks: $(objpfx)tst-leaks.out
+Index: glibc-2.17-c758a686/resolv/res_hconf.c
+===================================================================
+--- glibc-2.17-c758a686.orig/resolv/res_hconf.c
++++ glibc-2.17-c758a686/resolv/res_hconf.c
+@@ -462,10 +462,10 @@ _res_hconf_reorder_addrs (struct hostent
+ 	  errno = save;
+ 
+ 	  num_ifs = new_num_ifs;
+-
+-	  __libc_lock_unlock (lock);
+ 	}
+ 
++      __libc_lock_unlock (lock);
++
+       __close (sd);
+     }
+ 
+Index: glibc-2.17-c758a686/resolv/tst-res_hconf_reorder.c
+===================================================================
+--- /dev/null
++++ glibc-2.17-c758a686/resolv/tst-res_hconf_reorder.c
+@@ -0,0 +1,112 @@
++/* BZ #17977 _res_hconf_reorder_addrs test.
++
++   Copyright (C) 2015 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <errno.h>
++#include <stdio.h>
++#include <string.h>
++#include <time.h>
++#include <dlfcn.h>
++#include <pthread.h>
++#include <netdb.h>
++#include <netinet/in.h>
++#include <sys/socket.h>
++
++static struct timespec ts;
++
++/* The first thread that gets a lock in _res_hconf_reorder_addrs()
++   should hold the lock long enough to make two other threads blocked.
++   This is achieved by slowing down realloc(3) that is called several times
++   by _res_hconf_reorder_addrs().  */
++
++void *
++realloc (void *ptr, size_t len)
++{
++  static void *(*fun) (void *, size_t);
++
++  if (!fun)
++    fun = dlsym (RTLD_NEXT, "realloc");
++
++  if (ts.tv_nsec)
++    nanosleep (&ts, NULL);
++
++  return (*fun) (ptr, len);
++}
++
++static void *
++resolve (void *arg)
++{
++  struct in_addr addr;
++  struct hostent ent;
++  struct hostent *result;
++  int err;
++  char buf[1024];
++
++  addr.s_addr = htonl (INADDR_LOOPBACK);
++  (void) gethostbyaddr_r ((void *) &addr, sizeof (addr), AF_INET,
++		          &ent, buf, sizeof (buf), &result, &err);
++  return arg;
++}
++
++static int
++do_test (void)
++{
++  #define N 3
++  pthread_t thr[N];
++  unsigned int i;
++  int result = 0;
++
++  /* turn on realloc slowdown */
++  ts.tv_nsec = 100000000;
++
++  for (i = 0; i < N; ++i)
++    {
++      int rc = pthread_create (&thr[i], NULL, resolve, NULL);
++
++      if (rc)
++	{
++	  printf ("pthread_create: %s\n", strerror(rc));
++	  exit (1);
++	}
++    }
++
++  for (i = 0; i < N; ++i)
++    {
++      void *retval;
++      int rc = pthread_join (thr[i], &retval);
++
++      if (rc)
++	{
++	  printf ("pthread_join: %s\n", strerror(rc));
++	  exit (1);
++	}
++      if (retval)
++	{
++	  printf ("thread %u exit status %p\n", i, retval);
++	  result = 1;
++	}
++    }
++
++  /* turn off realloc slowdown, no longer needed */
++  ts.tv_nsec = 0;
++
++  return result;
++}
++
++#define TEST_FUNCTION do_test ()
++#include "../test-skeleton.c"

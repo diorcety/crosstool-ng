@@ -1,0 +1,162 @@
+commit ac63a0783cdee8454c84fc45f37330d98b6039e7
+Author: Dmitry V. Levin <ldv@altlinux.org>
+Date:   Fri Jun 5 22:20:13 2015 +0000
+
+    Prepare for restoration of .interp section in libpthread.so
+    
+    Make runtime-linker.h available outside $(elf-objpfx) by moving
+    the file to $(common-objpfx) and the rules for it to Makerules.
+    
+    Tested for x86_64 and x86 (testsuite, and that no compiled code
+    changed by the patch).
+    
+    * Makeconfig (+interp): Remove unused variable.
+    * elf/Makefile ($(objpfx)interp.os): Define for [$(build-shared) = yes]
+    only.  Depend on $(common-objpfx)runtime-linker.h instead of
+    $(elf-objpfx)runtime-linker.h.
+    ($(elf-objpfx)runtime-linker.h): Rename to
+    $(common-objpfx)runtime-linker.h and move ...
+    * Makerules [$(build-shared) = yes]: ... here.
+    * elf/interp.c: Include <runtime-linker.h> instead of
+    <elf/runtime-linker.h>.
+
+commit 78ad175b3060aae058ed5d05ced2bc58714901cd
+Author: Gleb Fotengauer-Malinovskiy <glebfm@altlinux.org>
+Date:   Tue Jun 2 21:04:06 2015 +0300
+
+    nptl: restore .interp section in libpthread.so
+    
+    In commit 02657da2cf4457804ed938ee08b8316249126444, .interp section
+    was removed from libpthread.so.  This led to an error:
+    
+      $ /lib64/libpthread.so.0
+      Native POSIX Threads Library by Ulrich Drepper et al
+      Copyright (C) 2015 Free Software Foundation, Inc.
+      This is free software; see the source for copying conditions.
+      There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A
+      PARTICULAR PURPOSE.
+      Forced unwind support included.
+      Segmentation fault
+    
+      (gdb) bt
+      #0  0x00000000000055a6 in _exit@plt ()
+    
+    Unfortunately, there is no way to add a regression test for the bug
+    because .interp specifies the path to dynamic linker of the target
+    system.
+    
+    [BZ #18479]
+    * nptl/pt-interp.c: New file.
+    * nptl/Makefile (libpthread-routines, libpthread-shared-only-routines):
+    Add pt-interp.
+    [$(build-shared) = yes] ($(objpfx)pt-interp.os): Depend on
+    $(common-objpfx)runtime-linker.h.
+
+Index: glibc-2.17-c758a686/nptl/Makefile
+===================================================================
+--- glibc-2.17-c758a686.orig/nptl/Makefile
++++ glibc-2.17-c758a686/nptl/Makefile
+@@ -30,7 +30,7 @@ routines = alloca_cutoff forward libc-lo
+ 	   libc-cleanup
+ shared-only-routines = forward
+ 
+-libpthread-routines = nptl-init vars events version \
++libpthread-routines = nptl-init vars events version pt-interp \
+ 		      pthread_create pthread_exit pthread_detach \
+ 		      pthread_join pthread_tryjoin pthread_timedjoin \
+ 		      pthread_self pthread_equal pthread_yield \
+@@ -131,7 +131,8 @@ libpthread-routines = nptl-init vars eve
+ #		      pthread_setgid pthread_setegid pthread_setregid \
+ #		      pthread_setresgid
+ 
+-libpthread-shared-only-routines = version pt-allocrtsig unwind-forcedunwind
++libpthread-shared-only-routines = version pt-interp pt-allocrtsig \
++				  unwind-forcedunwind
+ libpthread-static-only-routines = pthread_atfork
+ 
+ # Since cancellation handling is in large parts handled using exceptions
+@@ -591,6 +592,8 @@ $(objpfx)banner.h: Banner
+ generated += banner.h
+ # Give libpthread.so an entry point and make it directly runnable itself.
+ LDFLAGS-pthread.so += -e __nptl_main
++# pt-interp.c exists just to get the runtime linker path into libpthread.so.
++$(objpfx)pt-interp.os: $(common-objpfx)runtime-linker.h
+ endif
+ 
+ ifeq ($(run-built-tests),yes)
+Index: glibc-2.17-c758a686/nptl/pt-interp.c
+===================================================================
+--- /dev/null
++++ glibc-2.17-c758a686/nptl/pt-interp.c
+@@ -0,0 +1 @@
++#include <elf/interp.c>
+Index: glibc-2.17-c758a686/Makeconfig
+===================================================================
+--- glibc-2.17-c758a686.orig/Makeconfig
++++ glibc-2.17-c758a686/Makeconfig
+@@ -566,7 +566,6 @@ endif
+ # Variants of the two previous definitions for statically linking programs.
+ +prectorT = `$(CC) $(sysdep-LDFLAGS) --print-file-name=crtbeginT.o`
+ +postctorT = `$(CC) $(sysdep-LDFLAGS) --print-file-name=crtend.o`
+-+interp = $(addprefix $(elf-objpfx),interp.os)
+ csu-objpfx = $(common-objpfx)csu/
+ elf-objpfx = $(common-objpfx)elf/
+ 
+Index: glibc-2.17-c758a686/elf/Makefile
+===================================================================
+--- glibc-2.17-c758a686.orig/elf/Makefile
++++ glibc-2.17-c758a686/elf/Makefile
+@@ -344,16 +344,10 @@ $(objpfx)ld.so: $(objpfx)librtld.os $(ld
+ 	$(READELF) -s $@ \
+ 	  | $(AWK) '($$7 ~ /^UND(|EF)$$/ && $$1 != "0:" && $$4 != "REGISTER") { print; p=1 } END { exit p != 0 }'
+ 
++ifeq (yes,$(build-shared))
+ # interp.c exists just to get the runtime linker path into libc.so.
+-$(objpfx)interp.os: $(elf-objpfx)runtime-linker.h
+-
+-$(elf-objpfx)runtime-linker.h: $(elf-objpfx)runtime-linker.st; @:
+-$(elf-objpfx)runtime-linker.st: $(common-objpfx)config.make
+-	$(name-target-directory)
+-	echo '#define RUNTIME_LINKER "$(rtlddir)/$(rtld-installed-name)"' \
+-		> ${@:st=T}
+-	$(move-if-change) ${@:st=T} ${@:st=h}
+-	touch $@
++$(objpfx)interp.os: $(common-objpfx)runtime-linker.h
++endif
+ 
+ ifneq (ld.so,$(rtld-installed-name))
+ # Make sure ld.so.1 exists in the build directory so we can link
+Index: glibc-2.17-c758a686/elf/interp.c
+===================================================================
+--- glibc-2.17-c758a686.orig/elf/interp.c
++++ glibc-2.17-c758a686/elf/interp.c
+@@ -16,7 +16,7 @@
+    License along with the GNU C Library; if not, see
+    <http://www.gnu.org/licenses/>.  */
+ 
+-#include <elf/runtime-linker.h>
++#include <runtime-linker.h>
+ 
+ const char __invoke_dynamic_linker__[] __attribute__ ((section (".interp")))
+   = RUNTIME_LINKER;
+Index: glibc-2.17-c758a686/Makerules
+===================================================================
+--- glibc-2.17-c758a686.orig/Makerules
++++ glibc-2.17-c758a686/Makerules
+@@ -123,6 +123,16 @@ $(common-objpfx)libc-abis.stamp: $(..)sc
+ common-generated += $(common-objpfx)libc-abis.h
+ endif # avoid-generated
+ 
++ifeq (yes,$(build-shared))
++$(common-objpfx)runtime-linker.h: $(common-objpfx)runtime-linker.stamp; @:
++$(common-objpfx)runtime-linker.stamp: $(common-objpfx)config.make
++	$(make-target-directory)
++	echo '#define RUNTIME_LINKER "$(rtlddir)/$(rtld-installed-name)"' \
++		> ${@:stamp=T}
++	$(move-if-change) ${@:stamp=T} ${@:stamp=h}
++	touch $@
++endif
++
+ # Make sure the subdirectory for object files gets created.
+ ifdef objpfx
+ ifeq (,$(wildcard $(objpfx).))

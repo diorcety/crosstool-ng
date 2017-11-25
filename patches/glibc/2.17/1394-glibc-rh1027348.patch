@@ -1,0 +1,3917 @@
+Torvald Riegel's semaphore reimplemenation to fix upstream swbz#12674.
+
+commit 042e1521c794a945edc43b5bfa7e69ad70420524
+Author: Carlos O'Donell <carlos@systemhalted.org>
+Date:   Wed Jan 21 00:46:16 2015 -0500
+
+    Fix semaphore destruction (bug 12674).
+    
+    This commit fixes semaphore destruction by either using 64b atomic
+    operations (where available), or by using two separate fields when only
+    32b atomic operations are available.  In the latter case, we keep a
+    conservative estimate of whether there are any waiting threads in one
+    bit of the field that counts the number of available tokens, thus
+    allowing sem_post to atomically both add a token and determine whether
+    it needs to call futex_wake.
+    
+    See:
+    https://sourceware.org/ml/libc-alpha/2014-12/msg00155.html 
+
+Notes:
+* For x86_64 and i686, rather than movign to the generic lll_futex_wake
+  we fix the existing versions to return the syscall result and to be
+  usable as an R-value.
+* We also backport fixes for swbz#18434, and swbz#18138.
+* We ignore swbz#17870 because it applies only to x32.
+
+Index: glibc-2.17-c758a686/nptl/DESIGN-sem.txt
+===================================================================
+--- glibc-2.17-c758a686.orig/nptl/DESIGN-sem.txt
++++ /dev/null
+@@ -1,46 +0,0 @@
+-Semaphores pseudocode
+-==============================
+-
+-       int sem_wait(sem_t * sem);
+-       int sem_trywait(sem_t * sem);
+-       int sem_post(sem_t * sem);
+-       int sem_getvalue(sem_t * sem, int * sval);
+-
+-struct sem_t {
+-
+-   unsigned int count;
+-         - current semaphore count, also used as a futex
+-}
+-
+-sem_wait(sem_t *sem)
+-{
+-  for (;;) {
+-
+-    if (atomic_decrement_if_positive(sem->count))
+-      break;
+-
+-    futex_wait(&sem->count, 0)
+-  }
+-}
+-
+-sem_post(sem_t *sem)
+-{
+-  n = atomic_increment(sem->count);
+-  // Pass the new value of sem->count
+-  futex_wake(&sem->count, n + 1);
+-}
+-
+-sem_trywait(sem_t *sem)
+-{
+-  if (atomic_decrement_if_positive(sem->count)) {
+-    return 0;
+-  } else {
+-    return EAGAIN;
+-  }
+-}
+-
+-sem_getvalue(sem_t *sem, int *sval)
+-{
+-  *sval = sem->count;
+-  read_barrier();
+-}
+Index: glibc-2.17-c758a686/nptl/Makefile
+===================================================================
+--- glibc-2.17-c758a686.orig/nptl/Makefile
++++ glibc-2.17-c758a686/nptl/Makefile
+@@ -95,7 +95,7 @@ libpthread-routines = nptl-init vars eve
+ 		      sem_init sem_destroy \
+ 		      sem_open sem_close sem_unlink \
+ 		      sem_getvalue \
+-		      sem_wait sem_trywait sem_timedwait sem_post \
++		      sem_wait sem_timedwait sem_post \
+ 		      cleanup cleanup_defer cleanup_compat \
+ 		      cleanup_defer_compat unwind \
+ 		      pt-longjmp pt-cleanup\
+Index: glibc-2.17-c758a686/nptl/sem_getvalue.c
+===================================================================
+--- glibc-2.17-c758a686.orig/nptl/sem_getvalue.c
++++ glibc-2.17-c758a686/nptl/sem_getvalue.c
+@@ -19,23 +19,37 @@
+ #include <semaphore.h>
+ #include <shlib-compat.h>
+ #include "semaphoreP.h"
++#include <atomic.h>
+ 
+ 
+ int
+-__new_sem_getvalue (sem, sval)
+-     sem_t *sem;
+-     int *sval;
++__new_sem_getvalue (sem_t *sem, int *sval)
+ {
+   struct new_sem *isem = (struct new_sem *) sem;
+ 
+   /* XXX Check for valid SEM parameter.  */
++  /* FIXME This uses relaxed MO, even though POSIX specifies that this function
++     should be linearizable.  However, its debatable whether linearizability
++     is the right requirement.  We need to follow up with POSIX and, if
++     necessary, use a stronger MO here and elsewhere (e.g., potentially
++     release MO in all places where we consume a token).  */
+ 
+-  *sval = isem->value;
++#if __HAVE_64B_ATOMICS
++  *sval = atomic_load_relaxed (&isem->data) & SEM_VALUE_MASK;
++#else
++  *sval = atomic_load_relaxed (&isem->value) >> SEM_VALUE_SHIFT;
++#endif
+ 
+   return 0;
+ }
+ versioned_symbol (libpthread, __new_sem_getvalue, sem_getvalue, GLIBC_2_1);
+ #if SHLIB_COMPAT(libpthread, GLIBC_2_0, GLIBC_2_1)
+-strong_alias (__new_sem_getvalue, __old_sem_getvalue)
++int
++__old_sem_getvalue (sem_t *sem, int *sval)
++{
++  struct old_sem *isem = (struct old_sem *) sem;
++  *sval = isem->value;
++  return 0;
++}
+ compat_symbol (libpthread, __old_sem_getvalue, sem_getvalue, GLIBC_2_0);
+ #endif
+Index: glibc-2.17-c758a686/nptl/sem_init.c
+===================================================================
+--- glibc-2.17-c758a686.orig/nptl/sem_init.c
++++ glibc-2.17-c758a686/nptl/sem_init.c
+@@ -18,17 +18,28 @@
+ 
+ #include <errno.h>
+ #include <semaphore.h>
+-#include <lowlevellock.h>
+ #include <shlib-compat.h>
+ #include "semaphoreP.h"
+ #include <kernel-features.h>
+ 
++/* Returns FUTEX_PRIVATE if pshared is zero and private futexes are supported;
++   returns FUTEX_SHARED otherwise.
++   TODO Remove when cleaning up the futex API throughout glibc.  */
++static __always_inline int
++futex_private_if_supported (int pshared)
++{
++  if (pshared != 0)
++    return LLL_SHARED;
++#ifdef __ASSUME_PRIVATE_FUTEX
++  return LLL_PRIVATE;
++#else
++  return THREAD_GETMEM (THREAD_SELF, header.private_futex)
++      ^ FUTEX_PRIVATE_FLAG;
++#endif
++}
+ 
+ int
+-__new_sem_init (sem, pshared, value)
+-     sem_t *sem;
+-     int pshared;
+-     unsigned int value;
++__new_sem_init (sem_t *sem, int pshared, unsigned int value)
+ {
+   /* Parameter sanity check.  */
+   if (__builtin_expect (value > SEM_VALUE_MAX, 0))
+@@ -40,16 +51,15 @@ __new_sem_init (sem, pshared, value)
+   /* Map to the internal type.  */
+   struct new_sem *isem = (struct new_sem *) sem;
+ 
+-  /* Use the values the user provided.  */
+-  isem->value = value;
+-#ifdef __ASSUME_PRIVATE_FUTEX
+-  isem->private = pshared ? 0 : FUTEX_PRIVATE_FLAG;
++  /* Use the values the caller provided.  */
++#if __HAVE_64B_ATOMICS
++  isem->data = value;
+ #else
+-  isem->private = pshared ? 0 : THREAD_GETMEM (THREAD_SELF,
+-					       header.private_futex);
++  isem->value = value << SEM_VALUE_SHIFT;
++  isem->nwaiters = 0;
+ #endif
+ 
+-  isem->nwaiters = 0;
++  isem->private = futex_private_if_supported (pshared);
+ 
+   return 0;
+ }
+Index: glibc-2.17-c758a686/nptl/sem_open.c
+===================================================================
+--- glibc-2.17-c758a686.orig/nptl/sem_open.c
++++ glibc-2.17-c758a686/nptl/sem_open.c
+@@ -307,9 +307,14 @@ sem_open (const char *name, int oflag, .
+ 	struct new_sem newsem;
+       } sem;
+ 
+-      sem.newsem.value = value;
+-      sem.newsem.private = 0;
++#if __HAVE_64B_ATOMICS
++      sem.newsem.data = value;
++#else
++      sem.newsem.value = value << SEM_VALUE_SHIFT;
+       sem.newsem.nwaiters = 0;
++#endif
++      /* This always is a shared semaphore.  */
++      sem.newsem.private = LLL_SHARED;
+ 
+       /* Initialize the remaining bytes as well.  */
+       memset ((char *) &sem.initsem + sizeof (struct new_sem), '\0',
+Index: glibc-2.17-c758a686/nptl/tst-sem11.c
+===================================================================
+--- glibc-2.17-c758a686.orig/nptl/tst-sem11.c
++++ glibc-2.17-c758a686/nptl/tst-sem11.c
+@@ -34,8 +34,11 @@ main (void)
+       puts ("sem_init failed");
+       return 1;
+     }
+-
++#if __HAVE_64B_ATOMICS
++  if ((u.ns.data >> SEM_NWAITERS_SHIFT) != 0)
++#else
+   if (u.ns.nwaiters != 0)
++#endif
+     {
+       puts ("nwaiters not initialized");
+       return 1;
+@@ -68,7 +71,11 @@ main (void)
+       goto again;
+     }
+ 
++#if __HAVE_64B_ATOMICS
++  if ((u.ns.data >> SEM_NWAITERS_SHIFT) != 0)
++#else
+   if (u.ns.nwaiters != 0)
++#endif
+     {
+       puts ("nwaiters not reset");
+       return 1;
+Index: glibc-2.17-c758a686/nptl/tst-sem13.c
+===================================================================
+--- glibc-2.17-c758a686.orig/nptl/tst-sem13.c
++++ glibc-2.17-c758a686/nptl/tst-sem13.c
+@@ -33,9 +33,14 @@ do_test (void)
+       perror ("sem_timedwait did not fail with EINVAL");
+       return 1;
+     }
+-  if (u.ns.nwaiters != 0)
++#if __HAVE_64B_ATOMICS
++  unsigned int nwaiters = (u.ns.data >> SEM_NWAITERS_SHIFT);
++#else
++  unsigned int nwaiters = u.ns.nwaiters;
++#endif
++  if (nwaiters != 0)
+     {
+-      printf ("sem_timedwait modified nwaiters: %ld\n", u.ns.nwaiters);
++      printf ("sem_timedwait modified nwaiters: %d\n", nwaiters);
+       return 1;
+     }
+ 
+@@ -52,9 +57,14 @@ do_test (void)
+       perror ("2nd sem_timedwait did not fail with ETIMEDOUT");
+       return 1;
+     }
+-  if (u.ns.nwaiters != 0)
++#if __HAVE_64B_ATOMICS
++  nwaiters = (u.ns.data >> SEM_NWAITERS_SHIFT);
++#else
++  nwaiters = u.ns.nwaiters;
++#endif
++  if (nwaiters != 0)
+     {
+-      printf ("2nd sem_timedwait modified nwaiters: %ld\n", u.ns.nwaiters);
++      printf ("2nd sem_timedwait modified nwaiters: %d\n", nwaiters);
+       return 1;
+     }
+ 
+Index: glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/i386/i486/sem_post.S
+===================================================================
+--- glibc-2.17-c758a686.orig/nptl/sysdeps/unix/sysv/linux/i386/i486/sem_post.S
++++ /dev/null
+@@ -1,151 +0,0 @@
+-/* Copyright (C) 2002,2003,2005,2007,2008,2011-2012
+-   Free Software Foundation, Inc.
+-   This file is part of the GNU C Library.
+-   Contributed by Ulrich Drepper <drepper@redhat.com>, 2002.
+-
+-   The GNU C Library is free software; you can redistribute it and/or
+-   modify it under the terms of the GNU Lesser General Public
+-   License as published by the Free Software Foundation; either
+-   version 2.1 of the License, or (at your option) any later version.
+-
+-   The GNU C Library is distributed in the hope that it will be useful,
+-   but WITHOUT ANY WARRANTY; without even the implied warranty of
+-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+-   Lesser General Public License for more details.
+-
+-   You should have received a copy of the GNU Lesser General Public
+-   License along with the GNU C Library; if not, see
+-   <http://www.gnu.org/licenses/>.  */
+-
+-#include <sysdep.h>
+-#include <shlib-compat.h>
+-#include <pthread-errnos.h>
+-#include <structsem.h>
+-#include <lowlevellock.h>
+-
+-
+-	.text
+-
+-	.globl	__new_sem_post
+-	.type	__new_sem_post,@function
+-	.align	16
+-__new_sem_post:
+-	cfi_startproc
+-	pushl	%ebx
+-	cfi_adjust_cfa_offset(4)
+-	cfi_offset(%ebx, -8)
+-
+-	movl	8(%esp), %ebx
+-
+-#if VALUE == 0
+-	movl	(%ebx), %eax
+-#else
+-	movl	VALUE(%ebx), %eax
+-#endif
+-0:	cmpl	$SEM_VALUE_MAX, %eax
+-	je	3f
+-	leal	1(%eax), %edx
+-	LOCK
+-#if VALUE == 0
+-	cmpxchgl %edx, (%ebx)
+-#else
+-	cmpxchgl %edx, VALUE(%ebx)
+-#endif
+-	jnz	0b
+-
+-	cmpl	$0, NWAITERS(%ebx)
+-	je	2f
+-
+-	movl	$FUTEX_WAKE, %ecx
+-	orl	PRIVATE(%ebx), %ecx
+-	movl	$1, %edx
+-	movl	$SYS_futex, %eax
+-	ENTER_KERNEL
+-
+-	testl	%eax, %eax
+-	js	1f
+-
+-2:	xorl	%eax, %eax
+-	popl	%ebx
+-	cfi_adjust_cfa_offset(-4)
+-	cfi_restore(%ebx)
+-	ret
+-
+-	cfi_adjust_cfa_offset(4)
+-	cfi_offset(%ebx, -8)
+-1:
+-#ifdef PIC
+-	SETUP_PIC_REG(bx)
+-#else
+-	movl	$4f, %ebx
+-4:
+-#endif
+-	addl	$_GLOBAL_OFFSET_TABLE_, %ebx
+-#ifdef NO_TLS_DIRECT_SEG_REFS
+-	movl	errno@gotntpoff(%ebx), %edx
+-	addl	%gs:0, %edx
+-	movl	$EINVAL, (%edx)
+-#else
+-	movl	errno@gotntpoff(%ebx), %edx
+-	movl	$EINVAL, %gs:(%edx)
+-#endif
+-
+-	orl	$-1, %eax
+-	popl	%ebx
+-	ret
+-
+-3:
+-#ifdef PIC
+-	SETUP_PIC_REG(bx)
+-#else
+-	movl	$5f, %ebx
+-5:
+-#endif
+-	addl	$_GLOBAL_OFFSET_TABLE_, %ebx
+-#ifdef NO_TLS_DIRECT_SEG_REFS
+-	movl	errno@gotntpoff(%ebx), %edx
+-	addl	%gs:0, %edx
+-	movl	$EOVERFLOW, (%edx)
+-#else
+-	movl	errno@gotntpoff(%ebx), %edx
+-	movl	$EOVERFLOW, %gs:(%edx)
+-#endif
+-
+-	orl	$-1, %eax
+-	popl	%ebx
+-	cfi_adjust_cfa_offset(-4)
+-	cfi_restore(%ebx)
+-	ret
+-	cfi_endproc
+-	.size	__new_sem_post,.-__new_sem_post
+-	versioned_symbol(libpthread, __new_sem_post, sem_post, GLIBC_2_1)
+-#if SHLIB_COMPAT(libpthread, GLIBC_2_0, GLIBC_2_1)
+-	.global	__old_sem_post
+-	.type	__old_sem_post,@function
+-__old_sem_post:
+-	cfi_startproc
+-	pushl	%ebx
+-	cfi_adjust_cfa_offset(4)
+-	cfi_offset(%ebx, -8)
+-
+-	movl	8(%esp), %ebx
+-	LOCK
+-	addl	$1, (%ebx)
+-
+-	movl	$SYS_futex, %eax
+-	movl	$FUTEX_WAKE, %ecx
+-	movl	$1, %edx
+-	ENTER_KERNEL
+-
+-	testl	%eax, %eax
+-	js	1b
+-
+-	xorl	%eax, %eax
+-	popl	%ebx
+-	cfi_adjust_cfa_offset(-4)
+-	cfi_restore(%ebx)
+-	ret
+-	cfi_endproc
+-	.size	__old_sem_post,.-__old_sem_post
+-	compat_symbol(libpthread, __old_sem_post, sem_post, GLIBC_2_0)
+-#endif
+Index: glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/i386/i486/sem_timedwait.S
+===================================================================
+--- glibc-2.17-c758a686.orig/nptl/sysdeps/unix/sysv/linux/i386/i486/sem_timedwait.S
++++ /dev/null
+@@ -1,327 +0,0 @@
+-/* Copyright (C) 2002-2012 Free Software Foundation, Inc.
+-   This file is part of the GNU C Library.
+-   Contributed by Ulrich Drepper <drepper@redhat.com>, 2002.
+-
+-   The GNU C Library is free software; you can redistribute it and/or
+-   modify it under the terms of the GNU Lesser General Public
+-   License as published by the Free Software Foundation; either
+-   version 2.1 of the License, or (at your option) any later version.
+-
+-   The GNU C Library is distributed in the hope that it will be useful,
+-   but WITHOUT ANY WARRANTY; without even the implied warranty of
+-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+-   Lesser General Public License for more details.
+-
+-   You should have received a copy of the GNU Lesser General Public
+-   License along with the GNU C Library; if not, see
+-   <http://www.gnu.org/licenses/>.  */
+-
+-#include <sysdep.h>
+-#include <shlib-compat.h>
+-#include <pthread-errnos.h>
+-#include <structsem.h>
+-#include <lowlevellock.h>
+-
+-
+-#if VALUE != 0
+-# error "code needs to be rewritten for VALUE != 0"
+-#endif
+-
+-
+-	.text
+-
+-	.globl	sem_timedwait
+-	.type	sem_timedwait,@function
+-	.align	16
+-sem_timedwait:
+-.LSTARTCODE:
+-	movl	4(%esp), %ecx
+-
+-	movl	(%ecx), %eax
+-2:	testl	%eax, %eax
+-	je	1f
+-
+-	leal	-1(%eax), %edx
+-	LOCK
+-	cmpxchgl %edx, (%ecx)
+-	jne	2b
+-
+-	xorl	%eax, %eax
+-	ret
+-
+-	/* Check whether the timeout value is valid.  */
+-1:	pushl	%esi
+-.Lpush_esi:
+-	pushl	%edi
+-.Lpush_edi:
+-	pushl	%ebx
+-.Lpush_ebx:
+-	subl	$12, %esp
+-.Lsub_esp:
+-
+-	movl	32(%esp), %edi
+-
+-	/* Check for invalid nanosecond field.  */
+-	cmpl	$1000000000, 4(%edi)
+-	movl	$EINVAL, %esi
+-	jae	.Lerrno_exit
+-
+-	LOCK
+-	incl	NWAITERS(%ecx)
+-
+-7:	xorl	%ecx, %ecx
+-	movl	%esp, %ebx
+-	movl	%ecx, %edx
+-	movl	$__NR_gettimeofday, %eax
+-	ENTER_KERNEL
+-
+-	/* Compute relative timeout.  */
+-	movl	4(%esp), %eax
+-	movl	$1000, %edx
+-	mul	%edx		/* Milli seconds to nano seconds.  */
+-	movl	(%edi), %ecx
+-	movl	4(%edi), %edx
+-	subl	(%esp), %ecx
+-	subl	%eax, %edx
+-	jns	5f
+-	addl	$1000000000, %edx
+-	subl	$1, %ecx
+-5:	testl	%ecx, %ecx
+-	movl	$ETIMEDOUT, %esi
+-	js	6f		/* Time is already up.  */
+-
+-	movl	%ecx, (%esp)	/* Store relative timeout.  */
+-	movl	%edx, 4(%esp)
+-
+-.LcleanupSTART:
+-	call	__pthread_enable_asynccancel
+-	movl	%eax, 8(%esp)
+-
+-	movl	28(%esp), %ebx	/* Load semaphore address.  */
+-#if FUTEX_WAIT == 0
+-	movl	PRIVATE(%ebx), %ecx
+-#else
+-	movl	$FUTEX_WAIT, %ecx
+-	orl	PRIVATE(%ebx), %ecx
+-#endif
+-	movl	%esp, %esi
+-	xorl	%edx, %edx
+-	movl	$SYS_futex, %eax
+-	ENTER_KERNEL
+-	movl	%eax, %esi
+-
+-	movl	8(%esp), %eax
+-	call	__pthread_disable_asynccancel
+-.LcleanupEND:
+-
+-	testl	%esi, %esi
+-	je	9f
+-	cmpl	$-EWOULDBLOCK, %esi
+-	jne	3f
+-
+-9:	movl	(%ebx), %eax
+-8:	testl	%eax, %eax
+-	je	7b
+-
+-	leal	-1(%eax), %ecx
+-	LOCK
+-	cmpxchgl %ecx, (%ebx)
+-	jne	8b
+-
+-	xorl	%eax, %eax
+-
+-	LOCK
+-	decl	NWAITERS(%ebx)
+-
+-10:	addl	$12, %esp
+-.Ladd_esp:
+-	popl	%ebx
+-.Lpop_ebx:
+-	popl	%edi
+-.Lpop_edi:
+-	popl	%esi
+-.Lpop_esi:
+-	ret
+-
+-.Lafter_ret:
+-3:	negl	%esi
+-6:
+-	movl	28(%esp), %ebx	/* Load semaphore address.  */
+-	LOCK
+-	decl	NWAITERS(%ebx)
+-.Lerrno_exit:
+-#ifdef PIC
+-	SETUP_PIC_REG(bx)
+-#else
+-	movl	$4f, %ebx
+-4:
+-#endif
+-	addl	$_GLOBAL_OFFSET_TABLE_, %ebx
+-#ifdef NO_TLS_DIRECT_SEG_REFS
+-	movl	errno@gotntpoff(%ebx), %edx
+-	addl	%gs:0, %edx
+-	movl	%esi, (%edx)
+-#else
+-	movl	errno@gotntpoff(%ebx), %edx
+-	movl	%esi, %gs:(%edx)
+-#endif
+-
+-	orl	$-1, %eax
+-	jmp	10b
+-	.size	sem_timedwait,.-sem_timedwait
+-
+-
+-	.type	sem_wait_cleanup,@function
+-sem_wait_cleanup:
+-	LOCK
+-	decl	NWAITERS(%ebx)
+-	movl	%eax, (%esp)
+-.LcallUR:
+-	call	_Unwind_Resume@PLT
+-	hlt
+-.LENDCODE:
+-	.size	sem_wait_cleanup,.-sem_wait_cleanup
+-
+-
+-	.section .gcc_except_table,"a",@progbits
+-.LexceptSTART:
+-	.byte	0xff				# @LPStart format (omit)
+-	.byte	0xff				# @TType format (omit)
+-	.byte	0x01				# call-site format
+-						# DW_EH_PE_uleb128
+-	.uleb128 .Lcstend-.Lcstbegin
+-.Lcstbegin:
+-	.uleb128 .LcleanupSTART-.LSTARTCODE
+-	.uleb128 .LcleanupEND-.LcleanupSTART
+-	.uleb128 sem_wait_cleanup-.LSTARTCODE
+-	.uleb128  0
+-	.uleb128 .LcallUR-.LSTARTCODE
+-	.uleb128 .LENDCODE-.LcallUR
+-	.uleb128 0
+-	.uleb128  0
+-.Lcstend:
+-
+-
+-	.section .eh_frame,"a",@progbits
+-.LSTARTFRAME:
+-	.long	.LENDCIE-.LSTARTCIE		# Length of the CIE.
+-.LSTARTCIE:
+-	.long	0				# CIE ID.
+-	.byte	1				# Version number.
+-#ifdef SHARED
+-	.string	"zPLR"				# NUL-terminated augmentation
+-						# string.
+-#else
+-	.string	"zPL"				# NUL-terminated augmentation
+-						# string.
+-#endif
+-	.uleb128 1				# Code alignment factor.
+-	.sleb128 -4				# Data alignment factor.
+-	.byte	8				# Return address register
+-						# column.
+-#ifdef SHARED
+-	.uleb128 7				# Augmentation value length.
+-	.byte	0x9b				# Personality: DW_EH_PE_pcrel
+-						# + DW_EH_PE_sdata4
+-						# + DW_EH_PE_indirect
+-	.long	DW.ref.__gcc_personality_v0-.
+-	.byte	0x1b				# LSDA Encoding: DW_EH_PE_pcrel
+-						# + DW_EH_PE_sdata4.
+-	.byte	0x1b				# FDE Encoding: DW_EH_PE_pcrel
+-						# + DW_EH_PE_sdata4.
+-#else
+-	.uleb128 6				# Augmentation value length.
+-	.byte	0x0				# Personality: absolute
+-	.long	__gcc_personality_v0
+-	.byte	0x0				# LSDA Encoding: absolute
+-#endif
+-	.byte 0x0c				# DW_CFA_def_cfa
+-	.uleb128 4
+-	.uleb128 4
+-	.byte	0x88				# DW_CFA_offset, column 0x10
+-	.uleb128 1
+-	.align 4
+-.LENDCIE:
+-
+-	.long	.LENDFDE-.LSTARTFDE		# Length of the FDE.
+-.LSTARTFDE:
+-	.long	.LSTARTFDE-.LSTARTFRAME		# CIE pointer.
+-#ifdef SHARED
+-	.long	.LSTARTCODE-.			# PC-relative start address
+-						# of the code.
+-#else
+-	.long	.LSTARTCODE			# Start address of the code.
+-#endif
+-	.long	.LENDCODE-.LSTARTCODE		# Length of the code.
+-	.uleb128 4				# Augmentation size
+-#ifdef SHARED
+-	.long	.LexceptSTART-.
+-#else
+-	.long	.LexceptSTART
+-#endif
+-
+-	.byte	4				# DW_CFA_advance_loc4
+-	.long	.Lpush_esi-.LSTARTCODE
+-	.byte	14				# DW_CFA_def_cfa_offset
+-	.uleb128 8
+-	.byte   0x86				# DW_CFA_offset %esi
+-	.uleb128 2
+-	.byte	4				# DW_CFA_advance_loc4
+-	.long	.Lpush_edi-.Lpush_esi
+-	.byte	14				# DW_CFA_def_cfa_offset
+-	.uleb128 12
+-	.byte   0x87				# DW_CFA_offset %edi
+-	.uleb128 3
+-	.byte	4				# DW_CFA_advance_loc4
+-	.long	.Lpush_ebx-.Lpush_edi
+-	.byte	14				# DW_CFA_def_cfa_offset
+-	.uleb128 16
+-	.byte   0x83				# DW_CFA_offset %ebx
+-	.uleb128 4
+-	.byte	4				# DW_CFA_advance_loc4
+-	.long	.Lsub_esp-.Lpush_ebx
+-	.byte	14				# DW_CFA_def_cfa_offset
+-	.uleb128 28
+-	.byte	4				# DW_CFA_advance_loc4
+-	.long	.Ladd_esp-.Lsub_esp
+-	.byte	14				# DW_CFA_def_cfa_offset
+-	.uleb128 16
+-	.byte	4				# DW_CFA_advance_loc4
+-	.long	.Lpop_ebx-.Ladd_esp
+-	.byte	14				# DW_CFA_def_cfa_offset
+-	.uleb128 12
+-	.byte	0xc3				# DW_CFA_restore %ebx
+-	.byte	4				# DW_CFA_advance_loc4
+-	.long	.Lpop_edi-.Lpop_ebx
+-	.byte	14				# DW_CFA_def_cfa_offset
+-	.uleb128 8
+-	.byte	0xc7				# DW_CFA_restore %edi
+-	.byte	4				# DW_CFA_advance_loc4
+-	.long	.Lpop_esi-.Lpop_edi
+-	.byte	14				# DW_CFA_def_cfa_offset
+-	.uleb128 4
+-	.byte	0xc6				# DW_CFA_restore %esi
+-	.byte	4				# DW_CFA_advance_loc4
+-	.long	.Lafter_ret-.Lpop_esi
+-	.byte	14				# DW_CFA_def_cfa_offset
+-	.uleb128 28
+-	.byte   0x86				# DW_CFA_offset %esi
+-	.uleb128 2
+-	.byte   0x87				# DW_CFA_offset %edi
+-	.uleb128 3
+-	.byte   0x83				# DW_CFA_offset %ebx
+-	.uleb128 4
+-	.align	4
+-.LENDFDE:
+-
+-
+-#ifdef SHARED
+-	.hidden	DW.ref.__gcc_personality_v0
+-	.weak	DW.ref.__gcc_personality_v0
+-	.section .gnu.linkonce.d.DW.ref.__gcc_personality_v0,"aw",@progbits
+-	.align	4
+-	.type	DW.ref.__gcc_personality_v0, @object
+-	.size	DW.ref.__gcc_personality_v0, 4
+-DW.ref.__gcc_personality_v0:
+-	.long	__gcc_personality_v0
+-#endif
+Index: glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/i386/i486/sem_trywait.S
+===================================================================
+--- glibc-2.17-c758a686.orig/nptl/sysdeps/unix/sysv/linux/i386/i486/sem_trywait.S
++++ /dev/null
+@@ -1,67 +0,0 @@
+-/* Copyright (C) 2002-2003, 2005, 2007, 2011-2012 Free Software Foundation, Inc.
+-   This file is part of the GNU C Library.
+-   Contributed by Ulrich Drepper <drepper@redhat.com>, 2002.
+-
+-   The GNU C Library is free software; you can redistribute it and/or
+-   modify it under the terms of the GNU Lesser General Public
+-   License as published by the Free Software Foundation; either
+-   version 2.1 of the License, or (at your option) any later version.
+-
+-   The GNU C Library is distributed in the hope that it will be useful,
+-   but WITHOUT ANY WARRANTY; without even the implied warranty of
+-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+-   Lesser General Public License for more details.
+-
+-   You should have received a copy of the GNU Lesser General Public
+-   License along with the GNU C Library; if not, see
+-   <http://www.gnu.org/licenses/>.  */
+-
+-#include <sysdep.h>
+-#include <shlib-compat.h>
+-#include <pthread-errnos.h>
+-#include <lowlevellock.h>
+-
+-	.text
+-
+-	.globl	__new_sem_trywait
+-	.type	__new_sem_trywait,@function
+-	.align	16
+-__new_sem_trywait:
+-	movl	4(%esp), %ecx
+-
+-	movl	(%ecx), %eax
+-2:	testl	%eax, %eax
+-	jz	1f
+-
+-	leal	-1(%eax), %edx
+-	LOCK
+-	cmpxchgl %edx, (%ecx)
+-	jne	2b
+-	xorl	%eax, %eax
+-	ret
+-
+-1:
+-#ifdef PIC
+-	SETUP_PIC_REG(cx)
+-#else
+-	movl	$3f, %ecx
+-3:
+-#endif
+-	addl	$_GLOBAL_OFFSET_TABLE_, %ecx
+-#ifdef NO_TLS_DIRECT_SEG_REFS
+-	movl	errno@gotntpoff(%ecx), %edx
+-	addl	%gs:0, %edx
+-	movl	$EAGAIN, (%edx)
+-#else
+-	movl	errno@gotntpoff(%ecx), %edx
+-	movl	$EAGAIN, %gs:(%edx)
+-#endif
+-	orl	$-1, %eax
+-	ret
+-	.size	__new_sem_trywait,.-__new_sem_trywait
+-	versioned_symbol(libpthread, __new_sem_trywait, sem_trywait, GLIBC_2_1)
+-#if SHLIB_COMPAT(libpthread, GLIBC_2_0, GLIBC_2_1)
+-	.global	__old_sem_trywait
+-__old_sem_trywait = __new_sem_trywait
+-	compat_symbol(libpthread, __old_sem_trywait, sem_trywait, GLIBC_2_0)
+-#endif
+Index: glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/i386/i486/sem_wait.S
+===================================================================
+--- glibc-2.17-c758a686.orig/nptl/sysdeps/unix/sysv/linux/i386/i486/sem_wait.S
++++ /dev/null
+@@ -1,343 +0,0 @@
+-/* Copyright (C) 2002-2003, 2005, 2007, 2011-2012 Free Software Foundation, Inc.
+-   This file is part of the GNU C Library.
+-   Contributed by Ulrich Drepper <drepper@redhat.com>, 2002.
+-
+-   The GNU C Library is free software; you can redistribute it and/or
+-   modify it under the terms of the GNU Lesser General Public
+-   License as published by the Free Software Foundation; either
+-   version 2.1 of the License, or (at your option) any later version.
+-
+-   The GNU C Library is distributed in the hope that it will be useful,
+-   but WITHOUT ANY WARRANTY; without even the implied warranty of
+-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+-   Lesser General Public License for more details.
+-
+-   You should have received a copy of the GNU Lesser General Public
+-   License along with the GNU C Library; if not, see
+-   <http://www.gnu.org/licenses/>.  */
+-
+-#include <sysdep.h>
+-#include <shlib-compat.h>
+-#include <pthread-errnos.h>
+-#include <structsem.h>
+-#include <lowlevellock.h>
+-
+-
+-#if VALUE != 0
+-# error "code needs to be rewritten for VALUE != 0"
+-#endif
+-
+-	.text
+-
+-	.globl	__new_sem_wait
+-	.type	__new_sem_wait,@function
+-	.align	16
+-__new_sem_wait:
+-.LSTARTCODE:
+-	pushl	%ebx
+-.Lpush_ebx:
+-	pushl	%esi
+-.Lpush_esi:
+-	subl	$4, %esp
+-.Lsub_esp:
+-
+-	movl	16(%esp), %ebx
+-
+-	movl	(%ebx), %eax
+-2:	testl	%eax, %eax
+-	je	1f
+-
+-	leal	-1(%eax), %edx
+-	LOCK
+-	cmpxchgl %edx, (%ebx)
+-	jne	2b
+-7:	xorl	%eax, %eax
+-
+-9:	movl	4(%esp), %esi
+-	movl	8(%esp), %ebx
+-	addl	$12, %esp
+-.Ladd_esp:
+-	ret
+-
+-.Lafter_ret:
+-1:	LOCK
+-	incl	NWAITERS(%ebx)
+-
+-.LcleanupSTART:
+-6:	call	__pthread_enable_asynccancel
+-	movl	%eax, (%esp)
+-
+-#if FUTEX_WAIT == 0
+-	movl	PRIVATE(%ebx), %ecx
+-#else
+-	movl	$FUTEX_WAIT, %ecx
+-	orl	PRIVATE(%ebx), %ecx
+-#endif
+-	xorl	%esi, %esi
+-	xorl	%edx, %edx
+-	movl	$SYS_futex, %eax
+-	ENTER_KERNEL
+-	movl	%eax, %esi
+-
+-	movl	(%esp), %eax
+-	call	__pthread_disable_asynccancel
+-.LcleanupEND:
+-
+-	testl	%esi, %esi
+-	je	3f
+-	cmpl	$-EWOULDBLOCK, %esi
+-	jne	4f
+-
+-3:
+-	movl	(%ebx), %eax
+-5:	testl	%eax, %eax
+-	je	6b
+-
+-	leal	-1(%eax), %edx
+-	LOCK
+-	cmpxchgl %edx, (%ebx)
+-	jne	5b
+-
+-	LOCK
+-	decl	NWAITERS(%ebx)
+-	jmp	7b
+-
+-4:	LOCK
+-	decl	NWAITERS(%ebx)
+-
+-	negl	%esi
+-#ifdef PIC
+-	SETUP_PIC_REG(bx)
+-#else
+-	movl	$8f, %ebx
+-8:
+-#endif
+-	addl	$_GLOBAL_OFFSET_TABLE_, %ebx
+-#ifdef NO_TLS_DIRECT_SEG_REFS
+-	movl	errno@gotntpoff(%ebx), %edx
+-	addl	%gs:0, %edx
+-	movl	%esi, (%edx)
+-#else
+-	movl	errno@gotntpoff(%ebx), %edx
+-	movl	%esi, %gs:(%edx)
+-#endif
+-	orl	$-1, %eax
+-
+-	jmp	9b
+-	.size	__new_sem_wait,.-__new_sem_wait
+-	versioned_symbol(libpthread, __new_sem_wait, sem_wait, GLIBC_2_1)
+-
+-
+-	.type	sem_wait_cleanup,@function
+-sem_wait_cleanup:
+-	LOCK
+-	decl	NWAITERS(%ebx)
+-	movl	%eax, (%esp)
+-.LcallUR:
+-	call	_Unwind_Resume@PLT
+-	hlt
+-.LENDCODE:
+-	.size	sem_wait_cleanup,.-sem_wait_cleanup
+-
+-
+-	.section .gcc_except_table,"a",@progbits
+-.LexceptSTART:
+-	.byte	0xff				# @LPStart format (omit)
+-	.byte	0xff				# @TType format (omit)
+-	.byte	0x01				# call-site format
+-						# DW_EH_PE_uleb128
+-	.uleb128 .Lcstend-.Lcstbegin
+-.Lcstbegin:
+-	.uleb128 .LcleanupSTART-.LSTARTCODE
+-	.uleb128 .LcleanupEND-.LcleanupSTART
+-	.uleb128 sem_wait_cleanup-.LSTARTCODE
+-	.uleb128  0
+-	.uleb128 .LcallUR-.LSTARTCODE
+-	.uleb128 .LENDCODE-.LcallUR
+-	.uleb128 0
+-	.uleb128  0
+-.Lcstend:
+-
+-
+-	.section .eh_frame,"a",@progbits
+-.LSTARTFRAME:
+-	.long	.LENDCIE-.LSTARTCIE		# Length of the CIE.
+-.LSTARTCIE:
+-	.long	0				# CIE ID.
+-	.byte	1				# Version number.
+-#ifdef SHARED
+-	.string	"zPLR"				# NUL-terminated augmentation
+-						# string.
+-#else
+-	.string	"zPL"				# NUL-terminated augmentation
+-						# string.
+-#endif
+-	.uleb128 1				# Code alignment factor.
+-	.sleb128 -4				# Data alignment factor.
+-	.byte	8				# Return address register
+-						# column.
+-#ifdef SHARED
+-	.uleb128 7				# Augmentation value length.
+-	.byte	0x9b				# Personality: DW_EH_PE_pcrel
+-						# + DW_EH_PE_sdata4
+-						# + DW_EH_PE_indirect
+-	.long	DW.ref.__gcc_personality_v0-.
+-	.byte	0x1b				# LSDA Encoding: DW_EH_PE_pcrel
+-						# + DW_EH_PE_sdata4.
+-	.byte	0x1b				# FDE Encoding: DW_EH_PE_pcrel
+-						# + DW_EH_PE_sdata4.
+-#else
+-	.uleb128 6				# Augmentation value length.
+-	.byte	0x0				# Personality: absolute
+-	.long	__gcc_personality_v0
+-	.byte	0x0				# LSDA Encoding: absolute
+-#endif
+-	.byte 0x0c				# DW_CFA_def_cfa
+-	.uleb128 4
+-	.uleb128 4
+-	.byte	0x88				# DW_CFA_offset, column 0x10
+-	.uleb128 1
+-	.align 4
+-.LENDCIE:
+-
+-	.long	.LENDFDE-.LSTARTFDE		# Length of the FDE.
+-.LSTARTFDE:
+-	.long	.LSTARTFDE-.LSTARTFRAME		# CIE pointer.
+-#ifdef SHARED
+-	.long	.LSTARTCODE-.			# PC-relative start address
+-						# of the code.
+-#else
+-	.long	.LSTARTCODE			# Start address of the code.
+-#endif
+-	.long	.LENDCODE-.LSTARTCODE		# Length of the code.
+-	.uleb128 4				# Augmentation size
+-#ifdef SHARED
+-	.long	.LexceptSTART-.
+-#else
+-	.long	.LexceptSTART
+-#endif
+-
+-	.byte	4				# DW_CFA_advance_loc4
+-	.long	.Lpush_ebx-.LSTARTCODE
+-	.byte	14				# DW_CFA_def_cfa_offset
+-	.uleb128 8
+-	.byte   0x83				# DW_CFA_offset %ebx
+-	.uleb128 2
+-	.byte	4				# DW_CFA_advance_loc4
+-	.long	.Lpush_esi-.Lpush_ebx
+-	.byte	14				# DW_CFA_def_cfa_offset
+-	.uleb128 12
+-	.byte   0x86				# DW_CFA_offset %esi
+-	.uleb128 3
+-	.byte	4				# DW_CFA_advance_loc4
+-	.long	.Lsub_esp-.Lpush_esi
+-	.byte	14				# DW_CFA_def_cfa_offset
+-	.uleb128 16
+-	.byte	4				# DW_CFA_advance_loc4
+-	.long	.Ladd_esp-.Lsub_esp
+-	.byte	14				# DW_CFA_def_cfa_offset
+-	.uleb128 4
+-	.byte	0xc3				# DW_CFA_restore %ebx
+-	.byte	0xc6				# DW_CFA_restore %esi
+-	.byte	4				# DW_CFA_advance_loc4
+-	.long	.Lafter_ret-.Ladd_esp
+-	.byte	14				# DW_CFA_def_cfa_offset
+-	.uleb128 16
+-	.byte   0x83				# DW_CFA_offset %ebx
+-	.uleb128 2
+-	.byte   0x86				# DW_CFA_offset %esi
+-	.uleb128 3
+-	.align	4
+-.LENDFDE:
+-
+-
+-#ifdef SHARED
+-	.hidden	DW.ref.__gcc_personality_v0
+-	.weak	DW.ref.__gcc_personality_v0
+-	.section .gnu.linkonce.d.DW.ref.__gcc_personality_v0,"aw",@progbits
+-	.align	4
+-	.type	DW.ref.__gcc_personality_v0, @object
+-	.size	DW.ref.__gcc_personality_v0, 4
+-DW.ref.__gcc_personality_v0:
+-	.long	__gcc_personality_v0
+-#endif
+-
+-
+-#if SHLIB_COMPAT(libpthread, GLIBC_2_0, GLIBC_2_1)
+-	.section ".text.compat", "ax"
+-	.global	__old_sem_wait
+-	.type	__old_sem_wait,@function
+-	.align	16
+-	cfi_startproc
+-__old_sem_wait:
+-	pushl	%ebx
+-	cfi_adjust_cfa_offset(4)
+-	pushl	%esi
+-	cfi_adjust_cfa_offset(4)
+-	subl	$4, %esp
+-	cfi_adjust_cfa_offset(4)
+-
+-	movl	16(%esp), %ebx
+-	cfi_offset(ebx, -8)
+-
+-	cfi_offset(esi, -12)
+-3:	movl	(%ebx), %eax
+-2:	testl	%eax, %eax
+-	je	1f
+-
+-	leal	-1(%eax), %edx
+-	LOCK
+-	cmpxchgl %edx, (%ebx)
+-	jne	2b
+-	xorl	%eax, %eax
+-
+-5:	movl	4(%esp), %esi
+-	movl	8(%esp), %ebx
+-	addl	$12, %esp
+-	cfi_restore(ebx)
+-	cfi_restore(esi)
+-	cfi_adjust_cfa_offset(-12)
+-	ret
+-
+-	cfi_adjust_cfa_offset(12)
+-	cfi_offset(ebx, -8)
+-	cfi_offset(esi, -12)
+-1:	call	__pthread_enable_asynccancel
+-	movl	%eax, (%esp)
+-
+-	xorl	%esi, %esi
+-	movl	$SYS_futex, %eax
+-	movl	%esi, %ecx
+-	movl	%esi, %edx
+-	ENTER_KERNEL
+-	movl	%eax, %esi
+-
+-	movl	(%esp), %eax
+-	call	__pthread_disable_asynccancel
+-
+-	testl	%esi, %esi
+-	je	3b
+-	cmpl	$-EWOULDBLOCK, %esi
+-	je	3b
+-	negl	%esi
+-#ifdef PIC
+-	SETUP_PIC_REG(bx)
+-#else
+-	movl	$4f, %ebx
+-4:
+-#endif
+-	addl	$_GLOBAL_OFFSET_TABLE_, %ebx
+-#ifdef NO_TLS_DIRECT_SEG_REFS
+-	movl	errno@gotntpoff(%ebx), %edx
+-	addl	%gs:0, %edx
+-	movl	%esi, (%edx)
+-#else
+-	movl	errno@gotntpoff(%ebx), %edx
+-	movl	%esi, %gs:(%edx)
+-#endif
+-	orl	$-1, %eax
+-	jmp	5b
+-	cfi_endproc
+-	.size	__old_sem_wait,.-__old_sem_wait
+-	compat_symbol(libpthread, __old_sem_wait, sem_wait, GLIBC_2_0)
+-#endif
+Index: glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/i386/i586/sem_post.S
+===================================================================
+--- glibc-2.17-c758a686.orig/nptl/sysdeps/unix/sysv/linux/i386/i586/sem_post.S
++++ /dev/null
+@@ -1,19 +0,0 @@
+-/* Copyright (C) 2003 Free Software Foundation, Inc.
+-   This file is part of the GNU C Library.
+-   Contributed by Ulrich Drepper <drepper@redhat.com>, 2003.
+-
+-   The GNU C Library is free software; you can redistribute it and/or
+-   modify it under the terms of the GNU Lesser General Public
+-   License as published by the Free Software Foundation; either
+-   version 2.1 of the License, or (at your option) any later version.
+-
+-   The GNU C Library is distributed in the hope that it will be useful,
+-   but WITHOUT ANY WARRANTY; without even the implied warranty of
+-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+-   Lesser General Public License for more details.
+-
+-   You should have received a copy of the GNU Lesser General Public
+-   License along with the GNU C Library; if not, see
+-   <http://www.gnu.org/licenses/>.  */
+-
+-#include "../i486/sem_post.S"
+Index: glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/i386/i586/sem_timedwait.S
+===================================================================
+--- glibc-2.17-c758a686.orig/nptl/sysdeps/unix/sysv/linux/i386/i586/sem_timedwait.S
++++ /dev/null
+@@ -1,19 +0,0 @@
+-/* Copyright (C) 2003 Free Software Foundation, Inc.
+-   This file is part of the GNU C Library.
+-   Contributed by Ulrich Drepper <drepper@redhat.com>, 2003.
+-
+-   The GNU C Library is free software; you can redistribute it and/or
+-   modify it under the terms of the GNU Lesser General Public
+-   License as published by the Free Software Foundation; either
+-   version 2.1 of the License, or (at your option) any later version.
+-
+-   The GNU C Library is distributed in the hope that it will be useful,
+-   but WITHOUT ANY WARRANTY; without even the implied warranty of
+-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+-   Lesser General Public License for more details.
+-
+-   You should have received a copy of the GNU Lesser General Public
+-   License along with the GNU C Library; if not, see
+-   <http://www.gnu.org/licenses/>.  */
+-
+-#include "../i486/sem_timedwait.S"
+Index: glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/i386/i586/sem_trywait.S
+===================================================================
+--- glibc-2.17-c758a686.orig/nptl/sysdeps/unix/sysv/linux/i386/i586/sem_trywait.S
++++ /dev/null
+@@ -1,19 +0,0 @@
+-/* Copyright (C) 2003 Free Software Foundation, Inc.
+-   This file is part of the GNU C Library.
+-   Contributed by Ulrich Drepper <drepper@redhat.com>, 2003.
+-
+-   The GNU C Library is free software; you can redistribute it and/or
+-   modify it under the terms of the GNU Lesser General Public
+-   License as published by the Free Software Foundation; either
+-   version 2.1 of the License, or (at your option) any later version.
+-
+-   The GNU C Library is distributed in the hope that it will be useful,
+-   but WITHOUT ANY WARRANTY; without even the implied warranty of
+-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+-   Lesser General Public License for more details.
+-
+-   You should have received a copy of the GNU Lesser General Public
+-   License along with the GNU C Library; if not, see
+-   <http://www.gnu.org/licenses/>.  */
+-
+-#include "../i486/sem_trywait.S"
+Index: glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/i386/i586/sem_wait.S
+===================================================================
+--- glibc-2.17-c758a686.orig/nptl/sysdeps/unix/sysv/linux/i386/i586/sem_wait.S
++++ /dev/null
+@@ -1,19 +0,0 @@
+-/* Copyright (C) 2003 Free Software Foundation, Inc.
+-   This file is part of the GNU C Library.
+-   Contributed by Ulrich Drepper <drepper@redhat.com>, 2003.
+-
+-   The GNU C Library is free software; you can redistribute it and/or
+-   modify it under the terms of the GNU Lesser General Public
+-   License as published by the Free Software Foundation; either
+-   version 2.1 of the License, or (at your option) any later version.
+-
+-   The GNU C Library is distributed in the hope that it will be useful,
+-   but WITHOUT ANY WARRANTY; without even the implied warranty of
+-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+-   Lesser General Public License for more details.
+-
+-   You should have received a copy of the GNU Lesser General Public
+-   License along with the GNU C Library; if not, see
+-   <http://www.gnu.org/licenses/>.  */
+-
+-#include "../i486/sem_wait.S"
+Index: glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/i386/i686/sem_post.S
+===================================================================
+--- glibc-2.17-c758a686.orig/nptl/sysdeps/unix/sysv/linux/i386/i686/sem_post.S
++++ /dev/null
+@@ -1,19 +0,0 @@
+-/* Copyright (C) 2003 Free Software Foundation, Inc.
+-   This file is part of the GNU C Library.
+-   Contributed by Ulrich Drepper <drepper@redhat.com>, 2003.
+-
+-   The GNU C Library is free software; you can redistribute it and/or
+-   modify it under the terms of the GNU Lesser General Public
+-   License as published by the Free Software Foundation; either
+-   version 2.1 of the License, or (at your option) any later version.
+-
+-   The GNU C Library is distributed in the hope that it will be useful,
+-   but WITHOUT ANY WARRANTY; without even the implied warranty of
+-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+-   Lesser General Public License for more details.
+-
+-   You should have received a copy of the GNU Lesser General Public
+-   License along with the GNU C Library; if not, see
+-   <http://www.gnu.org/licenses/>.  */
+-
+-#include "../i486/sem_post.S"
+Index: glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/i386/i686/sem_timedwait.S
+===================================================================
+--- glibc-2.17-c758a686.orig/nptl/sysdeps/unix/sysv/linux/i386/i686/sem_timedwait.S
++++ /dev/null
+@@ -1,19 +0,0 @@
+-/* Copyright (C) 2003 Free Software Foundation, Inc.
+-   This file is part of the GNU C Library.
+-   Contributed by Ulrich Drepper <drepper@redhat.com>, 2003.
+-
+-   The GNU C Library is free software; you can redistribute it and/or
+-   modify it under the terms of the GNU Lesser General Public
+-   License as published by the Free Software Foundation; either
+-   version 2.1 of the License, or (at your option) any later version.
+-
+-   The GNU C Library is distributed in the hope that it will be useful,
+-   but WITHOUT ANY WARRANTY; without even the implied warranty of
+-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+-   Lesser General Public License for more details.
+-
+-   You should have received a copy of the GNU Lesser General Public
+-   License along with the GNU C Library; if not, see
+-   <http://www.gnu.org/licenses/>.  */
+-
+-#include "../i486/sem_timedwait.S"
+Index: glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/i386/i686/sem_trywait.S
+===================================================================
+--- glibc-2.17-c758a686.orig/nptl/sysdeps/unix/sysv/linux/i386/i686/sem_trywait.S
++++ /dev/null
+@@ -1,19 +0,0 @@
+-/* Copyright (C) 2003 Free Software Foundation, Inc.
+-   This file is part of the GNU C Library.
+-   Contributed by Ulrich Drepper <drepper@redhat.com>, 2003.
+-
+-   The GNU C Library is free software; you can redistribute it and/or
+-   modify it under the terms of the GNU Lesser General Public
+-   License as published by the Free Software Foundation; either
+-   version 2.1 of the License, or (at your option) any later version.
+-
+-   The GNU C Library is distributed in the hope that it will be useful,
+-   but WITHOUT ANY WARRANTY; without even the implied warranty of
+-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+-   Lesser General Public License for more details.
+-
+-   You should have received a copy of the GNU Lesser General Public
+-   License along with the GNU C Library; if not, see
+-   <http://www.gnu.org/licenses/>.  */
+-
+-#include "../i486/sem_trywait.S"
+Index: glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/i386/i686/sem_wait.S
+===================================================================
+--- glibc-2.17-c758a686.orig/nptl/sysdeps/unix/sysv/linux/i386/i686/sem_wait.S
++++ /dev/null
+@@ -1,19 +0,0 @@
+-/* Copyright (C) 2003 Free Software Foundation, Inc.
+-   This file is part of the GNU C Library.
+-   Contributed by Ulrich Drepper <drepper@redhat.com>, 2003.
+-
+-   The GNU C Library is free software; you can redistribute it and/or
+-   modify it under the terms of the GNU Lesser General Public
+-   License as published by the Free Software Foundation; either
+-   version 2.1 of the License, or (at your option) any later version.
+-
+-   The GNU C Library is distributed in the hope that it will be useful,
+-   but WITHOUT ANY WARRANTY; without even the implied warranty of
+-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+-   Lesser General Public License for more details.
+-
+-   You should have received a copy of the GNU Lesser General Public
+-   License along with the GNU C Library; if not, see
+-   <http://www.gnu.org/licenses/>.  */
+-
+-#include "../i486/sem_wait.S"
+Index: glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/internaltypes.h
+===================================================================
+--- glibc-2.17-c758a686.orig/nptl/sysdeps/unix/sysv/linux/internaltypes.h
++++ glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/internaltypes.h
+@@ -20,6 +20,8 @@
+ #define _INTERNALTYPES_H	1
+ 
+ #include <stdint.h>
++#include <atomic.h>
++#include <endian.h>
+ 
+ 
+ struct pthread_attr
+@@ -141,9 +143,29 @@ struct pthread_key_struct
+ /* Semaphore variable structure.  */
+ struct new_sem
+ {
++#if __HAVE_64B_ATOMICS
++  /* The data field holds both value (in the least-significant 32 bytes) and
++     nwaiters.  */
++# if __BYTE_ORDER == __LITTLE_ENDIAN
++#  define SEM_VALUE_OFFSET 0
++# elif __BYTE_ORDER == __BIG_ENDIAN
++#  define SEM_VALUE_OFFSET 1
++# else
++# error Unsupported byte order.
++# endif
++# define SEM_NWAITERS_SHIFT 32
++# define SEM_VALUE_MASK (~(unsigned int)0)
++  unsigned long int data;
++  int private;
++  int pad;
++#else
++# define SEM_VALUE_SHIFT 1
++# define SEM_NWAITERS_MASK ((unsigned int)1)
+   unsigned int value;
+   int private;
+-  unsigned long int nwaiters;
++  int pad;
++  unsigned int nwaiters;
++#endif
+ };
+ 
+ struct old_sem
+Index: glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/powerpc/sem_post.c
+===================================================================
+--- glibc-2.17-c758a686.orig/nptl/sysdeps/unix/sysv/linux/powerpc/sem_post.c
++++ /dev/null
+@@ -1,71 +0,0 @@
+-/* sem_post -- post to a POSIX semaphore.  Powerpc version.
+-   Copyright (C) 2003-2012 Free Software Foundation, Inc.
+-   This file is part of the GNU C Library.
+-   Contributed by Paul Mackerras <paulus@au.ibm.com>, 2003.
+-
+-   The GNU C Library is free software; you can redistribute it and/or
+-   modify it under the terms of the GNU Lesser General Public
+-   License as published by the Free Software Foundation; either
+-   version 2.1 of the License, or (at your option) any later version.
+-
+-   The GNU C Library is distributed in the hope that it will be useful,
+-   but WITHOUT ANY WARRANTY; without even the implied warranty of
+-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	 See the GNU
+-   Lesser General Public License for more details.
+-
+-   You should have received a copy of the GNU Lesser General Public
+-   License along with the GNU C Library; if not, see
+-   <http://www.gnu.org/licenses/>.  */
+-
+-#include <errno.h>
+-#include <sysdep.h>
+-#include <lowlevellock.h>
+-#include <internaltypes.h>
+-#include <semaphore.h>
+-
+-#include <shlib-compat.h>
+-
+-int
+-__new_sem_post (sem_t *sem)
+-{
+-  struct new_sem *isem = (struct new_sem *) sem;
+-
+-  __asm __volatile (__lll_rel_instr ::: "memory");
+-  atomic_increment (&isem->value);
+-  __asm __volatile (__lll_acq_instr ::: "memory");
+-  if (isem->nwaiters > 0)
+-    {
+-      int err = lll_futex_wake (&isem->value, 1,
+-				isem->private ^ FUTEX_PRIVATE_FLAG);
+-      if (__builtin_expect (err, 0) < 0)
+-	{
+-	  __set_errno (-err);
+-	  return -1;
+-	}
+-    }
+-  return 0;
+-}
+-versioned_symbol (libpthread, __new_sem_post, sem_post, GLIBC_2_1);
+-
+-#if SHLIB_COMPAT (libpthread, GLIBC_2_0, GLIBC_2_1)
+-
+-int
+-attribute_compat_text_section
+-__old_sem_post (sem_t *sem)
+-{
+-  int *futex = (int *) sem;
+-
+-  __asm __volatile (__lll_rel_instr ::: "memory");
+-  (void) atomic_increment_val (futex);
+-  /* We always have to assume it is a shared semaphore.  */
+-  int err = lll_futex_wake (futex, 1, LLL_SHARED);
+-  if (__builtin_expect (err, 0) < 0)
+-    {
+-      __set_errno (-err);
+-      return -1;
+-    }
+-  return 0;
+-}
+-
+-compat_symbol (libpthread, __old_sem_post, sem_post, GLIBC_2_0);
+-#endif
+Index: glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/sem_post.c
+===================================================================
+--- glibc-2.17-c758a686.orig/nptl/sysdeps/unix/sysv/linux/sem_post.c
++++ glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/sem_post.c
+@@ -25,34 +25,78 @@
+ 
+ #include <shlib-compat.h>
+ 
++/* Wrapper for lll_futex_wake, with error checking.
++   TODO Remove when cleaning up the futex API throughout glibc.  */
++static __always_inline void
++futex_wake (unsigned int* futex, int processes_to_wake, int private)
++{
++  int res = lll_futex_wake (futex, processes_to_wake, private);
++  /* No error.  Ignore the number of woken processes.  */
++  if (res >= 0)
++    return;
++  switch (res)
++    {
++    case -EFAULT: /* Could have happened due to memory reuse.  */
++    case -EINVAL: /* Could be either due to incorrect alignment (a bug in
++		     glibc or in the application) or due to memory being
++		     reused for a PI futex.  We cannot distinguish between the
++		     two causes, and one of them is correct use, so we do not
++		     act in this case.  */
++      return;
++    case -ENOSYS: /* Must have been caused by a glibc bug.  */
++    /* No other errors are documented at this time.  */
++    default:
++      abort ();
++    }
++}
++
++
++/* See sem_wait for an explanation of the algorithm.  */
+ int
+ __new_sem_post (sem_t *sem)
+ {
+   struct new_sem *isem = (struct new_sem *) sem;
++  int private = isem->private;
+ 
+-  __typeof (isem->value) cur;
++#if __HAVE_64B_ATOMICS
++  /* Add a token to the semaphore.  We use release MO to make sure that a
++     thread acquiring this token synchronizes with us and other threads that
++     added tokens before (the release sequence includes atomic RMW operations
++     by other threads).  */
++  /* TODO Use atomic_fetch_add to make it scale better than a CAS loop?  */
++  unsigned long int d = atomic_load_relaxed (&isem->data);
+   do
+     {
+-      cur = isem->value;
+-      if (isem->value == SEM_VALUE_MAX)
++      if ((d & SEM_VALUE_MASK) == SEM_VALUE_MAX)
+ 	{
+ 	  __set_errno (EOVERFLOW);
+ 	  return -1;
+ 	}
+     }
+-  while (atomic_compare_and_exchange_bool_rel (&isem->value, cur + 1, cur));
++  while (!atomic_compare_exchange_weak_release (&isem->data, &d, d + 1));
+ 
+-  atomic_full_barrier ();
+-  if (isem->nwaiters > 0)
++  /* If there is any potentially blocked waiter, wake one of them.  */
++  if ((d >> SEM_NWAITERS_SHIFT) > 0)
++    futex_wake (((unsigned int *) &isem->data) + SEM_VALUE_OFFSET, 1, private);
++#else
++  /* Add a token to the semaphore.  Similar to 64b version.  */
++  unsigned int v = atomic_load_relaxed (&isem->value);
++  do
+     {
+-      int err = lll_futex_wake (&isem->value, 1,
+-				isem->private ^ FUTEX_PRIVATE_FLAG);
+-      if (__builtin_expect (err, 0) < 0)
++      if ((v << SEM_VALUE_SHIFT) == SEM_VALUE_MAX)
+ 	{
+-	  __set_errno (-err);
++	  __set_errno (EOVERFLOW);
+ 	  return -1;
+ 	}
+     }
++  while (!atomic_compare_exchange_weak_release (&isem->value,
++      &v, v + (1 << SEM_VALUE_SHIFT)));
++
++  /* If there is any potentially blocked waiter, wake one of them.  */
++  if ((v & SEM_NWAITERS_MASK) != 0)
++    futex_wake (&isem->value, 1, private);
++#endif
++
+   return 0;
+ }
+ versioned_symbol (libpthread, __new_sem_post, sem_post, GLIBC_2_1);
+@@ -65,6 +109,9 @@ __old_sem_post (sem_t *sem)
+ {
+   int *futex = (int *) sem;
+ 
++  /* We must need to synchronize with consumers of this token, so the atomic
++     increment must have release MO semantics.  */
++  atomic_write_barrier ();
+   (void) atomic_increment_val (futex);
+   /* We always have to assume it is a shared semaphore.  */
+   int err = lll_futex_wake (futex, 1, LLL_SHARED);
+Index: glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/sem_timedwait.c
+===================================================================
+--- glibc-2.17-c758a686.orig/nptl/sysdeps/unix/sysv/linux/sem_timedwait.c
++++ glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/sem_timedwait.c
+@@ -1,5 +1,5 @@
+-/* sem_timedwait -- wait on a semaphore.  Generic futex-using version.
+-   Copyright (C) 2003, 2007, 2012 Free Software Foundation, Inc.
++/* sem_timedwait -- wait on a semaphore with timeout.
++   Copyright (C) 2003-2015 Free Software Foundation, Inc.
+    This file is part of the GNU C Library.
+    Contributed by Paul Mackerras <paulus@au.ibm.com>, 2003.
+ 
+@@ -17,42 +17,13 @@
+    License along with the GNU C Library; if not, see
+    <http://www.gnu.org/licenses/>.  */
+ 
+-#include <errno.h>
+-#include <sysdep.h>
+-#include <lowlevellock.h>
+-#include <internaltypes.h>
+-#include <semaphore.h>
+-
+-#include <pthreadP.h>
+-#include <shlib-compat.h>
+-
+-
+-extern void __sem_wait_cleanup (void *arg) attribute_hidden;
+-
+-/* This is in a seperate function in order to make sure gcc
+-   puts the call site into an exception region, and thus the
+-   cleanups get properly run.  */
+-static int
+-__attribute__ ((noinline))
+-do_futex_timed_wait (struct new_sem *isem, struct timespec *rt)
+-{
+-  int err, oldtype = __pthread_enable_asynccancel ();
+-
+-  err = lll_futex_timed_wait (&isem->value, 0, rt,
+-			      isem->private ^ FUTEX_PRIVATE_FLAG);
+-
+-  __pthread_disable_asynccancel (oldtype);
+-  return err;
+-}
++#include "sem_waitcommon.c"
+ 
++/* This is in a separate file because because sem_timedwait is only provided
++   if __USE_XOPEN2K is defined.  */
+ int
+ sem_timedwait (sem_t *sem, const struct timespec *abstime)
+ {
+-  struct new_sem *isem = (struct new_sem *) sem;
+-  int err;
+-
+-  if (atomic_decrement_if_positive (&isem->value) > 0)
+-    return 0;
+ 
+   if (abstime->tv_nsec < 0 || abstime->tv_nsec >= 1000000000)
+     {
+@@ -60,57 +31,8 @@ sem_timedwait (sem_t *sem, const struct
+       return -1;
+     }
+ 
+-  atomic_increment (&isem->nwaiters);
+-
+-  pthread_cleanup_push (__sem_wait_cleanup, isem);
+-
+-  while (1)
+-    {
+-      struct timeval tv;
+-      struct timespec rt;
+-      int sec, nsec;
+-
+-      /* Get the current time.  */
+-      __gettimeofday (&tv, NULL);
+-
+-      /* Compute relative timeout.  */
+-      sec = abstime->tv_sec - tv.tv_sec;
+-      nsec = abstime->tv_nsec - tv.tv_usec * 1000;
+-      if (nsec < 0)
+-	{
+-	  nsec += 1000000000;
+-	  --sec;
+-	}
+-
+-      /* Already timed out?  */
+-      if (sec < 0)
+-	{
+-	  __set_errno (ETIMEDOUT);
+-	  err = -1;
+-	  break;
+-	}
+-
+-      /* Do wait.  */
+-      rt.tv_sec = sec;
+-      rt.tv_nsec = nsec;
+-      err = do_futex_timed_wait(isem, &rt);
+-      if (err != 0 && err != -EWOULDBLOCK)
+-	{
+-	  __set_errno (-err);
+-	  err = -1;
+-	  break;
+-	}
+-
+-      if (atomic_decrement_if_positive (&isem->value) > 0)
+-	{
+-	  err = 0;
+-	  break;
+-	}
+-    }
+-
+-  pthread_cleanup_pop (0);
+-
+-  atomic_decrement (&isem->nwaiters);
+-
+-  return err;
++  if (__new_sem_wait_fast ((struct new_sem *) sem, 0) == 0)
++    return 0;
++  else
++    return __new_sem_wait_slow((struct new_sem *) sem, abstime);
+ }
+Index: glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/sem_trywait.c
+===================================================================
+--- glibc-2.17-c758a686.orig/nptl/sysdeps/unix/sysv/linux/sem_trywait.c
++++ /dev/null
+@@ -1,49 +0,0 @@
+-/* sem_trywait -- wait on a semaphore.  Generic futex-using version.
+-   Copyright (C) 2003 Free Software Foundation, Inc.
+-   This file is part of the GNU C Library.
+-   Contributed by Paul Mackerras <paulus@au.ibm.com>, 2003.
+-
+-   The GNU C Library is free software; you can redistribute it and/or
+-   modify it under the terms of the GNU Lesser General Public
+-   License as published by the Free Software Foundation; either
+-   version 2.1 of the License, or (at your option) any later version.
+-
+-   The GNU C Library is distributed in the hope that it will be useful,
+-   but WITHOUT ANY WARRANTY; without even the implied warranty of
+-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	 See the GNU
+-   Lesser General Public License for more details.
+-
+-   You should have received a copy of the GNU Lesser General Public
+-   License along with the GNU C Library; if not, see
+-   <http://www.gnu.org/licenses/>.  */
+-
+-#include <errno.h>
+-#include <sysdep.h>
+-#include <lowlevellock.h>
+-#include <internaltypes.h>
+-#include <semaphore.h>
+-
+-#include <shlib-compat.h>
+-
+-
+-int
+-__new_sem_trywait (sem_t *sem)
+-{
+-  int *futex = (int *) sem;
+-  int val;
+-
+-  if (*futex > 0)
+-    {
+-      val = atomic_decrement_if_positive (futex);
+-      if (val > 0)
+-	return 0;
+-    }
+-
+-  __set_errno (EAGAIN);
+-  return -1;
+-}
+-versioned_symbol (libpthread, __new_sem_trywait, sem_trywait, GLIBC_2_1);
+-#if SHLIB_COMPAT (libpthread, GLIBC_2_0, GLIBC_2_1)
+-strong_alias (__new_sem_trywait, __old_sem_trywait)
+-compat_symbol (libpthread, __old_sem_trywait, sem_trywait, GLIBC_2_0);
+-#endif
+Index: glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/sem_wait.c
+===================================================================
+--- glibc-2.17-c758a686.orig/nptl/sysdeps/unix/sysv/linux/sem_wait.c
++++ glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/sem_wait.c
+@@ -17,79 +17,18 @@
+    License along with the GNU C Library; if not, see
+    <http://www.gnu.org/licenses/>.  */
+ 
+-#include <errno.h>
+-#include <sysdep.h>
+-#include <lowlevellock.h>
+-#include <internaltypes.h>
+-#include <semaphore.h>
+-
+-#include <pthreadP.h>
+-#include <shlib-compat.h>
+-
+-
+-void
+-attribute_hidden
+-__sem_wait_cleanup (void *arg)
+-{
+-  struct new_sem *isem = (struct new_sem *) arg;
+-
+-  atomic_decrement (&isem->nwaiters);
+-}
+-
+-/* This is in a seperate function in order to make sure gcc
+-   puts the call site into an exception region, and thus the
+-   cleanups get properly run.  */
+-static int
+-__attribute__ ((noinline))
+-do_futex_wait (struct new_sem *isem)
+-{
+-  int err, oldtype = __pthread_enable_asynccancel ();
+-
+-  err = lll_futex_wait (&isem->value, 0, isem->private ^ FUTEX_PRIVATE_FLAG);
+-
+-  __pthread_disable_asynccancel (oldtype);
+-  return err;
+-}
++#include "sem_waitcommon.c"
+ 
+ int
+ __new_sem_wait (sem_t *sem)
+ {
+-  struct new_sem *isem = (struct new_sem *) sem;
+-  int err;
+-
+-  if (atomic_decrement_if_positive (&isem->value) > 0)
++  if (__new_sem_wait_fast ((struct new_sem *) sem, 0) == 0)
+     return 0;
+-
+-  atomic_increment (&isem->nwaiters);
+-
+-  pthread_cleanup_push (__sem_wait_cleanup, isem);
+-
+-  while (1)
+-    {
+-      err = do_futex_wait(isem);
+-      if (err != 0 && err != -EWOULDBLOCK)
+-	{
+-	  __set_errno (-err);
+-	  err = -1;
+-	  break;
+-	}
+-
+-      if (atomic_decrement_if_positive (&isem->value) > 0)
+-	{
+-	  err = 0;
+-	  break;
+-	}
+-    }
+-
+-  pthread_cleanup_pop (0);
+-
+-  atomic_decrement (&isem->nwaiters);
+-
+-  return err;
++  else
++    return __new_sem_wait_slow((struct new_sem *) sem, NULL);
+ }
+ versioned_symbol (libpthread, __new_sem_wait, sem_wait, GLIBC_2_1);
+ 
+-
+ #if SHLIB_COMPAT (libpthread, GLIBC_2_0, GLIBC_2_1)
+ int
+ attribute_compat_text_section
+@@ -120,3 +59,34 @@ __old_sem_wait (sem_t *sem)
+ 
+ compat_symbol (libpthread, __old_sem_wait, sem_wait, GLIBC_2_0);
+ #endif
++
++int
++__new_sem_trywait (sem_t *sem)
++{
++  /* We must not fail spuriously, so require a definitive result even if this
++     may lead to a long execution time.  */
++  if (__new_sem_wait_fast ((struct new_sem *) sem, 1) == 0)
++    return 0;
++  __set_errno (EAGAIN);
++  return -1;
++}
++versioned_symbol (libpthread, __new_sem_trywait, sem_trywait, GLIBC_2_1);
++#if SHLIB_COMPAT (libpthread, GLIBC_2_0, GLIBC_2_1)
++int
++__old_sem_trywait (sem_t *sem)
++{
++  int *futex = (int *) sem;
++  int val;
++
++  if (*futex > 0)
++    {
++      val = atomic_decrement_if_positive (futex);
++      if (val > 0)
++	return 0;
++    }
++
++  __set_errno (EAGAIN);
++  return -1;
++}
++compat_symbol (libpthread, __old_sem_trywait, sem_trywait, GLIBC_2_0);
++#endif
+Index: glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/sem_waitcommon.c
+===================================================================
+--- /dev/null
++++ glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/sem_waitcommon.c
+@@ -0,0 +1,467 @@
++/* sem_waitcommon -- wait on a semaphore, shared code.
++   Copyright (C) 2003-2015 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++   Contributed by Paul Mackerras <paulus@au.ibm.com>, 2003.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	 See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <errno.h>
++#include <sysdep.h>
++#include <lowlevellock.h>
++#include <internaltypes.h>
++#include <semaphore.h>
++#include <sys/time.h>
++
++#include <pthreadP.h>
++#include <shlib-compat.h>
++#include <atomic.h>
++
++/* Wrapper for lll_futex_wait with absolute timeout and error checking.
++   TODO Remove when cleaning up the futex API throughout glibc.  */
++static __always_inline int
++futex_abstimed_wait (unsigned int* futex, unsigned int expected,
++		     const struct timespec* abstime, int private, bool cancel)
++{
++  int err, oldtype;
++  if (abstime == NULL)
++    {
++      if (cancel)
++	oldtype = __pthread_enable_asynccancel ();
++      err = lll_futex_wait (futex, expected, private);
++      if (cancel)
++	__pthread_disable_asynccancel (oldtype);
++    }
++  else
++    {
++      struct timeval tv;
++      struct timespec rt;
++      int sec, nsec;
++
++      /* Get the current time.  */
++      __gettimeofday (&tv, NULL);
++
++      /* Compute relative timeout.  */
++      sec = abstime->tv_sec - tv.tv_sec;
++      nsec = abstime->tv_nsec - tv.tv_usec * 1000;
++      if (nsec < 0)
++        {
++          nsec += 1000000000;
++          --sec;
++        }
++
++      /* Already timed out?  */
++      if (sec < 0)
++        return ETIMEDOUT;
++
++      /* Do wait.  */
++      rt.tv_sec = sec;
++      rt.tv_nsec = nsec;
++      if (cancel)
++	oldtype = __pthread_enable_asynccancel ();
++      err = lll_futex_timed_wait (futex, expected, &rt, private);
++      if (cancel)
++	__pthread_disable_asynccancel (oldtype);
++    }
++  switch (err)
++    {
++    case 0:
++    case -EAGAIN:
++    case -EINTR:
++    case -ETIMEDOUT:
++      return -err;
++
++    case -EFAULT: /* Must have been caused by a glibc or application bug.  */
++    case -EINVAL: /* Either due to wrong alignment or due to the timeout not
++		     being normalized.  Must have been caused by a glibc or
++		     application bug.  */
++    case -ENOSYS: /* Must have been caused by a glibc bug.  */
++    /* No other errors are documented at this time.  */
++    default:
++      abort ();
++    }
++}
++
++/* Wrapper for lll_futex_wake, with error checking.
++   TODO Remove when cleaning up the futex API throughout glibc.  */
++static __always_inline void
++futex_wake (unsigned int* futex, int processes_to_wake, int private)
++{
++  int res = lll_futex_wake (futex, processes_to_wake, private);
++  /* No error.  Ignore the number of woken processes.  */
++  if (res >= 0)
++    return;
++  switch (res)
++    {
++    case -EFAULT: /* Could have happened due to memory reuse.  */
++    case -EINVAL: /* Could be either due to incorrect alignment (a bug in
++		     glibc or in the application) or due to memory being
++		     reused for a PI futex.  We cannot distinguish between the
++		     two causes, and one of them is correct use, so we do not
++		     act in this case.  */
++      return;
++    case -ENOSYS: /* Must have been caused by a glibc bug.  */
++    /* No other errors are documented at this time.  */
++    default:
++      abort ();
++    }
++}
++
++
++/* The semaphore provides two main operations: sem_post adds a token to the
++   semaphore; sem_wait grabs a token from the semaphore, potentially waiting
++   until there is a token available.  A sem_wait needs to synchronize with
++   the sem_post that provided the token, so that whatever lead to the sem_post
++   happens before the code after sem_wait.
++
++   Conceptually, available tokens can simply be counted; let's call that the
++   value of the semaphore.  However, we also want to know whether there might
++   be a sem_wait that is blocked on the value because it was zero (using a
++   futex with the value being the futex variable); if there is no blocked
++   sem_wait, sem_post does not need to execute a futex_wake call.  Therefore,
++   we also need to count the number of potentially blocked sem_wait calls
++   (which we call nwaiters).
++
++   What makes this tricky is that POSIX requires that a semaphore can be
++   destroyed as soon as the last remaining sem_wait has returned, and no
++   other sem_wait or sem_post calls are executing concurrently.  However, the
++   sem_post call whose token was consumed by the last sem_wait is considered
++   to have finished once it provided the token to the sem_wait.
++   Thus, sem_post must not access the semaphore struct anymore after it has
++   made a token available; IOW, it needs to be able to atomically provide
++   a token and check whether any blocked sem_wait calls might exist.
++
++   This is straightforward to do if the architecture provides 64b atomics
++   because we can just put both the value and nwaiters into one variable that
++   we access atomically: This is the data field, the value is in the
++   least-significant 32 bits, and nwaiters in the other bits.  When sem_post
++   makes a value available, it can atomically check nwaiters.
++
++   If we have only 32b atomics available, we cannot put both nwaiters and
++   value into one 32b value because then we might have too few bits for both
++   of those counters.  Therefore, we need to use two distinct fields.
++
++   To allow sem_post to atomically make a token available and check for
++   blocked sem_wait calls, we use one bit in value to indicate whether
++   nwaiters is nonzero.  That allows sem_post to use basically the same
++   algorithm as with 64b atomics, but requires sem_wait to update the bit; it
++   can't do this atomically with another access to nwaiters, but it can compute
++   a conservative value for the bit because it's benign if the bit is set
++   even if nwaiters is zero (all we get is an unnecessary futex wake call by
++   sem_post).
++   Specifically, sem_wait will unset the bit speculatively if it believes that
++   there is no other concurrently executing sem_wait.  If it misspeculated,
++   it will have to clean up by waking any other sem_wait call (i.e., what
++   sem_post would do otherwise).  This does not conflict with the destruction
++   requirement because the semaphore must not be destructed while any sem_wait
++   is still executing.  */
++
++/* Set this to true if you assume that, in contrast to current Linux futex
++   documentation, lll_futex_wake can return -EINTR only if interrupted by a
++   signal, not spuriously due to some other reason.
++   TODO Discuss EINTR conditions with the Linux kernel community.  For
++   now, we set this to true to not change behavior of semaphores compared
++   to previous glibc builds.  */
++static const int sem_assume_only_signals_cause_futex_EINTR = 1;
++
++#if !__HAVE_64B_ATOMICS
++static void
++__sem_wait_32_finish (struct new_sem *sem);
++#endif
++
++static void
++__sem_wait_cleanup (void *arg)
++{
++  struct new_sem *sem = (struct new_sem *) arg;
++
++#if __HAVE_64B_ATOMICS
++  /* Stop being registered as a waiter.  See below for MO.  */
++  atomic_fetch_add_relaxed (&sem->data, -(1UL << SEM_NWAITERS_SHIFT));
++#else
++  __sem_wait_32_finish (sem);
++#endif
++}
++
++/* Wait until at least one token is available, possibly with a timeout.
++   This is in a separate function in order to make sure gcc
++   puts the call site into an exception region, and thus the
++   cleanups get properly run.  TODO still necessary?  Other futex_wait
++   users don't seem to need it.  */
++static int
++__attribute__ ((noinline))
++do_futex_wait (struct new_sem *sem, const struct timespec *abstime)
++{
++  int err;
++
++#if __HAVE_64B_ATOMICS
++  err = futex_abstimed_wait ((unsigned int *) &sem->data + SEM_VALUE_OFFSET, 0,
++			     abstime, sem->private, true);
++#else
++  err = futex_abstimed_wait (&sem->value, SEM_NWAITERS_MASK, abstime,
++			     sem->private, true);
++#endif
++
++  return err;
++}
++
++/* Fast path: Try to grab a token without blocking.  */
++static int
++__new_sem_wait_fast (struct new_sem *sem, int definitive_result)
++{
++  /* We need acquire MO if we actually grab a token, so that this
++     synchronizes with all token providers (i.e., the RMW operation we read
++     from or all those before it in modification order; also see sem_post).
++     We do not need to guarantee any ordering if we observed that there is
++     no token (POSIX leaves it unspecified whether functions that fail
++     synchronize memory); thus, relaxed MO is sufficient for the initial load
++     and the failure path of the CAS.  If the weak CAS fails and we need a
++     definitive result, retry.  */
++#if __HAVE_64B_ATOMICS
++  unsigned long d = atomic_load_relaxed (&sem->data);
++  do
++    {
++      if ((d & SEM_VALUE_MASK) == 0)
++	break;
++      if (atomic_compare_exchange_weak_acquire (&sem->data, &d, d - 1))
++	return 0;
++    }
++  while (definitive_result);
++  return -1;
++#else
++  unsigned int v = atomic_load_relaxed (&sem->value);
++  do
++    {
++      if ((v >> SEM_VALUE_SHIFT) == 0)
++	break;
++      if (atomic_compare_exchange_weak_acquire (&sem->value,
++	  &v, v - (1 << SEM_VALUE_SHIFT)))
++	return 0;
++    }
++  while (definitive_result);
++  return -1;
++#endif
++}
++
++/* Slow path that blocks.  */
++static int
++__attribute__ ((noinline))
++__new_sem_wait_slow (struct new_sem *sem, const struct timespec *abstime)
++{
++  int err = 0;
++
++#if __HAVE_64B_ATOMICS
++  /* Add a waiter.  Relaxed MO is sufficient because we can rely on the
++     ordering provided by the RMW operations we use.  */
++  unsigned long d = atomic_fetch_add_relaxed (&sem->data,
++      1UL << SEM_NWAITERS_SHIFT);
++
++  pthread_cleanup_push (__sem_wait_cleanup, sem);
++
++  /* Wait for a token to be available.  Retry until we can grab one.  */
++  for (;;)
++    {
++      /* If there is no token available, sleep until there is.  */
++      if ((d & SEM_VALUE_MASK) == 0)
++	{
++	  err = do_futex_wait (sem, abstime);
++	  /* A futex return value of 0 or EAGAIN is due to a real or spurious
++	     wake-up, or due to a change in the number of tokens.  We retry in
++	     these cases.
++	     If we timed out, forward this to the caller.
++	     EINTR could be either due to being interrupted by a signal, or
++	     due to a spurious wake-up.  Thus, we cannot distinguish between
++	     both, and are not allowed to return EINTR to the caller but have
++	     to retry; this is because we may not have been interrupted by a
++	     signal.  However, if we assume that only signals cause a futex
++	     return of EINTR, we forward EINTR to the caller.
++
++	     Retrying on EINTR is technically always allowed because to
++	     reliably interrupt sem_wait with a signal, the signal handler
++	     must call sem_post (which is AS-Safe).  In executions where the
++	     signal handler does not do that, the implementation can correctly
++	     claim that sem_wait hadn't actually started to execute yet, and
++	     thus the signal never actually interrupted sem_wait.  We make no
++	     timing guarantees, so the program can never observe that sem_wait
++	     actually did start to execute.  Thus, in a correct program, we
++	     can expect a signal that wanted to interrupt the sem_wait to have
++	     provided a token, and can just try to grab this token if
++	     futex_wait returns EINTR.  */
++	  if (err == ETIMEDOUT ||
++	      (err == EINTR && sem_assume_only_signals_cause_futex_EINTR))
++	    {
++	      __set_errno (err);
++	      err = -1;
++	      /* Stop being registered as a waiter.  */
++	      atomic_fetch_add_relaxed (&sem->data,
++		  -(1UL << SEM_NWAITERS_SHIFT));
++	      break;
++	    }
++	  /* Relaxed MO is sufficient; see below.  */
++	  d = atomic_load_relaxed (&sem->data);
++	}
++      else
++	{
++	  /* Try to grab both a token and stop being a waiter.  We need
++	     acquire MO so this synchronizes with all token providers (i.e.,
++	     the RMW operation we read from or all those before it in
++	     modification order; also see sem_post).  On the failure path,
++	     relaxed MO is sufficient because we only eventually need the
++	     up-to-date value; the futex_wait or the CAS perform the real
++	     work.  */
++	  if (atomic_compare_exchange_weak_acquire (&sem->data,
++	      &d, d - 1 - (1UL << SEM_NWAITERS_SHIFT)))
++	    {
++	      err = 0;
++	      break;
++	    }
++	}
++    }
++
++  pthread_cleanup_pop (0);
++#else
++  /* The main difference to the 64b-atomics implementation is that we need to
++     access value and nwaiters in separate steps, and that the nwaiters bit
++     in the value can temporarily not be set even if nwaiters is nonzero.
++     We work around incorrectly unsetting the nwaiters bit by letting sem_wait
++     set the bit again and waking the number of waiters that could grab a
++     token.  There are two additional properties we need to ensure:
++     (1) We make sure that whenever unsetting the bit, we see the increment of
++     nwaiters by the other thread that set the bit.  IOW, we will notice if
++     we make a mistake.
++     (2) When setting the nwaiters bit, we make sure that we see the unsetting
++     of the bit by another waiter that happened before us.  This avoids having
++     to blindly set the bit whenever we need to block on it.  We set/unset
++     the bit while having incremented nwaiters (i.e., are a registered
++     waiter), and the problematic case only happens when one waiter indeed
++     followed another (i.e., nwaiters was never larger than 1); thus, this
++     works similarly as with a critical section using nwaiters (see the MOs
++     and related comments below).
++
++     An alternative approach would be to unset the bit after decrementing
++     nwaiters; however, that would result in needing Dekker-like
++     synchronization and thus full memory barriers.  We also would not be able
++     to prevent misspeculation, so this alternative scheme does not seem
++     beneficial.  */
++  unsigned int v;
++
++  /* Add a waiter.  We need acquire MO so this synchronizes with the release
++     MO we use when decrementing nwaiters below; it ensures that if another
++     waiter unset the bit before us, we see that and set it again.  Also see
++     property (2) above.  */
++  atomic_fetch_add_acquire (&sem->nwaiters, 1);
++
++  pthread_cleanup_push (__sem_wait_cleanup, sem);
++
++  /* Wait for a token to be available.  Retry until we can grab one.  */
++  /* We do not need any ordering wrt. to this load's reads-from, so relaxed
++     MO is sufficient.  The acquire MO above ensures that in the problematic
++     case, we do see the unsetting of the bit by another waiter.  */
++  v = atomic_load_relaxed (&sem->value);
++  do
++    {
++      do
++	{
++	  /* We are about to block, so make sure that the nwaiters bit is
++	     set.  We need release MO on the CAS to ensure that when another
++	     waiter unsets the nwaiters bit, it will also observe that we
++	     incremented nwaiters in the meantime (also see the unsetting of
++	     the bit below).  Relaxed MO on CAS failure is sufficient (see
++	     above).  */
++	  do
++	    {
++	      if ((v & SEM_NWAITERS_MASK) != 0)
++		break;
++	    }
++	  while (!atomic_compare_exchange_weak_release (&sem->value,
++	      &v, v | SEM_NWAITERS_MASK));
++	  /* If there is no token, wait.  */
++	  if ((v >> SEM_VALUE_SHIFT) == 0)
++	    {
++	      /* See __HAVE_64B_ATOMICS variant.  */
++	      err = do_futex_wait(sem, abstime);
++	      if (err == ETIMEDOUT ||
++		  (err == EINTR && sem_assume_only_signals_cause_futex_EINTR))
++		{
++		  __set_errno (err);
++		  err = -1;
++		  goto error;
++		}
++	      err = 0;
++	      /* We blocked, so there might be a token now.  Relaxed MO is
++		 sufficient (see above).  */
++	      v = atomic_load_relaxed (&sem->value);
++	    }
++	}
++      /* If there is no token, we must not try to grab one.  */
++      while ((v >> SEM_VALUE_SHIFT) == 0);
++    }
++  /* Try to grab a token.  We need acquire MO so this synchronizes with
++     all token providers (i.e., the RMW operation we read from or all those
++     before it in modification order; also see sem_post).  */
++  while (!atomic_compare_exchange_weak_acquire (&sem->value,
++      &v, v - (1 << SEM_VALUE_SHIFT)));
++
++error:
++  pthread_cleanup_pop (0);
++
++  __sem_wait_32_finish (sem);
++#endif
++
++  return err;
++}
++
++/* Stop being a registered waiter (non-64b-atomics code only).  */
++#if !__HAVE_64B_ATOMICS
++static void
++__sem_wait_32_finish (struct new_sem *sem)
++{
++  /* The nwaiters bit is still set, try to unset it now if this seems
++     necessary.  We do this before decrementing nwaiters so that the unsetting
++     is visible to other waiters entering after us.  Relaxed MO is sufficient
++     because we are just speculating here; a stronger MO would not prevent
++     misspeculation.  */
++  unsigned int wguess = atomic_load_relaxed (&sem->nwaiters);
++  if (wguess == 1)
++    /* We might be the last waiter, so unset.  This needs acquire MO so that
++       it syncronizes with the release MO when setting the bit above; if we
++       overwrite someone else that set the bit, we'll read in the following
++       decrement of nwaiters at least from that release sequence, so we'll
++       see if the other waiter is still active or if another writer entered
++       in the meantime (i.e., using the check below).  */
++    atomic_fetch_and_acquire (&sem->value, ~SEM_NWAITERS_MASK);
++
++  /* Now stop being a waiter, and see whether our guess was correct.
++     This needs release MO so that it synchronizes with the acquire MO when
++     a waiter increments nwaiters; this makes sure that newer writers see that
++     we reset the waiters_present bit.  */
++  unsigned int wfinal = atomic_fetch_add_release (&sem->nwaiters, -1);
++  if (wfinal > 1 && wguess == 1)
++    {
++      /* We guessed wrong, and so need to clean up after the mistake and
++         unblock any waiters that could have not been woken.  There is no
++         additional ordering that we need to set up, so relaxed MO is
++         sufficient.  */
++      unsigned int v = atomic_fetch_or_relaxed (&sem->value,
++						SEM_NWAITERS_MASK);
++      /* If there are available tokens, then wake as many waiters.  If there
++         aren't any, then there is no need to wake anyone because there is
++         none to grab for another waiter.  If tokens become available
++         subsequently, then the respective sem_post calls will do the wake-up
++         due to us having set the nwaiters bit again.  */
++      v >>= SEM_VALUE_SHIFT;
++      if (v > 0)
++	futex_wake (&sem->value, v, sem->private);
++    }
++}
++#endif
+Index: glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/structsem.sym
+===================================================================
+--- glibc-2.17-c758a686.orig/nptl/sysdeps/unix/sysv/linux/structsem.sym
++++ /dev/null
+@@ -1,12 +0,0 @@
+-#include <limits.h>
+-#include <stddef.h>
+-#include <sched.h>
+-#include <bits/pthreadtypes.h>
+-#include "internaltypes.h"
+-
+---
+-
+-VALUE		offsetof (struct new_sem, value)
+-PRIVATE		offsetof (struct new_sem, private)
+-NWAITERS	offsetof (struct new_sem, nwaiters)
+-SEM_VALUE_MAX	SEM_VALUE_MAX
+Index: glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/x86_64/sem_post.S
+===================================================================
+--- glibc-2.17-c758a686.orig/nptl/sysdeps/unix/sysv/linux/x86_64/sem_post.S
++++ /dev/null
+@@ -1,75 +0,0 @@
+-/* Copyright (C) 2002,2003,2005,2007,2008,2011 Free Software Foundation, Inc.
+-   This file is part of the GNU C Library.
+-   Contributed by Ulrich Drepper <drepper@redhat.com>, 2002.
+-
+-   The GNU C Library is free software; you can redistribute it and/or
+-   modify it under the terms of the GNU Lesser General Public
+-   License as published by the Free Software Foundation; either
+-   version 2.1 of the License, or (at your option) any later version.
+-
+-   The GNU C Library is distributed in the hope that it will be useful,
+-   but WITHOUT ANY WARRANTY; without even the implied warranty of
+-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+-   Lesser General Public License for more details.
+-
+-   You should have received a copy of the GNU Lesser General Public
+-   License along with the GNU C Library; if not, see
+-   <http://www.gnu.org/licenses/>.  */
+-
+-#include <sysdep.h>
+-#include <lowlevellock.h>
+-#include <shlib-compat.h>
+-#include <pthread-errnos.h>
+-#include <structsem.h>
+-
+-
+-	.text
+-
+-	.globl	sem_post
+-	.type	sem_post,@function
+-	.align	16
+-sem_post:
+-#if VALUE == 0
+-	movl	(%rdi), %eax
+-#else
+-	movl	VALUE(%rdi), %eax
+-#endif
+-0:	cmpl	$SEM_VALUE_MAX, %eax
+-	je	3f
+-	leal	1(%rax), %esi
+-	LOCK
+-#if VALUE == 0
+-	cmpxchgl %esi, (%rdi)
+-#else
+-	cmpxchgl %esi, VALUE(%rdi)
+-#endif
+-	jnz	0b
+-
+-	LP_OP(cmp) $0, NWAITERS(%rdi)
+-	je	2f
+-
+-	movl	$SYS_futex, %eax
+-	movl	$FUTEX_WAKE, %esi
+-	orl	PRIVATE(%rdi), %esi
+-	movl	$1, %edx
+-	syscall
+-
+-	testq	%rax, %rax
+-	js	1f
+-
+-2:	xorl	%eax, %eax
+-	retq
+-
+-1:
+-	movl	$EINVAL, %eax
+-	jmp	4f
+-
+-3:
+-	movl	$EOVERFLOW, %eax
+-
+-4:
+-	movq	errno@gottpoff(%rip), %rdx
+-	movl	%eax, %fs:(%rdx)
+-	orl	$-1, %eax
+-	retq
+-	.size	sem_post,.-sem_post
+Index: glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/x86_64/sem_timedwait.S
+===================================================================
+--- glibc-2.17-c758a686.orig/nptl/sysdeps/unix/sysv/linux/x86_64/sem_timedwait.S
++++ /dev/null
+@@ -1,380 +0,0 @@
+-/* Copyright (C) 2002,2003,2005,2007,2009,2010,2011 Free Software Foundation, Inc.
+-   This file is part of the GNU C Library.
+-   Contributed by Ulrich Drepper <drepper@redhat.com>, 2002.
+-
+-   The GNU C Library is free software; you can redistribute it and/or
+-   modify it under the terms of the GNU Lesser General Public
+-   License as published by the Free Software Foundation; either
+-   version 2.1 of the License, or (at your option) any later version.
+-
+-   The GNU C Library is distributed in the hope that it will be useful,
+-   but WITHOUT ANY WARRANTY; without even the implied warranty of
+-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+-   Lesser General Public License for more details.
+-
+-   You should have received a copy of the GNU Lesser General Public
+-   License along with the GNU C Library; if not, see
+-   <http://www.gnu.org/licenses/>.  */
+-
+-#include <sysdep.h>
+-#include <kernel-features.h>
+-#include <lowlevellock.h>
+-#include <shlib-compat.h>
+-#include <pthread-errnos.h>
+-#include <structsem.h>
+-
+-	.text
+-
+-	.globl	sem_timedwait
+-	.type	sem_timedwait,@function
+-	.align	16
+-sem_timedwait:
+-.LSTARTCODE:
+-	cfi_startproc
+-#ifdef SHARED
+-	cfi_personality(DW_EH_PE_pcrel | DW_EH_PE_sdata4 | DW_EH_PE_indirect,
+-			DW.ref.__gcc_personality_v0)
+-	cfi_lsda(DW_EH_PE_pcrel | DW_EH_PE_sdata4, .LexceptSTART)
+-#else
+-	cfi_personality(DW_EH_PE_udata4, __gcc_personality_v0)
+-	cfi_lsda(DW_EH_PE_udata4, .LexceptSTART)
+-#endif
+-#if VALUE == 0
+-	movl	(%rdi), %eax
+-#else
+-	movl	VALUE(%rdi), %eax
+-#endif
+-2:	testl	%eax, %eax
+-	je	1f
+-
+-	leaq	-1(%rax), %rdx
+-	LOCK
+-#if VALUE == 0
+-	cmpxchgl %edx, (%rdi)
+-#else
+-	cmpxchgl %edx, VALUE(%rdi)
+-#endif
+-	jne	2b
+-
+-	xorl	%eax, %eax
+-	retq
+-
+-	/* Check whether the timeout value is valid.  */
+-1:	cmpq	$1000000000, 8(%rsi)
+-	jae	6f
+-
+-#ifndef __ASSUME_FUTEX_CLOCK_REALTIME
+-#  ifdef PIC
+-	cmpl	$0, __have_futex_clock_realtime(%rip)
+-#  else
+-	cmpl	$0, __have_futex_clock_realtime
+-#  endif
+-	je	.Lreltmo
+-#endif
+-
+-	cmpq	$0, (%rsi)
+-	js	16f
+-
+-	/* This push is only needed to store the sem_t pointer for the
+-	   exception handler.  */
+-	pushq	%rdi
+-	cfi_adjust_cfa_offset(8)
+-
+-	movq	%rsi, %r10
+-
+-	LOCK
+-	LP_OP(add) $1, NWAITERS(%rdi)
+-
+-.LcleanupSTART:
+-13:	call	__pthread_enable_asynccancel
+-	movl	%eax, %r8d
+-
+-#if VALUE != 0
+-	leaq	VALUE(%rdi), %rdi
+-#endif
+-	movl	$0xffffffff, %r9d
+-	movl	$FUTEX_WAIT_BITSET|FUTEX_CLOCK_REALTIME, %esi
+-	orl	PRIVATE(%rdi), %esi
+-	movl	$SYS_futex, %eax
+-	xorl	%edx, %edx
+-	syscall
+-	movq	%rax, %r9
+-#if VALUE != 0
+-	leaq	-VALUE(%rdi), %rdi
+-#endif
+-
+-	xchgq	%r8, %rdi
+-	call	__pthread_disable_asynccancel
+-.LcleanupEND:
+-	movq	%r8, %rdi
+-
+-	testq	%r9, %r9
+-	je	11f
+-	cmpq	$-EWOULDBLOCK, %r9
+-	jne	3f
+-
+-11:
+-#if VALUE == 0
+-	movl	(%rdi), %eax
+-#else
+-	movl	VALUE(%rdi), %eax
+-#endif
+-14:	testl	%eax, %eax
+-	je	13b
+-
+-	leaq	-1(%rax), %rcx
+-	LOCK
+-#if VALUE == 0
+-	cmpxchgl %ecx, (%rdi)
+-#else
+-	cmpxchgl %ecx, VALUE(%rdi)
+-#endif
+-	jne	14b
+-
+-	xorl	%eax, %eax
+-
+-15:	LOCK
+-	LP_OP(sub) $1, NWAITERS(%rdi)
+-
+-	leaq	8(%rsp), %rsp
+-	cfi_adjust_cfa_offset(-8)
+-	retq
+-
+-	cfi_adjust_cfa_offset(8)
+-3:	negq	%r9
+-	movq	errno@gottpoff(%rip), %rdx
+-	movl	%r9d, %fs:(%rdx)
+-
+-	orl	$-1, %eax
+-	jmp	15b
+-
+-	cfi_adjust_cfa_offset(-8)
+-6:
+-	movq	errno@gottpoff(%rip), %rdx
+-	movl	$EINVAL, %fs:(%rdx)
+-
+-	orl	$-1, %eax
+-
+-	retq
+-
+-16:
+-	movq	errno@gottpoff(%rip), %rdx
+-	movl	$ETIMEDOUT, %fs:(%rdx)
+-
+-	orl	$-1, %eax
+-
+-	retq
+-
+-#ifndef __ASSUME_FUTEX_CLOCK_REALTIME
+-.Lreltmo:
+-	pushq	%r12
+-	cfi_adjust_cfa_offset(8)
+-	cfi_rel_offset(%r12, 0)
+-	pushq	%r13
+-	cfi_adjust_cfa_offset(8)
+-	cfi_rel_offset(%r13, 0)
+-	pushq	%r14
+-	cfi_adjust_cfa_offset(8)
+-	cfi_rel_offset(%r14, 0)
+-
+-#ifdef __ASSUME_FUTEX_CLOCK_REALTIME
+-# define STACKFRAME 8
+-#else
+-# define STACKFRAME 24
+-#endif
+-	subq	$STACKFRAME, %rsp
+-	cfi_adjust_cfa_offset(STACKFRAME)
+-
+-	movq	%rdi, %r12
+-	movq	%rsi, %r13
+-
+-	LOCK
+-	LP_OP(add) $1, NWAITERS(%r12)
+-
+-7:	xorl	%esi, %esi
+-	movq	%rsp,%rdi
+-	/* This call works because we directly jump to a system call entry
+-	   which preserves all the registers.  */
+-	call	JUMPTARGET(__gettimeofday)
+-
+-	/* Compute relative timeout.  */
+-	movq	8(%rsp), %rax
+-	movl	$1000, %edi
+-	mul	%rdi		/* Milli seconds to nano seconds.  */
+-	movq	(%r13), %rdi
+-	movq	8(%r13), %rsi
+-	subq	(%rsp), %rdi
+-	subq	%rax, %rsi
+-	jns	5f
+-	addq	$1000000000, %rsi
+-	decq	%rdi
+-5:	testq	%rdi, %rdi
+-	movl	$ETIMEDOUT, %r14d
+-	js	36f		/* Time is already up.  */
+-
+-	movq	%rdi, (%rsp)	/* Store relative timeout.  */
+-	movq	%rsi, 8(%rsp)
+-
+-.LcleanupSTART2:
+-	call	__pthread_enable_asynccancel
+-	movl	%eax, 16(%rsp)
+-
+-	movq	%rsp, %r10
+-# if VALUE == 0
+-	movq	%r12, %rdi
+-# else
+-	leaq	VALUE(%r12), %rdi
+-# endif
+-# if FUTEX_WAIT == 0
+-	movl	PRIVATE(%rdi), %esi
+-# else
+-	movl	$FUTEX_WAIT, %esi
+-	orl	PRIVATE(%rdi), %esi
+-# endif
+-	movl	$SYS_futex, %eax
+-	xorl	%edx, %edx
+-	syscall
+-	movq	%rax, %r14
+-
+-	movl	16(%rsp), %edi
+-	call	__pthread_disable_asynccancel
+-.LcleanupEND2:
+-
+-	testq	%r14, %r14
+-	je	9f
+-	cmpq	$-EWOULDBLOCK, %r14
+-	jne	33f
+-
+-9:
+-# if VALUE == 0
+-	movl	(%r12), %eax
+-# else
+-	movl	VALUE(%r12), %eax
+-# endif
+-8:	testl	%eax, %eax
+-	je	7b
+-
+-	leaq	-1(%rax), %rcx
+-	LOCK
+-# if VALUE == 0
+-	cmpxchgl %ecx, (%r12)
+-# else
+-	cmpxchgl %ecx, VALUE(%r12)
+-# endif
+-	jne	8b
+-
+-	xorl	%eax, %eax
+-
+-45:	LOCK
+-	LP_OP(sub) $1, NWAITERS(%r12)
+-
+-	addq	$STACKFRAME, %rsp
+-	cfi_adjust_cfa_offset(-STACKFRAME)
+-	popq	%r14
+-	cfi_adjust_cfa_offset(-8)
+-	cfi_restore(%r14)
+-	popq	%r13
+-	cfi_adjust_cfa_offset(-8)
+-	cfi_restore(%r13)
+-	popq	%r12
+-	cfi_adjust_cfa_offset(-8)
+-	cfi_restore(%r12)
+-	retq
+-
+-	cfi_adjust_cfa_offset(STACKFRAME + 3 * 8)
+-	cfi_rel_offset(%r12, STACKFRAME + 2 * 8)
+-	cfi_rel_offset(%r13, STACKFRAME + 1 * 8)
+-	cfi_rel_offset(%r14, STACKFRAME)
+-33:	negq	%r14
+-36:
+-	movq	errno@gottpoff(%rip), %rdx
+-	movl	%r14d, %fs:(%rdx)
+-
+-	orl	$-1, %eax
+-	jmp	45b
+-#endif
+-	cfi_endproc
+-	.size	sem_timedwait,.-sem_timedwait
+-
+-
+-	.type	sem_timedwait_cleanup,@function
+-sem_timedwait_cleanup:
+-	cfi_startproc
+-	cfi_adjust_cfa_offset(8)
+-
+-	movq	(%rsp), %rdi
+-	LOCK
+-	LP_OP(sub) $1, NWAITERS(%rdi)
+-	movq	%rax, %rdi
+-.LcallUR:
+-	call	_Unwind_Resume@PLT
+-	hlt
+-.LENDCODE:
+-	cfi_endproc
+-	.size	sem_timedwait_cleanup,.-sem_timedwait_cleanup
+-
+-
+-#ifndef __ASSUME_FUTEX_CLOCK_REALTIME
+-	.type	sem_timedwait_cleanup2,@function
+-sem_timedwait_cleanup2:
+-	cfi_startproc
+-	cfi_adjust_cfa_offset(STACKFRAME + 3 * 8)
+-	cfi_rel_offset(%r12, STACKFRAME + 2 * 8)
+-	cfi_rel_offset(%r13, STACKFRAME + 1 * 8)
+-	cfi_rel_offset(%r14, STACKFRAME)
+-
+-	LOCK
+-	LP_OP(sub) $1, NWAITERS(%r12)
+-	movq	%rax, %rdi
+-	movq	STACKFRAME(%rsp), %r14
+-	movq	STACKFRAME+8(%rsp), %r13
+-	movq	STACKFRAME+16(%rsp), %r12
+-.LcallUR2:
+-	call	_Unwind_Resume@PLT
+-	hlt
+-.LENDCODE2:
+-	cfi_endproc
+-	.size	sem_timedwait_cleanup2,.-sem_timedwait_cleanup2
+-#endif
+-
+-
+-	.section .gcc_except_table,"a",@progbits
+-.LexceptSTART:
+-	.byte	DW_EH_PE_omit			# @LPStart format
+-	.byte	DW_EH_PE_omit			# @TType format
+-	.byte	DW_EH_PE_uleb128		# call-site format
+-	.uleb128 .Lcstend-.Lcstbegin
+-.Lcstbegin:
+-	.uleb128 .LcleanupSTART-.LSTARTCODE
+-	.uleb128 .LcleanupEND-.LcleanupSTART
+-	.uleb128 sem_timedwait_cleanup-.LSTARTCODE
+-	.uleb128  0
+-#ifndef __ASSUME_FUTEX_CLOCK_REALTIME
+-	.uleb128 .LcleanupSTART2-.LSTARTCODE
+-	.uleb128 .LcleanupEND2-.LcleanupSTART2
+-	.uleb128 sem_timedwait_cleanup2-.LSTARTCODE
+-	.uleb128  0
+-#endif
+-	.uleb128 .LcallUR-.LSTARTCODE
+-	.uleb128 .LENDCODE-.LcallUR
+-	.uleb128 0
+-	.uleb128  0
+-#ifndef __ASSUME_FUTEX_CLOCK_REALTIME
+-	.uleb128 .LcallUR2-.LSTARTCODE
+-	.uleb128 .LENDCODE2-.LcallUR2
+-	.uleb128 0
+-	.uleb128  0
+-#endif
+-.Lcstend:
+-
+-
+-#ifdef SHARED
+-	.hidden	DW.ref.__gcc_personality_v0
+-	.weak	DW.ref.__gcc_personality_v0
+-	.section .gnu.linkonce.d.DW.ref.__gcc_personality_v0,"aw",@progbits
+-	.align	LP_SIZE
+-	.type	DW.ref.__gcc_personality_v0, @object
+-	.size	DW.ref.__gcc_personality_v0, LP_SIZE
+-DW.ref.__gcc_personality_v0:
+-	ASM_ADDR __gcc_personality_v0
+-#endif
+Index: glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/x86_64/sem_trywait.S
+===================================================================
+--- glibc-2.17-c758a686.orig/nptl/sysdeps/unix/sysv/linux/x86_64/sem_trywait.S
++++ /dev/null
+@@ -1,47 +0,0 @@
+-/* Copyright (C) 2002, 2003, 2005, 2007, 2011 Free Software Foundation, Inc.
+-   This file is part of the GNU C Library.
+-   Contributed by Ulrich Drepper <drepper@redhat.com>, 2002.
+-
+-   The GNU C Library is free software; you can redistribute it and/or
+-   modify it under the terms of the GNU Lesser General Public
+-   License as published by the Free Software Foundation; either
+-   version 2.1 of the License, or (at your option) any later version.
+-
+-   The GNU C Library is distributed in the hope that it will be useful,
+-   but WITHOUT ANY WARRANTY; without even the implied warranty of
+-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+-   Lesser General Public License for more details.
+-
+-   You should have received a copy of the GNU Lesser General Public
+-   License along with the GNU C Library; if not, see
+-   <http://www.gnu.org/licenses/>.  */
+-
+-#include <sysdep.h>
+-#include <lowlevellock.h>
+-#include <shlib-compat.h>
+-#include <pthread-errnos.h>
+-
+-	.text
+-
+-	.globl	sem_trywait
+-	.type	sem_trywait,@function
+-	.align	16
+-sem_trywait:
+-	movl	(%rdi), %eax
+-2:	testl	%eax, %eax
+-	jz	1f
+-
+-	leal	-1(%rax), %edx
+-	LOCK
+-	cmpxchgl %edx, (%rdi)
+-	jne	2b
+-
+-	xorl	%eax, %eax
+-	retq
+-
+-1:
+-	movq	errno@gottpoff(%rip), %rdx
+-	movl	$EAGAIN, %fs:(%rdx)
+-	orl	$-1, %eax
+-	retq
+-	.size	sem_trywait,.-sem_trywait
+Index: glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/x86_64/sem_wait.S
+===================================================================
+--- glibc-2.17-c758a686.orig/nptl/sysdeps/unix/sysv/linux/x86_64/sem_wait.S
++++ /dev/null
+@@ -1,176 +0,0 @@
+-/* Copyright (C) 2002, 2003, 2005, 2007, 2009, 2011 Free Software Foundation, Inc.
+-   This file is part of the GNU C Library.
+-   Contributed by Ulrich Drepper <drepper@redhat.com>, 2002.
+-
+-   The GNU C Library is free software; you can redistribute it and/or
+-   modify it under the terms of the GNU Lesser General Public
+-   License as published by the Free Software Foundation; either
+-   version 2.1 of the License, or (at your option) any later version.
+-
+-   The GNU C Library is distributed in the hope that it will be useful,
+-   but WITHOUT ANY WARRANTY; without even the implied warranty of
+-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+-   Lesser General Public License for more details.
+-
+-   You should have received a copy of the GNU Lesser General Public
+-   License along with the GNU C Library; if not, see
+-   <http://www.gnu.org/licenses/>.  */
+-
+-#include <sysdep.h>
+-#include <lowlevellock.h>
+-#include <shlib-compat.h>
+-#include <pthread-errnos.h>
+-#include <structsem.h>
+-
+-
+-	.text
+-
+-	.globl	sem_wait
+-	.type	sem_wait,@function
+-	.align	16
+-sem_wait:
+-.LSTARTCODE:
+-	cfi_startproc
+-#ifdef SHARED
+-	cfi_personality(DW_EH_PE_pcrel | DW_EH_PE_sdata4 | DW_EH_PE_indirect,
+-			DW.ref.__gcc_personality_v0)
+-	cfi_lsda(DW_EH_PE_pcrel | DW_EH_PE_sdata4, .LexceptSTART)
+-#else
+-	cfi_personality(DW_EH_PE_udata4, __gcc_personality_v0)
+-	cfi_lsda(DW_EH_PE_udata4, .LexceptSTART)
+-#endif
+-
+-#if VALUE == 0
+-	movl	(%rdi), %eax
+-#else
+-	movl	VALUE(%rdi), %eax
+-#endif
+-2:	testl	%eax, %eax
+-	je	1f
+-
+-	leal	-1(%rax), %edx
+-	LOCK
+-#if VALUE == 0
+-	cmpxchgl %edx, (%rdi)
+-#else
+-	cmpxchgl %edx, VALUE(%rdi)
+-#endif
+-	jne	2b
+-
+-	xorl	%eax, %eax
+-	retq
+-
+-	/* This push is only needed to store the sem_t pointer for the
+-	   exception handler.  */
+-1:	pushq	%rdi
+-	cfi_adjust_cfa_offset(8)
+-
+-	LOCK
+-	LP_OP(add) $1, NWAITERS(%rdi)
+-
+-.LcleanupSTART:
+-6:	call	__pthread_enable_asynccancel
+-	movl	%eax, %r8d
+-
+-	xorq	%r10, %r10
+-	movl	$SYS_futex, %eax
+-#if FUTEX_WAIT == 0
+-	movl	PRIVATE(%rdi), %esi
+-#else
+-	movl	$FUTEX_WAIT, %esi
+-	orl	PRIVATE(%rdi), %esi
+-#endif
+-	xorl	%edx, %edx
+-	syscall
+-	movq	%rax, %rcx
+-
+-	xchgq	%r8, %rdi
+-	call	__pthread_disable_asynccancel
+-.LcleanupEND:
+-	movq	%r8, %rdi
+-
+-	testq	%rcx, %rcx
+-	je	3f
+-	cmpq	$-EWOULDBLOCK, %rcx
+-	jne	4f
+-
+-3:
+-#if VALUE == 0
+-	movl	(%rdi), %eax
+-#else
+-	movl	VALUE(%rdi), %eax
+-#endif
+-5:	testl	%eax, %eax
+-	je	6b
+-
+-	leal	-1(%rax), %edx
+-	LOCK
+-#if VALUE == 0
+-	cmpxchgl %edx, (%rdi)
+-#else
+-	cmpxchgl %edx, VALUE(%rdi)
+-#endif
+-	jne	5b
+-
+-	xorl	%eax, %eax
+-
+-9:	LOCK
+-	LP_OP(sub) $1, NWAITERS(%rdi)
+-
+-	leaq	8(%rsp), %rsp
+-	cfi_adjust_cfa_offset(-8)
+-
+-	retq
+-
+-	cfi_adjust_cfa_offset(8)
+-4:	negq	%rcx
+-	movq	errno@gottpoff(%rip), %rdx
+-	movl	%ecx, %fs:(%rdx)
+-	orl	$-1, %eax
+-
+-	jmp 9b
+-	.size	sem_wait,.-sem_wait
+-
+-
+-	.type	sem_wait_cleanup,@function
+-sem_wait_cleanup:
+-	movq	(%rsp), %rdi
+-	LOCK
+-	LP_OP(sub) $1, NWAITERS(%rdi)
+-	movq	%rax, %rdi
+-.LcallUR:
+-	call	_Unwind_Resume@PLT
+-	hlt
+-.LENDCODE:
+-	cfi_endproc
+-	.size	sem_wait_cleanup,.-sem_wait_cleanup
+-
+-
+-	.section .gcc_except_table,"a",@progbits
+-.LexceptSTART:
+-	.byte	DW_EH_PE_omit			# @LPStart format
+-	.byte	DW_EH_PE_omit			# @TType format
+-	.byte	DW_EH_PE_uleb128		# call-site format
+-	.uleb128 .Lcstend-.Lcstbegin
+-.Lcstbegin:
+-	.uleb128 .LcleanupSTART-.LSTARTCODE
+-	.uleb128 .LcleanupEND-.LcleanupSTART
+-	.uleb128 sem_wait_cleanup-.LSTARTCODE
+-	.uleb128  0
+-	.uleb128 .LcallUR-.LSTARTCODE
+-	.uleb128 .LENDCODE-.LcallUR
+-	.uleb128 0
+-	.uleb128  0
+-.Lcstend:
+-
+-
+-#ifdef SHARED
+-	.hidden	DW.ref.__gcc_personality_v0
+-	.weak	DW.ref.__gcc_personality_v0
+-	.section .gnu.linkonce.d.DW.ref.__gcc_personality_v0,"aw",@progbits
+-	.align	LP_SIZE
+-	.type	DW.ref.__gcc_personality_v0, @object
+-	.size	DW.ref.__gcc_personality_v0, LP_SIZE
+-DW.ref.__gcc_personality_v0:
+-	ASM_ADDR __gcc_personality_v0
+-#endif
+Index: glibc-2.17-c758a686/ports/sysdeps/unix/sysv/linux/alpha/nptl/sem_post.c
+===================================================================
+--- glibc-2.17-c758a686.orig/ports/sysdeps/unix/sysv/linux/alpha/nptl/sem_post.c
++++ /dev/null
+@@ -1,5 +0,0 @@
+-/* ??? This is an ass-backwards way to do this.  We should simply define
+-   the acquire/release semantics of atomic_exchange_and_add.  And even if
+-   we don't do this, we should be using atomic_full_barrier or otherwise.  */
+-#define __lll_rel_instr  "mb"
+-#include <nptl/sysdeps/unix/sysv/linux/sem_post.c>
+Index: glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/sh/sem_post.S
+===================================================================
+--- glibc-2.17-c758a686.orig/nptl/sysdeps/unix/sysv/linux/sh/sem_post.S
++++ /dev/null
+@@ -1,111 +0,0 @@
+-/* Copyright (C) 2003-2012 Free Software Foundation, Inc.
+-   This file is part of the GNU C Library.
+-
+-   The GNU C Library is free software; you can redistribute it and/or
+-   modify it under the terms of the GNU Lesser General Public
+-   License as published by the Free Software Foundation; either
+-   version 2.1 of the License, or (at your option) any later version.
+-
+-   The GNU C Library is distributed in the hope that it will be useful,
+-   but WITHOUT ANY WARRANTY; without even the implied warranty of
+-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+-   Lesser General Public License for more details.
+-
+-   You should have received a copy of the GNU Lesser General Public
+-   License along with the GNU C Library; if not, see
+-   <http://www.gnu.org/licenses/>.  */
+-
+-#include <sysdep.h>
+-#include <shlib-compat.h>
+-#include <pthread-errnos.h>
+-#include <structsem.h>
+-#include <lowlevellock.h>
+-#include "lowlevel-atomic.h"
+-
+-
+-	.text
+-
+-	.globl	__new_sem_post
+-	.type	__new_sem_post,@function
+-	.align	5
+-	cfi_startproc
+-__new_sem_post:
+-	mov.l	@(VALUE,r4), r2
+-0:
+-	mov.l	.Lmax, r1
+-	cmp/eq	r1, r2
+-	bt/s	3f
+-	 mov	r2, r3
+-	mov	r3, r5
+-	add	#1, r5
+-	CMPXCHG (r3, @(VALUE,r4), r5, r2)
+-	bf	0b
+-	mov.l	@(NWAITERS,r4), r2
+-	tst	r2, r2
+-	bt	2f
+-	mov	#FUTEX_WAKE, r5
+-	mov.l	@(PRIVATE,r4), r1
+-	or	r1, r5
+-	mov	#1, r6
+-	mov	#0, r7
+-	mov	#SYS_futex, r3
+-	extu.b	r3, r3
+-	trapa	#0x14
+-	SYSCALL_INST_PAD
+-
+-	cmp/pz	r0
+-	bf	1f
+-2:
+-	rts
+-	 mov	#0, r0
+-
+-1:
+-	bra	4f
+-	 mov	#EINVAL, r2
+-
+-3:
+-	mov	#EOVERFLOW, r2
+-4:
+-	mov.l	r12, @-r15
+-	cfi_adjust_cfa_offset (4)
+-	cfi_rel_offset (r12, 0)
+-	mov.l	r8, @-r15
+-	cfi_adjust_cfa_offset (4)
+-	cfi_rel_offset (r8, 0)
+-	sts.l	pr, @-r15
+-	cfi_adjust_cfa_offset (4)
+-	cfi_rel_offset (pr, 0)
+-	mova	.Lgot3, r0
+-	mov.l	.Lgot3, r12
+-	add	r0, r12
+-
+-	mov.l	.Lerrno3, r0
+-	stc	gbr, r1
+-	mov.l	@(r0, r12), r0
+-	bra	.Lexit
+-	 add	r1, r0
+-	.align	2
+-.Lerrno3:
+-	.long	errno@GOTTPOFF
+-.Lexit:
+-	mov.l	r2, @r0
+-	lds.l	@r15+, pr
+-	cfi_adjust_cfa_offset (-4)
+-	cfi_restore (pr)
+-	mov.l	@r15+, r8
+-	cfi_adjust_cfa_offset (-4)
+-	cfi_restore (r8)
+-	mov.l	@r15+, r12
+-	cfi_adjust_cfa_offset (-4)
+-	cfi_restore (r12)
+-	rts
+-	 mov	#-1, r0
+-	cfi_endproc
+-
+-	.align	2
+-.Lmax:
+-	.long	SEM_VALUE_MAX
+-.Lgot3:
+-	.long	_GLOBAL_OFFSET_TABLE_
+-	.size	__new_sem_post,.-__new_sem_post
+-	versioned_symbol(libpthread, __new_sem_post, sem_post, GLIBC_2_1)
+Index: glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/sh/sem_timedwait.S
+===================================================================
+--- glibc-2.17-c758a686.orig/nptl/sysdeps/unix/sysv/linux/sh/sem_timedwait.S
++++ /dev/null
+@@ -1,281 +0,0 @@
+-/* Copyright (C) 2003-2012 Free Software Foundation, Inc.
+-   This file is part of the GNU C Library.
+-
+-   The GNU C Library is free software; you can redistribute it and/or
+-   modify it under the terms of the GNU Lesser General Public
+-   License as published by the Free Software Foundation; either
+-   version 2.1 of the License, or (at your option) any later version.
+-
+-   The GNU C Library is distributed in the hope that it will be useful,
+-   but WITHOUT ANY WARRANTY; without even the implied warranty of
+-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+-   Lesser General Public License for more details.
+-
+-   You should have received a copy of the GNU Lesser General Public
+-   License along with the GNU C Library; if not, see
+-   <http://www.gnu.org/licenses/>.  */
+-
+-#include <sysdep.h>
+-#include <shlib-compat.h>
+-#include <pthread-errnos.h>
+-#include <tcb-offsets.h>
+-#include <structsem.h>
+-#include <lowlevellock.h>
+-#include "lowlevel-atomic.h"
+-
+-
+-#if VALUE != 0
+-# error "code needs to be rewritten for VALUE != 0"
+-#endif
+-
+-	.text
+-
+-	.globl	sem_timedwait
+-	.type	sem_timedwait,@function
+-	.align	5
+-	cfi_startproc
+-sem_timedwait:
+-.LSTARTCODE:
+-#ifdef SHARED
+-	cfi_personality(DW_EH_PE_pcrel | DW_EH_PE_sdata4 | DW_EH_PE_indirect,
+-			DW.ref.__gcc_personality_v0)
+-	cfi_lsda(DW_EH_PE_pcrel | DW_EH_PE_sdata4, .LexceptSTART)
+-#else
+-	cfi_personality(DW_EH_PE_absptr, __gcc_personality_v0)
+-	cfi_lsda(DW_EH_PE_absptr, .LexceptSTART)
+-#endif
+-	mov.l	@r4, r0
+-2:
+-	tst	r0, r0
+-	bt	1f
+-	mov	r0, r3
+-	mov	r0, r6
+-	add	#-1, r3
+-	CMPXCHG (r6, @r4, r3, r2)
+-	bf/s	2b
+-	 mov	r2, r0
+-	rts
+-	 mov	#0, r0
+-
+-1:
+-	/* Check whether the timeout value is valid.  */
+-	mov.l	r8, @-r15
+-	cfi_adjust_cfa_offset (4)
+-	cfi_rel_offset (r8, 0)
+-	mov.l	r9, @-r15
+-	cfi_adjust_cfa_offset (4)
+-	cfi_rel_offset (r9, 0)
+-	mov.l	r10, @-r15
+-	cfi_adjust_cfa_offset (4)
+-	cfi_rel_offset (r10, 0)
+-	mov.l	r12, @-r15
+-	cfi_adjust_cfa_offset (4)
+-	cfi_rel_offset (r12, 0)
+-	sts.l	pr, @-r15
+-	cfi_adjust_cfa_offset (4)
+-	cfi_rel_offset (pr, 0)
+-	add	#-8, r15
+-	cfi_adjust_cfa_offset (8)
+-
+-	mov	r4, r8
+-	mov	r5, r9
+-
+-	/* Check for invalid nanosecond field.  */
+-	mov.l	@(4,r9), r0
+-	mov.l	.L1g, r1
+-	cmp/hs	r1, r0
+-	bt/s	.Lerrno_exit
+-	 mov	#EINVAL, r10
+-	INC (@(NWAITERS,r8),r2)
+-
+-7:
+-	/* Compute relative timeout.  */
+-	mov	r15, r4
+-	mov	#0, r5
+-	mov	#__NR_gettimeofday, r3
+-	trapa	#0x12
+-	SYSCALL_INST_PAD
+-
+-	mov.l	@(4,r15), r0
+-	mov.w	.L1k, r1
+-	dmulu.l	r0, r1		/* Milli seconds to nano seconds.  */
+-	mov.l	@r9, r2
+-	mov.l	@(4,r9), r3
+-	mov.l	@r15, r0
+-	sts	macl, r1
+-	sub	r0, r2
+-	clrt
+-	subc	r1, r3
+-	bf	5f
+-	mov.l	.L1g, r1
+-	add	r1, r3
+-	add	#-1, r2
+-5:
+-	cmp/pz	r2
+-	bf/s	6f		/* Time is already up.  */
+-	 mov	#ETIMEDOUT, r0
+-
+-	/* Store relative timeout.  */
+-	mov.l	r2, @r15
+-	mov.l	r3, @(4,r15)
+-
+-.LcleanupSTART:
+-	mov.l	.Lenable0, r1
+-	bsrf	r1
+-	 nop
+-.Lenable0b:
+-	mov	r0, r10
+-
+-	mov	r8, r4
+-#if FUTEX_WAIT == 0
+-	mov.l	@(PRIVATE,r8), r5
+-#else
+-	mov.l	@(PRIVATE,r8), r5
+-	mov	#FUTEX_WAIT, r0
+-	or	r0, r5
+-#endif
+-	mov	#0, r6
+-	mov	r15, r7
+-	mov	#SYS_futex, r3
+-	extu.b	r3, r3
+-	trapa	#0x14
+-	SYSCALL_INST_PAD
+-
+-	mov.l	.Ldisable0, r1
+-	mov	r10, r4
+-	bsrf	r1
+-	 mov	r0, r10
+-.Ldisable0b:
+-	mov	r10, r0
+-.LcleanupEND:
+-
+-	tst	r0, r0
+-	bt	9f
+-	cmp/eq	#-EWOULDBLOCK, r0
+-	bf	3f
+-9:
+-	mov.l	@r8, r0
+-8:
+-	tst	r0, r0
+-	bt	7b
+-
+-	mov	r0, r3
+-	mov	r0, r4
+-	add	#-1, r3
+-	CMPXCHG (r4, @r8, r3, r2)
+-	bf/s	8b
+-	 mov	r2, r0
+-
+-	DEC (@(NWAITERS,r8), r2)
+-	mov	#0, r0
+-
+-10:
+-	cfi_remember_state
+-	add	#8, r15
+-	cfi_adjust_cfa_offset (-8)
+-	lds.l	@r15+, pr
+-	cfi_adjust_cfa_offset (-4)
+-	cfi_restore (pr)
+-	mov.l	@r15+, r12
+-	cfi_adjust_cfa_offset (-4)
+-	cfi_restore (r12)
+-	mov.l	@r15+, r10
+-	cfi_adjust_cfa_offset (-4)
+-	cfi_restore (r10)
+-	mov.l	@r15+, r9
+-	cfi_adjust_cfa_offset (-4)
+-	cfi_restore (r9)
+-	mov.l	@r15+, r8
+-	cfi_adjust_cfa_offset (-4)
+-	cfi_restore (r8)
+-	rts
+-	 nop
+-	cfi_restore_state
+-
+-3:
+-	neg	r0, r0
+-6:
+-	mov	r0, r10
+-	DEC (@(NWAITERS,r8), r2)
+-.Lerrno_exit:
+-	mova	.Lgot2, r0
+-	mov.l	.Lgot2, r12
+-	add	r0, r12
+-
+-	mov.l	.Lerrno2, r0
+-	stc	gbr, r1
+-	mov.l	@(r0, r12), r0
+-	bra	.Lexit
+-	 add	r1, r0
+-	.align	2
+-.Lerrno2:
+-	.long	errno@GOTTPOFF
+-.Lexit:
+-	mov.l	r10, @r0
+-	bra	10b
+-	 mov	#-1, r0
+-
+-.L1k:
+-	.word	1000
+-	.align	2
+-.L1g:
+-	.long	1000000000
+-.Lgot2:
+-	.long	_GLOBAL_OFFSET_TABLE_
+-.Lenable0:
+-	.long	__pthread_enable_asynccancel-.Lenable0b
+-.Ldisable0:
+-	.long	__pthread_disable_asynccancel-.Ldisable0b
+-	.size	sem_timedwait,.-sem_timedwait
+-
+-	.type	sem_wait_cleanup,@function
+-sem_wait_cleanup:
+-	DEC (@(NWAITERS,r8), r2)
+-.LcallUR:
+-	mov.l	.Lresume, r1
+-#ifdef PIC
+-	add	r12, r1
+-#endif
+-	jsr	@r1
+-	 nop
+-	sleep
+-
+-	.align	2
+-.Lresume:
+-#ifdef PIC
+-	.long	_Unwind_Resume@GOTOFF
+-#else
+-	.long	_Unwind_Resume
+-#endif
+-.LENDCODE:
+-	cfi_endproc
+-	.size	sem_wait_cleanup,.-sem_wait_cleanup
+-
+-
+-	.section .gcc_except_table,"a",@progbits
+-.LexceptSTART:
+-	.byte	DW_EH_PE_omit			! @LPStart format (omit)
+-	.byte	DW_EH_PE_omit			! @TType format (omit)
+-	.byte	DW_EH_PE_uleb128		! call-site format
+-	.uleb128 .Lcstend-.Lcstbegin
+-.Lcstbegin:
+-	.uleb128 .LcleanupSTART-.LSTARTCODE
+-	.uleb128 .LcleanupEND-.LcleanupSTART
+-	.uleb128 sem_wait_cleanup-.LSTARTCODE
+-	.uleb128  0
+-	.uleb128 .LcallUR-.LSTARTCODE
+-	.uleb128 .LENDCODE-.LcallUR
+-	.uleb128 0
+-	.uleb128  0
+-.Lcstend:
+-
+-#ifdef SHARED
+-	.hidden	DW.ref.__gcc_personality_v0
+-	.weak	DW.ref.__gcc_personality_v0
+-	.section .gnu.linkonce.d.DW.ref.__gcc_personality_v0,"aw",@progbits
+-	.align	4
+-	.type	DW.ref.__gcc_personality_v0, @object
+-	.size	DW.ref.__gcc_personality_v0, 4
+-DW.ref.__gcc_personality_v0:
+-	.long	__gcc_personality_v0
+-#endif
+Index: glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/sh/sem_trywait.S
+===================================================================
+--- glibc-2.17-c758a686.orig/nptl/sysdeps/unix/sysv/linux/sh/sem_trywait.S
++++ /dev/null
+@@ -1,102 +0,0 @@
+-/* Copyright (C) 2003-2012 Free Software Foundation, Inc.
+-   This file is part of the GNU C Library.
+-
+-   The GNU C Library is free software; you can redistribute it and/or
+-   modify it under the terms of the GNU Lesser General Public
+-   License as published by the Free Software Foundation; either
+-   version 2.1 of the License, or (at your option) any later version.
+-
+-   The GNU C Library is distributed in the hope that it will be useful,
+-   but WITHOUT ANY WARRANTY; without even the implied warranty of
+-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+-   Lesser General Public License for more details.
+-
+-   You should have received a copy of the GNU Lesser General Public
+-   License along with the GNU C Library; if not, see
+-   <http://www.gnu.org/licenses/>.  */
+-
+-#include <sysdep.h>
+-#include <shlib-compat.h>
+-#include <pthread-errnos.h>
+-#include <lowlevellock.h>
+-#include "lowlevel-atomic.h"
+-
+-
+-	.text
+-
+-	.globl	__new_sem_trywait
+-	.type	__new_sem_trywait,@function
+-	.align	5
+-	cfi_startproc
+-__new_sem_trywait:
+-	mov.l	r12, @-r15
+-	cfi_adjust_cfa_offset (4)
+-	cfi_rel_offset (r12, 0)
+-	mov.l	r8, @-r15
+-	cfi_adjust_cfa_offset (4)
+-	cfi_rel_offset (r8, 0)
+-	sts.l	pr, @-r15
+-	cfi_adjust_cfa_offset (4)
+-	cfi_rel_offset (pr, 0)
+-	mov	r4, r8
+-	mov.l	@r8, r0
+-2:
+-	tst	r0, r0
+-	bt	1f
+-
+-	mov	r0, r3
+-	mov	r0, r4
+-	add	#-1, r3
+-	CMPXCHG (r4, @r8, r3, r2)
+-	bf/s	2b
+-	 mov	r2, r0
+-
+-	cfi_remember_state
+-	lds.l	@r15+, pr
+-	cfi_adjust_cfa_offset (-4)
+-	cfi_restore (pr)
+-	mov.l	@r15+, r8
+-	cfi_adjust_cfa_offset (-4)
+-	cfi_restore (r8)
+-	mov.l	@r15+, r12
+-	cfi_adjust_cfa_offset (-4)
+-	cfi_restore (r12)
+-	rts
+-	 mov	#0, r0
+-	cfi_restore_state
+-
+-1:
+-	mov	#EAGAIN, r8
+-	mova	.Lgot1, r0
+-	mov.l	.Lgot1, r12
+-	add	r0, r12
+-
+-	mov.l	.Lerrno1, r0
+-	stc	gbr, r1
+-	mov.l	@(r0, r12), r0
+-	bra	.Lexit
+-	 add	r1, r0
+-	.align	2
+-.Lerrno1:
+-	.long	errno@GOTTPOFF
+-.Lexit:
+-	mov.l	r8, @r0
+-	lds.l	@r15+, pr
+-	cfi_adjust_cfa_offset (-4)
+-	cfi_restore (pr)
+-	mov.l	@r15+, r8
+-	cfi_adjust_cfa_offset (-4)
+-	cfi_restore (r8)
+-	mov.l	@r15+, r12
+-	cfi_adjust_cfa_offset (-4)
+-	cfi_restore (r12)
+-	rts
+-	 mov	#-1, r0
+-
+-	cfi_endproc
+-
+-	.align	2
+-.Lgot1:
+-	.long	_GLOBAL_OFFSET_TABLE_
+-	.size	__new_sem_trywait,.-__new_sem_trywait
+-	versioned_symbol(libpthread, __new_sem_trywait, sem_trywait, GLIBC_2_1)
+Index: glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/sh/sem_wait.S
+===================================================================
+--- glibc-2.17-c758a686.orig/nptl/sysdeps/unix/sysv/linux/sh/sem_wait.S
++++ /dev/null
+@@ -1,229 +0,0 @@
+-/* Copyright (C) 2003-2012 Free Software Foundation, Inc.
+-   This file is part of the GNU C Library.
+-
+-   The GNU C Library is free software; you can redistribute it and/or
+-   modify it under the terms of the GNU Lesser General Public
+-   License as published by the Free Software Foundation; either
+-   version 2.1 of the License, or (at your option) any later version.
+-
+-   The GNU C Library is distributed in the hope that it will be useful,
+-   but WITHOUT ANY WARRANTY; without even the implied warranty of
+-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+-   Lesser General Public License for more details.
+-
+-   You should have received a copy of the GNU Lesser General Public
+-   License along with the GNU C Library; if not, see
+-   <http://www.gnu.org/licenses/>.  */
+-
+-#include <sysdep.h>
+-#include <shlib-compat.h>
+-#include <pthread-errnos.h>
+-#include <tcb-offsets.h>
+-#include <structsem.h>
+-#include <lowlevellock.h>
+-#include "lowlevel-atomic.h"
+-
+-
+-#if VALUE != 0
+-# error "code needs to be rewritten for VALUE != 0"
+-#endif
+-
+-	.text
+-
+-	.globl	__new_sem_wait
+-	.type	__new_sem_wait,@function
+-	.align	5
+-	cfi_startproc
+-__new_sem_wait:
+-.LSTARTCODE:
+-#ifdef SHARED
+-	cfi_personality(DW_EH_PE_pcrel | DW_EH_PE_sdata4 | DW_EH_PE_indirect,
+-			DW.ref.__gcc_personality_v0)
+-	cfi_lsda(DW_EH_PE_pcrel | DW_EH_PE_sdata4, .LexceptSTART)
+-#else
+-	cfi_personality(DW_EH_PE_absptr, __gcc_personality_v0)
+-	cfi_lsda(DW_EH_PE_absptr, .LexceptSTART)
+-#endif
+-	mov.l	r8, @-r15
+-	cfi_adjust_cfa_offset (4)
+-	cfi_rel_offset (r8, 0)
+-	mov.l	r10, @-r15
+-	cfi_adjust_cfa_offset (4)
+-	cfi_rel_offset (r10, 0)
+-	mov.l	r12, @-r15
+-	cfi_adjust_cfa_offset (4)
+-	cfi_rel_offset (r12, 0)
+-	sts.l	pr, @-r15
+-	cfi_adjust_cfa_offset (4)
+-	cfi_rel_offset (pr, 0)
+-
+-	mov	r4, r8
+-	mov.l	@r8, r0
+-2:
+-	tst	r0, r0
+-	bt	1f
+-	mov	r0, r3
+-	mov	r0, r4
+-	add	#-1, r3
+-	CMPXCHG (r4, @r8, r3, r2)
+-	bf/s	2b
+-	 mov	r2, r0
+-7:
+-	mov	#0, r0
+-9:
+-	cfi_remember_state
+-	lds.l	@r15+, pr
+-	cfi_adjust_cfa_offset (-4)
+-	cfi_restore (pr)
+-	mov.l	@r15+, r12
+-	cfi_adjust_cfa_offset (-4)
+-	cfi_restore (r12)
+-	mov.l	@r15+, r10
+-	cfi_adjust_cfa_offset (-4)
+-	cfi_restore (r10)
+-	rts
+-	 mov.l	@r15+, r8
+-	/* Omit CFI for restore in delay slot.  */
+-	cfi_restore_state
+-
+-.Lafter_ret:
+-1:
+-	INC (@(NWAITERS,r8),r2)
+-
+-.LcleanupSTART:
+-6:
+-	mov.l	.Lenable0, r1
+-	bsrf	r1
+-	 nop
+-.Lenable0b:
+-	mov	r0, r10
+-
+-	mov	r8, r4
+-#if FUTEX_WAIT == 0
+-	mov.l	@(PRIVATE,r8), r5
+-#else
+-	mov.l	@(PRIVATE,r8), r5
+-	mov	#FUTEX_WAIT, r0
+-	or	r0, r5
+-#endif
+-	mov	#0, r6
+-	mov	#0, r7
+-	mov	#SYS_futex, r3
+-	extu.b	r3, r3
+-	trapa	#0x14
+-	SYSCALL_INST_PAD
+-
+-	mov.l	.Ldisable0, r1
+-	mov	r10, r4
+-	bsrf	r1
+-	 mov	r0, r10
+-.Ldisable0b:
+-	mov	r10, r0
+-.LcleanupEND:
+-
+-	tst	r0, r0
+-	bt	3f
+-	cmp/eq	#-EWOULDBLOCK, r0
+-	bf	4f
+-
+-3:
+-	mov.l	@r8, r0
+-5:
+-	tst	r0, r0
+-	bt	6b
+-
+-	mov	r0, r3
+-	mov	r0, r4
+-	add	#-1, r3
+-	CMPXCHG (r4, @r8, r3, r2)
+-	bf/s	5b
+-	 mov	r2, r0
+-
+-	DEC (@(NWAITERS,r8), r2)
+-	bra	7b
+-	 nop
+-
+-4:
+-	neg	r0, r0
+-	mov	r0, r4
+-	DEC (@(NWAITERS,r8), r2)
+-	mov	r4, r8
+-	mova	.Lgot0, r0
+-	mov.l	.Lgot0, r12
+-	add	r0, r12
+-
+-	mov.l	.Lerrno0, r0
+-	stc	gbr, r1
+-	mov.l	@(r0, r12), r0
+-	bra	.Lexit
+-	 add	r1, r0
+-	.align	2
+-.Lerrno0:
+-	.long	errno@GOTTPOFF
+-.Lexit:
+-	mov.l	r8, @r0
+-	bra	9b
+-	 mov	#-1, r0
+-
+-	.align	2
+-.Lgot0:
+-	.long	_GLOBAL_OFFSET_TABLE_
+-.Lenable0:
+-	.long	__pthread_enable_asynccancel-.Lenable0b
+-.Ldisable0:
+-	.long	__pthread_disable_asynccancel-.Ldisable0b
+-	.size	__new_sem_wait,.-__new_sem_wait
+-	versioned_symbol(libpthread, __new_sem_wait, sem_wait, GLIBC_2_1)
+-
+-
+-	.type	sem_wait_cleanup,@function
+-sem_wait_cleanup:
+-	DEC (@(NWAITERS,r8), r2)
+-.LcallUR:
+-	mov.l	.Lresume, r1
+-#ifdef PIC
+-	add	r12, r1
+-#endif
+-	jsr	@r1
+-	 nop
+-	sleep
+-
+-	.align	2
+-.Lresume:
+-#ifdef PIC
+-	.long	_Unwind_Resume@GOTOFF
+-#else
+-	.long	_Unwind_Resume
+-#endif
+-.LENDCODE:
+-	cfi_endproc
+-	.size	sem_wait_cleanup,.-sem_wait_cleanup
+-
+-
+-	.section .gcc_except_table,"a",@progbits
+-.LexceptSTART:
+-	.byte	DW_EH_PE_omit			! @LPStart format (omit)
+-	.byte	DW_EH_PE_omit			! @TType format (omit)
+-	.byte	DW_EH_PE_uleb128		! call-site format
+-	.uleb128 .Lcstend-.Lcstbegin
+-.Lcstbegin:
+-	.uleb128 .LcleanupSTART-.LSTARTCODE
+-	.uleb128 .LcleanupEND-.LcleanupSTART
+-	.uleb128 sem_wait_cleanup-.LSTARTCODE
+-	.uleb128  0
+-	.uleb128 .LcallUR-.LSTARTCODE
+-	.uleb128 .LENDCODE-.LcallUR
+-	.uleb128 0
+-	.uleb128  0
+-.Lcstend:
+-
+-#ifdef SHARED
+-	.hidden	DW.ref.__gcc_personality_v0
+-	.weak	DW.ref.__gcc_personality_v0
+-	.section .gnu.linkonce.d.DW.ref.__gcc_personality_v0,"aw",@progbits
+-	.align	4
+-	.type	DW.ref.__gcc_personality_v0, @object
+-	.size	DW.ref.__gcc_personality_v0, 4
+-DW.ref.__gcc_personality_v0:
+-	.long	__gcc_personality_v0
+-#endif
+Index: glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/Makefile
+===================================================================
+--- glibc-2.17-c758a686.orig/nptl/sysdeps/unix/sysv/linux/Makefile
++++ glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/Makefile
+@@ -24,8 +24,7 @@ libpthread-sysdep_routines += pt-fork pt
+ 
+ gen-as-const-headers += lowlevelcond.sym lowlevelrwlock.sym \
+ 			lowlevelbarrier.sym unwindbuf.sym \
+-			lowlevelrobustlock.sym pthread-pi-defines.sym \
+-			structsem.sym
++			lowlevelrobustlock.sym pthread-pi-defines.sym
+ endif
+ 
+ ifeq ($(subdir),posix)
+Index: glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/x86_64/lowlevellock.h
+===================================================================
+--- glibc-2.17-c758a686.orig/nptl/sysdeps/unix/sysv/linux/x86_64/lowlevellock.h
++++ glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/x86_64/lowlevellock.h
+@@ -225,17 +225,18 @@ LLL_STUB_UNWIND_INFO_END
+ 
+ 
+ #define lll_futex_wake(futex, nr, private) \
+-  do {									      \
+-    int __ignore;							      \
++  ({									      \
++    int __status;							      \
+     register __typeof (nr) _nr __asm ("edx") = (nr);			      \
+     LIBC_PROBE (lll_futex_wake, 3, futex, nr, private);                       \
+     __asm __volatile ("syscall"						      \
+-		      : "=a" (__ignore)					      \
++		      : "=a" (__status)					      \
+ 		      : "0" (SYS_futex), "D" (futex),			      \
+ 			"S" (__lll_private_flag (FUTEX_WAKE, private)),	      \
+ 			"d" (_nr)					      \
+ 		      : "memory", "cc", "r10", "r11", "cx");		      \
+-  } while (0)
++    __status;								      \
++  })
+ 
+ 
+ /* NB: in the lll_trylock macro we simply return the value in %eax
+Index: glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/i386/lowlevellock.h
+===================================================================
+--- glibc-2.17-c758a686.orig/nptl/sysdeps/unix/sysv/linux/i386/lowlevellock.h
++++ glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/i386/lowlevellock.h
+@@ -224,20 +224,21 @@ LLL_STUB_UNWIND_INFO_END
+ 
+ 
+ #define lll_futex_wake(futex, nr, private) \
+-  do {									      \
+-    int __ignore;							      \
++  ({									      \
++    int __status;							      \
+     register __typeof (nr) _nr asm ("edx") = (nr);			      \
+     LIBC_PROBE (lll_futex_wake, 3, futex, nr, private);                       \
+     __asm __volatile (LLL_EBX_LOAD					      \
+ 		      LLL_ENTER_KERNEL					      \
+ 		      LLL_EBX_LOAD					      \
+-		      : "=a" (__ignore)					      \
++		      : "=a" (__status)					      \
+ 		      : "0" (SYS_futex), LLL_EBX_REG (futex),		      \
+ 			"c" (__lll_private_flag (FUTEX_WAKE, private)),	      \
+ 			"d" (_nr),					      \
+ 			"i" (0) /* phony, to align next arg's number */,      \
+ 			"i" (offsetof (tcbhead_t, sysinfo)));		      \
+-  } while (0)
++    __status;								      \
++  })
+ 
+ 
+ /* NB: in the lll_trylock macro we simply return the value in %eax

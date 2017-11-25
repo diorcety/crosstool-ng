@@ -1,0 +1,151 @@
+commit 7cdd140cbccc8eb62a20d12a03bed83765cbc066
+Author: Stefan Liebler <stli@linux.vnet.ibm.com>
+Date:   Fri Jul 31 13:42:52 2015 +0200
+
+    S390: Fix "backtrace() returns infinitely deep stack frames with makecontext()" [BZ #18508].
+    
+        On s390/s390x backtrace(buffer, size) returns the series of called functions until
+        "makecontext_ret" and additional entries (up to "size") with "makecontext_ret".
+        GDB-backtrace is also warning:
+        "Backtrace stopped: previous frame identical to this frame (corrupt stack?)"
+    
+        To reproduce this scenario you have to setup a new context with makecontext()
+        and activate it with setcontext(). See e.g. cf() function in testcase stdlib/tst-makecontext.c.
+        Or see bug in libgo "Bug 66303 - runtime.Caller() returns infinitely deep stack frames
+        on s390x " (https://gcc.gnu.org/bugzilla/show_bug.cgi?id=66303).
+    
+        This patch omits the cfi_startproc/cfi_endproc directives in ENTRY/END macro of
+        __makecontext_ret. Thus no frame information is generated in .eh_frame and backtrace
+        stops after __makecontext_ret. There is also no .eh_frame info for _start or
+        thread_start functions.
+    
+        ChangeLog:
+    
+        	[BZ #18508]
+        	* stdlib/Makefile ($(objpfx)tst-makecontext3):
+        	Depend on $(libdl).
+        	* stdlib/tst-makecontext.c (cf): Test if _Unwind_Backtrace
+        	is not called infinitely times.
+        	(backtrace_helper): New function.
+        	(trace_arg): New struct.
+        	(st1): Enlarge stack size.
+        	* sysdeps/unix/sysv/linux/s390/s390-32/__makecontext_ret.S:
+        	(__makecontext_ret): Omit cfi_startproc and cfi_endproc.
+        	* sysdeps/unix/sysv/linux/s390/s390-64/__makecontext_ret.S:
+        	Likewise.
+
+diff --git a/stdlib/Makefile b/stdlib/Makefile
+index 8f22c8d..c1e80d7 100644
+--- a/stdlib/Makefile
++++ b/stdlib/Makefile
+@@ -154,3 +154,4 @@ $(objpfx)bug-getcontext: $(link-libm)
+ $(objpfx)tst-strtod-round: $(link-libm)
+ $(objpfx)tst-tininess: $(link-libm)
+ $(objpfx)tst-strtod-underflow: $(link-libm)
++$(objpfx)tst-makecontext: $(libdl)
+diff --git a/stdlib/tst-makecontext.c b/stdlib/tst-makecontext.c
+index eb6e89b..1420857 100644
+--- a/stdlib/tst-makecontext.c
++++ b/stdlib/tst-makecontext.c
+@@ -19,23 +19,62 @@
+ #include <stdlib.h>
+ #include <stdio.h>
+ #include <ucontext.h>
++#include <assert.h>
++#include <unwind.h>
++#include <dlfcn.h>
++#include <gnu/lib-names.h>
+ 
+ ucontext_t ucp;
+-char st1[8192];
++char st1[16384];
+ __thread int thr;
+ 
+ int somevar = -76;
+ long othervar = -78L;
+ 
++struct trace_arg
++{
++  int cnt, size;
++};
++
++static _Unwind_Reason_Code
++backtrace_helper (struct _Unwind_Context *ctx, void *a)
++{
++  struct trace_arg *arg = a;
++  if (++arg->cnt == arg->size)
++    return _URC_END_OF_STACK;
++  return _URC_NO_REASON;
++}
++
+ void
+ cf (int i)
+ {
++  struct trace_arg arg = { .size = 100, .cnt = -1 };
++  void *handle;
++  _Unwind_Reason_Code (*unwind_backtrace) (_Unwind_Trace_Fn, void *);
++
+   if (i != othervar || thr != 94)
+     {
+       printf ("i %d thr %d\n", i, thr);
+       exit (1);
+     }
+ 
++  /* Test if callback function of _Unwind_Backtrace is not called infinitely
++     times. See Bug 18508 or gcc bug "Bug 66303 - runtime.Caller() returns
++     infinitely deep stack frames on s390x.".
++     The go runtime calls backtrace_full() in
++     <gcc-src>/libbacktrace/backtrace.c, which uses _Unwind_Backtrace().  */
++  handle = dlopen (LIBGCC_S_SO, RTLD_LAZY);
++  if (handle != NULL)
++    {
++      unwind_backtrace = dlsym (handle, "_Unwind_Backtrace");
++      if (unwind_backtrace != NULL)
++	{
++	  unwind_backtrace (backtrace_helper, &arg);
++	  assert (arg.cnt != -1 && arg.cnt < 100);
++	}
++      dlclose (handle);
++    }
++
+   /* Since uc_link below has been set to NULL, setcontext is supposed to
+      terminate the process normally after this function returns.  */
+ }
+diff --git a/sysdeps/unix/sysv/linux/s390/s390-32/__makecontext_ret.S b/sysdeps/unix/sysv/linux/s390/s390-32/__makecontext_ret.S
+index ab172bb..365c2b0 100644
+--- a/sysdeps/unix/sysv/linux/s390/s390-32/__makecontext_ret.S
++++ b/sysdeps/unix/sysv/linux/s390/s390-32/__makecontext_ret.S
+@@ -17,6 +17,14 @@
+ 
+ #include <sysdep.h>
+ 
++/* We do not want .eh_frame info so that __makecontext_ret stops unwinding
++   if backtrace was called within a context created by makecontext. (There
++   is also no .eh_frame info for _start or thread_start.)  */
++#undef cfi_startproc
++#define cfi_startproc
++#undef cfi_endproc
++#define cfi_endproc
++
+ ENTRY(__makecontext_ret)
+ 	basr  %r14,%r7
+ 	ltr   %r8,%r8			/* Check whether uc_link is 0.  */
+diff --git a/sysdeps/unix/sysv/linux/s390/s390-64/__makecontext_ret.S b/sysdeps/unix/sysv/linux/s390/s390-64/__makecontext_ret.S
+index cbd88e1..c4a43bd 100644
+--- a/sysdeps/unix/sysv/linux/s390/s390-64/__makecontext_ret.S
++++ b/sysdeps/unix/sysv/linux/s390/s390-64/__makecontext_ret.S
+@@ -17,6 +17,14 @@
+ 
+ #include <sysdep.h>
+ 
++/* We do not want .eh_frame info so that __makecontext_ret stops unwinding
++   if backtrace was called within a context created by makecontext. (There
++   is also no .eh_frame info for _start or thread_start.)  */
++#undef cfi_startproc
++#define cfi_startproc
++#undef cfi_endproc
++#define cfi_endproc
++
+ ENTRY(__makecontext_ret)
+ 	basr	%r14,%r7
+ 	ltgr	%r8,%r8			/* Check whether uc_link is 0.  */

@@ -1,0 +1,193 @@
+From 3ca2c50727b3e3e22eb3606135a18c6212f516d2 Mon Sep 17 00:00:00 2001
+From: "Ryan S. Arnold" <rsa@linux.vnet.ibm.com>
+Date: Fri, 28 Jun 2013 16:52:49 -0500
+Subject: [PATCH 40/42] PowerPC: Define AT_HWCAP2 bits and AT_HWCAP2 handling
+ for POWER8. (cherry picked from commit
+ 89cd956937f46e8f4a0374994965f991642dd408)
+
+---
+ sysdeps/powerpc/Makefile                |  2 +-
+ sysdeps/powerpc/bits/hwcap.h            | 25 +++++++++++-----
+ sysdeps/powerpc/dl-procinfo.c           | 10 ++++++-
+ sysdeps/powerpc/dl-procinfo.h           | 53 ++++++++++++++++++++++++---------
+ sysdeps/powerpc/rtld-global-offsets.sym |  1 +
+ 6 files changed, 86 insertions(+), 23 deletions(-)
+
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/Makefile glibc-2.17-c758a686/sysdeps/powerpc/Makefile
+index 7442b67..f75e625 100644
+--- glibc-2.17-c758a686/sysdeps/powerpc/Makefile
++++ glibc-2.17-c758a686/sysdeps/powerpc/Makefile
+@@ -17,7 +17,7 @@ endif
+ endif
+ 
+ ifeq ($(subdir),csu)
+-# get offset to rtld_global._dl_hwcap
++# get offset to rtld_global._dl_hwcap and rtld_global._dl_hwcap2
+ gen-as-const-headers += rtld-global-offsets.sym
+ # get offset to __locale_struct.__ctype_tolower
+ gen-as-const-headers += locale-defines.sym
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/bits/hwcap.h glibc-2.17-c758a686/sysdeps/powerpc/bits/hwcap.h
+index 89e7d8b..0c02fc6 100644
+--- glibc-2.17-c758a686/sysdeps/powerpc/bits/hwcap.h
++++ glibc-2.17-c758a686/sysdeps/powerpc/bits/hwcap.h
+@@ -1,5 +1,5 @@
+-/* Defines for bits in AT_HWCAP.
+-   Copyright (C) 2012 Free Software Foundation, Inc.
++/* Defines for bits in AT_HWCAP and AT_HWCAP2.
++   Copyright (C) 2012-2013 Free Software Foundation, Inc.
+    This file is part of the GNU C Library.
+ 
+    The GNU C Library is free software; you can redistribute it and/or
+@@ -20,9 +20,9 @@
+ # error "Never include <bits/hwcap.h> directly; use <sys/auxv.h> instead."
+ #endif
+ 
+-/*
+- * The following must match the kernels asm/cputable.h.
+- */
++/* The bit numbers must match those in the kernel's asm/cputable.h.  */
++
++/* Feature definitions in AT_HWCAP.  */
+ #define PPC_FEATURE_32		    0x80000000 /* 32-bit mode. */
+ #define PPC_FEATURE_64		    0x40000000 /* 64-bit mode. */
+ #define PPC_FEATURE_601_INSTR	    0x20000000 /* 601 chip, Old POWER ISA.  */
+@@ -39,8 +39,9 @@
+ #define PPC_FEATURE_POWER5	    0x00040000 /* POWER5 ISA 2.02 */
+ #define PPC_FEATURE_POWER5_PLUS	    0x00020000 /* POWER5+ ISA 2.03 */
+ #define PPC_FEATURE_CELL_BE	    0x00010000 /* CELL Broadband Engine */
+-#define PPC_FEATURE_BOOKE	    0x00008000
+-#define PPC_FEATURE_SMT		    0x00004000 /* Simultaneous Multi-Threading */
++#define PPC_FEATURE_BOOKE	    0x00008000 /* ISA Category Embedded */
++#define PPC_FEATURE_SMT		    0x00004000 /* Simultaneous
++						  Multi-Threading */
+ #define PPC_FEATURE_ICACHE_SNOOP    0x00002000
+ #define PPC_FEATURE_ARCH_2_05	    0x00001000 /* ISA 2.05 */
+ #define PPC_FEATURE_PA6T	    0x00000800 /* PA Semi 6T Core */
+@@ -51,3 +52,13 @@
+ #define PPC_FEATURE_PSERIES_PERFMON_COMPAT  0x00000040
+ #define PPC_FEATURE_TRUE_LE	    0x00000002
+ #define PPC_FEATURE_PPC_LE	    0x00000001
++
++/* Feature definitions in AT_HWCAP2.  */
++#define PPC_FEATURE2_ARCH_2_07     0x80000000 /* ISA 2.07 */
++#define PPC_FEATURE2_HAS_HTM       0x40000000 /* Hardware Transactional
++						 Memory */
++#define PPC_FEATURE2_HAS_DSCR      0x20000000 /* Data Stream Control
++						 Register */
++#define PPC_FEATURE2_HAS_EBB       0x10000000 /* Event Base Branching */
++#define PPC_FEATURE2_HAS_ISEL      0x08000000 /* Integer Select */
++#define PPC_FEATURE2_HAS_TAR       0x04000000 /* Target Address Register */
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/dl-procinfo.c glibc-2.17-c758a686/sysdeps/powerpc/dl-procinfo.c
+index efab165..6cebf99 100644
+--- glibc-2.17-c758a686/sysdeps/powerpc/dl-procinfo.c
++++ glibc-2.17-c758a686/sysdeps/powerpc/dl-procinfo.c
+@@ -45,7 +45,7 @@
+ #if !defined PROCINFO_DECL && defined SHARED
+   ._dl_powerpc_cap_flags
+ #else
+-PROCINFO_CLASS const char _dl_powerpc_cap_flags[25][10]
++PROCINFO_CLASS const char _dl_powerpc_cap_flags[57][10]
+ #endif
+ #ifndef PROCINFO_DECL
+ = {
+@@ -56,6 +56,14 @@ PROCINFO_CLASS const char _dl_powerpc_cap_flags[25][10]
+     "notb", "efpdouble", "efpsingle", "spe",
+     "ucache", "4xxmac", "mmu", "fpu",
+     "altivec", "ppc601", "ppc64", "ppc32",
++    "", "", "", "",
++    "", "", "", "",
++    "", "", "", "",
++    "", "", "", "",
++    "", "", "", "",
++    "", "", "", "",
++    "", "", "tar", "isel",
++    "ebb", "dscr", "htm", "arch_2_07",
+   }
+ #endif
+ #if !defined SHARED || defined PROCINFO_DECL
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/dl-procinfo.h glibc-2.17-c758a686/sysdeps/powerpc/dl-procinfo.h
+index 7732ed2..dc3b70e 100644
+--- glibc-2.17-c758a686/sysdeps/powerpc/dl-procinfo.h
++++ glibc-2.17-c758a686/sysdeps/powerpc/dl-procinfo.h
+@@ -20,11 +20,21 @@
+ #define _DL_PROCINFO_H 1
+ 
+ #include <ldsodefs.h>
+-#include <sysdep.h>	/* This defines the PPC_FEATURE_* macros.  */
++#include <sysdep.h>	/* This defines the PPC_FEATURE[2]_* macros.  */
+ 
+ /* There are 25 bits used, but they are bits 7..31.  */
+ #define _DL_HWCAP_FIRST		7
+-#define _DL_HWCAP_COUNT		32
++
++/* The total number of available bits (including those prior to
++   _DL_HWCAP_FIRST).  Some of these bits might not be used.  */
++#define _DL_HWCAP_COUNT		64
++
++/* Features started at bit 31 and decremented as new features were added.  */
++#define _DL_HWCAP_LAST		31
++
++/* AT_HWCAP2 features started at bit 31 and decremented as new features were
++   added.  HWCAP2 feature bits start at bit 0.  */
++#define _DL_HWCAP2_LAST		31
+ 
+ /* These bits influence library search.  */
+ #define HWCAP_IMPORTANT		(PPC_FEATURE_HAS_ALTIVEC \
+@@ -161,18 +171,33 @@ static inline int
+ __attribute__ ((unused))
+ _dl_procinfo (unsigned int type, unsigned long int word)
+ {
+-  /* Fallback to unknown output mechanism.  */
+-  if (type == AT_HWCAP2)
+-    return -1;
+-
+-  _dl_printf ("AT_HWCAP:       ");
+-
+-  for (int i = _DL_HWCAP_FIRST; i < _DL_HWCAP_COUNT; ++i)
+-    if (word & (1 << i))
+-      _dl_printf (" %s", _dl_hwcap_string (i));
+-
+-  _dl_printf ("\n");
+-
++  switch(type)
++    {
++    case AT_HWCAP:
++      _dl_printf ("AT_HWCAP:       ");
++
++      for (int i = _DL_HWCAP_FIRST; i <= _DL_HWCAP_LAST; ++i)
++       if (word & (1 << i))
++         _dl_printf (" %s", _dl_hwcap_string (i));
++      break;
++    case AT_HWCAP2:
++      {
++       unsigned int offset = _DL_HWCAP_LAST + 1;
++
++       _dl_printf ("AT_HWCAP2:      ");
++
++        /* We have to go through them all because the kernel added the
++          AT_HWCAP2 features starting with the high bits.  */
++       for (int i = 0; i <= _DL_HWCAP2_LAST; ++i)
++         if (word & (1 << i))
++           _dl_printf (" %s", _dl_hwcap_string (offset + i));
++       break;
++      }
++    default:
++      /* This should not happen.  */
++      return -1;
++    }
++   _dl_printf ("\n");
+   return 0;
+ }
+ #endif
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/rtld-global-offsets.sym glibc-2.17-c758a686/sysdeps/powerpc/rtld-global-offsets.sym
+index ff4e97f..f5ea5a1 100644
+--- glibc-2.17-c758a686/sysdeps/powerpc/rtld-global-offsets.sym
++++ glibc-2.17-c758a686/sysdeps/powerpc/rtld-global-offsets.sym
+@@ -5,3 +5,4 @@
+ #define rtld_global_ro_offsetof(mem) offsetof (struct rtld_global_ro, mem)
+ 
+ RTLD_GLOBAL_RO_DL_HWCAP_OFFSET	rtld_global_ro_offsetof (_dl_hwcap)
++RTLD_GLOBAL_RO_DL_HWCAP2_OFFSET	rtld_global_ro_offsetof (_dl_hwcap2)
+-- 
+1.7.11.7
+

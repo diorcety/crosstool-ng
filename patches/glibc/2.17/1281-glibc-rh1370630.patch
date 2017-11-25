@@ -1,0 +1,65 @@
+commit 4969890247d7d6a548f17641ed5a18f4b713d211
+Author: Alexandre Oliva <aoliva@redhat.com>
+Date:   Fri Nov 21 03:29:56 2014 -0200
+
+    BZ#14498: fix infinite loop in nss_db_getservbyname
+    
+    nss_db uses nss_files code for services, but a continue on protocol
+    mismatch that doesn't affect nss_files skipped the code that advanced
+    to the next db entry.  Any one of these changes would suffice to fix
+    it, but fixing both makes them both safer to reuse elsewhere.
+    
+    for  ChangeLog
+    
+    	[BZ #14498]
+    	* NEWS: Fixed.
+    	* nss/nss_db/db-XXX.c (_nss_db_get##name##_r): Update hidx
+    	after parsing line but before break_if_match.
+    	* nss/nss_files/files-service (DB_LOOKUP): Don't "continue;"
+    	if there is a protocol mismatch.
+
+Index: b/nss/nss_db/db-XXX.c
+===================================================================
+--- a/nss/nss_db/db-XXX.c
++++ b/nss/nss_db/db-XXX.c
+@@ -190,6 +190,12 @@ enum nss_status								      \
+       char *p = memcpy (buffer, valstr, len);				      \
+ 									      \
+       int err = parse_line (p, result, data, buflen, errnop EXTRA_ARGS);      \
++									      \
++      /* Advance before break_if_match, lest it uses continue to skip
++	 to the next entry.  */						      \
++      if ((hidx += hval2) >= header->dbs[i].hashsize)			      \
++	hidx -= header->dbs[i].hashsize;				      \
++									      \
+       if (err > 0)							      \
+ 	{								      \
+ 	  status = NSS_STATUS_SUCCESS;					      \
+@@ -202,9 +208,6 @@ enum nss_status								      \
+ 	  status = NSS_STATUS_TRYAGAIN;					      \
+ 	  break;							      \
+ 	}								      \
+-									      \
+-      if ((hidx += hval2) >= header->dbs[i].hashsize)			      \
+-	hidx -= header->dbs[i].hashsize;				      \
+     }									      \
+ 									      \
+   if (status == NSS_STATUS_NOTFOUND)					      \
+Index: b/nss/nss_files/files-service.c
+===================================================================
+--- a/nss/nss_files/files-service.c
++++ b/nss/nss_files/files-service.c
+@@ -44,8 +44,11 @@ DB_LOOKUP (servbyname, ':',
+ 	   {
+ 	     /* Must match both protocol (if specified) and name.  */
+ 	     if (proto != NULL && strcmp (result->s_proto, proto))
+-	       continue;
+-	     LOOKUP_NAME (s_name, s_aliases)
++	       /* A continue statement here breaks nss_db, because it
++		bypasses advancing to the next db entry, and it
++		doesn't make nss_files any more efficient.  */;
++	     else
++	       LOOKUP_NAME (s_name, s_aliases)
+ 	   },
+ 	   const char *name, const char *proto)
+ 

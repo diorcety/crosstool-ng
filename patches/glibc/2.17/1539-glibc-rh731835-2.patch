@@ -1,0 +1,43 @@
+Index: glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/powerpc/elision-conf.c
+===================================================================
+--- glibc-2.17-c758a686.orig/nptl/sysdeps/unix/sysv/linux/powerpc/elision-conf.c
++++ glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/powerpc/elision-conf.c
+@@ -61,7 +61,14 @@ elision_init (int argc __attribute__ ((u
+ {
+ #ifdef ENABLE_LOCK_ELISION
+   int elision_available = (GLRO (dl_hwcap2) & PPC_FEATURE2_HAS_HTM) ? 1 : 0;
+-  __pthread_force_elision = __libc_enable_secure ? 0 : elision_available;
++  if (!__libc_enable_secure && elision_available)
++    {
++      __pthread_force_elision = GLRO(dl_elision_enabled);
++    }
++  else
++    {
++      __pthread_force_elision = 0;
++    }
+ #endif
+ }
+ 
+Index: glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/strstr.c
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/powerpc/powerpc64/multiarch/strstr.c
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/strstr.c
+@@ -17,7 +17,10 @@
+    <http://www.gnu.org/licenses/>.  */
+ 
+ /* Define multiple versions only for definition in libc.  */
+-#if IS_IN (libc)
++/* RHEL 7-specific: Define multiple versions only for the definition in
++   libc.  Don't define multiple versions for strstr in static library
++   since we need strstr before initialization has happened.  */
++#if defined SHARED && IS_IN (libc)
+ # include <string.h>
+ # include <shlib-compat.h>
+ # include "init-arch.h"
+@@ -31,4 +34,6 @@ libc_ifunc (strstr,
+             (hwcap & PPC_FEATURE_HAS_VSX)
+             ? __strstr_power7
+             : __strstr_ppc);
++#else
++#include "string/strstr.c"
+ #endif

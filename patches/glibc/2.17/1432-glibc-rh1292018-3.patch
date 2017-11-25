@@ -1,0 +1,1948 @@
+commit 1aee37a22e3977de7a89e734e0a1e112f52045f2
+Author: H.J. Lu <hjl.tools@gmail.com>
+Date:   Thu Aug 13 03:39:22 2015 -0700
+
+    Update i686 multiarch functions for <cpu-features.h>
+
+    This patch updates i686 multiarch functions to use the newly defined
+    HAS_CPU_FEATURE, HAS_ARCH_FEATURE, LOAD_GOT_AND_RTLD_GLOBAL_RO and
+    LOAD_FUNC_GOT_EAX from <cpu-features.h>.
+
+commit 4e940b2f4b577f3a530e0580373f7c2d569f4d63
+Author: H.J. Lu <hjl.tools@gmail.com>
+Date:   Sun Mar 6 08:23:24 2016 -0800
+
+    Use HAS_ARCH_FEATURE with Fast_Rep_String
+    
+    HAS_ARCH_FEATURE, not HAS_CPU_FEATURE, should be used with
+    Fast_Rep_String.
+
+Index: glibc-2.17-c758a686/sysdeps/i386/i686/fpu/multiarch/e_expf.c
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/i386/i686/fpu/multiarch/e_expf.c
++++ glibc-2.17-c758a686/sysdeps/i386/i686/fpu/multiarch/e_expf.c
+@@ -23,11 +23,15 @@ extern double __ieee754_expf_ia32 (doubl
+ 
+ double __ieee754_expf (double);
+ libm_ifunc (__ieee754_expf,
+-	    HAS_SSE2 ? __ieee754_expf_sse2 : __ieee754_expf_ia32);
++	    HAS_CPU_FEATURE (SSE2)
++	    ? __ieee754_expf_sse2
++	    : __ieee754_expf_ia32);
+ 
+ extern double __expf_finite_sse2 (double);
+ extern double __expf_finite_ia32 (double);
+ 
+ double __expf_finite (double);
+ libm_ifunc (__expf_finite,
+-	    HAS_SSE2 ? __expf_finite_sse2 : __expf_finite_ia32);
++	    HAS_CPU_FEATURE (SSE2)
++	    ? __expf_finite_sse2
++	    : __expf_finite_ia32);
+Index: glibc-2.17-c758a686/sysdeps/i386/i686/fpu/multiarch/s_cosf.c
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/i386/i686/fpu/multiarch/s_cosf.c
++++ glibc-2.17-c758a686/sysdeps/i386/i686/fpu/multiarch/s_cosf.c
+@@ -22,7 +22,7 @@ extern float __cosf_sse2 (float);
+ extern float __cosf_ia32 (float);
+ float __cosf (float);
+ 
+-libm_ifunc (__cosf, HAS_SSE2 ? __cosf_sse2 : __cosf_ia32);
++libm_ifunc (__cosf, HAS_CPU_FEATURE (SSE2) ? __cosf_sse2 : __cosf_ia32);
+ weak_alias (__cosf, cosf);
+ 
+ #define COSF __cosf_ia32
+Index: glibc-2.17-c758a686/sysdeps/i386/i686/fpu/multiarch/s_sincosf.c
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/i386/i686/fpu/multiarch/s_sincosf.c
++++ glibc-2.17-c758a686/sysdeps/i386/i686/fpu/multiarch/s_sincosf.c
+@@ -22,7 +22,8 @@ extern void __sincosf_sse2 (float, float
+ extern void __sincosf_ia32 (float, float *, float *);
+ void __sincosf (float, float *, float *);
+ 
+-libm_ifunc (__sincosf, HAS_SSE2 ? __sincosf_sse2 : __sincosf_ia32);
++libm_ifunc (__sincosf,
++	    HAS_CPU_FEATURE (SSE2) ? __sincosf_sse2 : __sincosf_ia32);
+ weak_alias (__sincosf, sincosf);
+ 
+ #define SINCOSF __sincosf_ia32
+Index: glibc-2.17-c758a686/sysdeps/i386/i686/fpu/multiarch/s_sinf.c
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/i386/i686/fpu/multiarch/s_sinf.c
++++ glibc-2.17-c758a686/sysdeps/i386/i686/fpu/multiarch/s_sinf.c
+@@ -22,7 +22,7 @@ extern float __sinf_sse2 (float);
+ extern float __sinf_ia32 (float);
+ float __sinf (float);
+ 
+-libm_ifunc (__sinf, HAS_SSE2 ? __sinf_sse2 : __sinf_ia32);
++libm_ifunc (__sinf, HAS_CPU_FEATURE (SSE2) ? __sinf_sse2 : __sinf_ia32);
+ weak_alias (__sinf, sinf);
+ #define SINF __sinf_ia32
+ #include <sysdeps/ieee754/flt-32/s_sinf.c>
+Index: glibc-2.17-c758a686/sysdeps/i386/i686/multiarch/bcopy.S
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/i386/i686/multiarch/bcopy.S
++++ glibc-2.17-c758a686/sysdeps/i386/i686/multiarch/bcopy.S
+@@ -23,46 +23,19 @@
+ 
+ /* Define multiple versions only for the definition in lib.  */
+ #if IS_IN (libc)
+-# ifdef SHARED
+ 	.text
+ ENTRY(bcopy)
+ 	.type	bcopy, @gnu_indirect_function
+-	pushl	%ebx
+-	cfi_adjust_cfa_offset (4)
+-	cfi_rel_offset (ebx, 0)
+-	LOAD_PIC_REG(bx)
+-	cmpl	$0, KIND_OFFSET+__cpu_features@GOTOFF(%ebx)
+-	jne	1f
+-	call	__init_cpu_features
+-1:	leal	__bcopy_ia32@GOTOFF(%ebx), %eax
+-	testl	$bit_SSSE3, CPUID_OFFSET+index_SSSE3+__cpu_features@GOTOFF(%ebx)
++	LOAD_GOT_AND_RTLD_GLOBAL_RO
++	LOAD_FUNC_GOT_EAX (__bcopy_ia32)
++	HAS_CPU_FEATURE (SSSE3)
+ 	jz	2f
+-	leal	__bcopy_ssse3@GOTOFF(%ebx), %eax
+-	testl	$bit_Fast_Rep_String, FEATURE_OFFSET+index_Fast_Rep_String+__cpu_features@GOTOFF(%ebx)
++	LOAD_FUNC_GOT_EAX (__bcopy_ssse3)
++	HAS_ARCH_FEATURE (Fast_Rep_String)
+ 	jz	2f
+-	leal	__bcopy_ssse3_rep@GOTOFF(%ebx), %eax
+-2:	popl	%ebx
+-	cfi_adjust_cfa_offset (-4)
+-	cfi_restore (ebx)
+-	ret
+-END(bcopy)
+-# else
+-	.text
+-ENTRY(bcopy)
+-	.type	bcopy, @gnu_indirect_function
+-	cmpl	$0, KIND_OFFSET+__cpu_features
+-	jne	1f
+-	call	__init_cpu_features
+-1:	leal	__bcopy_ia32, %eax
+-	testl	$bit_SSSE3, CPUID_OFFSET+index_SSSE3+__cpu_features
+-	jz	2f
+-	leal	__bcopy_ssse3, %eax
+-	testl	$bit_Fast_Rep_String, FEATURE_OFFSET+index_Fast_Rep_String+__cpu_features
+-	jz	2f
+-	leal	__bcopy_ssse3_rep, %eax
++	LOAD_FUNC_GOT_EAX(__bcopy_ssse3_rep)
+ 2:	ret
+ END(bcopy)
+-# endif
+ 
+ # undef ENTRY
+ # define ENTRY(name) \
+Index: glibc-2.17-c758a686/sysdeps/i386/i686/multiarch/bzero.S
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/i386/i686/multiarch/bzero.S
++++ glibc-2.17-c758a686/sysdeps/i386/i686/multiarch/bzero.S
+@@ -23,46 +23,19 @@
+ 
+ /* Define multiple versions only for the definition in lib.  */
+ #if IS_IN (libc)
+-# ifdef SHARED
+ 	.text
+ ENTRY(__bzero)
+ 	.type	__bzero, @gnu_indirect_function
+-	pushl	%ebx
+-	cfi_adjust_cfa_offset (4)
+-	cfi_rel_offset (ebx, 0)
+-	LOAD_PIC_REG(bx)
+-	cmpl	$0, KIND_OFFSET+__cpu_features@GOTOFF(%ebx)
+-	jne	1f
+-	call	__init_cpu_features
+-1:	leal	__bzero_ia32@GOTOFF(%ebx), %eax
+-	testl	$bit_SSE2, CPUID_OFFSET+index_SSE2+__cpu_features@GOTOFF(%ebx)
++	LOAD_GOT_AND_RTLD_GLOBAL_RO
++	LOAD_FUNC_GOT_EAX (__bzero_ia32)
++	HAS_CPU_FEATURE (SSE2)
+ 	jz	2f
+-	leal	__bzero_sse2@GOTOFF(%ebx), %eax
+-	testl	$bit_Fast_Rep_String, FEATURE_OFFSET+index_Fast_Rep_String+__cpu_features@GOTOFF(%ebx)
++	LOAD_FUNC_GOT_EAX ( __bzero_sse2)
++	HAS_ARCH_FEATURE (Fast_Rep_String)
+ 	jz	2f
+-	leal	__bzero_sse2_rep@GOTOFF(%ebx), %eax
+-2:	popl	%ebx
+-	cfi_adjust_cfa_offset (-4)
+-	cfi_restore (ebx)
+-	ret
+-END(__bzero)
+-# else
+-	.text
+-ENTRY(__bzero)
+-	.type	__bzero, @gnu_indirect_function
+-	cmpl	$0, KIND_OFFSET+__cpu_features
+-	jne	1f
+-	call	__init_cpu_features
+-1:	leal	__bzero_ia32, %eax
+-	testl	$bit_SSE2, CPUID_OFFSET+index_SSE2+__cpu_features
+-	jz	2f
+-	leal	__bzero_sse2, %eax
+-	testl	$bit_Fast_Rep_String, FEATURE_OFFSET+index_Fast_Rep_String+__cpu_features
+-	jz	2f
+-	leal	__bzero_sse2_rep, %eax
++	LOAD_FUNC_GOT_EAX (__bzero_sse2_rep)
+ 2:	ret
+ END(__bzero)
+-# endif
+ 
+ # undef ENTRY
+ # define ENTRY(name) \
+Index: glibc-2.17-c758a686/sysdeps/i386/i686/multiarch/ifunc-impl-list.c
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/i386/i686/multiarch/ifunc-impl-list.c
++++ glibc-2.17-c758a686/sysdeps/i386/i686/multiarch/ifunc-impl-list.c
+@@ -38,152 +38,152 @@ __libc_ifunc_impl_list (const char *name
+ 
+   /* Support sysdeps/i386/i686/multiarch/bcopy.S.  */
+   IFUNC_IMPL (i, name, bcopy,
+-	      IFUNC_IMPL_ADD (array, i, bcopy, HAS_SSSE3,
++	      IFUNC_IMPL_ADD (array, i, bcopy, HAS_CPU_FEATURE (SSSE3),
+ 			      __bcopy_ssse3_rep)
+-	      IFUNC_IMPL_ADD (array, i, bcopy, HAS_SSSE3, __bcopy_ssse3)
++	      IFUNC_IMPL_ADD (array, i, bcopy, HAS_CPU_FEATURE (SSSE3), __bcopy_ssse3)
+ 	      IFUNC_IMPL_ADD (array, i, bcopy, 1, __bcopy_ia32))
+ 
+   /* Support sysdeps/i386/i686/multiarch/bzero.S.  */
+   IFUNC_IMPL (i, name, bzero,
+-	      IFUNC_IMPL_ADD (array, i, bzero, HAS_SSE2, __bzero_sse2_rep)
+-	      IFUNC_IMPL_ADD (array, i, bzero, HAS_SSE2, __bzero_sse2)
++	      IFUNC_IMPL_ADD (array, i, bzero, HAS_CPU_FEATURE (SSE2), __bzero_sse2_rep)
++	      IFUNC_IMPL_ADD (array, i, bzero, HAS_CPU_FEATURE (SSE2), __bzero_sse2)
+ 	      IFUNC_IMPL_ADD (array, i, bzero, 1, __bzero_ia32))
+ 
+   /* Support sysdeps/i386/i686/multiarch/memchr.S.  */
+   IFUNC_IMPL (i, name, memchr,
+-	      IFUNC_IMPL_ADD (array, i, memchr, HAS_SSE2,
++	      IFUNC_IMPL_ADD (array, i, memchr, HAS_CPU_FEATURE (SSE2),
+ 			      __memchr_sse2_bsf)
+-	      IFUNC_IMPL_ADD (array, i, memchr, HAS_SSE2, __memchr_sse2)
++	      IFUNC_IMPL_ADD (array, i, memchr, HAS_CPU_FEATURE (SSE2), __memchr_sse2)
+ 	      IFUNC_IMPL_ADD (array, i, memchr, 1, __memchr_ia32))
+ 
+   /* Support sysdeps/i386/i686/multiarch/memcmp.S.  */
+   IFUNC_IMPL (i, name, memcmp,
+-	      IFUNC_IMPL_ADD (array, i, memcmp, HAS_SSE4_2,
++	      IFUNC_IMPL_ADD (array, i, memcmp, HAS_CPU_FEATURE (SSE4_2),
+ 			      __memcmp_sse4_2)
+-	      IFUNC_IMPL_ADD (array, i, memcmp, HAS_SSSE3, __memcmp_ssse3)
++	      IFUNC_IMPL_ADD (array, i, memcmp, HAS_CPU_FEATURE (SSSE3), __memcmp_ssse3)
+ 	      IFUNC_IMPL_ADD (array, i, memcmp, 1, __memcmp_ia32))
+ 
+   /* Support sysdeps/i386/i686/multiarch/memmove_chk.S.  */
+   IFUNC_IMPL (i, name, __memmove_chk,
+-	      IFUNC_IMPL_ADD (array, i, __memmove_chk, HAS_SSSE3,
++	      IFUNC_IMPL_ADD (array, i, __memmove_chk, HAS_CPU_FEATURE (SSSE3),
+ 			      __memmove_chk_ssse3_rep)
+-	      IFUNC_IMPL_ADD (array, i, __memmove_chk, HAS_SSSE3,
++	      IFUNC_IMPL_ADD (array, i, __memmove_chk, HAS_CPU_FEATURE (SSSE3),
+ 			      __memmove_chk_ssse3)
+ 	      IFUNC_IMPL_ADD (array, i, __memmove_chk, 1,
+ 			      __memmove_chk_ia32))
+ 
+   /* Support sysdeps/i386/i686/multiarch/memmove.S.  */
+   IFUNC_IMPL (i, name, memmove,
+-	      IFUNC_IMPL_ADD (array, i, memmove, HAS_SSSE3,
++	      IFUNC_IMPL_ADD (array, i, memmove, HAS_CPU_FEATURE (SSSE3),
+ 			      __memmove_ssse3_rep)
+-	      IFUNC_IMPL_ADD (array, i, memmove, HAS_SSSE3,
++	      IFUNC_IMPL_ADD (array, i, memmove, HAS_CPU_FEATURE (SSSE3),
+ 			      __memmove_ssse3)
+ 	      IFUNC_IMPL_ADD (array, i, memmove, 1, __memmove_ia32))
+ 
+   /* Support sysdeps/i386/i686/multiarch/memrchr.S.  */
+   IFUNC_IMPL (i, name, memrchr,
+-	      IFUNC_IMPL_ADD (array, i, memrchr, HAS_SSE2,
++	      IFUNC_IMPL_ADD (array, i, memrchr, HAS_CPU_FEATURE (SSE2),
+ 			      __memrchr_sse2_bsf)
+-	      IFUNC_IMPL_ADD (array, i, memrchr, HAS_SSE2, __memrchr_sse2)
++	      IFUNC_IMPL_ADD (array, i, memrchr, HAS_CPU_FEATURE (SSE2), __memrchr_sse2)
+ 	      IFUNC_IMPL_ADD (array, i, memrchr, 1, __memrchr_ia32))
+ 
+   /* Support sysdeps/i386/i686/multiarch/memset_chk.S.  */
+   IFUNC_IMPL (i, name, __memset_chk,
+-	      IFUNC_IMPL_ADD (array, i, __memset_chk, HAS_SSE2,
++	      IFUNC_IMPL_ADD (array, i, __memset_chk, HAS_CPU_FEATURE (SSE2),
+ 			      __memset_chk_sse2_rep)
+-	      IFUNC_IMPL_ADD (array, i, __memset_chk, HAS_SSE2,
++	      IFUNC_IMPL_ADD (array, i, __memset_chk, HAS_CPU_FEATURE (SSE2),
+ 			      __memset_chk_sse2)
+ 	      IFUNC_IMPL_ADD (array, i, __memset_chk, 1,
+ 			      __memset_chk_ia32))
+ 
+   /* Support sysdeps/i386/i686/multiarch/memset.S.  */
+   IFUNC_IMPL (i, name, memset,
+-	      IFUNC_IMPL_ADD (array, i, memset, HAS_SSE2,
++	      IFUNC_IMPL_ADD (array, i, memset, HAS_CPU_FEATURE (SSE2),
+ 			      __memset_sse2_rep)
+-	      IFUNC_IMPL_ADD (array, i, memset, HAS_SSE2, __memset_sse2)
++	      IFUNC_IMPL_ADD (array, i, memset, HAS_CPU_FEATURE (SSE2), __memset_sse2)
+ 	      IFUNC_IMPL_ADD (array, i, memset, 1, __memset_ia32))
+ 
+   /* Support sysdeps/i386/i686/multiarch/rawmemchr.S.  */
+   IFUNC_IMPL (i, name, rawmemchr,
+-	      IFUNC_IMPL_ADD (array, i, rawmemchr, HAS_SSE2,
++	      IFUNC_IMPL_ADD (array, i, rawmemchr, HAS_CPU_FEATURE (SSE2),
+ 			      __rawmemchr_sse2_bsf)
+-	      IFUNC_IMPL_ADD (array, i, rawmemchr, HAS_SSE2,
++	      IFUNC_IMPL_ADD (array, i, rawmemchr, HAS_CPU_FEATURE (SSE2),
+ 			      __rawmemchr_sse2)
+ 	      IFUNC_IMPL_ADD (array, i, rawmemchr, 1, __rawmemchr_ia32))
+ 
+   /* Support sysdeps/i386/i686/multiarch/stpncpy.S.  */
+   IFUNC_IMPL (i, name, stpncpy,
+-	      IFUNC_IMPL_ADD (array, i, stpncpy, HAS_SSSE3,
++	      IFUNC_IMPL_ADD (array, i, stpncpy, HAS_CPU_FEATURE (SSSE3),
+ 			      __stpncpy_ssse3)
+-	      IFUNC_IMPL_ADD (array, i, stpncpy, HAS_SSE2, __stpncpy_sse2)
++	      IFUNC_IMPL_ADD (array, i, stpncpy, HAS_CPU_FEATURE (SSE2), __stpncpy_sse2)
+ 	      IFUNC_IMPL_ADD (array, i, stpncpy, 1, __stpncpy_ia32))
+ 
+   /* Support sysdeps/i386/i686/multiarch/stpcpy.S.  */
+   IFUNC_IMPL (i, name, stpcpy,
+-	      IFUNC_IMPL_ADD (array, i, stpcpy, HAS_SSSE3, __stpcpy_ssse3)
+-	      IFUNC_IMPL_ADD (array, i, stpcpy, HAS_SSE2, __stpcpy_sse2)
++	      IFUNC_IMPL_ADD (array, i, stpcpy, HAS_CPU_FEATURE (SSSE3), __stpcpy_ssse3)
++	      IFUNC_IMPL_ADD (array, i, stpcpy, HAS_CPU_FEATURE (SSE2), __stpcpy_sse2)
+ 	      IFUNC_IMPL_ADD (array, i, stpcpy, 1, __stpcpy_ia32))
+ 
+   /* Support sysdeps/i386/i686/multiarch/strcasecmp.S.  */
+   IFUNC_IMPL (i, name, strcasecmp,
+-	      IFUNC_IMPL_ADD (array, i, strcasecmp, HAS_SSE4_2,
++	      IFUNC_IMPL_ADD (array, i, strcasecmp, HAS_CPU_FEATURE (SSE4_2),
+ 			      __strcasecmp_sse4_2)
+-	      IFUNC_IMPL_ADD (array, i, strcasecmp, HAS_SSSE3,
++	      IFUNC_IMPL_ADD (array, i, strcasecmp, HAS_CPU_FEATURE (SSSE3),
+ 			      __strcasecmp_ssse3)
+ 	      IFUNC_IMPL_ADD (array, i, strcasecmp, 1, __strcasecmp_ia32))
+ 
+   /* Support sysdeps/i386/i686/multiarch/strcasecmp_l.S.  */
+   IFUNC_IMPL (i, name, strcasecmp_l,
+-	      IFUNC_IMPL_ADD (array, i, strcasecmp_l, HAS_SSE4_2,
++	      IFUNC_IMPL_ADD (array, i, strcasecmp_l, HAS_CPU_FEATURE (SSE4_2),
+ 			      __strcasecmp_l_sse4_2)
+-	      IFUNC_IMPL_ADD (array, i, strcasecmp_l, HAS_SSSE3,
++	      IFUNC_IMPL_ADD (array, i, strcasecmp_l, HAS_CPU_FEATURE (SSSE3),
+ 			      __strcasecmp_l_ssse3)
+ 	      IFUNC_IMPL_ADD (array, i, strcasecmp_l, 1,
+ 			      __strcasecmp_l_ia32))
+ 
+   /* Support sysdeps/i386/i686/multiarch/strcasestr.c.  */
+   IFUNC_IMPL (i, name, strcasestr,
+-	      IFUNC_IMPL_ADD (array, i, strcasestr, HAS_SSE4_2,
++	      IFUNC_IMPL_ADD (array, i, strcasestr, HAS_CPU_FEATURE (SSE4_2),
+ 			      __strcasestr_sse42)
+ 	      IFUNC_IMPL_ADD (array, i, strcasestr, 1, __strcasestr_ia32))
+ 
+   /* Support sysdeps/i386/i686/multiarch/strcat.S.  */
+   IFUNC_IMPL (i, name, strcat,
+-	      IFUNC_IMPL_ADD (array, i, strcat, HAS_SSSE3, __strcat_ssse3)
+-	      IFUNC_IMPL_ADD (array, i, strcat, HAS_SSE2, __strcat_sse2)
++	      IFUNC_IMPL_ADD (array, i, strcat, HAS_CPU_FEATURE (SSSE3), __strcat_ssse3)
++	      IFUNC_IMPL_ADD (array, i, strcat, HAS_CPU_FEATURE (SSE2), __strcat_sse2)
+ 	      IFUNC_IMPL_ADD (array, i, strcat, 1, __strcat_ia32))
+ 
+   /* Support sysdeps/i386/i686/multiarch/strchr.S.  */
+   IFUNC_IMPL (i, name, strchr,
+-	      IFUNC_IMPL_ADD (array, i, strchr, HAS_SSE2,
++	      IFUNC_IMPL_ADD (array, i, strchr, HAS_CPU_FEATURE (SSE2),
+ 			      __strchr_sse2_bsf)
+-	      IFUNC_IMPL_ADD (array, i, strchr, HAS_SSE2, __strchr_sse2)
++	      IFUNC_IMPL_ADD (array, i, strchr, HAS_CPU_FEATURE (SSE2), __strchr_sse2)
+ 	      IFUNC_IMPL_ADD (array, i, strchr, 1, __strchr_ia32))
+ 
+   /* Support sysdeps/i386/i686/multiarch/strcmp.S.  */
+   IFUNC_IMPL (i, name, strcmp,
+-	      IFUNC_IMPL_ADD (array, i, strcmp, HAS_SSE4_2,
++	      IFUNC_IMPL_ADD (array, i, strcmp, HAS_CPU_FEATURE (SSE4_2),
+ 			      __strcmp_sse4_2)
+-	      IFUNC_IMPL_ADD (array, i, strcmp, HAS_SSSE3, __strcmp_ssse3)
++	      IFUNC_IMPL_ADD (array, i, strcmp, HAS_CPU_FEATURE (SSSE3), __strcmp_ssse3)
+ 	      IFUNC_IMPL_ADD (array, i, strcmp, 1, __strcmp_ia32))
+ 
+   /* Support sysdeps/i386/i686/multiarch/strcpy.S.  */
+   IFUNC_IMPL (i, name, strcpy,
+-	      IFUNC_IMPL_ADD (array, i, strcpy, HAS_SSSE3, __strcpy_ssse3)
+-	      IFUNC_IMPL_ADD (array, i, strcpy, HAS_SSE2, __strcpy_sse2)
++	      IFUNC_IMPL_ADD (array, i, strcpy, HAS_CPU_FEATURE (SSSE3), __strcpy_ssse3)
++	      IFUNC_IMPL_ADD (array, i, strcpy, HAS_CPU_FEATURE (SSE2), __strcpy_sse2)
+ 	      IFUNC_IMPL_ADD (array, i, strcpy, 1, __strcpy_ia32))
+ 
+   /* Support sysdeps/i386/i686/multiarch/strcspn.S.  */
+   IFUNC_IMPL (i, name, strcspn,
+-	      IFUNC_IMPL_ADD (array, i, strcspn, HAS_SSE4_2,
++	      IFUNC_IMPL_ADD (array, i, strcspn, HAS_CPU_FEATURE (SSE4_2),
+ 			      __strcspn_sse42)
+ 	      IFUNC_IMPL_ADD (array, i, strcspn, 1, __strcspn_ia32))
+ 
+   /* Support sysdeps/i386/i686/multiarch/strncase.S.  */
+   IFUNC_IMPL (i, name, strncasecmp,
+-	      IFUNC_IMPL_ADD (array, i, strncasecmp, HAS_SSE4_2,
++	      IFUNC_IMPL_ADD (array, i, strncasecmp, HAS_CPU_FEATURE (SSE4_2),
+ 			      __strncasecmp_sse4_2)
+-	      IFUNC_IMPL_ADD (array, i, strncasecmp, HAS_SSSE3,
++	      IFUNC_IMPL_ADD (array, i, strncasecmp, HAS_CPU_FEATURE (SSSE3),
+ 			      __strncasecmp_ssse3)
+ 	      IFUNC_IMPL_ADD (array, i, strncasecmp, 1,
+ 			      __strncasecmp_ia32))
+@@ -191,133 +191,133 @@ __libc_ifunc_impl_list (const char *name
+   /* Support sysdeps/i386/i686/multiarch/strncase_l.S.  */
+   IFUNC_IMPL (i, name, strncasecmp_l,
+ 	      IFUNC_IMPL_ADD (array, i, strncasecmp_l,
+-			      HAS_SSE4_2, __strncasecmp_l_sse4_2)
++			      HAS_CPU_FEATURE (SSE4_2), __strncasecmp_l_sse4_2)
+ 	      IFUNC_IMPL_ADD (array, i, strncasecmp_l,
+-			      HAS_SSSE3, __strncasecmp_l_ssse3)
++			      HAS_CPU_FEATURE (SSSE3), __strncasecmp_l_ssse3)
+ 	      IFUNC_IMPL_ADD (array, i, strncasecmp_l, 1,
+ 			      __strncasecmp_l_ia32))
+ 
+   /* Support sysdeps/i386/i686/multiarch/strncat.S.  */
+   IFUNC_IMPL (i, name, strncat,
+-	      IFUNC_IMPL_ADD (array, i, strncat, HAS_SSSE3,
++	      IFUNC_IMPL_ADD (array, i, strncat, HAS_CPU_FEATURE (SSSE3),
+ 			      __strncat_ssse3)
+-	      IFUNC_IMPL_ADD (array, i, strncat, HAS_SSE2, __strncat_sse2)
++	      IFUNC_IMPL_ADD (array, i, strncat, HAS_CPU_FEATURE (SSE2), __strncat_sse2)
+ 	      IFUNC_IMPL_ADD (array, i, strncat, 1, __strncat_ia32))
+ 
+   /* Support sysdeps/i386/i686/multiarch/strncpy.S.  */
+   IFUNC_IMPL (i, name, strncpy,
+-	      IFUNC_IMPL_ADD (array, i, strncpy, HAS_SSSE3,
++	      IFUNC_IMPL_ADD (array, i, strncpy, HAS_CPU_FEATURE (SSSE3),
+ 			      __strncpy_ssse3)
+-	      IFUNC_IMPL_ADD (array, i, strncpy, HAS_SSE2, __strncpy_sse2)
++	      IFUNC_IMPL_ADD (array, i, strncpy, HAS_CPU_FEATURE (SSE2), __strncpy_sse2)
+ 	      IFUNC_IMPL_ADD (array, i, strncpy, 1, __strncpy_ia32))
+ 
+   /* Support sysdeps/i386/i686/multiarch/strnlen.S.  */
+   IFUNC_IMPL (i, name, strnlen,
+-	      IFUNC_IMPL_ADD (array, i, strnlen, HAS_SSE2, __strnlen_sse2)
++	      IFUNC_IMPL_ADD (array, i, strnlen, HAS_CPU_FEATURE (SSE2), __strnlen_sse2)
+ 	      IFUNC_IMPL_ADD (array, i, strnlen, 1, __strnlen_ia32))
+ 
+   /* Support sysdeps/i386/i686/multiarch/strpbrk.S.  */
+   IFUNC_IMPL (i, name, strpbrk,
+-	      IFUNC_IMPL_ADD (array, i, strpbrk, HAS_SSE4_2,
++	      IFUNC_IMPL_ADD (array, i, strpbrk, HAS_CPU_FEATURE (SSE4_2),
+ 			      __strpbrk_sse42)
+ 	      IFUNC_IMPL_ADD (array, i, strpbrk, 1, __strpbrk_ia32))
+ 
+   /* Support sysdeps/i386/i686/multiarch/strrchr.S.  */
+   IFUNC_IMPL (i, name, strrchr,
+-	      IFUNC_IMPL_ADD (array, i, strrchr, HAS_SSE2,
++	      IFUNC_IMPL_ADD (array, i, strrchr, HAS_CPU_FEATURE (SSE2),
+ 			      __strrchr_sse2_bsf)
+-	      IFUNC_IMPL_ADD (array, i, strrchr, HAS_SSE2, __strrchr_sse2)
++	      IFUNC_IMPL_ADD (array, i, strrchr, HAS_CPU_FEATURE (SSE2), __strrchr_sse2)
+ 	      IFUNC_IMPL_ADD (array, i, strrchr, 1, __strrchr_ia32))
+ 
+   /* Support sysdeps/i386/i686/multiarch/strspn.S.  */
+   IFUNC_IMPL (i, name, strspn,
+-	      IFUNC_IMPL_ADD (array, i, strspn, HAS_SSE4_2, __strspn_sse42)
++	      IFUNC_IMPL_ADD (array, i, strspn, HAS_CPU_FEATURE (SSE4_2), __strspn_sse42)
+ 	      IFUNC_IMPL_ADD (array, i, strspn, 1, __strspn_ia32))
+ 
+   /* Support sysdeps/i386/i686/multiarch/strstr-c.c.  */
+   IFUNC_IMPL (i, name, strstr,
+-	      IFUNC_IMPL_ADD (array, i, strstr, HAS_SSE4_2, __strstr_sse42)
++	      IFUNC_IMPL_ADD (array, i, strstr, HAS_CPU_FEATURE (SSE4_2), __strstr_sse42)
+ 	      IFUNC_IMPL_ADD (array, i, strstr, 1, __strstr_ia32))
+ 
+   /* Support sysdeps/i386/i686/multiarch/wcschr.S.  */
+   IFUNC_IMPL (i, name, wcschr,
+-	      IFUNC_IMPL_ADD (array, i, wcschr, HAS_SSE2, __wcschr_sse2)
++	      IFUNC_IMPL_ADD (array, i, wcschr, HAS_CPU_FEATURE (SSE2), __wcschr_sse2)
+ 	      IFUNC_IMPL_ADD (array, i, wcschr, 1, __wcschr_ia32))
+ 
+   /* Support sysdeps/i386/i686/multiarch/wcscmp.S.  */
+   IFUNC_IMPL (i, name, wcscmp,
+-	      IFUNC_IMPL_ADD (array, i, wcscmp, HAS_SSE2, __wcscmp_sse2)
++	      IFUNC_IMPL_ADD (array, i, wcscmp, HAS_CPU_FEATURE (SSE2), __wcscmp_sse2)
+ 	      IFUNC_IMPL_ADD (array, i, wcscmp, 1, __wcscmp_ia32))
+ 
+   /* Support sysdeps/i386/i686/multiarch/wcscpy.S.  */
+   IFUNC_IMPL (i, name, wcscpy,
+-	      IFUNC_IMPL_ADD (array, i, wcscpy, HAS_SSSE3, __wcscpy_ssse3)
++	      IFUNC_IMPL_ADD (array, i, wcscpy, HAS_CPU_FEATURE (SSSE3), __wcscpy_ssse3)
+ 	      IFUNC_IMPL_ADD (array, i, wcscpy, 1, __wcscpy_ia32))
+ 
+   /* Support sysdeps/i386/i686/multiarch/wcslen.S.  */
+   IFUNC_IMPL (i, name, wcslen,
+-	      IFUNC_IMPL_ADD (array, i, wcslen, HAS_SSE2, __wcslen_sse2)
++	      IFUNC_IMPL_ADD (array, i, wcslen, HAS_CPU_FEATURE (SSE2), __wcslen_sse2)
+ 	      IFUNC_IMPL_ADD (array, i, wcslen, 1, __wcslen_ia32))
+ 
+   /* Support sysdeps/i386/i686/multiarch/wcsrchr.S.  */
+   IFUNC_IMPL (i, name, wcsrchr,
+-	      IFUNC_IMPL_ADD (array, i, wcsrchr, HAS_SSE2, __wcsrchr_sse2)
++	      IFUNC_IMPL_ADD (array, i, wcsrchr, HAS_CPU_FEATURE (SSE2), __wcsrchr_sse2)
+ 	      IFUNC_IMPL_ADD (array, i, wcsrchr, 1, __wcsrchr_ia32))
+ 
+   /* Support sysdeps/i386/i686/multiarch/wmemcmp.S.  */
+   IFUNC_IMPL (i, name, wmemcmp,
+-	      IFUNC_IMPL_ADD (array, i, wmemcmp, HAS_SSE4_2,
++	      IFUNC_IMPL_ADD (array, i, wmemcmp, HAS_CPU_FEATURE (SSE4_2),
+ 			      __wmemcmp_sse4_2)
+-	      IFUNC_IMPL_ADD (array, i, wmemcmp, HAS_SSSE3,
++	      IFUNC_IMPL_ADD (array, i, wmemcmp, HAS_CPU_FEATURE (SSSE3),
+ 			      __wmemcmp_ssse3)
+ 	      IFUNC_IMPL_ADD (array, i, wmemcmp, 1, __wmemcmp_ia32))
+ 
+ #ifdef SHARED
+   /* Support sysdeps/i386/i686/multiarch/memcpy_chk.S.  */
+   IFUNC_IMPL (i, name, __memcpy_chk,
+-	      IFUNC_IMPL_ADD (array, i, __memcpy_chk, HAS_SSSE3,
++	      IFUNC_IMPL_ADD (array, i, __memcpy_chk, HAS_CPU_FEATURE (SSSE3),
+ 			      __memcpy_chk_ssse3_rep)
+-	      IFUNC_IMPL_ADD (array, i, __memcpy_chk, HAS_SSSE3,
++	      IFUNC_IMPL_ADD (array, i, __memcpy_chk, HAS_CPU_FEATURE (SSSE3),
+ 			      __memcpy_chk_ssse3)
+ 	      IFUNC_IMPL_ADD (array, i, __memcpy_chk, 1,
+ 			      __memcpy_chk_ia32))
+ 
+   /* Support sysdeps/i386/i686/multiarch/memcpy.S.  */
+   IFUNC_IMPL (i, name, memcpy,
+-	      IFUNC_IMPL_ADD (array, i, memcpy, HAS_SSSE3,
++	      IFUNC_IMPL_ADD (array, i, memcpy, HAS_CPU_FEATURE (SSSE3),
+ 			      __memcpy_ssse3_rep)
+-	      IFUNC_IMPL_ADD (array, i, memcpy, HAS_SSSE3, __memcpy_ssse3)
++	      IFUNC_IMPL_ADD (array, i, memcpy, HAS_CPU_FEATURE (SSSE3), __memcpy_ssse3)
+ 	      IFUNC_IMPL_ADD (array, i, memcpy, 1, __memcpy_ia32))
+ 
+   /* Support sysdeps/i386/i686/multiarch/mempcpy_chk.S.  */
+   IFUNC_IMPL (i, name, __mempcpy_chk,
+-	      IFUNC_IMPL_ADD (array, i, __mempcpy_chk, HAS_SSSE3,
++	      IFUNC_IMPL_ADD (array, i, __mempcpy_chk, HAS_CPU_FEATURE (SSSE3),
+ 			      __mempcpy_chk_ssse3_rep)
+-	      IFUNC_IMPL_ADD (array, i, __mempcpy_chk, HAS_SSSE3,
++	      IFUNC_IMPL_ADD (array, i, __mempcpy_chk, HAS_CPU_FEATURE (SSSE3),
+ 			      __mempcpy_chk_ssse3)
+ 	      IFUNC_IMPL_ADD (array, i, __mempcpy_chk, 1,
+ 			      __mempcpy_chk_ia32))
+ 
+   /* Support sysdeps/i386/i686/multiarch/mempcpy.S.  */
+   IFUNC_IMPL (i, name, mempcpy,
+-	      IFUNC_IMPL_ADD (array, i, mempcpy, HAS_SSSE3,
++	      IFUNC_IMPL_ADD (array, i, mempcpy, HAS_CPU_FEATURE (SSSE3),
+ 			      __mempcpy_ssse3_rep)
+-	      IFUNC_IMPL_ADD (array, i, mempcpy, HAS_SSSE3,
++	      IFUNC_IMPL_ADD (array, i, mempcpy, HAS_CPU_FEATURE (SSSE3),
+ 			      __mempcpy_ssse3)
+ 	      IFUNC_IMPL_ADD (array, i, mempcpy, 1, __mempcpy_ia32))
+ 
+   /* Support sysdeps/i386/i686/multiarch/strlen.S.  */
+   IFUNC_IMPL (i, name, strlen,
+-	      IFUNC_IMPL_ADD (array, i, strlen, HAS_SSE2,
++	      IFUNC_IMPL_ADD (array, i, strlen, HAS_CPU_FEATURE (SSE2),
+ 			      __strlen_sse2_bsf)
+-	      IFUNC_IMPL_ADD (array, i, strlen, HAS_SSE2, __strlen_sse2)
++	      IFUNC_IMPL_ADD (array, i, strlen, HAS_CPU_FEATURE (SSE2), __strlen_sse2)
+ 	      IFUNC_IMPL_ADD (array, i, strlen, 1, __strlen_ia32))
+ 
+   /* Support sysdeps/i386/i686/multiarch/strncmp.S.  */
+   IFUNC_IMPL (i, name, strncmp,
+-	      IFUNC_IMPL_ADD (array, i, strncmp, HAS_SSE4_2,
++	      IFUNC_IMPL_ADD (array, i, strncmp, HAS_CPU_FEATURE (SSE4_2),
+ 			      __strncmp_sse4_2)
+-	      IFUNC_IMPL_ADD (array, i, strncmp, HAS_SSSE3,
++	      IFUNC_IMPL_ADD (array, i, strncmp, HAS_CPU_FEATURE (SSSE3),
+ 			      __strncmp_ssse3)
+ 	      IFUNC_IMPL_ADD (array, i, strncmp, 1, __strncmp_ia32))
+ #endif
+Index: glibc-2.17-c758a686/sysdeps/i386/i686/multiarch/memchr.S
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/i386/i686/multiarch/memchr.S
++++ glibc-2.17-c758a686/sysdeps/i386/i686/multiarch/memchr.S
+@@ -22,46 +22,22 @@
+ #include <init-arch.h>
+ 
+ #if IS_IN (libc)
+-# define CFI_POP(REG) \
+-	cfi_adjust_cfa_offset (-4); \
+-	cfi_restore (REG)
+-
+-# define CFI_PUSH(REG) \
+-	cfi_adjust_cfa_offset (4); \
+-	cfi_rel_offset (REG, 0)
+-
+ 	.text
+ ENTRY(__memchr)
+ 	.type	__memchr, @gnu_indirect_function
+-	pushl	%ebx
+-	CFI_PUSH (%ebx)
+-	LOAD_PIC_REG(bx)
+-	cmpl	$0, KIND_OFFSET+__cpu_features@GOTOFF(%ebx)
+-	jne	1f
+-	call	__init_cpu_features
+-
+-1:	testl	$bit_SSE2, CPUID_OFFSET+index_SSE2+__cpu_features@GOTOFF(%ebx)
++	LOAD_GOT_AND_RTLD_GLOBAL_RO
++	HAS_CPU_FEATURE (SSE2)
+ 	jz	2f
+-	testl	$bit_Slow_BSF, FEATURE_OFFSET+index_Slow_BSF+__cpu_features@GOTOFF(%ebx)
++	HAS_ARCH_FEATURE (Slow_BSF)
+ 	jz	3f
+ 
+-	leal	__memchr_sse2@GOTOFF(%ebx), %eax
+-	popl	%ebx
+-	CFI_POP	(%ebx)
++	LOAD_FUNC_GOT_EAX ( __memchr_sse2)
+ 	ret
+ 
+-	CFI_PUSH (%ebx)
+-
+-2:	leal	__memchr_ia32@GOTOFF(%ebx), %eax
+-	popl	%ebx
+-	CFI_POP	(%ebx)
++2:	LOAD_FUNC_GOT_EAX (__memchr_ia32)
+ 	ret
+ 
+-	CFI_PUSH (%ebx)
+-
+-3:	leal	__memchr_sse2_bsf@GOTOFF(%ebx), %eax
+-	popl	%ebx
+-	CFI_POP	(%ebx)
++3:	LOAD_FUNC_GOT_EAX (__memchr_sse2_bsf)
+ 	ret
+ END(__memchr)
+ 
+Index: glibc-2.17-c758a686/sysdeps/i386/i686/multiarch/memcmp.S
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/i386/i686/multiarch/memcmp.S
++++ glibc-2.17-c758a686/sysdeps/i386/i686/multiarch/memcmp.S
+@@ -23,46 +23,19 @@
+ 
+ /* Define multiple versions only for the definition in libc. */
+ #if IS_IN (libc)
+-# ifdef SHARED
+ 	.text
+ ENTRY(memcmp)
+ 	.type	memcmp, @gnu_indirect_function
+-	pushl	%ebx
+-	cfi_adjust_cfa_offset (4)
+-	cfi_rel_offset (ebx, 0)
+-	LOAD_PIC_REG(bx)
+-	cmpl	$0, KIND_OFFSET+__cpu_features@GOTOFF(%ebx)
+-	jne	1f
+-	call	__init_cpu_features
+-1:	leal	__memcmp_ia32@GOTOFF(%ebx), %eax
+-	testl	$bit_SSSE3, CPUID_OFFSET+index_SSSE3+__cpu_features@GOTOFF(%ebx)
++	LOAD_GOT_AND_RTLD_GLOBAL_RO
++	LOAD_FUNC_GOT_EAX (__memcmp_ia32)
++	HAS_CPU_FEATURE (SSSE3)
+ 	jz	2f
+-	leal	__memcmp_ssse3@GOTOFF(%ebx), %eax
+-	testl	$bit_SSE4_2, CPUID_OFFSET+index_SSE4_2+__cpu_features@GOTOFF(%ebx)
++	LOAD_FUNC_GOT_EAX (__memcmp_ssse3)
++	HAS_CPU_FEATURE (SSE4_2)
+ 	jz	2f
+-	leal	__memcmp_sse4_2@GOTOFF(%ebx), %eax
+-2:	popl	%ebx
+-	cfi_adjust_cfa_offset (-4)
+-	cfi_restore (ebx)
+-	ret
+-END(memcmp)
+-# else
+-	.text
+-ENTRY(memcmp)
+-	.type	memcmp, @gnu_indirect_function
+-	cmpl	$0, KIND_OFFSET+__cpu_features
+-	jne	1f
+-	call	__init_cpu_features
+-1:	leal	__memcmp_ia32, %eax
+-	testl	$bit_SSSE3, CPUID_OFFSET+index_SSSE3+__cpu_features
+-	jz	2f
+-	leal	__memcmp_ssse3, %eax
+-	testl	$bit_SSE4_2, CPUID_OFFSET+index_SSE4_2+__cpu_features
+-	jz	2f
+-	leal	__memcmp_sse4_2, %eax
++	LOAD_FUNC_GOT_EAX (__memcmp_sse4_2)
+ 2:	ret
+ END(memcmp)
+-# endif
+ 
+ # undef ENTRY
+ # define ENTRY(name) \
+Index: glibc-2.17-c758a686/sysdeps/i386/i686/multiarch/memcpy.S
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/i386/i686/multiarch/memcpy.S
++++ glibc-2.17-c758a686/sysdeps/i386/i686/multiarch/memcpy.S
+@@ -28,24 +28,15 @@
+ 	.text
+ ENTRY(memcpy)
+ 	.type	memcpy, @gnu_indirect_function
+-	pushl	%ebx
+-	cfi_adjust_cfa_offset (4)
+-	cfi_rel_offset (ebx, 0)
+-	LOAD_PIC_REG(bx)
+-	cmpl	$0, KIND_OFFSET+__cpu_features@GOTOFF(%ebx)
+-	jne	1f
+-	call	__init_cpu_features
+-1:	leal	__memcpy_ia32@GOTOFF(%ebx), %eax
+-	testl	$bit_SSSE3, CPUID_OFFSET+index_SSSE3+__cpu_features@GOTOFF(%ebx)
++	LOAD_GOT_AND_RTLD_GLOBAL_RO
++	LOAD_FUNC_GOT_EAX (__memcpy_ia32)
++	HAS_CPU_FEATURE (SSSE3)
+ 	jz	2f
+-	leal	__memcpy_ssse3@GOTOFF(%ebx), %eax
+-	testl	$bit_Fast_Rep_String, FEATURE_OFFSET+index_Fast_Rep_String+__cpu_features@GOTOFF(%ebx)
++	LOAD_FUNC_GOT_EAX (__memcpy_ssse3)
++	HAS_ARCH_FEATURE (Fast_Rep_String)
+ 	jz	2f
+-	leal	__memcpy_ssse3_rep@GOTOFF(%ebx), %eax
+-2:	popl	%ebx
+-	cfi_adjust_cfa_offset (-4)
+-	cfi_restore (ebx)
+-	ret
++	LOAD_FUNC_GOT_EAX (__memcpy_ssse3_rep)
++2:	ret
+ END(memcpy)
+ 
+ # undef ENTRY
+Index: glibc-2.17-c758a686/sysdeps/i386/i686/multiarch/memcpy_chk.S
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/i386/i686/multiarch/memcpy_chk.S
++++ glibc-2.17-c758a686/sysdeps/i386/i686/multiarch/memcpy_chk.S
+@@ -29,24 +29,15 @@
+ 	.text
+ ENTRY(__memcpy_chk)
+ 	.type	__memcpy_chk, @gnu_indirect_function
+-	pushl	%ebx
+-	cfi_adjust_cfa_offset (4)
+-	cfi_rel_offset (ebx, 0)
+-	LOAD_PIC_REG(bx)
+-	cmpl	$0, KIND_OFFSET+__cpu_features@GOTOFF(%ebx)
+-	jne	1f
+-	call	__init_cpu_features
+-1:	leal	__memcpy_chk_ia32@GOTOFF(%ebx), %eax
+-	testl	$bit_SSSE3, CPUID_OFFSET+index_SSSE3+__cpu_features@GOTOFF(%ebx)
++	LOAD_GOT_AND_RTLD_GLOBAL_RO
++	LOAD_FUNC_GOT_EAX (__memcpy_chk_ia32)
++	HAS_CPU_FEATURE (SSSE3)
+ 	jz	2f
+-	leal	__memcpy_chk_ssse3@GOTOFF(%ebx), %eax
+-	testl	$bit_Fast_Rep_String, FEATURE_OFFSET+index_Fast_Rep_String+__cpu_features@GOTOFF(%ebx)
++	LOAD_FUNC_GOT_EAX (__memcpy_chk_ssse3)
++	HAS_ARCH_FEATURE (Fast_Rep_String)
+ 	jz	2f
+-	leal	__memcpy_chk_ssse3_rep@GOTOFF(%ebx), %eax
+-2:	popl	%ebx
+-	cfi_adjust_cfa_offset (-4)
+-	cfi_restore (ebx)
+-	ret
++	LOAD_FUNC_GOT_EAX (__memcpy_chk_ssse3_rep)
++2:	ret
+ END(__memcpy_chk)
+ # else
+ #  include "../memcpy_chk.S"
+Index: glibc-2.17-c758a686/sysdeps/i386/i686/multiarch/memmove.S
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/i386/i686/multiarch/memmove.S
++++ glibc-2.17-c758a686/sysdeps/i386/i686/multiarch/memmove.S
+@@ -23,32 +23,23 @@
+ 
+ /* Define multiple versions only for the definition in lib.  */
+ #if IS_IN (libc)
+-# ifdef SHARED
+ 	.text
+ ENTRY(memmove)
+ 	.type	memmove, @gnu_indirect_function
+-	pushl	%ebx
+-	cfi_adjust_cfa_offset (4)
+-	cfi_rel_offset (ebx, 0)
+-	LOAD_PIC_REG(bx)
+-	cmpl	$0, KIND_OFFSET+__cpu_features@GOTOFF(%ebx)
+-	jne	1f
+-	call	__init_cpu_features
+-1:	leal	__memmove_ia32@GOTOFF(%ebx), %eax
+-	testl	$bit_SSSE3, CPUID_OFFSET+index_SSSE3+__cpu_features@GOTOFF(%ebx)
++	LOAD_GOT_AND_RTLD_GLOBAL_RO
++	LOAD_FUNC_GOT_EAX (__memmove_ia32)
++	HAS_CPU_FEATURE (SSSE3)
+ 	jz	2f
+-	leal	__memmove_ssse3@GOTOFF(%ebx), %eax
+-	testl	$bit_Fast_Rep_String, FEATURE_OFFSET+index_Fast_Rep_String+__cpu_features@GOTOFF(%ebx)
++	LOAD_FUNC_GOT_EAX (__memmove_ssse3)
++	HAS_ARCH_FEATURE (Fast_Rep_String)
+ 	jz	2f
+-	leal	__memmove_ssse3_rep@GOTOFF(%ebx), %eax
+-2:	popl	%ebx
+-	cfi_adjust_cfa_offset (-4)
+-	cfi_restore (ebx)
+-	ret
++	LOAD_FUNC_GOT_EAX (__memmove_ssse3_rep)
++2:	ret
+ END(memmove)
+ 
+-# undef ENTRY
+-# define ENTRY(name) \
++# ifdef SHARED
++#  undef ENTRY
++#  define ENTRY(name) \
+ 	.type __memmove_ia32, @function; \
+ 	.p2align 4; \
+ 	.globl __memmove_ia32; \
+@@ -56,24 +47,9 @@ END(memmove)
+ 	__memmove_ia32: cfi_startproc; \
+ 	CALL_MCOUNT
+ # else
+-	.text
+-ENTRY(memmove)
+-	.type	memmove, @gnu_indirect_function
+-	cmpl	$0, KIND_OFFSET+__cpu_features
+-	jne	1f
+-	call	__init_cpu_features
+-1:	leal	__memmove_ia32, %eax
+-	testl	$bit_SSSE3, CPUID_OFFSET+index_SSSE3+__cpu_features
+-	jz	2f
+-	leal	__memmove_ssse3, %eax
+-	testl	$bit_Fast_Rep_String, FEATURE_OFFSET+index_Fast_Rep_String+__cpu_features
+-	jz	2f
+-	leal	__memmove_ssse3_rep, %eax
+-2:	ret
+-END(memmove)
+ 
+-# undef ENTRY
+-# define ENTRY(name) \
++#  undef ENTRY
++#  define ENTRY(name) \
+ 	.type __memmove_ia32, @function; \
+ 	.globl __memmove_ia32; \
+ 	.p2align 4; \
+Index: glibc-2.17-c758a686/sysdeps/i386/i686/multiarch/memmove_chk.S
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/i386/i686/multiarch/memmove_chk.S
++++ glibc-2.17-c758a686/sysdeps/i386/i686/multiarch/memmove_chk.S
+@@ -23,46 +23,21 @@
+ 
+ /* Define multiple versions only for the definition in lib.  */
+ #if IS_IN (libc)
+-# ifdef SHARED
+ 	.text
+ ENTRY(__memmove_chk)
+ 	.type	__memmove_chk, @gnu_indirect_function
+-	pushl	%ebx
+-	cfi_adjust_cfa_offset (4)
+-	cfi_rel_offset (ebx, 0)
+-	LOAD_PIC_REG(bx)
+-	cmpl	$0, KIND_OFFSET+__cpu_features@GOTOFF(%ebx)
+-	jne	1f
+-	call	__init_cpu_features
+-1:	leal	__memmove_chk_ia32@GOTOFF(%ebx), %eax
+-	testl	$bit_SSSE3, CPUID_OFFSET+index_SSSE3+__cpu_features@GOTOFF(%ebx)
++	LOAD_GOT_AND_RTLD_GLOBAL_RO
++	LOAD_FUNC_GOT_EAX (__memmove_chk_ia32)
++	HAS_CPU_FEATURE (SSSE3)
+ 	jz	2f
+-	leal	__memmove_chk_ssse3@GOTOFF(%ebx), %eax
+-	testl	$bit_Fast_Rep_String, FEATURE_OFFSET+index_Fast_Rep_String+__cpu_features@GOTOFF(%ebx)
++	LOAD_FUNC_GOT_EAX (__memmove_chk_ssse3)
++	HAS_ARCH_FEATURE (Fast_Rep_String)
+ 	jz	2f
+-	leal	__memmove_chk_ssse3_rep@GOTOFF(%ebx), %eax
+-2:	popl	%ebx
+-	cfi_adjust_cfa_offset (-4)
+-	cfi_restore (ebx)
+-	ret
+-END(__memmove_chk)
+-# else
+-	.text
+-ENTRY(__memmove_chk)
+-	.type	__memmove_chk, @gnu_indirect_function
+-	cmpl	$0, KIND_OFFSET+__cpu_features
+-	jne	1f
+-	call	__init_cpu_features
+-1:	leal	__memmove_chk_ia32, %eax
+-	testl	$bit_SSSE3, CPUID_OFFSET+index_SSSE3+__cpu_features
+-	jz	2f
+-	leal	__memmove_chk_ssse3, %eax
+-	testl	$bit_Fast_Rep_String, FEATURE_OFFSET+index_Fast_Rep_String+__cpu_features
+-	jz	2f
+-	leal	__memmove_chk_ssse3_rep, %eax
++	LOAD_FUNC_GOT_EAX (__memmove_chk_ssse3_rep)
+ 2:	ret
+ END(__memmove_chk)
+ 
++# ifndef SHARED
+ 	.type __memmove_chk_ssse3, @function
+ 	.p2align 4;
+ __memmove_chk_ssse3:
+Index: glibc-2.17-c758a686/sysdeps/i386/i686/multiarch/mempcpy.S
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/i386/i686/multiarch/mempcpy.S
++++ glibc-2.17-c758a686/sysdeps/i386/i686/multiarch/mempcpy.S
+@@ -28,24 +28,15 @@
+ 	.text
+ ENTRY(__mempcpy)
+ 	.type	__mempcpy, @gnu_indirect_function
+-	pushl	%ebx
+-	cfi_adjust_cfa_offset (4)
+-	cfi_rel_offset (ebx, 0)
+-	LOAD_PIC_REG(bx)
+-	cmpl	$0, KIND_OFFSET+__cpu_features@GOTOFF(%ebx)
+-	jne	1f
+-	call	__init_cpu_features
+-1:	leal	__mempcpy_ia32@GOTOFF(%ebx), %eax
+-	testl	$bit_SSSE3, CPUID_OFFSET+index_SSSE3+__cpu_features@GOTOFF(%ebx)
++	LOAD_GOT_AND_RTLD_GLOBAL_RO
++	LOAD_FUNC_GOT_EAX (__mempcpy_ia32)
++	HAS_CPU_FEATURE (SSSE3)
+ 	jz	2f
+-	leal	__mempcpy_ssse3@GOTOFF(%ebx), %eax
+-	testl	$bit_Fast_Rep_String, FEATURE_OFFSET+index_Fast_Rep_String+__cpu_features@GOTOFF(%ebx)
++	LOAD_FUNC_GOT_EAX (__mempcpy_ssse3)
++	HAS_ARCH_FEATURE (Fast_Rep_String)
+ 	jz	2f
+-	leal	__mempcpy_ssse3_rep@GOTOFF(%ebx), %eax
+-2:	popl	%ebx
+-	cfi_adjust_cfa_offset (-4)
+-	cfi_restore (ebx)
+-	ret
++	LOAD_FUNC_GOT_EAX (__mempcpy_ssse3_rep)
++2:	ret
+ END(__mempcpy)
+ 
+ # undef ENTRY
+Index: glibc-2.17-c758a686/sysdeps/i386/i686/multiarch/mempcpy_chk.S
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/i386/i686/multiarch/mempcpy_chk.S
++++ glibc-2.17-c758a686/sysdeps/i386/i686/multiarch/mempcpy_chk.S
+@@ -29,24 +29,15 @@
+ 	.text
+ ENTRY(__mempcpy_chk)
+ 	.type	__mempcpy_chk, @gnu_indirect_function
+-	pushl	%ebx
+-	cfi_adjust_cfa_offset (4)
+-	cfi_rel_offset (ebx, 0)
+-	LOAD_PIC_REG(bx)
+-	cmpl	$0, KIND_OFFSET+__cpu_features@GOTOFF(%ebx)
+-	jne	1f
+-	call	__init_cpu_features
+-1:	leal	__mempcpy_chk_ia32@GOTOFF(%ebx), %eax
+-	testl	$bit_SSSE3, CPUID_OFFSET+index_SSSE3+__cpu_features@GOTOFF(%ebx)
++	LOAD_GOT_AND_RTLD_GLOBAL_RO
++	LOAD_FUNC_GOT_EAX (__mempcpy_chk_ia32)
++	HAS_CPU_FEATURE (SSSE3)
+ 	jz	2f
+-	leal	__mempcpy_chk_ssse3@GOTOFF(%ebx), %eax
+-	testl	$bit_Fast_Rep_String, FEATURE_OFFSET+index_Fast_Rep_String+__cpu_features@GOTOFF(%ebx)
++	LOAD_FUNC_GOT_EAX (__mempcpy_chk_ssse3)
++	HAS_ARCH_FEATURE (Fast_Rep_String)
+ 	jz	2f
+-	leal	__mempcpy_chk_ssse3_rep@GOTOFF(%ebx), %eax
+-2:	popl	%ebx
+-	cfi_adjust_cfa_offset (-4)
+-	cfi_restore (ebx)
+-	ret
++	LOAD_FUNC_GOT_EAX (__mempcpy_chk_ssse3_rep)
++2:	ret
+ END(__mempcpy_chk)
+ # else
+ #  include "../mempcpy_chk.S"
+Index: glibc-2.17-c758a686/sysdeps/i386/i686/multiarch/memrchr.S
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/i386/i686/multiarch/memrchr.S
++++ glibc-2.17-c758a686/sysdeps/i386/i686/multiarch/memrchr.S
+@@ -22,46 +22,22 @@
+ #include <init-arch.h>
+ 
+ #if IS_IN (libc)
+-# define CFI_POP(REG) \
+-	cfi_adjust_cfa_offset (-4); \
+-	cfi_restore (REG)
+-
+-# define CFI_PUSH(REG) \
+-	cfi_adjust_cfa_offset (4); \
+-	cfi_rel_offset (REG, 0)
+-
+ 	.text
+ ENTRY(__memrchr)
+ 	.type	__memrchr, @gnu_indirect_function
+-	pushl	%ebx
+-	CFI_PUSH (%ebx)
+-	LOAD_PIC_REG(bx)
+-	cmpl	$0, KIND_OFFSET+__cpu_features@GOTOFF(%ebx)
+-	jne	1f
+-	call	__init_cpu_features
+-
+-1:	testl	$bit_SSE2, CPUID_OFFSET+index_SSE2+__cpu_features@GOTOFF(%ebx)
++	LOAD_GOT_AND_RTLD_GLOBAL_RO
++	HAS_CPU_FEATURE (SSE2)
+ 	jz	2f
+-	testl	$bit_Slow_BSF, FEATURE_OFFSET+index_Slow_BSF+__cpu_features@GOTOFF(%ebx)
++	HAS_ARCH_FEATURE (Slow_BSF)
+ 	jz	3f
+ 
+-	leal	__memrchr_sse2@GOTOFF(%ebx), %eax
+-	popl	%ebx
+-	CFI_POP	(%ebx)
++	LOAD_FUNC_GOT_EAX (__memrchr_sse2)
+ 	ret
+ 
+-	CFI_PUSH (%ebx)
+-
+-2:	leal	__memrchr_ia32@GOTOFF(%ebx), %eax
+-	popl	%ebx
+-	CFI_POP	(%ebx)
++2:	LOAD_FUNC_GOT_EAX (__memrchr_ia32)
+ 	ret
+ 
+-	CFI_PUSH (%ebx)
+-
+-3:	leal	__memrchr_sse2_bsf@GOTOFF(%ebx), %eax
+-	popl	%ebx
+-	CFI_POP	(%ebx)
++3:	LOAD_FUNC_GOT_EAX (__memrchr_sse2_bsf)
+ 	ret
+ END(__memrchr)
+ 
+Index: glibc-2.17-c758a686/sysdeps/i386/i686/multiarch/memset.S
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/i386/i686/multiarch/memset.S
++++ glibc-2.17-c758a686/sysdeps/i386/i686/multiarch/memset.S
+@@ -23,46 +23,19 @@
+ 
+ /* Define multiple versions only for the definition in lib.  */
+ #if IS_IN (libc)
+-# ifdef SHARED
+ 	.text
+ ENTRY(memset)
+ 	.type	memset, @gnu_indirect_function
+-	pushl	%ebx
+-	cfi_adjust_cfa_offset (4)
+-	cfi_rel_offset (ebx, 0)
+-	LOAD_PIC_REG(bx)
+-	cmpl	$0, KIND_OFFSET+__cpu_features@GOTOFF(%ebx)
+-	jne	1f
+-	call	__init_cpu_features
+-1:	leal	__memset_ia32@GOTOFF(%ebx), %eax
+-	testl	$bit_SSE2, CPUID_OFFSET+index_SSE2+__cpu_features@GOTOFF(%ebx)
++	LOAD_GOT_AND_RTLD_GLOBAL_RO
++	LOAD_FUNC_GOT_EAX (__memset_ia32)
++	HAS_CPU_FEATURE (SSE2)
+ 	jz	2f
+-	leal	__memset_sse2@GOTOFF(%ebx), %eax
+-	testl	$bit_Fast_Rep_String, FEATURE_OFFSET+index_Fast_Rep_String+__cpu_features@GOTOFF(%ebx)
++	LOAD_FUNC_GOT_EAX (__memset_sse2)
++	HAS_ARCH_FEATURE (Fast_Rep_String)
+ 	jz	2f
+-	leal	__memset_sse2_rep@GOTOFF(%ebx), %eax
+-2:	popl	%ebx
+-	cfi_adjust_cfa_offset (-4)
+-	cfi_restore (ebx)
+-	ret
+-END(memset)
+-# else
+-	.text
+-ENTRY(memset)
+-	.type	memset, @gnu_indirect_function
+-	cmpl	$0, KIND_OFFSET+__cpu_features
+-	jne	1f
+-	call	__init_cpu_features
+-1:	leal	__memset_ia32, %eax
+-	testl	$bit_SSE2, CPUID_OFFSET+index_SSE2+__cpu_features
+-	jz	2f
+-	leal	__memset_sse2, %eax
+-	testl	$bit_Fast_Rep_String, FEATURE_OFFSET+index_Fast_Rep_String+__cpu_features
+-	jz	2f
+-	leal	__memset_sse2_rep, %eax
++	LOAD_FUNC_GOT_EAX (__memset_sse2_rep)
+ 2:	ret
+ END(memset)
+-# endif
+ 
+ # undef ENTRY
+ # define ENTRY(name) \
+Index: glibc-2.17-c758a686/sysdeps/i386/i686/multiarch/memset_chk.S
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/i386/i686/multiarch/memset_chk.S
++++ glibc-2.17-c758a686/sysdeps/i386/i686/multiarch/memset_chk.S
+@@ -23,50 +23,26 @@
+ 
+ /* Define multiple versions only for the definition in lib.  */
+ #if IS_IN (libc)
+-# ifdef SHARED
+ 	.text
+ ENTRY(__memset_chk)
+ 	.type	__memset_chk, @gnu_indirect_function
+-	pushl	%ebx
+-	cfi_adjust_cfa_offset (4)
+-	cfi_rel_offset (ebx, 0)
+-	LOAD_PIC_REG(bx)
+-	cmpl	$0, KIND_OFFSET+__cpu_features@GOTOFF(%ebx)
+-	jne	1f
+-	call	__init_cpu_features
+-1:	leal	__memset_chk_ia32@GOTOFF(%ebx), %eax
+-	testl	$bit_SSE2, CPUID_OFFSET+index_SSE2+__cpu_features@GOTOFF(%ebx)
++	LOAD_GOT_AND_RTLD_GLOBAL_RO
++	LOAD_FUNC_GOT_EAX (__memset_chk_ia32)
++	HAS_CPU_FEATURE (SSE2)
+ 	jz	2f
+-	leal	__memset_chk_sse2@GOTOFF(%ebx), %eax
+-	testl	$bit_Fast_Rep_String, FEATURE_OFFSET+index_Fast_Rep_String+__cpu_features@GOTOFF(%ebx)
++	LOAD_FUNC_GOT_EAX (__memset_chk_sse2)
++	HAS_ARCH_FEATURE (Fast_Rep_String)
+ 	jz	2f
+-	leal	__memset_chk_sse2_rep@GOTOFF(%ebx), %eax
+-2:	popl	%ebx
+-	cfi_adjust_cfa_offset (-4)
+-	cfi_restore (ebx)
+-	ret
++	LOAD_FUNC_GOT_EAX (__memset_chk_sse2_rep)
++2:	ret
+ END(__memset_chk)
+ 
++# ifdef SHARED
+ strong_alias (__memset_chk, __memset_zero_constant_len_parameter)
+ 	.section .gnu.warning.__memset_zero_constant_len_parameter
+ 	.string "memset used with constant zero length parameter; this could be due to transposed parameters"
+ # else
+ 	.text
+-ENTRY(__memset_chk)
+-	.type	__memset_chk, @gnu_indirect_function
+-	cmpl	$0, KIND_OFFSET+__cpu_features
+-	jne	1f
+-	call	__init_cpu_features
+-1:	leal	__memset_chk_ia32, %eax
+-	testl	$bit_SSE2, CPUID_OFFSET+index_SSE2+__cpu_features
+-	jz	2f
+-	leal	__memset_chk_sse2, %eax
+-	testl	$bit_Fast_Rep_String, FEATURE_OFFSET+index_Fast_Rep_String+__cpu_features
+-	jz	2f
+-	leal	__memset_chk_sse2_rep, %eax
+-2:	ret
+-END(__memset_chk)
+-
+ 	.type __memset_chk_sse2, @function
+ 	.p2align 4;
+ __memset_chk_sse2:
+Index: glibc-2.17-c758a686/sysdeps/i386/i686/multiarch/rawmemchr.S
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/i386/i686/multiarch/rawmemchr.S
++++ glibc-2.17-c758a686/sysdeps/i386/i686/multiarch/rawmemchr.S
+@@ -22,46 +22,22 @@
+ #include <init-arch.h>
+ 
+ #if IS_IN (libc)
+-# define CFI_POP(REG) \
+-	cfi_adjust_cfa_offset (-4); \
+-	cfi_restore (REG)
+-
+-# define CFI_PUSH(REG) \
+-	cfi_adjust_cfa_offset (4); \
+-	cfi_rel_offset (REG, 0)
+-
+ 	.text
+ ENTRY(__rawmemchr)
+ 	.type	__rawmemchr, @gnu_indirect_function
+-	pushl	%ebx
+-	CFI_PUSH (%ebx)
+-	LOAD_PIC_REG(bx)
+-	cmpl	$0, KIND_OFFSET+__cpu_features@GOTOFF(%ebx)
+-	jne	1f
+-	call	__init_cpu_features
+-
+-1:	testl	$bit_SSE2, CPUID_OFFSET+index_SSE2+__cpu_features@GOTOFF(%ebx)
++	LOAD_GOT_AND_RTLD_GLOBAL_RO
++	HAS_CPU_FEATURE (SSE2)
+ 	jz	2f
+-	testl	$bit_Slow_BSF, FEATURE_OFFSET+index_Slow_BSF+__cpu_features@GOTOFF(%ebx)
++	HAS_ARCH_FEATURE (Slow_BSF)
+ 	jz	3f
+ 
+-	leal	__rawmemchr_sse2@GOTOFF(%ebx), %eax
+-	popl	%ebx
+-	CFI_POP	(%ebx)
++	LOAD_FUNC_GOT_EAX (__rawmemchr_sse2)
+ 	ret
+ 
+-	CFI_PUSH (%ebx)
+-
+-2:	leal	__rawmemchr_ia32@GOTOFF(%ebx), %eax
+-	popl	%ebx
+-	CFI_POP	(%ebx)
++2:	LOAD_FUNC_GOT_EAX (__rawmemchr_ia32)
+ 	ret
+ 
+-	CFI_PUSH (%ebx)
+-
+-3:	leal	__rawmemchr_sse2_bsf@GOTOFF(%ebx), %eax
+-	popl	%ebx
+-	CFI_POP	(%ebx)
++3:	LOAD_FUNC_GOT_EAX (__rawmemchr_sse2_bsf)
+ 	ret
+ END(__rawmemchr)
+ 
+Index: glibc-2.17-c758a686/sysdeps/i386/i686/multiarch/s_fma.c
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/i386/i686/multiarch/s_fma.c
++++ glibc-2.17-c758a686/sysdeps/i386/i686/multiarch/s_fma.c
+@@ -26,7 +26,8 @@
+ extern double __fma_ia32 (double x, double y, double z) attribute_hidden;
+ extern double __fma_fma (double x, double y, double z) attribute_hidden;
+ 
+-libm_ifunc (__fma, HAS_FMA ? __fma_fma : __fma_ia32);
++libm_ifunc (__fma,
++	    HAS_ARCH_FEATURE (FMA_Usable) ? __fma_fma : __fma_ia32);
+ weak_alias (__fma, fma)
+ 
+ # define __fma __fma_ia32
+Index: glibc-2.17-c758a686/sysdeps/i386/i686/multiarch/s_fmaf.c
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/i386/i686/multiarch/s_fmaf.c
++++ glibc-2.17-c758a686/sysdeps/i386/i686/multiarch/s_fmaf.c
+@@ -26,7 +26,8 @@
+ extern float __fmaf_ia32 (float x, float y, float z) attribute_hidden;
+ extern float __fmaf_fma (float x, float y, float z) attribute_hidden;
+ 
+-libm_ifunc (__fmaf, HAS_FMA ? __fmaf_fma : __fmaf_ia32);
++libm_ifunc (__fmaf,
++	    HAS_ARCH_FEATURE (FMA_Usable) ? __fmaf_fma : __fmaf_ia32);
+ weak_alias (__fmaf, fmaf)
+ 
+ # define __fmaf __fmaf_ia32
+Index: glibc-2.17-c758a686/sysdeps/i386/i686/multiarch/strcasecmp.S
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/i386/i686/multiarch/strcasecmp.S
++++ glibc-2.17-c758a686/sysdeps/i386/i686/multiarch/strcasecmp.S
+@@ -20,48 +20,18 @@
+ #include <sysdep.h>
+ #include <init-arch.h>
+ 
+-#ifdef SHARED
+ 	.text
+ ENTRY(__strcasecmp)
+ 	.type	__strcasecmp, @gnu_indirect_function
+-	pushl	%ebx
+-	cfi_adjust_cfa_offset (4)
+-	cfi_rel_offset (ebx, 0)
+-	LOAD_PIC_REG(bx)
+-	cmpl	$0, KIND_OFFSET+__cpu_features@GOTOFF(%ebx)
+-	jne	1f
+-	call	__init_cpu_features
+-1:	leal	__strcasecmp_ia32@GOTOFF(%ebx), %eax
+-	testl	$bit_SSSE3, CPUID_OFFSET+index_SSSE3+__cpu_features@GOTOFF(%ebx)
++	LOAD_GOT_AND_RTLD_GLOBAL_RO
++	LOAD_FUNC_GOT_EAX (__strcasecmp_ia32)
++	HAS_CPU_FEATURE (SSSE3)
+ 	jz	2f
+-	leal	__strcasecmp_ssse3@GOTOFF(%ebx), %eax
+-	testl	$bit_SSE4_2, CPUID_OFFSET+index_SSE4_2+__cpu_features@GOTOFF(%ebx)
++	LOAD_FUNC_GOT_EAX (__strcasecmp_ssse3)
++	HAS_CPU_FEATURE (SSE4_2)
+ 	jz	2f
+-	leal	__strcasecmp_sse4_2@GOTOFF(%ebx), %eax
+-2:	popl	%ebx
+-	cfi_adjust_cfa_offset (-4)
+-	cfi_restore (ebx)
+-	ret
+-END(__strcasecmp)
+-#else
+-	.text
+-ENTRY(__strcasecmp)
+-	.type	__strcasecmp, @gnu_indirect_function
+-	cmpl	$0, KIND_OFFSET+__cpu_features
+-	jne	1f
+-	call	__init_cpu_features
+-1:	leal	__strcasecmp_ia32, %eax
+-	testl	$bit_SSSE3, CPUID_OFFSET+index_SSSE3+__cpu_features
+-	jz	2f
+-	leal	__strcasecmp_ssse3, %eax
+-#if 0
+-	// XXX Temporarily
+-	testl	$bit_SSE4_2, CPUID_OFFSET+index_SSE4_2+__cpu_features
+-	jz	2f
+-	leal	__strcasecmp_sse4_2, %eax
+-#endif
++	LOAD_FUNC_GOT_EAX (__strcasecmp_sse4_2)
+ 2:	ret
+ END(__strcasecmp)
+-#endif
+ 
+ weak_alias (__strcasecmp, strcasecmp)
+Index: glibc-2.17-c758a686/sysdeps/i386/i686/multiarch/strcat.S
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/i386/i686/multiarch/strcat.S
++++ glibc-2.17-c758a686/sysdeps/i386/i686/multiarch/strcat.S
+@@ -45,52 +45,22 @@
+    need strncat before the initialization happened.  */
+ #if IS_IN (libc)
+ 
+-# ifdef SHARED
+ 	.text
+ ENTRY(STRCAT)
+ 	.type	STRCAT, @gnu_indirect_function
+-	pushl	%ebx
+-	cfi_adjust_cfa_offset (4)
+-	cfi_rel_offset (ebx, 0)
+-	LOAD_PIC_REG(bx)
+-	cmpl	$0, KIND_OFFSET+__cpu_features@GOTOFF(%ebx)
+-	jne	1f
+-	call	__init_cpu_features
+-1:	leal	STRCAT_IA32@GOTOFF(%ebx), %eax
+-	testl	$bit_SSE2, CPUID_OFFSET+index_SSE2+__cpu_features@GOTOFF(%ebx)
++	LOAD_GOT_AND_RTLD_GLOBAL_RO
++	LOAD_FUNC_GOT_EAX (STRCAT_IA32)
++	HAS_CPU_FEATURE (SSE2)
+ 	jz	2f
+-	leal	STRCAT_SSE2@GOTOFF(%ebx), %eax
+-	testl	$bit_Fast_Unaligned_Load, FEATURE_OFFSET+index_Fast_Unaligned_Load+__cpu_features@GOTOFF(%ebx)
++	LOAD_FUNC_GOT_EAX (STRCAT_SSE2)
++	HAS_ARCH_FEATURE (Fast_Unaligned_Load)
+ 	jnz	2f
+-	testl	$bit_SSSE3, CPUID_OFFSET+index_SSSE3+__cpu_features@GOTOFF(%ebx)
++	HAS_CPU_FEATURE (SSSE3)
+ 	jz	2f
+-	leal	STRCAT_SSSE3@GOTOFF(%ebx), %eax
+-2:	popl	%ebx
+-	cfi_adjust_cfa_offset (-4)
+-	cfi_restore (ebx)
+-	ret
+-END(STRCAT)
+-# else
+-
+-ENTRY(STRCAT)
+-	.type	STRCAT, @gnu_indirect_function
+-	cmpl	$0, KIND_OFFSET+__cpu_features
+-	jne	1f
+-	call	__init_cpu_features
+-1:	leal	STRCAT_IA32, %eax
+-	testl	$bit_SSE2, CPUID_OFFSET+index_SSE2+__cpu_features
+-	jz	2f
+-	leal	STRCAT_SSE2, %eax
+-	testl	$bit_Fast_Unaligned_Load, FEATURE_OFFSET+index_Fast_Unaligned_Load+__cpu_features
+-	jnz	2f
+-	testl	$bit_SSSE3, CPUID_OFFSET+index_SSSE3+__cpu_features
+-	jz	2f
+-	leal	STRCAT_SSSE3, %eax
++	LOAD_FUNC_GOT_EAX (STRCAT_SSSE3)
+ 2:	ret
+ END(STRCAT)
+ 
+-# endif
+-
+ # undef ENTRY
+ # define ENTRY(name) \
+ 	.type STRCAT_IA32, @function; \
+Index: glibc-2.17-c758a686/sysdeps/i386/i686/multiarch/strchr.S
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/i386/i686/multiarch/strchr.S
++++ glibc-2.17-c758a686/sysdeps/i386/i686/multiarch/strchr.S
+@@ -25,24 +25,15 @@
+ 	.text
+ ENTRY(strchr)
+ 	.type	strchr, @gnu_indirect_function
+-	pushl	%ebx
+-	cfi_adjust_cfa_offset (4)
+-	cfi_rel_offset (ebx, 0)
+-	LOAD_PIC_REG(bx)
+-	cmpl	$0, KIND_OFFSET+__cpu_features@GOTOFF(%ebx)
+-	jne	1f
+-	call	__init_cpu_features
+-1:	leal	__strchr_ia32@GOTOFF(%ebx), %eax
+-	testl	$bit_SSE2, CPUID_OFFSET+index_SSE2+__cpu_features@GOTOFF(%ebx)
++	LOAD_GOT_AND_RTLD_GLOBAL_RO
++	LOAD_FUNC_GOT_EAX (__strchr_ia32)
++	HAS_CPU_FEATURE (SSE2)
+ 	jz	2f
+-	leal	__strchr_sse2_bsf@GOTOFF(%ebx), %eax
+-	testl	$bit_Slow_BSF, FEATURE_OFFSET+index_Slow_BSF+__cpu_features@GOTOFF(%ebx)
++	LOAD_FUNC_GOT_EAX (__strchr_sse2_bsf)
++	HAS_ARCH_FEATURE (Slow_BSF)
+ 	jz	2f
+-	leal	__strchr_sse2@GOTOFF(%ebx), %eax
+-2:	popl	%ebx
+-	cfi_adjust_cfa_offset (-4);
+-	cfi_restore (ebx)
+-	ret
++	LOAD_FUNC_GOT_EAX (__strchr_sse2)
++2:	ret
+ END(strchr)
+ 
+ # undef ENTRY
+Index: glibc-2.17-c758a686/sysdeps/i386/i686/multiarch/strcmp.S
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/i386/i686/multiarch/strcmp.S
++++ glibc-2.17-c758a686/sysdeps/i386/i686/multiarch/strcmp.S
+@@ -51,46 +51,19 @@
+    define multiple versions for strncmp in static library since we
+    need strncmp before the initialization happened.  */
+ #if (defined SHARED || !defined USE_AS_STRNCMP) && IS_IN (libc)
+-# ifdef SHARED
+ 	.text
+ ENTRY(STRCMP)
+ 	.type	STRCMP, @gnu_indirect_function
+-	pushl	%ebx
+-	cfi_adjust_cfa_offset (4)
+-	cfi_rel_offset (ebx, 0)
+-	LOAD_PIC_REG(bx)
+-	cmpl	$0, KIND_OFFSET+__cpu_features@GOTOFF(%ebx)
+-	jne	1f
+-	call	__init_cpu_features
+-1:	leal	__STRCMP_IA32@GOTOFF(%ebx), %eax
+-	testl	$bit_SSSE3, CPUID_OFFSET+index_SSSE3+__cpu_features@GOTOFF(%ebx)
++	LOAD_GOT_AND_RTLD_GLOBAL_RO
++	LOAD_FUNC_GOT_EAX (__STRCMP_IA32)
++	HAS_CPU_FEATURE (SSSE3)
+ 	jz	2f
+-	leal	__STRCMP_SSSE3@GOTOFF(%ebx), %eax
+-	testl	$bit_SSE4_2, CPUID_OFFSET+index_SSE4_2+__cpu_features@GOTOFF(%ebx)
++	LOAD_FUNC_GOT_EAX (__STRCMP_SSSE3)
++	HAS_CPU_FEATURE (SSE4_2)
+ 	jz	2f
+-	leal	__STRCMP_SSE4_2@GOTOFF(%ebx), %eax
+-2:	popl	%ebx
+-	cfi_adjust_cfa_offset (-4)
+-	cfi_restore (ebx)
+-	ret
+-END(STRCMP)
+-# else
+-	.text
+-ENTRY(STRCMP)
+-	.type	STRCMP, @gnu_indirect_function
+-	cmpl	$0, KIND_OFFSET+__cpu_features
+-	jne	1f
+-	call	__init_cpu_features
+-1:	leal	__STRCMP_IA32, %eax
+-	testl	$bit_SSSE3, CPUID_OFFSET+index_SSSE3+__cpu_features
+-	jz	2f
+-	leal	__STRCMP_SSSE3, %eax
+-	testl	$bit_SSE4_2, CPUID_OFFSET+index_SSE4_2+__cpu_features
+-	jz	2f
+-	leal	__STRCMP_SSE4_2, %eax
++	LOAD_FUNC_GOT_EAX (__STRCMP_SSE4_2)
+ 2:	ret
+ END(STRCMP)
+-# endif
+ 
+ # undef ENTRY
+ # define ENTRY(name) \
+Index: glibc-2.17-c758a686/sysdeps/i386/i686/multiarch/strcpy.S
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/i386/i686/multiarch/strcpy.S
++++ glibc-2.17-c758a686/sysdeps/i386/i686/multiarch/strcpy.S
+@@ -61,52 +61,22 @@
+    need strncpy before the initialization happened.  */
+ #if IS_IN (libc)
+ 
+-# ifdef SHARED
+ 	.text
+ ENTRY(STRCPY)
+ 	.type	STRCPY, @gnu_indirect_function
+-	pushl	%ebx
+-	cfi_adjust_cfa_offset (4)
+-	cfi_rel_offset (ebx, 0)
+-	LOAD_PIC_REG(bx)
+-	cmpl	$0, KIND_OFFSET+__cpu_features@GOTOFF(%ebx)
+-	jne	1f
+-	call	__init_cpu_features
+-1:	leal	STRCPY_IA32@GOTOFF(%ebx), %eax
+-	testl	$bit_SSE2, CPUID_OFFSET+index_SSE2+__cpu_features@GOTOFF(%ebx)
++	LOAD_GOT_AND_RTLD_GLOBAL_RO
++	LOAD_FUNC_GOT_EAX (STRCPY_IA32)
++	HAS_CPU_FEATURE (SSE2)
+ 	jz	2f
+-	leal	STRCPY_SSE2@GOTOFF(%ebx), %eax
+-	testl	$bit_Fast_Unaligned_Load, FEATURE_OFFSET+index_Fast_Unaligned_Load+__cpu_features@GOTOFF(%ebx)
++	LOAD_FUNC_GOT_EAX (STRCPY_SSE2)
++	HAS_ARCH_FEATURE (Fast_Unaligned_Load)
+ 	jnz	2f
+-	testl	$bit_SSSE3, CPUID_OFFSET+index_SSSE3+__cpu_features@GOTOFF(%ebx)
++	HAS_CPU_FEATURE (SSSE3)
+ 	jz	2f
+-	leal	STRCPY_SSSE3@GOTOFF(%ebx), %eax
+-2:	popl	%ebx
+-	cfi_adjust_cfa_offset (-4)
+-	cfi_restore (ebx)
+-	ret
+-END(STRCPY)
+-# else
+-
+-ENTRY(STRCPY)
+-	.type	STRCPY, @gnu_indirect_function
+-	cmpl	$0, KIND_OFFSET+__cpu_features
+-	jne	1f
+-	call	__init_cpu_features
+-1:	leal	STRCPY_IA32, %eax
+-	testl	$bit_SSE2, CPUID_OFFSET+index_SSE2+__cpu_features
+-	jz	2f
+-	leal	STRCPY_SSE2, %eax
+-	testl	$bit_Fast_Unaligned_Load, FEATURE_OFFSET+index_Fast_Unaligned_Load+__cpu_features
+-	jnz	2f
+-	testl	$bit_SSSE3, CPUID_OFFSET+index_SSSE3+__cpu_features
+-	jz	2f
+-	leal	STRCPY_SSSE3, %eax
++	LOAD_FUNC_GOT_EAX (STRCPY_SSSE3)
+ 2:	ret
+ END(STRCPY)
+ 
+-# endif
+-
+ # undef ENTRY
+ # define ENTRY(name) \
+ 	.type STRCPY_IA32, @function; \
+Index: glibc-2.17-c758a686/sysdeps/i386/i686/multiarch/strcspn.S
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/i386/i686/multiarch/strcspn.S
++++ glibc-2.17-c758a686/sysdeps/i386/i686/multiarch/strcspn.S
+@@ -42,40 +42,16 @@
+    define multiple versions for strpbrk in static library since we
+    need strpbrk before the initialization happened.  */
+ #if (defined SHARED || !defined USE_AS_STRPBRK) && IS_IN (libc)
+-# ifdef SHARED
+ 	.text
+ ENTRY(STRCSPN)
+ 	.type	STRCSPN, @gnu_indirect_function
+-	pushl	%ebx
+-	cfi_adjust_cfa_offset (4)
+-	cfi_rel_offset (ebx, 0)
+-	LOAD_PIC_REG(bx)
+-	cmpl	$0, KIND_OFFSET+__cpu_features@GOTOFF(%ebx)
+-	jne	1f
+-	call	__init_cpu_features
+-1:	leal	STRCSPN_IA32@GOTOFF(%ebx), %eax
+-	testl	$bit_SSE4_2, CPUID_OFFSET+index_SSE4_2+__cpu_features@GOTOFF(%ebx)
++	LOAD_GOT_AND_RTLD_GLOBAL_RO
++	LOAD_FUNC_GOT_EAX (STRCSPN_IA32)
++	HAS_CPU_FEATURE (SSE4_2)
+ 	jz	2f
+-	leal	STRCSPN_SSE42@GOTOFF(%ebx), %eax
+-2:	popl	%ebx
+-	cfi_adjust_cfa_offset (-4);
+-	cfi_restore (ebx)
+-	ret
+-END(STRCSPN)
+-# else
+-	.text
+-ENTRY(STRCSPN)
+-	.type	STRCSPN, @gnu_indirect_function
+-	cmpl	$0, KIND_OFFSET+__cpu_features
+-	jne	1f
+-	call	__init_cpu_features
+-1:	leal	STRCSPN_IA32, %eax
+-	testl	$bit_SSE4_2, CPUID_OFFSET+index_SSE4_2+__cpu_features
+-	jz	2f
+-	leal	STRCSPN_SSE42, %eax
++	LOAD_FUNC_GOT_EAX (STRCSPN_SSE42)
+ 2:	ret
+ END(STRCSPN)
+-# endif
+ 
+ # undef ENTRY
+ # define ENTRY(name) \
+Index: glibc-2.17-c758a686/sysdeps/i386/i686/multiarch/strlen.S
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/i386/i686/multiarch/strlen.S
++++ glibc-2.17-c758a686/sysdeps/i386/i686/multiarch/strlen.S
+@@ -28,24 +28,15 @@
+ 	.text
+ ENTRY(strlen)
+ 	.type	strlen, @gnu_indirect_function
+-	pushl	%ebx
+-	cfi_adjust_cfa_offset (4)
+-	cfi_rel_offset (ebx, 0)
+-	LOAD_PIC_REG(bx)
+-	cmpl	$0, KIND_OFFSET+__cpu_features@GOTOFF(%ebx)
+-	jne	1f
+-	call	__init_cpu_features
+-1:	leal	__strlen_ia32@GOTOFF(%ebx), %eax
+-	testl	$bit_SSE2, CPUID_OFFSET+index_SSE2+__cpu_features@GOTOFF(%ebx)
++	LOAD_GOT_AND_RTLD_GLOBAL_RO
++	LOAD_FUNC_GOT_EAX (__strlen_ia32)
++	HAS_CPU_FEATURE (SSE2)
+ 	jz	2f
+-	leal	__strlen_sse2_bsf@GOTOFF(%ebx), %eax
+-	testl	$bit_Slow_BSF, FEATURE_OFFSET+index_Slow_BSF+__cpu_features@GOTOFF(%ebx)
++	LOAD_FUNC_GOT_EAX (__strlen_sse2_bsf)
++	HAS_ARCH_FEATURE (Slow_BSF)
+ 	jz	2f
+-	leal	__strlen_sse2@GOTOFF(%ebx), %eax
+-2:	popl	%ebx
+-	cfi_adjust_cfa_offset (-4);
+-	cfi_restore (ebx)
+-	ret
++	LOAD_FUNC_GOT_EAX (__strlen_sse2)
++2:	ret
+ END(strlen)
+ 
+ # undef ENTRY
+Index: glibc-2.17-c758a686/sysdeps/i386/i686/multiarch/strncase.S
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/i386/i686/multiarch/strncase.S
++++ glibc-2.17-c758a686/sysdeps/i386/i686/multiarch/strncase.S
+@@ -20,48 +20,18 @@
+ #include <sysdep.h>
+ #include <init-arch.h>
+ 
+-#ifdef SHARED
+ 	.text
+ ENTRY(__strncasecmp)
+ 	.type	__strncasecmp, @gnu_indirect_function
+-	pushl	%ebx
+-	cfi_adjust_cfa_offset (4)
+-	cfi_rel_offset (ebx, 0)
+-	LOAD_PIC_REG(bx)
+-	cmpl	$0, KIND_OFFSET+__cpu_features@GOTOFF(%ebx)
+-	jne	1f
+-	call	__init_cpu_features
+-1:	leal	__strncasecmp_ia32@GOTOFF(%ebx), %eax
+-	testl	$bit_SSSE3, CPUID_OFFSET+index_SSSE3+__cpu_features@GOTOFF(%ebx)
++	LOAD_GOT_AND_RTLD_GLOBAL_RO
++	LOAD_FUNC_GOT_EAX (__strncasecmp_ia32)
++	HAS_CPU_FEATURE (SSSE3)
+ 	jz	2f
+-	leal	__strncasecmp_ssse3@GOTOFF(%ebx), %eax
+-	testl	$bit_SSE4_2, CPUID_OFFSET+index_SSE4_2+__cpu_features@GOTOFF(%ebx)
++	LOAD_FUNC_GOT_EAX (__strncasecmp_ssse3)
++	HAS_CPU_FEATURE (SSE4_2)
+ 	jz	2f
+-	leal	__strncasecmp_sse4_2@GOTOFF(%ebx), %eax
+-2:	popl	%ebx
+-	cfi_adjust_cfa_offset (-4)
+-	cfi_restore (ebx)
+-	ret
+-END(__strncasecmp)
+-#else
+-	.text
+-ENTRY(__strncasecmp)
+-	.type	__strncasecmp, @gnu_indirect_function
+-	cmpl	$0, KIND_OFFSET+__cpu_features
+-	jne	1f
+-	call	__init_cpu_features
+-1:	leal	__strncasecmp_ia32, %eax
+-	testl	$bit_SSSE3, CPUID_OFFSET+index_SSSE3+__cpu_features
+-	jz	2f
+-	leal	__strncasecmp_ssse3, %eax
+-#if 0
+-	// XXX Temporarily
+-	testl	$bit_SSE4_2, CPUID_OFFSET+index_SSE4_2+__cpu_features
+-	jz	2f
+-	leal	__strncasecmp_sse4_2, %eax
+-#endif
++	LOAD_FUNC_GOT_EAX (__strncasecmp_sse4_2)
+ 2:	ret
+ END(__strncasecmp)
+-#endif
+ 
+ weak_alias (__strncasecmp, strncasecmp)
+Index: glibc-2.17-c758a686/sysdeps/i386/i686/multiarch/strnlen.S
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/i386/i686/multiarch/strnlen.S
++++ glibc-2.17-c758a686/sysdeps/i386/i686/multiarch/strnlen.S
+@@ -25,21 +25,12 @@
+ 	.text
+ ENTRY(__strnlen)
+ 	.type	__strnlen, @gnu_indirect_function
+-	pushl	%ebx
+-	cfi_adjust_cfa_offset (4)
+-	cfi_rel_offset (ebx, 0)
+-	LOAD_PIC_REG(bx)
+-	cmpl	$0, KIND_OFFSET+__cpu_features@GOTOFF(%ebx)
+-	jne	1f
+-	call	__init_cpu_features
+-1:	leal	__strnlen_ia32@GOTOFF(%ebx), %eax
+-	testl	$bit_SSE2, CPUID_OFFSET+index_SSE2+__cpu_features@GOTOFF(%ebx)
++	LOAD_GOT_AND_RTLD_GLOBAL_RO
++	LOAD_FUNC_GOT_EAX (__strnlen_ia32)
++	HAS_CPU_FEATURE (SSE2)
+ 	jz	2f
+-	leal	__strnlen_sse2@GOTOFF(%ebx), %eax
+-2:	popl	%ebx
+-	cfi_adjust_cfa_offset (-4);
+-	cfi_restore (ebx)
+-	ret
++	LOAD_FUNC_GOT_EAX (__strnlen_sse2)
++2:	ret
+ END(__strnlen)
+ 
+ weak_alias(__strnlen, strnlen)
+Index: glibc-2.17-c758a686/sysdeps/i386/i686/multiarch/strrchr.S
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/i386/i686/multiarch/strrchr.S
++++ glibc-2.17-c758a686/sysdeps/i386/i686/multiarch/strrchr.S
+@@ -25,24 +25,15 @@
+ 	.text
+ ENTRY(strrchr)
+ 	.type	strrchr, @gnu_indirect_function
+-	pushl	%ebx
+-	cfi_adjust_cfa_offset (4)
+-	cfi_rel_offset (ebx, 0)
+-	LOAD_PIC_REG(bx)
+-	cmpl	$0, KIND_OFFSET+__cpu_features@GOTOFF(%ebx)
+-	jne	1f
+-	call	__init_cpu_features
+-1:	leal	__strrchr_ia32@GOTOFF(%ebx), %eax
+-	testl	$bit_SSE2, CPUID_OFFSET+index_SSE2+__cpu_features@GOTOFF(%ebx)
++	LOAD_GOT_AND_RTLD_GLOBAL_RO
++	LOAD_FUNC_GOT_EAX (__strrchr_ia32)
++	HAS_CPU_FEATURE (SSE2)
+ 	jz	2f
+-	leal	__strrchr_sse2_bsf@GOTOFF(%ebx), %eax
+-	testl	$bit_Slow_BSF, FEATURE_OFFSET+index_Slow_BSF+__cpu_features@GOTOFF(%ebx)
++	LOAD_FUNC_GOT_EAX (__strrchr_sse2_bsf)
++	HAS_ARCH_FEATURE (Slow_BSF)
+ 	jz	2f
+-	leal	__strrchr_sse2@GOTOFF(%ebx), %eax
+-2:	popl	%ebx
+-	cfi_adjust_cfa_offset (-4);
+-	cfi_restore (ebx)
+-	ret
++	LOAD_FUNC_GOT_EAX (__strrchr_sse2)
++2:	ret
+ END(strrchr)
+ 
+ # undef ENTRY
+Index: glibc-2.17-c758a686/sysdeps/i386/i686/multiarch/strspn.S
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/i386/i686/multiarch/strspn.S
++++ glibc-2.17-c758a686/sysdeps/i386/i686/multiarch/strspn.S
+@@ -27,40 +27,16 @@
+ 
+ /* Define multiple versions only for the definition in libc.  */
+ #if IS_IN (libc)
+-# ifdef SHARED
+ 	.text
+ ENTRY(strspn)
+ 	.type	strspn, @gnu_indirect_function
+-	pushl	%ebx
+-	cfi_adjust_cfa_offset (4)
+-	cfi_rel_offset (ebx, 0)
+-	LOAD_PIC_REG(bx)
+-	cmpl	$0, KIND_OFFSET+__cpu_features@GOTOFF(%ebx)
+-	jne	1f
+-	call	__init_cpu_features
+-1:	leal	__strspn_ia32@GOTOFF(%ebx), %eax
+-	testl	$bit_SSE4_2, CPUID_OFFSET+index_SSE4_2+__cpu_features@GOTOFF(%ebx)
++	LOAD_GOT_AND_RTLD_GLOBAL_RO
++	LOAD_FUNC_GOT_EAX (__strspn_ia32)
++	HAS_CPU_FEATURE (SSE4_2)
+ 	jz	2f
+-	leal	__strspn_sse42@GOTOFF(%ebx), %eax
+-2:	popl	%ebx
+-	cfi_adjust_cfa_offset (-4);
+-	cfi_restore (ebx)
+-	ret
+-END(strspn)
+-# else
+-	.text
+-ENTRY(strspn)
+-	.type	strspn, @gnu_indirect_function
+-	cmpl	$0, KIND_OFFSET+__cpu_features
+-	jne	1f
+-	call	__init_cpu_features
+-1:	leal	__strspn_ia32, %eax
+-	testl	$bit_SSE4_2, CPUID_OFFSET+index_SSE4_2+__cpu_features
+-	jz	2f
+-	leal	__strspn_sse42, %eax
++	LOAD_FUNC_GOT_EAX (__strspn_sse42)
+ 2:	ret
+ END(strspn)
+-# endif
+ 
+ # undef ENTRY
+ # define ENTRY(name) \
+Index: glibc-2.17-c758a686/sysdeps/i386/i686/multiarch/wcschr.S
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/i386/i686/multiarch/wcschr.S
++++ glibc-2.17-c758a686/sysdeps/i386/i686/multiarch/wcschr.S
+@@ -25,20 +25,11 @@
+ 	.text
+ ENTRY(wcschr)
+ 	.type	wcschr, @gnu_indirect_function
+-	pushl	%ebx
+-	cfi_adjust_cfa_offset (4)
+-	cfi_rel_offset (ebx, 0)
+-	LOAD_PIC_REG(bx)
+-	cmpl	$0, KIND_OFFSET+__cpu_features@GOTOFF(%ebx)
+-	jne	1f
+-	call	__init_cpu_features
+-1:	leal	__wcschr_ia32@GOTOFF(%ebx), %eax
+-	testl	$bit_SSE2, CPUID_OFFSET+index_SSE2+__cpu_features@GOTOFF(%ebx)
++	LOAD_GOT_AND_RTLD_GLOBAL_RO
++	LOAD_FUNC_GOT_EAX (__wcschr_ia32)
++	HAS_CPU_FEATURE (SSE2)
+ 	jz	2f
+-	leal	__wcschr_sse2@GOTOFF(%ebx), %eax
+-2:	popl	%ebx
+-	cfi_adjust_cfa_offset (-4);
+-	cfi_restore (ebx)
+-	ret
++	LOAD_FUNC_GOT_EAX (__wcschr_sse2)
++2:	ret
+ END(wcschr)
+ #endif
+Index: glibc-2.17-c758a686/sysdeps/i386/i686/multiarch/wcscmp.S
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/i386/i686/multiarch/wcscmp.S
++++ glibc-2.17-c758a686/sysdeps/i386/i686/multiarch/wcscmp.S
+@@ -28,20 +28,11 @@
+ 	.text
+ ENTRY(wcscmp)
+ 	.type	wcscmp, @gnu_indirect_function
+-	pushl	%ebx
+-	cfi_adjust_cfa_offset (4)
+-	cfi_rel_offset (ebx, 0)
+-	LOAD_PIC_REG(bx)
+-	cmpl	$0, KIND_OFFSET+__cpu_features@GOTOFF(%ebx)
+-	jne	1f
+-	call	__init_cpu_features
+-1:	leal	__wcscmp_ia32@GOTOFF(%ebx), %eax
+-	testl	$bit_SSE2, CPUID_OFFSET+index_SSE2+__cpu_features@GOTOFF(%ebx)
++	LOAD_GOT_AND_RTLD_GLOBAL_RO
++	LOAD_FUNC_GOT_EAX (__wcscmp_ia32)
++	HAS_CPU_FEATURE (SSE2)
+ 	jz	2f
+-	leal	__wcscmp_sse2@GOTOFF(%ebx), %eax
+-2:	popl	%ebx
+-	cfi_adjust_cfa_offset (-4);
+-	cfi_restore (ebx)
+-	ret
++	LOAD_FUNC_GOT_EAX (__wcscmp_sse2)
++2:	ret
+ END(wcscmp)
+ #endif
+Index: glibc-2.17-c758a686/sysdeps/i386/i686/multiarch/wcscpy.S
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/i386/i686/multiarch/wcscpy.S
++++ glibc-2.17-c758a686/sysdeps/i386/i686/multiarch/wcscpy.S
+@@ -26,20 +26,11 @@
+ 	.text
+ ENTRY(wcscpy)
+ 	.type	wcscpy, @gnu_indirect_function
+-	pushl	%ebx
+-	cfi_adjust_cfa_offset (4)
+-	cfi_rel_offset (ebx, 0)
+-	LOAD_PIC_REG(bx)
+-	cmpl	$0, KIND_OFFSET+__cpu_features@GOTOFF(%ebx)
+-	jne	1f
+-	call	__init_cpu_features
+-1:	leal	__wcscpy_ia32@GOTOFF(%ebx), %eax
+-	testl	$bit_SSSE3, CPUID_OFFSET+index_SSSE3+__cpu_features@GOTOFF(%ebx)
++	LOAD_GOT_AND_RTLD_GLOBAL_RO
++	LOAD_FUNC_GOT_EAX (__wcscpy_ia32)
++	HAS_CPU_FEATURE (SSSE3)
+ 	jz	2f
+-	leal	__wcscpy_ssse3@GOTOFF(%ebx), %eax
+-2:	popl	%ebx
+-	cfi_adjust_cfa_offset (-4)
+-	cfi_restore (ebx)
+-	ret
++	LOAD_FUNC_GOT_EAX (__wcscpy_ssse3)
++2:	ret
+ END(wcscpy)
+ #endif
+Index: glibc-2.17-c758a686/sysdeps/i386/i686/multiarch/wcslen.S
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/i386/i686/multiarch/wcslen.S
++++ glibc-2.17-c758a686/sysdeps/i386/i686/multiarch/wcslen.S
+@@ -25,21 +25,12 @@
+ 	.text
+ ENTRY(__wcslen)
+ 	.type	__wcslen, @gnu_indirect_function
+-	pushl	%ebx
+-	cfi_adjust_cfa_offset (4)
+-	cfi_rel_offset (ebx, 0)
+-	LOAD_PIC_REG(bx)
+-	cmpl	$0, KIND_OFFSET+__cpu_features@GOTOFF(%ebx)
+-	jne	1f
+-	call	__init_cpu_features
+-1:	leal	__wcslen_ia32@GOTOFF(%ebx), %eax
+-	testl	$bit_SSE2, CPUID_OFFSET+index_SSE2+__cpu_features@GOTOFF(%ebx)
++	LOAD_GOT_AND_RTLD_GLOBAL_RO
++	LOAD_FUNC_GOT_EAX (__wcslen_ia32)
++	HAS_CPU_FEATURE (SSE2)
+ 	jz	2f
+-	leal	__wcslen_sse2@GOTOFF(%ebx), %eax
+-2:	popl	%ebx
+-	cfi_adjust_cfa_offset (-4);
+-	cfi_restore (ebx)
+-	ret
++	LOAD_FUNC_GOT_EAX (__wcslen_sse2)
++2:	ret
+ END(__wcslen)
+ 
+ weak_alias(__wcslen, wcslen)
+Index: glibc-2.17-c758a686/sysdeps/i386/i686/multiarch/wcsrchr.S
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/i386/i686/multiarch/wcsrchr.S
++++ glibc-2.17-c758a686/sysdeps/i386/i686/multiarch/wcsrchr.S
+@@ -25,20 +25,11 @@
+ 	.text
+ ENTRY(wcsrchr)
+ 	.type	wcsrchr, @gnu_indirect_function
+-	pushl	%ebx
+-	cfi_adjust_cfa_offset (4)
+-	cfi_rel_offset (ebx, 0)
+-	LOAD_PIC_REG(bx)
+-	cmpl	$0, KIND_OFFSET+__cpu_features@GOTOFF(%ebx)
+-	jne	1f
+-	call	__init_cpu_features
+-1:	leal	__wcsrchr_ia32@GOTOFF(%ebx), %eax
+-	testl	$bit_SSE2, CPUID_OFFSET+index_SSE2+__cpu_features@GOTOFF(%ebx)
++	LOAD_GOT_AND_RTLD_GLOBAL_RO
++	LOAD_FUNC_GOT_EAX (__wcsrchr_ia32)
++	HAS_CPU_FEATURE (SSE2)
+ 	jz	2f
+-	leal	__wcsrchr_sse2@GOTOFF(%ebx), %eax
+-2:	popl	%ebx
+-	cfi_adjust_cfa_offset (-4);
+-	cfi_restore (ebx)
+-	ret
++	LOAD_FUNC_GOT_EAX (__wcsrchr_sse2)
++2:	ret
+ END(wcsrchr)
+ #endif
+Index: glibc-2.17-c758a686/sysdeps/i386/i686/multiarch/wmemcmp.S
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/i386/i686/multiarch/wmemcmp.S
++++ glibc-2.17-c758a686/sysdeps/i386/i686/multiarch/wmemcmp.S
+@@ -27,23 +27,14 @@
+ 	.text
+ ENTRY(wmemcmp)
+ 	.type	wmemcmp, @gnu_indirect_function
+-	pushl	%ebx
+-	cfi_adjust_cfa_offset (4)
+-	cfi_rel_offset (ebx, 0)
+-	LOAD_PIC_REG(bx)
+-	cmpl	$0, KIND_OFFSET+__cpu_features@GOTOFF(%ebx)
+-	jne	1f
+-	call	__init_cpu_features
+-1:	leal	__wmemcmp_ia32@GOTOFF(%ebx), %eax
+-	testl	$bit_SSSE3, CPUID_OFFSET+index_SSSE3+__cpu_features@GOTOFF(%ebx)
++	LOAD_GOT_AND_RTLD_GLOBAL_RO
++	LOAD_FUNC_GOT_EAX (__wmemcmp_ia32)
++	HAS_CPU_FEATURE (SSSE3)
+ 	jz	2f
+-	leal	__wmemcmp_ssse3@GOTOFF(%ebx), %eax
+-	testl	$bit_SSE4_2, CPUID_OFFSET+index_SSE4_2+__cpu_features@GOTOFF(%ebx)
++	LOAD_FUNC_GOT_EAX (__wmemcmp_ssse3)
++	HAS_CPU_FEATURE (SSE4_2)
+ 	jz	2f
+-	leal	__wmemcmp_sse4_2@GOTOFF(%ebx), %eax
+-2:	popl	%ebx
+-	cfi_adjust_cfa_offset (-4)
+-	cfi_restore (ebx)
+-	ret
++	LOAD_FUNC_GOT_EAX (__wmemcmp_sse4_2)
++2:	ret
+ END(wmemcmp)
+ #endif
+Index: glibc-2.17-c758a686/sysdeps/i386/i686/multiarch/strstr-c.c
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/i386/i686/multiarch/strstr-c.c
++++ glibc-2.17-c758a686/sysdeps/i386/i686/multiarch/strstr-c.c
+@@ -24,7 +24,7 @@ extern __typeof (__redirect_strstr) __st
+    ifunc symbol properly.  */
+ extern __typeof (__redirect_strstr) __libc_strstr;
+ libc_ifunc (__libc_strstr,
+-	    HAS_SSE4_2 && !use_unaligned_strstr () ?
++	    HAS_CPU_FEATURE (SSE4_2) && !use_unaligned_strstr () ?
+ 	    __strstr_sse42 : __strstr_ia32)
+ 
+ #undef strstr

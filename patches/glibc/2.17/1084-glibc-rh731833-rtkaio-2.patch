@@ -1,0 +1,11 @@
+diff -pruN glibc-2.17-c758a686/rtkaio/sysdeps/unix/sysv/linux/kaio_suspend.c glibc-2.17-c758a686/rtkaio/sysdeps/unix/sysv/linux/kaio_suspend.c
+--- glibc-2.17-c758a686/rtkaio/sysdeps/unix/sysv/linux/kaio_suspend.c	2011-10-19 16:34:41.000000000 +0530
++++ glibc-2.17-c758a686/rtkaio/sysdeps/unix/sysv/linux/kaio_suspend.c	2013-08-16 10:22:30.457609558 +0530
+@@ -59,6 +59,7 @@ struct clparam
+ 
+ 
+ static void
++__attribute__ ((noinline))
+ cleanup (void *arg)
+ {
+ #ifdef DONT_NEED_AIO_MISC_COND

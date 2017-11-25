@@ -1,0 +1,133 @@
+From 2d04109858181ed8c7dc3e4ae42923a26c1d3591 Mon Sep 17 00:00:00 2001
+From: Stefan Liebler <stli@linux.vnet.ibm.com>
+Date: Thu, 8 Oct 2015 10:47:37 +0200
+Subject: [PATCH 08/30] S390: configure check for vector instruction support in
+ assembler.
+
+upstream-commit-id: 4f0a1cea34c05fb2acc16f1a2d291f53230eb4fb
+https://www.sourceware.org/ml/libc-alpha/2015-07/msg00153.html
+
+The S390 specific test checks if the assembler has support for the new z13
+vector instructions by compiling a vector instruction. The .machine and
+.machinemode directives are needed to compile the vector instruction without
+-march=z13 option on 31/64 bit.
+On success the macro HAVE_S390_VX_ASM_SUPPORT is defined. This macro is used
+to determine if the optimized functions can be build without compile errors.
+If the used assembler lacks vector support, then a warning is dumped while
+configuring and only the common code functions are build.
+
+The z13 instruction support was introduced in
+"[Committed] S/390: Add support for IBM z13."
+(https://sourceware.org/ml/binutils/2015-01/msg00197.html)
+
+ChangeLog:
+
+	* config.h.in (HAVE_S390_VX_ASM_SUPPORT): New macro undefine.
+	* sysdeps/s390/configure.ac: Add test for S390 vector instruction
+	assembler support.
+	* sysdeps/s390/configure: Regenerated.
+---
+ config.h.in               |  3 +++
+ sysdeps/s390/configure    | 39 +++++++++++++++++++++++++++++++++++++++
+ sysdeps/s390/configure.in | 27 +++++++++++++++++++++++++++
+ 3 files changed, 69 insertions(+)
+
+diff --git a/config.h.in b/config.h.in
+index 68321d4..f7f2388 100644
+--- a/config.h.in
++++ b/config.h.in
+@@ -110,6 +110,9 @@
+ /* Define if assembler supports Intel MPX.  */
+ #undef  HAVE_MPX_SUPPORT
+ 
++/* Define if assembler supports vector instructions on S390.  */
++#undef  HAVE_S390_VX_ASM_SUPPORT
++
+ /* Define if gcc supports FMA4.  */
+ #undef	HAVE_FMA4_SUPPORT
+ 
+diff --git a/sysdeps/s390/configure b/sysdeps/s390/configure
+index 669bb9b..cc4c1e0 100644
+--- a/sysdeps/s390/configure
++++ b/sysdeps/s390/configure
+@@ -3,3 +3,42 @@
+ 
+ $as_echo "#define PI_STATIC_AND_HIDDEN 1" >>confdefs.h
+ 
++
++{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for S390 vector instruction support" >&5
++$as_echo_n "checking for S390 vector instruction support... " >&6; }
++if ${libc_cv_asm_s390_vx+:} false; then :
++  $as_echo_n "(cached) " >&6
++else
++  cat > conftest.c <<\EOF
++void testvecinsn ()
++{
++    __asm__ (".machine \"z13\" \n\t"
++	     ".machinemode \"zarch_nohighgprs\" \n\t"
++	     "vistrbs %%v16,%%v17 \n\t"
++	     "locghie %%r1,0" : :);
++}
++EOF
++if { ac_try='${CC-cc} --shared conftest.c -o conftest.o &> /dev/null'
++  { { eval echo "\"\$as_me\":${as_lineno-$LINENO}: \"$ac_try\""; } >&5
++  (eval $ac_try) 2>&5
++  ac_status=$?
++  $as_echo "$as_me:${as_lineno-$LINENO}: \$? = $ac_status" >&5
++  test $ac_status = 0; }; } ;
++then
++  libc_cv_asm_s390_vx=yes
++else
++  libc_cv_asm_s390_vx=no
++fi
++rm -f conftest*
++fi
++{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $libc_cv_asm_s390_vx" >&5
++$as_echo "$libc_cv_asm_s390_vx" >&6; }
++
++if test "$libc_cv_asm_s390_vx" = yes ;
++then
++  $as_echo "#define HAVE_S390_VX_ASM_SUPPORT 1" >>confdefs.h
++
++else
++  { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: Use binutils with vector-support in order to use optimized implementations." >&5
++$as_echo "$as_me: WARNING: Use binutils with vector-support in order to use optimized implementations." >&2;}
++fi
+diff --git a/sysdeps/s390/configure.in b/sysdeps/s390/configure.in
+index b5af4e1..733e356 100644
+--- a/sysdeps/s390/configure.in
++++ b/sysdeps/s390/configure.in
+@@ -4,3 +4,30 @@ GLIBC_PROVIDES dnl See aclocal.m4 in the top level source directory.
+ dnl It is always possible to access static and hidden symbols in an
+ dnl position independent way.
+ AC_DEFINE(PI_STATIC_AND_HIDDEN)
++
++AC_CACHE_CHECK(for S390 vector instruction support, libc_cv_asm_s390_vx, [dnl
++cat > conftest.c <<\EOF
++void testvecinsn ()
++{
++    __asm__ (".machine \"z13\" \n\t"
++	     ".machinemode \"zarch_nohighgprs\" \n\t"
++	     "vistrbs %%v16,%%v17 \n\t"
++	     "locghie %%r1,0" : :);
++}
++EOF
++dnl
++dnl test, if assembler supports S390 vector instructions
++if AC_TRY_COMMAND([${CC-cc} --shared conftest.c -o conftest.o &> /dev/null]) ;
++then
++  libc_cv_asm_s390_vx=yes
++else
++  libc_cv_asm_s390_vx=no
++fi
++rm -f conftest* ])
++
++if test "$libc_cv_asm_s390_vx" = yes ;
++then
++  AC_DEFINE(HAVE_S390_VX_ASM_SUPPORT)
++else
++  AC_MSG_WARN([Use binutils with vector-support in order to use optimized implementations.])
++fi
+-- 
+2.3.0
+

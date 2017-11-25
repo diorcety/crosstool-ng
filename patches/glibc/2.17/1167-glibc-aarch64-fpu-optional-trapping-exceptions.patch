@@ -1,0 +1,122 @@
+commit 302949e2940a9da3f6364a1574619e621b7e1e71
+Author: Marcus Shawcroft <marcus.shawcroft@arm.com>
+Date:   Fri Mar 7 14:05:20 2014 +0000
+
+    [PATCH] [AArch64] Optional trapping exceptions support.
+    
+    Trapping exceptions in AArch64 are optional.  The relevant exception
+    control bits in FPCR are are defined as RES0 hence the absence of
+    support can be detected by reading back the FPCR and comparing with
+    the desired value.
+
+--- glibc-2.17-c758a686/ports/sysdeps/aarch64/fpu/feenablxcpt.c
++++ glibc-2.17-c758a686/ports/sysdeps/aarch64/fpu/feenablxcpt.c
+@@ -35,5 +35,18 @@ feenableexcept (int excepts)
+ 
+   _FPU_SETCW (fpcr);
+ 
++  /* Trapping exceptions are optional in AArch64 the relevant enable
++     bits in FPCR are RES0 hence the absence of support can be
++     detected by reading back the FPCR and comparing with the required
++     value.  */
++  if (excepts)
++    {
++      fpu_control_t updated_fpcr;
++
++      _FPU_GETCW (updated_fpcr);
++      if (((updated_fpcr >> FE_EXCEPT_SHIFT) & excepts) != excepts)
++	return -1;
++    }
++
+   return original_excepts;
+ }
+--- glibc-2.17-c758a686/ports/sysdeps/aarch64/fpu/fesetenv.c
++++ glibc-2.17-c758a686/ports/sysdeps/aarch64/fpu/fesetenv.c
+@@ -24,6 +24,7 @@ fesetenv (const fenv_t *envp)
+ {
+   fpu_control_t fpcr;
+   fpu_fpsr_t fpsr;
++  fpu_control_t updated_fpcr;
+ 
+   _FPU_GETCW (fpcr);
+   _FPU_GETFPSR (fpsr);
+@@ -51,6 +52,15 @@ fesetenv (const fenv_t *envp)
+ 
+   _FPU_SETCW (fpcr);
+ 
++  /* Trapping exceptions are optional in AArch64 the relevant enable
++     bits in FPCR are RES0 hence the absence of support can be
++     detected by reading back the FPCR and comparing with the required
++     value.  */
++
++  _FPU_GETCW (updated_fpcr);
++  if ((updated_fpcr & fpcr) != fpcr)
++    return 1;
++
+   return 0;
+ }
+ 
+commit 423a7160af7fcffc61aac5e2e36d0b6b5b083214
+Author: Wilco <wdijkstr@arm.com>
+Date:   Thu Apr 17 09:39:27 2014 +0100
+
+    Add fenv test support for targets which don't have FP traps.
+
+(removed unnecessary code to limit it to test-fenv.c --kyle)
+
+--- glibc-2.17-c758a686/math/test-fenv.c
++++ glibc-2.17-c758a686/math/test-fenv.c
+@@ -233,14 +234,9 @@ feenv_nomask_test (const char *flag_name, int fe_exc)
+ #if defined FE_NOMASK_ENV
+   int status;
+   pid_t pid;
+-  fenv_t saved;
+ 
+-  fegetenv (&saved);
+-  errno = 0;
+-  fesetenv (FE_NOMASK_ENV);
+-  status = errno;
+-  fesetenv (&saved);
+-  if (status == ENOSYS)
++  if (1
++      && fesetenv (FE_NOMASK_ENV) != 0)
+     {
+       printf ("Test: not testing FE_NOMASK_ENV, it isn't implemented.\n");
+       return;
+@@ -349,7 +345,13 @@ feexcp_nomask_test (const char *flag_name, int fe_exc)
+   int status;
+   pid_t pid;
+ 
+-  printf ("Test: after fedisableexcept (%s) processes will abort\n",
++  if (1 && feenableexcept (fe_exc) == -1)
++    {
++      printf ("Test: not testing feenableexcept, it isn't implemented.\n");
++      return;
++    }
++
++  printf ("Test: after feenableexcept (%s) processes will abort\n",
+ 	  flag_name);
+   printf ("      when feraiseexcept (%s) is called.\n", flag_name);
+   pid = fork ();
+@@ -470,7 +472,6 @@ feenable_test (const char *flag_name, int fe_exc)
+ {
+   int excepts;
+ 
+-
+   printf ("Tests for feenableexcepts etc. with flag %s\n", flag_name);
+ 
+   /* First disable all exceptions.  */
+@@ -488,8 +489,12 @@ feenable_test (const char *flag_name, int fe_exc)
+ 	      flag_name, excepts);
+       ++count_errors;
+     }
+-
+   excepts = feenableexcept (fe_exc);
++  if (1 && excepts == -1)
++    {
++      printf ("Test: not testing feenableexcept, it isn't implemented.\n");
++      return;
++    }
+   if (excepts == -1)
+     {
+       printf ("Test: feenableexcept (%s) failed\n", flag_name);

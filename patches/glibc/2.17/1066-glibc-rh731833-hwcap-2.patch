@@ -1,0 +1,109 @@
+From 4b4084b99e6553784a53a2ea683cc768c343d63a Mon Sep 17 00:00:00 2001
+From: "Ryan S. Arnold" <rsa@linux.vnet.ibm.com>
+Date: Mon, 24 Jun 2013 15:33:32 -0500
+Subject: [PATCH 37/42] PowerPC: Enable POWER8 platform sans hwcap bits.
+ (cherry picked from commit
+ 2f063a6e843c788a05667e6d362d229b3b671920)
+
+---
+ sysdeps/powerpc/dl-procinfo.c                          |  5 +++--
+ sysdeps/powerpc/dl-procinfo.h                          |  6 +++++-
+ sysdeps/powerpc/powerpc32/power8/Implies               |  2 ++
+ sysdeps/powerpc/powerpc64/power8/Implies               |  2 ++
+ .../unix/sysv/linux/powerpc/powerpc32/power8/Implies   |  2 ++
+ .../unix/sysv/linux/powerpc/powerpc64/power8/Implies   |  2 ++
+ 7 files changed, 34 insertions(+), 3 deletions(-)
+ create mode 100644 sysdeps/powerpc/powerpc32/power8/Implies
+ create mode 100644 sysdeps/powerpc/powerpc64/power8/Implies
+ create mode 100644 sysdeps/unix/sysv/linux/powerpc/powerpc32/power8/Implies
+ create mode 100644 sysdeps/unix/sysv/linux/powerpc/powerpc64/power8/Implies
+
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/dl-procinfo.c glibc-2.17-c758a686/sysdeps/powerpc/dl-procinfo.c
+index 8488799..efab165 100644
+--- glibc-2.17-c758a686/sysdeps/powerpc/dl-procinfo.c
++++ glibc-2.17-c758a686/sysdeps/powerpc/dl-procinfo.c
+@@ -67,7 +67,7 @@ PROCINFO_CLASS const char _dl_powerpc_cap_flags[25][10]
+ #if !defined PROCINFO_DECL && defined SHARED
+   ._dl_powerpc_platforms
+ #else
+-PROCINFO_CLASS const char _dl_powerpc_platforms[13][12]
++PROCINFO_CLASS const char _dl_powerpc_platforms[14][12]
+ #endif
+ #ifndef PROCINFO_DECL
+ = {
+@@ -83,7 +83,8 @@ PROCINFO_CLASS const char _dl_powerpc_platforms[13][12]
+     [PPC_PLATFORM_PPC405] = "ppc405",
+     [PPC_PLATFORM_PPC440] = "ppc440",
+     [PPC_PLATFORM_PPC464] = "ppc464",
+-    [PPC_PLATFORM_PPC476] = "ppc476"
++    [PPC_PLATFORM_PPC476] = "ppc476",
++    [PPC_PLATFORM_POWER8] = "power8",
+   }
+ #endif
+ #if !defined SHARED || defined PROCINFO_DECL
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/dl-procinfo.h glibc-2.17-c758a686/sysdeps/powerpc/dl-procinfo.h
+index 6d904ad..0939dcf 100644
+--- glibc-2.17-c758a686/sysdeps/powerpc/dl-procinfo.h
++++ glibc-2.17-c758a686/sysdeps/powerpc/dl-procinfo.h
+@@ -30,7 +30,7 @@
+ #define HWCAP_IMPORTANT		(PPC_FEATURE_HAS_ALTIVEC \
+ 				+ PPC_FEATURE_HAS_DFP)
+ 
+-#define _DL_PLATFORMS_COUNT	13
++#define _DL_PLATFORMS_COUNT	14
+ 
+ #define _DL_FIRST_PLATFORM	32
+ /* Mask to filter out platforms.  */
+@@ -51,6 +51,7 @@
+ #define PPC_PLATFORM_PPC440		10
+ #define PPC_PLATFORM_PPC464		11
+ #define PPC_PLATFORM_PPC476		12
++#define PPC_PLATFORM_POWER8		13
+ 
+ static inline const char *
+ __attribute__ ((unused))
+@@ -111,6 +112,9 @@ _dl_string_platform (const char *str)
+ 	case '7':
+ 	  ret = _DL_FIRST_PLATFORM + PPC_PLATFORM_POWER7;
+ 	  break;
++	case '8':
++	  ret = _DL_FIRST_PLATFORM + PPC_PLATFORM_POWER8;
++	  break;
+ 	default:
+ 	  return -1;
+ 	}
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc32/power8/Implies glibc-2.17-c758a686/sysdeps/powerpc/powerpc32/power8/Implies
+new file mode 100644
+index 0000000..083f3e9
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc32/power8/Implies
+@@ -0,0 +1,2 @@
++powerpc/powerpc32/power7/fpu
++powerpc/powerpc32/power7
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/power8/Implies glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/power8/Implies
+new file mode 100644
+index 0000000..9a5e3c7
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/power8/Implies
+@@ -0,0 +1,2 @@
++powerpc/powerpc64/power7/fpu
++powerpc/powerpc64/power7
+diff --git glibc-2.17-c758a686/sysdeps/unix/sysv/linux/powerpc/powerpc32/power8/Implies glibc-2.17-c758a686/sysdeps/unix/sysv/linux/powerpc/powerpc32/power8/Implies
+new file mode 100644
+index 0000000..066dea2
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/unix/sysv/linux/powerpc/powerpc32/power8/Implies
+@@ -0,0 +1,2 @@
++powerpc/powerpc32/power8/fpu
++powerpc/powerpc32/power8
+diff --git glibc-2.17-c758a686/sysdeps/unix/sysv/linux/powerpc/powerpc64/power8/Implies glibc-2.17-c758a686/sysdeps/unix/sysv/linux/powerpc/powerpc64/power8/Implies
+new file mode 100644
+index 0000000..fad2505
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/unix/sysv/linux/powerpc/powerpc64/power8/Implies
+@@ -0,0 +1,2 @@
++powerpc/powerpc64/power8/fpu
++powerpc/powerpc64/power8
+-- 
+1.7.11.7
+

@@ -1,0 +1,579 @@
+From 3cd86ba149cd650c338332dddb63e16f95041daf Mon Sep 17 00:00:00 2001
+From: Rajalakshmi Srinivasaraghavan <raji@linux.vnet.ibm.com>
+Date: Wed, 30 Jul 2014 05:10:37 -0500
+Subject: [PATCH] PowerPC: multiarch memset/bzero for PowerPC64
+
+commit 8a29a3d00b5d8ce33fc291baecfd59d715190fd1
+Author: Adhemerval Zanella <azanella@linux.vnet.ibm.com>
+Date:   Fri Dec 13 14:33:16 2013 -0500
+
+---
+ sysdeps/powerpc/powerpc64/memset.S                 |  2 +
+ sysdeps/powerpc/powerpc64/multiarch/Makefile       |  3 +-
+ sysdeps/powerpc/powerpc64/multiarch/bzero-power4.S | 26 ++++++++++
+ sysdeps/powerpc/powerpc64/multiarch/bzero-power6.S | 26 ++++++++++
+ sysdeps/powerpc/powerpc64/multiarch/bzero-power7.S | 26 ++++++++++
+ sysdeps/powerpc/powerpc64/multiarch/bzero.c        | 40 ++++++++++++++++
+ .../powerpc/powerpc64/multiarch/ifunc-impl-list.c  | 20 ++++++++
+ .../powerpc/powerpc64/multiarch/memset-power4.S    | 40 ++++++++++++++++
+ .../powerpc/powerpc64/multiarch/memset-power6.S    | 40 ++++++++++++++++
+ .../powerpc/powerpc64/multiarch/memset-power7.S    | 40 ++++++++++++++++
+ sysdeps/powerpc/powerpc64/multiarch/memset-ppc64.S | 55 ++++++++++++++++++++++
+ sysdeps/powerpc/powerpc64/multiarch/memset.c       | 50 ++++++++++++++++++++
+ sysdeps/powerpc/powerpc64/multiarch/rtld-memset.c  | 18 +++++++
+ sysdeps/powerpc/powerpc64/power4/memset.S          |  2 +
+ sysdeps/powerpc/powerpc64/power6/memset.S          |  2 +
+ sysdeps/powerpc/powerpc64/power7/memset.S          |  2 +
+ 16 files changed, 391 insertions(+), 1 deletion(-)
+ create mode 100644 sysdeps/powerpc/powerpc64/multiarch/bzero-power4.S
+ create mode 100644 sysdeps/powerpc/powerpc64/multiarch/bzero-power6.S
+ create mode 100644 sysdeps/powerpc/powerpc64/multiarch/bzero-power7.S
+ create mode 100644 sysdeps/powerpc/powerpc64/multiarch/bzero.c
+ create mode 100644 sysdeps/powerpc/powerpc64/multiarch/memset-power4.S
+ create mode 100644 sysdeps/powerpc/powerpc64/multiarch/memset-power6.S
+ create mode 100644 sysdeps/powerpc/powerpc64/multiarch/memset-power7.S
+ create mode 100644 sysdeps/powerpc/powerpc64/multiarch/memset-ppc64.S
+ create mode 100644 sysdeps/powerpc/powerpc64/multiarch/memset.c
+ create mode 100644 sysdeps/powerpc/powerpc64/multiarch/rtld-memset.c
+
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/memset.S glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/memset.S
+index d02af98..fd5d4e5 100644
+--- glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/memset.S
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/memset.S
+@@ -265,6 +265,7 @@ L(medium_28t):
+ END_GEN_TB (BP_SYM (memset),TB_TOCLESS)
+ libc_hidden_builtin_def (memset)
+ 
++#ifndef NO_BZERO_IMPL
+ /* Copied from bzero.S to prevent the linker from inserting a stub
+    between bzero and memset.  */
+ ENTRY (BP_SYM (__bzero))
+@@ -284,3 +285,4 @@ ENTRY (BP_SYM (__bzero))
+ END_GEN_TB (BP_SYM (__bzero),TB_TOCLESS)
+ 
+ weak_alias (BP_SYM (__bzero), BP_SYM (bzero))
++#endif
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/Makefile glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/Makefile
+index c0bc520..424d2cd 100644
+--- glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/Makefile
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/Makefile
+@@ -1,5 +1,6 @@
+ ifeq ($(subdir),string)
+ sysdep_routines += memcpy-power7 memcpy-a2 memcpy-power6 memcpy-cell \
+                   memcpy-power4 memcpy-ppc64 memcmp-power7 memcmp-power4 \
+-                  memcmp-ppc64
++                  memcmp-ppc64 memset-power7 memset-power6 memset-power4 \
++                  memset-ppc64 bzero-power4 bzero-power6 bzero-power7
+ endif
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/bzero-power4.S glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/bzero-power4.S
+new file mode 100644
+index 0000000..72b75ac
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/bzero-power4.S
+@@ -0,0 +1,26 @@
++/* Optimized bzero implementation for PowerPC64/POWER4.
++   Copyright (C) 2013-2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <sysdep.h>
++
++ENTRY (__bzero_power4)
++	CALL_MCOUNT 3
++	mr	r5,r4
++	li	r4,0
++	b	__memset_power4
++END_GEN_TB (__bzero_power4,TB_TOCLESS)
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/bzero-power6.S glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/bzero-power6.S
+new file mode 100644
+index 0000000..d0917c5
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/bzero-power6.S
+@@ -0,0 +1,26 @@
++/* Optimized bzero implementation for PowerPC64/POWER6.
++   Copyright (C) 2013-2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <sysdep.h>
++
++ENTRY (__bzero_power6)
++	CALL_MCOUNT 3
++	mr	r5,r4
++	li	r4,0
++	b	__memset_power6
++END_GEN_TB (__bzero_power6,TB_TOCLESS)
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/bzero-power7.S glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/bzero-power7.S
+new file mode 100644
+index 0000000..0ec285a
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/bzero-power7.S
+@@ -0,0 +1,26 @@
++/* Optimized bzero implementation for PowerPC64/POWER7.
++   Copyright (C) 2013-2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <sysdep.h>
++
++ENTRY (__bzero_power7)
++	CALL_MCOUNT 3
++	mr	r5,r4
++	li	r4,0
++	b	__memset_power7
++END_GEN_TB (__bzero_power7,TB_TOCLESS)
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/bzero.c glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/bzero.c
+new file mode 100644
+index 0000000..ed83541
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/bzero.c
+@@ -0,0 +1,40 @@
++/* Multiple versions of bzero. PowerPC64 version.
++   Copyright (C) 2013-2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++/* Define multiple versions only for definition in libc.  */
++#ifndef NOT_IN_libc
++# include <string.h>
++# include <strings.h>
++# include "init-arch.h"
++
++extern __typeof (bzero) __bzero_ppc attribute_hidden;
++extern __typeof (bzero) __bzero_power4 attribute_hidden;
++extern __typeof (bzero) __bzero_power6 attribute_hidden;
++extern __typeof (bzero) __bzero_power7 attribute_hidden;
++
++libc_ifunc (__bzero,
++            (hwcap & PPC_FEATURE_HAS_VSX)
++            ? __bzero_power7 :
++	      (hwcap & PPC_FEATURE_ARCH_2_05)
++		? __bzero_power6 :
++		  (hwcap & PPC_FEATURE_POWER4)
++		? __bzero_power4
++            : __bzero_ppc);
++
++weak_alias (__bzero, bzero)
++#endif
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/ifunc-impl-list.c glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/ifunc-impl-list.c
+index 295ebca..11e7063 100644
+--- glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/ifunc-impl-list.c
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/ifunc-impl-list.c
+@@ -60,6 +60,16 @@ __libc_ifunc_impl_list (const char *name, struct libc_ifunc_impl *array,
+              IFUNC_IMPL_ADD (array, i, memcpy, hwcap & PPC_FEATURE_POWER4,
+                              __memcpy_power4)
+              IFUNC_IMPL_ADD (array, i, memcpy, 1, __memcpy_ppc))
++
++  /* Support sysdeps/powerpc/powerpc64/multiarch/memset.c.  */
++  IFUNC_IMPL (i, name, memset,
++             IFUNC_IMPL_ADD (array, i, memset, hwcap & PPC_FEATURE_HAS_VSX,
++                             __memset_power7)
++             IFUNC_IMPL_ADD (array, i, memset, hwcap & PPC_FEATURE_ARCH_2_05,
++                             __memset_power6)
++             IFUNC_IMPL_ADD (array, i, memset, hwcap & PPC_FEATURE_POWER4,
++                             __memset_power4)
++             IFUNC_IMPL_ADD (array, i, memset, 1, __memset_ppc))
+ #endif
+ 
+   /* Support sysdeps/powerpc/powerpc64/multiarch/memcmp.c.  */
+@@ -70,5 +80,15 @@ __libc_ifunc_impl_list (const char *name, struct libc_ifunc_impl *array,
+                              __memcmp_power4)
+              IFUNC_IMPL_ADD (array, i, memcmp, 1, __memcmp_ppc))
+ 
++  /* Support sysdeps/powerpc/powerpc64/multiarch/bzero.c.  */
++  IFUNC_IMPL (i, name, bzero,
++             IFUNC_IMPL_ADD (array, i, bzero, hwcap & PPC_FEATURE_HAS_VSX,
++                             __bzero_power7)
++             IFUNC_IMPL_ADD (array, i, bzero, hwcap & PPC_FEATURE_ARCH_2_05,
++                             __bzero_power6)
++             IFUNC_IMPL_ADD (array, i, bzero, hwcap & PPC_FEATURE_POWER4,
++                             __bzero_power4)
++             IFUNC_IMPL_ADD (array, i, bzero, 1, __bzero_ppc))
++
+   return i;
+ }
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/memset-power4.S glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/memset-power4.S
+new file mode 100644
+index 0000000..9074b95
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/memset-power4.S
+@@ -0,0 +1,40 @@
++/* Optimized memset implementation for PowerPC64/POWER4.
++   Copyright (C) 2013-2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <sysdep.h>
++
++#undef EALIGN
++#define EALIGN(name, alignt, words)				\
++  .section ".text";						\
++  ENTRY_2(__memset_power4)					\
++  .align ALIGNARG(alignt);					\
++  EALIGN_W_##words;						\
++  BODY_LABEL(__memset_power4):					\
++  cfi_startproc;
++
++#undef END_GEN_TB
++#define END_GEN_TB(name, mask)					\
++  cfi_endproc;							\
++  TRACEBACK_MASK(__memset_power4,mask)				\
++  END_2(__memset_power4)
++
++#undef libc_hidden_builtin_def
++#define libc_hidden_builtin_def(name)
++
++#define NO_BZERO_IMPL
++#include <sysdeps/powerpc/powerpc64/power4/memset.S>
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/memset-power6.S glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/memset-power6.S
+new file mode 100644
+index 0000000..70688b5
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/memset-power6.S
+@@ -0,0 +1,40 @@
++/* Optimized memset implementation for PowerPC64/POWER6.
++   Copyright (C) 2013-2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <sysdep.h>
++
++#undef EALIGN
++#define EALIGN(name, alignt, words)				\
++  .section ".text";						\
++  ENTRY_2(__memset_power6)					\
++  .align ALIGNARG(alignt);					\
++  EALIGN_W_##words;						\
++  BODY_LABEL(__memset_power6):					\
++  cfi_startproc;
++
++#undef END_GEN_TB
++#define END_GEN_TB(name, mask)					\
++  cfi_endproc;							\
++  TRACEBACK_MASK(__memset_power6,mask)				\
++  END_2(__memset_power6)
++
++#undef libc_hidden_builtin_def
++#define libc_hidden_builtin_def(name)
++
++#define NO_BZERO_IMPL
++#include <sysdeps/powerpc/powerpc64/power6/memset.S>
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/memset-power7.S glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/memset-power7.S
+new file mode 100644
+index 0000000..ab226c5
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/memset-power7.S
+@@ -0,0 +1,40 @@
++/* Optimized memset implementation for PowerPC64/POWER7.
++   Copyright (C) 2013-2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <sysdep.h>
++
++#undef EALIGN
++#define EALIGN(name, alignt, words)				\
++  .section ".text";						\
++  ENTRY_2(__memset_power7)					\
++  .align ALIGNARG(alignt);					\
++  EALIGN_W_##words;						\
++  BODY_LABEL(__memset_power7):					\
++  cfi_startproc;
++
++#undef END_GEN_TB
++#define END_GEN_TB(name, mask)					\
++  cfi_endproc;							\
++  TRACEBACK_MASK(__memset_power7,mask)				\
++  END_2(__memset_power7)
++
++#undef libc_hidden_builtin_def
++#define libc_hidden_builtin_def(name)
++
++#define NO_BZERO_IMPL
++#include <sysdeps/powerpc/powerpc64/power7/memset.S>
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/memset-ppc64.S glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/memset-ppc64.S
+new file mode 100644
+index 0000000..dc5549c
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/memset-ppc64.S
+@@ -0,0 +1,55 @@
++/* Default memset/bzero implementation for PowerPC64.
++   Copyright (C) 2013-2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <sysdep.h>
++
++/* Copied from bzero.S to prevent the linker from inserting a stub
++   between bzero and memset.  NOTE: this code should be positioned
++   before ENTRY/END_GEN_TB redefinition.  */
++ENTRY (__bzero_ppc)
++        CALL_MCOUNT 3
++        mr      r5,r4
++        li      r4,0
++        b       L(_memset)
++END_GEN_TB (__bzero_ppc,TB_TOCLESS)
++
++
++#if defined SHARED && !defined NOT_IN_libc
++# undef EALIGN
++# define EALIGN(name, alignt, words)				\
++  .section ".text";						\
++  ENTRY_2(__memset_ppc)						\
++  .align ALIGNARG(alignt);					\
++  EALIGN_W_##words;						\
++  BODY_LABEL(__memset_ppc):					\
++  cfi_startproc;
++
++# undef END_GEN_TB
++# define END_GEN_TB(name, mask)					\
++  cfi_endproc;							\
++  TRACEBACK_MASK(__memset_ppc,mask)				\
++  END_2(__memset_ppc)
++
++# undef libc_hidden_builtin_def
++# define libc_hidden_builtin_def(name)
++#endif
++
++/* Do not implement __bzero at powerpc64/memset.S.  */
++#define NO_BZERO_IMPL
++
++#include <sysdeps/powerpc/powerpc64/memset.S>
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/memset.c glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/memset.c
+new file mode 100644
+index 0000000..aa2ae70
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/memset.c
+@@ -0,0 +1,50 @@
++/* Multiple versions of memset.
++   Copyright (C) 2013-2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++/* Define multiple versions only for definition in libc.  */
++#if defined SHARED && !defined NOT_IN_libc
++/* Redefine memset so that the compiler won't complain about the type
++   mismatch with the IFUNC selector in strong_alias, below.  */
++# undef memset
++# define memset __redirect_memset
++# include <string.h>
++# include <shlib-compat.h>
++# include "init-arch.h"
++
++extern __typeof (__redirect_memset) __libc_memset;
++
++extern __typeof (__redirect_memset) __memset_ppc attribute_hidden;
++extern __typeof (__redirect_memset) __memset_power4 attribute_hidden;
++extern __typeof (__redirect_memset) __memset_power6 attribute_hidden;
++extern __typeof (__redirect_memset) __memset_power7 attribute_hidden;
++
++/* Avoid DWARF definition DIE on ifunc symbol so that GDB can handle
++   ifunc symbol properly.  */
++libc_ifunc (__libc_memset,
++            (hwcap & PPC_FEATURE_HAS_VSX)
++            ? __memset_power7 :
++	      (hwcap & PPC_FEATURE_ARCH_2_05)
++		? __memset_power6 :
++		  (hwcap & PPC_FEATURE_POWER4)
++		? __memset_power4
++            : __memset_ppc);
++
++#undef memset
++strong_alias (__libc_memset, memset);
++libc_hidden_ver (__libc_memset, memset);
++#endif
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/rtld-memset.c glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/rtld-memset.c
+new file mode 100644
+index 0000000..8eac85b
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/rtld-memset.c
+@@ -0,0 +1,18 @@
++/* Copyright (C) 2013-2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <sysdeps/powerpc/powerpc64/rtld-memset.c>
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/power4/memset.S glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/power4/memset.S
+index c86a68a..c077ae7 100644
+--- glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/power4/memset.S
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/power4/memset.S
+@@ -253,6 +253,7 @@ L(medium_28t):
+ END_GEN_TB (BP_SYM (memset),TB_TOCLESS)
+ libc_hidden_builtin_def (memset)
+ 
++#ifndef NO_BZERO_IMPL
+ /* Copied from bzero.S to prevent the linker from inserting a stub
+    between bzero and memset.  */
+ ENTRY (BP_SYM (__bzero))
+@@ -272,3 +273,4 @@ ENTRY (BP_SYM (__bzero))
+ END_GEN_TB (BP_SYM (__bzero),TB_TOCLESS)
+ 
+ weak_alias (BP_SYM (__bzero), BP_SYM (bzero))
++#endif
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/power6/memset.S glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/power6/memset.S
+index 930ecce..967642a3 100644
+--- glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/power6/memset.S
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/power6/memset.S
+@@ -397,6 +397,7 @@ L(medium_28t):
+ END_GEN_TB (BP_SYM (memset),TB_TOCLESS)
+ libc_hidden_builtin_def (memset)
+ 
++#ifndef NO_BZERO_IMPL
+ /* Copied from bzero.S to prevent the linker from inserting a stub
+    between bzero and memset.  */
+ ENTRY (BP_SYM (__bzero))
+@@ -416,3 +417,4 @@ ENTRY (BP_SYM (__bzero))
+ END_GEN_TB (BP_SYM (__bzero),TB_TOCLESS)
+ 
+ weak_alias (BP_SYM (__bzero), BP_SYM (bzero))
++#endif
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/power7/memset.S glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/power7/memset.S
+index 5970fbe..2716656 100644
+--- glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/power7/memset.S
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/power7/memset.S
+@@ -385,6 +385,7 @@ L(small):
+ END_GEN_TB (BP_SYM (memset),TB_TOCLESS)
+ libc_hidden_builtin_def (memset)
+ 
++#ifndef NO_BZERO_IMPL
+ /* Copied from bzero.S to prevent the linker from inserting a stub
+    between bzero and memset.  */
+ ENTRY (BP_SYM (__bzero))
+@@ -395,3 +396,4 @@ ENTRY (BP_SYM (__bzero))
+ END_GEN_TB (BP_SYM (__bzero),TB_TOCLESS)
+ 
+ weak_alias (BP_SYM (__bzero), BP_SYM (bzero))
++#endif
+-- 
+1.8.3.1
+

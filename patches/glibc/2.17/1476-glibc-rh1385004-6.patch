@@ -1,0 +1,29 @@
+From db22400947e1c82153e5270d23fed53fc1e3a659 Mon Sep 17 00:00:00 2001
+From: Adhemerval Zanella <azanella@linux.vnet.ibm.com>
+Date: Mon, 23 Jun 2014 09:38:47 -0500
+Subject: [PATCH] PowerPC: sync hwcap.h capabilities
+
+Linux commit dd58a092c4202f2bd490adab7285b3ff77f8e467 added the
+PPC_FEATURE2_VEC_CRYPTO auvx capability to indicate whether to
+hardware supports vector crypto hardware instructions.  This patch
+adds its definition to powerpc hwcap bits.
+---
+ ChangeLog                    | 5 +++++
+ sysdeps/powerpc/bits/hwcap.h | 2 ++
+ 2 files changed, 7 insertions(+)
+
+diff --git a/ChangeLog b/ChangeLog
+index 426af5d..b4f687f 100644
+diff --git a/sysdeps/powerpc/bits/hwcap.h b/sysdeps/powerpc/bits/hwcap.h
+index 7daec91..e894bd4 100644
+--- a/sysdeps/powerpc/bits/hwcap.h
++++ b/sysdeps/powerpc/bits/hwcap.h
+@@ -62,3 +62,5 @@
+ #define PPC_FEATURE2_HAS_EBB       0x10000000 /* Event Base Branching */
+ #define PPC_FEATURE2_HAS_ISEL      0x08000000 /* Integer Select */
+ #define PPC_FEATURE2_HAS_TAR       0x04000000 /* Target Address Register */
++#define PPC_FEATURE2_HAS_VEC_CRYPTO  0x02000000  /* Target supports vector
++						    instruction.  */
+-- 
+2.1.0
+

@@ -1,0 +1,52 @@
+commit cb43bb0d68f001fc3d6e054d712ab8794b5fd1de
+Author: Cong Wang <xiyou.wangcong@gmail.com>
+Date:   Tue Jan 6 16:13:19 2015 -0800
+
+    in.h: Coordinate in6_pktinfo and ip6_mtuinfo for kernel and glibc [BZ #15850]
+    
+    Similarly to what we did for in6_addr, we need a macro
+    to guard in6_pktinfo and ip6_mtuinfo too.
+    
+    Cc: Carlos O'Donell <carlos@redhat.com>
+    Signed-off-by: Cong Wang <xiyou.wangcong@gmail.com>
+
+diff --git a/inet/netinet/in.h b/inet/netinet/in.h
+index bf3c8b1..f541c58 100644
+--- a/inet/netinet/in.h
++++ b/inet/netinet/in.h
+@@ -530,6 +530,7 @@ extern int bindresvport6 (int __sockfd, struct sockaddr_in6 *__sock_in)
+ #ifdef __USE_GNU
+ struct cmsghdr;			/* Forward declaration.  */
+ 
++#ifndef __USE_KERNEL_IPV6_DEFS
+ /* IPv6 packet information.  */
+ struct in6_pktinfo
+   {
+@@ -543,7 +544,7 @@ struct ip6_mtuinfo
+     struct sockaddr_in6 ip6m_addr; /* dst address including zone ID */
+     uint32_t ip6m_mtu;		   /* path MTU in host byte order */
+   };
+-
++#endif /* !__USE_KERNEL_IPV6_DEFS */
+ 
+ /* Obsolete hop-by-hop and Destination Options Processing (RFC 2292).  */
+ extern int inet6_option_space (int __nbytes)
+diff --git a/sysdeps/unix/sysv/linux/bits/in.h b/sysdeps/unix/sysv/linux/bits/in.h
+index b80a27f..b1d2cf6 100644
+--- a/sysdeps/unix/sysv/linux/bits/in.h
++++ b/sysdeps/unix/sysv/linux/bits/in.h
+@@ -23,10 +23,10 @@
+ 
+ /* If the application has already included linux/in6.h from a linux-based
+    kernel then we will not define the IPv6 IPPROTO_* defines, in6_addr (nor the
+-   defines), sockaddr_in6, or ipv6_mreq.  The ABI used by the linux-kernel and
+-   glibc match exactly.  Neither the linux kernel nor glibc should break this
+-   ABI without coordination.  */
+-#ifdef _UAPI_LINUX_IN6_H
++   defines), sockaddr_in6, or ipv6_mreq. Same for in6_ptkinfo or ip6_mtuinfo
++   in linux/ipv6.h. The ABI used by the linux-kernel and glibc match exactly.
++   Neither the linux kernel nor glibc should break this ABI without coordination.  */
++#if defined _UAPI_LINUX_IN6_H || defined _UAPI_IPV6_H
+ /* This is not quite the same API since the kernel always defines s6_addr16 and
+    s6_addr32. This is not a violation of POSIX since POSIX says "at least the
+    following member" and that holds true.  */

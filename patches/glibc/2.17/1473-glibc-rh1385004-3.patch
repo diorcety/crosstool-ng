@@ -1,0 +1,36 @@
+From 7235e7a509ef1f93cb895f6cdd2bf27f497a3d0a Mon Sep 17 00:00:00 2001
+From: Adhemerval Zanella <adhemerval.zanella@linaro.org>
+Date: Fri, 31 Jul 2015 10:48:20 -0300
+Subject: [PATCH] powerpc: Fix PPC64/POWER7 conform tests
+
+When building with --disable-multi-arch the strstr POWER7
+optimization create and uses symbols that conflict with expect conform
+tests.
+
+	* sysdeps/powerpc/powerpc64/power7/strstr.S (strstr): Use __strnlen
+	for static build.
+
+(cherry picked from commit 6f714aa4ad5af2745ae2d185821d20ce8fabc2c5)
+---
+ ChangeLog                                  | 7 +++++++
+ sysdeps/powerpc/powerpc64/power7/strstr.S  | 2 +-
+ 3 files changed, 11 insertions(+), 3 deletions(-)
+
+diff --git a/ChangeLog b/ChangeLog
+index d70df5c..cf95a84 100644
+diff --git a/sysdeps/powerpc/powerpc64/power7/strstr.S b/sysdeps/powerpc/powerpc64/power7/strstr.S
+index 8dca31c..bfb0c49 100644
+--- a/sysdeps/powerpc/powerpc64/power7/strstr.S
++++ b/sysdeps/powerpc/powerpc64/power7/strstr.S
+@@ -39,7 +39,7 @@
+ # ifdef SHARED
+ #  define STRNLEN   __GI_strnlen
+ # else
+-#  define STRNLEN   strnlen
++#  define STRNLEN  __strnlen
+ # endif
+ #endif
+ 
+-- 
+2.1.0
+

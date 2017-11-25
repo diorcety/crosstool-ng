@@ -1,0 +1,77 @@
+From 571d49008b0c44b4aabb66b2ac3ce690fd802466 Mon Sep 17 00:00:00 2001
+From: Stefan Liebler <stli@linux.vnet.ibm.com>
+Date: Thu, 8 Oct 2015 10:45:29 +0200
+Subject: [PATCH 06/30] S390: Add hwcaps value for vector facility.
+
+upstream-commit-id: 4e28fa80886c71e6aaf85016b82ce981c0f12e6d
+https://www.sourceware.org/ml/libc-alpha/2015-07/msg00075.html
+
+The HWCAP_S390_VX flag in hwcap field of auxiliary vector indicates
+if the vector facility is available and the kernel is aware of it.
+This can be tested with LD_SHOW_AUXV=1 <prog>.
+Currently it does not show te, because it was not incremented
+by commit "S/390: Add hwcap value for transactional execution.".
+Thus _DL_HWCAP_COUNT is incremented by two.
+
+ChangeLog:
+
+	* sysdeps/s390/dl-procinfo.c (_dl_s390_platforms): Add vector flag.
+	* sysdeps/s390/dl-procinfo.h: Add vector capability.
+	* sysdeps/unix/sysv/linux/s390/bits/hwcap.h (HWCAP_S390_VX): Define.
+---
+ sysdeps/s390/dl-procinfo.c                | 4 ++--
+ sysdeps/s390/dl-procinfo.h                | 3 ++-
+ sysdeps/unix/sysv/linux/s390/bits/hwcap.h | 1 +
+ 3 files changed, 5 insertions(+), 3 deletions(-)
+
+diff --git a/sysdeps/s390/dl-procinfo.c b/sysdeps/s390/dl-procinfo.c
+index 9590146..96d438a 100644
+--- a/sysdeps/s390/dl-procinfo.c
++++ b/sysdeps/s390/dl-procinfo.c
+@@ -46,11 +46,11 @@
+ #if !defined PROCINFO_DECL && defined SHARED
+   ._dl_s390_cap_flags
+ #else
+-PROCINFO_CLASS const char _dl_s390_cap_flags[11][9]
++PROCINFO_CLASS const char _dl_s390_cap_flags[12][9]
+ #endif
+ #ifndef PROCINFO_DECL
+ = {
+-     "esan3", "zarch", "stfle", "msa", "ldisp", "eimm", "dfp", "edat", "etf3eh", "highgprs", "te"
++     "esan3", "zarch", "stfle", "msa", "ldisp", "eimm", "dfp", "edat", "etf3eh", "highgprs", "te", "vx"
+   }
+ #endif
+ #if !defined SHARED || defined PROCINFO_DECL
+diff --git a/sysdeps/s390/dl-procinfo.h b/sysdeps/s390/dl-procinfo.h
+index 26de043..89766e0 100644
+--- a/sysdeps/s390/dl-procinfo.h
++++ b/sysdeps/s390/dl-procinfo.h
+@@ -21,7 +21,7 @@
+ #define _DL_PROCINFO_H	1
+ #include <ldsodefs.h>
+ 
+-#define _DL_HWCAP_COUNT 10
++#define _DL_HWCAP_COUNT 12
+ 
+ #define _DL_PLATFORMS_COUNT	5
+ 
+@@ -50,6 +50,7 @@ enum
+   HWCAP_S390_ETF3EH = 1 << 8,
+   HWCAP_S390_HIGH_GPRS = 1 << 9,
+   HWCAP_S390_TE = 1 << 10,
++  HWCAP_S390_VX = 1 << 11,
+ };
+ 
+ #define HWCAP_IMPORTANT (HWCAP_S390_ZARCH | HWCAP_S390_LDISP \
+diff --git a/sysdeps/unix/sysv/linux/s390/bits/hwcap.h b/sysdeps/unix/sysv/linux/s390/bits/hwcap.h
+index 59d68b0..bd2ce3a 100644
+--- a/sysdeps/unix/sysv/linux/s390/bits/hwcap.h
++++ b/sysdeps/unix/sysv/linux/s390/bits/hwcap.h
+@@ -35,3 +35,4 @@
+ #define HWCAP_S390_ETF3EH       256
+ #define HWCAP_S390_HIGH_GPRS    512
+ #define HWCAP_S390_TE           1024
++#define HWCAP_S390_VX           2048
+-- 
+2.3.0
+

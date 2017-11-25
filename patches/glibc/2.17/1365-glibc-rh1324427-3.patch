@@ -1,0 +1,28 @@
+commit d8a012c5c9e4bfc1b8db2bc6deacb85b44a2e1eb
+Author: Stefan Liebler <stli@linux.vnet.ibm.com>
+Date:   Fri Apr 1 10:42:54 2016 +0200
+
+    S390: Use ahi instead of aghi in 32bit _dl_runtime_resolve.
+    
+    This patch uses ahi instead of aghi in 32bit _dl_runtime_resolve
+    to adjust the stack pointer. This is no functional change,
+    but a cosmetic one.
+    
+    ChangeLog:
+    
+    	* sysdeps/s390/s390-32/dl-trampoline.h (_dl_runtime_resolve):
+    	Use ahi instead of aghi to adjust stack pointer.
+
+diff --git a/sysdeps/s390/s390-32/dl-trampoline.h b/sysdeps/s390/s390-32/dl-trampoline.h
+index bb74d27..086449f 100644
+--- a/sysdeps/s390/s390-32/dl-trampoline.h
++++ b/sysdeps/s390/s390-32/dl-trampoline.h
+@@ -90,7 +90,7 @@ _dl_runtime_resolve:
+ 	.machinemode "zarch_nohighgprs"
+ 	vlm    %v24,%v31,96(%r15)	# restore vector registers
+ 	.machine pop
+-	aghi   %r15,224			# remove stack frame
++	ahi   %r15,224			# remove stack frame
+ 	cfi_adjust_cfa_offset (-224)
+ #else
+ 	ahi    %r15,96			# remove stack frame

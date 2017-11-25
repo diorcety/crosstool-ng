@@ -1,0 +1,91 @@
+commit e39adf43c7d1979884dd304ed1250baf1f78fadc
+Author: Andreas Schwab <schwab@suse.de>
+Date:   Mon May 20 10:19:31 2013 +0200
+
+    AArch64: Don't clobber argument for tail call to __sigjmp_save in sigsetjmp
+
+diff --git glibc-2.17-c758a686/ports/sysdeps/aarch64/setjmp.S glibc-2.17-c758a686/ports/sysdeps/aarch64/setjmp.S
+index cff81c7..10e0709 100644
+--- glibc-2.17-c758a686/ports/sysdeps/aarch64/setjmp.S
++++ glibc-2.17-c758a686/ports/sysdeps/aarch64/setjmp.S
+@@ -44,8 +44,14 @@ ENTRY (__sigsetjmp)
+ 	stp	d10, d11, [x0, #JB_D10<<3]
+ 	stp	d12, d13, [x0, #JB_D12<<3]
+ 	stp	d14, d15, [x0, #JB_D14<<3]
+-	mov	x1,  sp
+-	str	x1,  [x0, #JB_SP<<3]
++	mov	x2,  sp
++	str	x2,  [x0, #JB_SP<<3]
++#if defined NOT_IN_libc && defined IS_IN_rtld
++	/* In ld.so we never save the signal mask */
++	mov	w0, #0
++	RET
++#else
+ 	b	C_SYMBOL_NAME(__sigjmp_save)
++#endif
+ END (__sigsetjmp)
+ hidden_def (__sigsetjmp)
+diff --git glibc-2.17-c758a686/setjmp/Makefile glibc-2.17-c758a686/setjmp/Makefile
+index 6124333..913359c 100644
+--- glibc-2.17-c758a686/setjmp/Makefile
++++ glibc-2.17-c758a686/setjmp/Makefile
+@@ -25,7 +25,8 @@ headers	:= setjmp.h bits/setjmp.h bits/setjmp2.h
+ routines	:= setjmp sigjmp bsd-setjmp bsd-_setjmp \
+ 		   longjmp __longjmp jmp-unwind
+ 
+-tests		:= tst-setjmp jmpbug bug269-setjmp
++tests		:= tst-setjmp jmpbug bug269-setjmp \
++		   tst-sigsetjmp
+ 
+ 
+ include ../Rules
+diff --git glibc-2.17-c758a686/setjmp/tst-sigsetjmp.c glibc-2.17-c758a686/setjmp/tst-sigsetjmp.c
+new file mode 100644
+index 0000000..467c26a
+--- /dev/null
++++ glibc-2.17-c758a686/setjmp/tst-sigsetjmp.c
+@@ -0,0 +1,44 @@
++/* Copyright (C) 2013 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++/* Test case for BZ #15493 */
++
++#include <stdlib.h>
++#include <signal.h>
++#include <setjmp.h>
++
++static int
++do_test (void)
++{
++  sigjmp_buf sj;
++  sigset_t m;
++
++  sigemptyset (&m);
++  sigprocmask (SIG_SETMASK, &m, NULL);
++  if (sigsetjmp (sj, 0) == 0)
++    {
++      sigaddset (&m, SIGUSR1);
++      sigprocmask (SIG_SETMASK, &m, NULL);
++      siglongjmp (sj, 1);
++      return EXIT_FAILURE;
++    }
++  sigprocmask (SIG_SETMASK, NULL, &m);
++  return sigismember (&m, SIGUSR1) ? EXIT_SUCCESS : EXIT_FAILURE;
++}
++
++#define TEST_FUNCTION do_test ()
++#include "../test-skeleton.c"

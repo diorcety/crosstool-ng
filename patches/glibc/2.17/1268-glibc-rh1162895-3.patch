@@ -1,0 +1,123 @@
+commit b0abbc21034f0e5edc49023d8fda0616173faf17
+Author: Alan Modra <amodra@gmail.com>
+Date:   Wed Apr 2 13:46:19 2014 +1030
+
+    Correct IBM long double nextafterl.
+    
+    Fix for values near a power of two, and some tidies.
+    
+    	[BZ #16739]
+    	* sysdeps/ieee754/ldbl-128ibm/s_nextafterl.c (__nextafterl): Correct
+    	output when value is near a power of two.  Use int64_t for lx and
+    	remove casts.  Use decimal rather than hex exponent constants.
+    	Don't use long double multiplication when double will suffice.
+    	* math/libm-test.inc (nextafter_test_data): Add tests.
+    	* NEWS: Add 16739 and 16786 to bug list.
+
+diff --git glibc-2.17-c758a686/math/libm-test.inc glibc-2.17-c758a686/math/libm-test.inc
+index 19194f6..967b679 100644
+--- glibc-2.17-c758a686/math/libm-test.inc
++++ glibc-2.17-c758a686/math/libm-test.inc
+@@ -8199,6 +8208,14 @@ pow_test (void)
+ #if defined TEST_DOUBLE || defined TEST_LDOUBLE
+   TEST_ff_f (pow, -7.49321e+133, -9.80818e+16, 0, UNDERFLOW_EXCEPTION);
+ #endif
++#if defined TEST_LDOUBLE && LDBL_MANT_DIG == 106
++    TEST_ff_f (nextafter, 1.0L, -10.0L, 1.0L-0x1p-106L, NO_EXCEPTION),
++    TEST_ff_f (nextafter, 1.0L, 10.0L, 1.0L+0x1p-105L, NO_EXCEPTION),
++    TEST_ff_f (nextafter, 1.0L-0x1p-106L, 10.0L, 1.0L, NO_EXCEPTION),
++    TEST_ff_f (nextafter, -1.0L, -10.0L, -1.0L-0x1p-105L, NO_EXCEPTION),
++    TEST_ff_f (nextafter, -1.0L, 10.0L, -1.0L+0x1p-106L, NO_EXCEPTION),
++    TEST_ff_f (nextafter, -1.0L+0x1p-106L, -10.0L, -1.0L, NO_EXCEPTION),
++#endif
+ 
+   TEST_ff_f (pow, -1.0, -0xffffff, -1.0);
+   TEST_ff_f (pow, -1.0, -0x1fffffe, 1.0);
+diff --git glibc-2.17-c758a686/sysdeps/ieee754/ldbl-128ibm/s_nextafterl.c glibc-2.17-c758a686/sysdeps/ieee754/ldbl-128ibm/s_nextafterl.c
+index 30b1540..bf57cb8 100644
+--- glibc-2.17-c758a686/sysdeps/ieee754/ldbl-128ibm/s_nextafterl.c
++++ glibc-2.17-c758a686/sysdeps/ieee754/ldbl-128ibm/s_nextafterl.c
+@@ -30,8 +30,7 @@ static char rcsid[] = "$NetBSD: $";
+ 
+ long double __nextafterl(long double x, long double y)
+ {
+-	int64_t hx,hy,ihx,ihy;
+-	uint64_t lx;
++	int64_t hx, hy, ihx, ihy, lx;
+ 	double xhi, xlo, yhi;
+ 
+ 	ldbl_unpack (x, &xhi, &xlo);
+@@ -79,19 +78,28 @@ long double __nextafterl(long double x, long double y)
+ 	      u = math_opt_barrier (x);
+ 	      x -= __LDBL_DENORM_MIN__;
+ 	      if (ihx < 0x0360000000000000LL
+-		  || (hx > 0 && (int64_t) lx <= 0)
+-		  || (hx < 0 && (int64_t) lx > 1)) {
++		  || (hx > 0 && lx <= 0)
++		  || (hx < 0 && lx > 1)) {
+ 		u = u * u;
+ 		math_force_eval (u);		/* raise underflow flag */
+ 	      }
+ 	      return x;
+ 	    }
+-	    if (ihx < 0x06a0000000000000LL) { /* ulp will denormal */
+-	      INSERT_WORDS64 (yhi, hx & (0x7ffLL<<52));
+-	      u = yhi;
+-	      u *= 0x1.0000000000000p-105L;
++	    /* If the high double is an exact power of two and the low
++	       double is the opposite sign, then 1ulp is one less than
++	       what we might determine from the high double.  Similarly
++	       if X is an exact power of two, and positive, because
++	       making it a little smaller will result in the exponent
++	       decreasing by one and normalisation of the mantissa.   */
++	    if ((hx & 0x000fffffffffffffLL) == 0
++		&& ((lx != 0 && (hx ^ lx) < 0)
++		    || (lx == 0 && hx >= 0)))
++	      ihx -= 1LL << 52;
++	    if (ihx < (106LL << 52)) { /* ulp will denormal */
++	      INSERT_WORDS64 (yhi, ihx & (0x7ffLL<<52));
++	      u = yhi * 0x1p-105;
+ 	    } else {
+-	      INSERT_WORDS64 (yhi, (hx & (0x7ffLL<<52))-(0x069LL<<52));
++	      INSERT_WORDS64 (yhi, (ihx & (0x7ffLL<<52))-(105LL<<52));
+ 	      u = yhi;
+ 	    }
+ 	    return x - u;
+@@ -109,8 +117,8 @@ long double __nextafterl(long double x, long double y)
+ 	      u = math_opt_barrier (x);
+ 	      x += __LDBL_DENORM_MIN__;
+ 	      if (ihx < 0x0360000000000000LL
+-		  || (hx > 0 && (int64_t) lx < 0 && lx != 0x8000000000000001LL)
+-		  || (hx < 0 && (int64_t) lx >= 0)) {
++		  || (hx > 0 && lx < 0 && lx != 0x8000000000000001LL)
++		  || (hx < 0 && lx >= 0)) {
+ 		u = u * u;
+ 		math_force_eval (u);		/* raise underflow flag */
+ 	      }
+@@ -118,12 +126,21 @@ long double __nextafterl(long double x, long double y)
+ 		x = -0.0L;
+ 	      return x;
+ 	    }
+-	    if (ihx < 0x06a0000000000000LL) { /* ulp will denormal */
+-	      INSERT_WORDS64 (yhi, hx & (0x7ffLL<<52));
+-	      u = yhi;
+-	      u *= 0x1.0000000000000p-105L;
++	    /* If the high double is an exact power of two and the low
++	       double is the opposite sign, then 1ulp is one less than
++	       what we might determine from the high double.  Similarly
++	       if X is an exact power of two, and negative, because
++	       making it a little larger will result in the exponent
++	       decreasing by one and normalisation of the mantissa.   */
++	    if ((hx & 0x000fffffffffffffLL) == 0
++		&& ((lx != 0 && (hx ^ lx) < 0)
++		    || (lx == 0 && hx < 0)))
++	      ihx -= 1LL << 52;
++	    if (ihx < (106LL << 52)) { /* ulp will denormal */
++	      INSERT_WORDS64 (yhi, ihx & (0x7ffLL<<52));
++	      u = yhi * 0x1p-105;
+ 	    } else {
+-	      INSERT_WORDS64 (yhi, (hx & (0x7ffLL<<52))-(0x069LL<<52));
++	      INSERT_WORDS64 (yhi, (ihx & (0x7ffLL<<52))-(105LL<<52));
+ 	      u = yhi;
+ 	    }
+ 	    return x + u;

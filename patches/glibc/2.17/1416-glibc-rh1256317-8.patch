@@ -1,0 +1,135 @@
+commit 9b42a0b3a3cc037e6bdd62869d91cb19c80aa0e5
+Author: Siddhesh Poyarekar <siddhesh@redhat.com>
+Date:   Thu Nov 20 13:17:21 2014 +0530
+
+    Remove IS_IN_libdl
+    
+    Replace with IS_IN (libdl).  No changes to generated code on x86_64.
+    
+    	* dlfcn/dladdr.c: Use IS_IN.
+    	* dlfcn/dladdr1.c: Likewise.
+    	* dlfcn/dlclose.c: Likewise.
+    	* dlfcn/dlerror.c: Likewise.
+    	* dlfcn/dlinfo.c: Likewise.
+    	* dlfcn/dlmopen.c: Likewise.
+    	* dlfcn/dlopen.c: Likewise.
+    	* dlfcn/dlsym.c: Likewise.
+    	* dlfcn/dlvsym.c: Likewise.
+
+Index: glibc-2.17-c758a686/dlfcn/dladdr.c
+===================================================================
+--- glibc-2.17-c758a686.orig/dlfcn/dladdr.c
++++ glibc-2.17-c758a686/dlfcn/dladdr.c
+@@ -19,7 +19,7 @@
+ 
+ #include <dlfcn.h>
+ 
+-#if !defined SHARED && defined IS_IN_libdl
++#if !defined SHARED && IS_IN (libdl)
+ 
+ int
+ dladdr (const void *address, Dl_info *info)
+Index: glibc-2.17-c758a686/dlfcn/dladdr1.c
+===================================================================
+--- glibc-2.17-c758a686.orig/dlfcn/dladdr1.c
++++ glibc-2.17-c758a686/dlfcn/dladdr1.c
+@@ -18,7 +18,7 @@
+ 
+ #include <dlfcn.h>
+ 
+-#if !defined SHARED && defined IS_IN_libdl
++#if !defined SHARED && IS_IN (libdl)
+ 
+ int
+ dladdr1 (const void *address, Dl_info *info, void **extra, int flags)
+Index: glibc-2.17-c758a686/dlfcn/dlclose.c
+===================================================================
+--- glibc-2.17-c758a686.orig/dlfcn/dlclose.c
++++ glibc-2.17-c758a686/dlfcn/dlclose.c
+@@ -20,7 +20,7 @@
+ #include <dlfcn.h>
+ #include <ldsodefs.h>
+ 
+-#if !defined SHARED && defined IS_IN_libdl
++#if !defined SHARED && IS_IN (libdl)
+ 
+ int
+ dlclose (void *handle)
+Index: glibc-2.17-c758a686/dlfcn/dlerror.c
+===================================================================
+--- glibc-2.17-c758a686.orig/dlfcn/dlerror.c
++++ glibc-2.17-c758a686/dlfcn/dlerror.c
+@@ -25,7 +25,7 @@
+ #include <bits/libc-lock.h>
+ #include <ldsodefs.h>
+ 
+-#if !defined SHARED && defined IS_IN_libdl
++#if !defined SHARED && IS_IN (libdl)
+ 
+ char *
+ dlerror (void)
+Index: glibc-2.17-c758a686/dlfcn/dlinfo.c
+===================================================================
+--- glibc-2.17-c758a686.orig/dlfcn/dlinfo.c
++++ glibc-2.17-c758a686/dlfcn/dlinfo.c
+@@ -21,7 +21,7 @@
+ #include <ldsodefs.h>
+ #include <libintl.h>
+ 
+-#if !defined SHARED && defined IS_IN_libdl
++#if !defined SHARED && IS_IN (libdl)
+ 
+ int
+ dlinfo (void *handle, int request, void *arg)
+Index: glibc-2.17-c758a686/dlfcn/dlmopen.c
+===================================================================
+--- glibc-2.17-c758a686.orig/dlfcn/dlmopen.c
++++ glibc-2.17-c758a686/dlfcn/dlmopen.c
+@@ -23,7 +23,7 @@
+ #include <unistd.h>
+ #include <ldsodefs.h>
+ 
+-#if !defined SHARED && defined IS_IN_libdl
++#if !defined SHARED && IS_IN (libdl)
+ 
+ void *
+ dlmopen (Lmid_t nsid, const char *file, int mode)
+Index: glibc-2.17-c758a686/dlfcn/dlopen.c
+===================================================================
+--- glibc-2.17-c758a686.orig/dlfcn/dlopen.c
++++ glibc-2.17-c758a686/dlfcn/dlopen.c
+@@ -22,7 +22,7 @@
+ #include <unistd.h>
+ #include <ldsodefs.h>
+ 
+-#if !defined SHARED && defined IS_IN_libdl
++#if !defined SHARED && IS_IN (libdl)
+ 
+ void *
+ dlopen (const char *file, int mode)
+Index: glibc-2.17-c758a686/dlfcn/dlsym.c
+===================================================================
+--- glibc-2.17-c758a686.orig/dlfcn/dlsym.c
++++ glibc-2.17-c758a686/dlfcn/dlsym.c
+@@ -21,7 +21,7 @@
+ 
+ #include <ldsodefs.h>
+ 
+-#if !defined SHARED && defined IS_IN_libdl
++#if !defined SHARED && IS_IN (libdl)
+ 
+ void *
+ dlsym (void *handle, const char *name)
+Index: glibc-2.17-c758a686/dlfcn/dlvsym.c
+===================================================================
+--- glibc-2.17-c758a686.orig/dlfcn/dlvsym.c
++++ glibc-2.17-c758a686/dlfcn/dlvsym.c
+@@ -21,7 +21,7 @@
+ 
+ #include <ldsodefs.h>
+ 
+-#if !defined SHARED && defined IS_IN_libdl
++#if !defined SHARED && IS_IN (libdl)
+ 
+ void *
+ weak_function

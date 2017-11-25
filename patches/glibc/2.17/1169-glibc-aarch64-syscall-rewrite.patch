@@ -1,0 +1,540 @@
+From 9a7cb556eef7cb75b31d0bc05f73c6338dfd8e49 Mon Sep 17 00:00:00 2001
+From: Richard Henderson <rth@redhat.com>
+Date: Fri, 30 May 2014 13:57:04 -0400
+Subject: [PATCH] aarch64: Backport syscall rewrite
+
+From commits:
+a60339aaff82beadea6f580e587d64052cb5e3b8 Fix handling of nocancel syscall...
+3612eb8f25d978e7e4ac536a34098091f737161c Merge rtld_errno offset w/ mem ref
+a6b3657be6bc5067aeec98d990f60765361c6557 Merge __local_multiple_threads ofs...
+c69abcee726a6f63d9e5e8f0d9dcc79374ee3ef8 Fix DO_CALL block comment
+6e6c2d01ebb1ef839675c7151d2a114f53663386 Remove DOARGS/UNDOARGS macros
+ca3cfa40c16ef34c74951a07a57cfcbcd58898b1 Tidy syscall error check
+af4e8ef9443e258ebeb0ddf3c5c9579f24dfacd5 Tabify sysdep-cancel.h
+a8b4f04ad7dff4f39797a7ab7f8babda54266026 Share code in sysdep-cancel.h
+645d44abe3ca6253a9d4762f092e4a1b9d294b11 Pass regno parameter to SINGLE_THREAD_P
+b5be4597716eff94149f5529c8eb2cd3b4296188 Improve syscall-cancel stack frame
+74f31c18593111725478a991b395ae45661985a3 Fix error return from __ioctl
+f0712b543eaddeca8fc6d7a8eb6b5b8d24105ce2 Remove PSEUDO_RET
+
+And a not-yet-committed cleanup to clone.S.
+---
+ ports/sysdeps/unix/sysv/linux/aarch64/clone.S      |  51 +++---
+ ports/sysdeps/unix/sysv/linux/aarch64/ioctl.S      |  13 +-
+ .../unix/sysv/linux/aarch64/nptl/localplt.data     |   1 -
+ .../unix/sysv/linux/aarch64/nptl/sysdep-cancel.h   | 189 +++++++--------------
+ ports/sysdeps/unix/sysv/linux/aarch64/syscall.S    |   4 +-
+ ports/sysdeps/unix/sysv/linux/aarch64/sysdep.h     |  84 ++-------
+ ports/sysdeps/unix/sysv/linux/aarch64/vfork.S      |   4 +-
+ 7 files changed, 108 insertions(+), 238 deletions(-)
+
+diff --git glibc-2.17-c758a686/ports/sysdeps/unix/sysv/linux/aarch64/clone.S glibc-2.17-c758a686/ports/sysdeps/unix/sysv/linux/aarch64/clone.S
+index 8be1464..d5c31f3 100644
+--- glibc-2.17-c758a686/ports/sysdeps/unix/sysv/linux/aarch64/clone.S
++++ glibc-2.17-c758a686/ports/sysdeps/unix/sysv/linux/aarch64/clone.S
+@@ -39,46 +39,43 @@
+  */
+         .text
+ ENTRY(__clone)
++	/* Save args for the child.  */
++	mov	x10, x0
++	mov	x11, x2
++	mov	x12, x3
++	
+ 	/* Sanity check args.  */
+-	cbz	x0, 1f
+-	cbz	x1, 1f
+-	/* Insert the args onto the new stack.  */
+-	stp	x0, x3, [x1, #-16]!	/* Fn, arg.  */
++	mov	x0, #-EINVAL
++	cbz	x10, .Lsyscall_error
++	cbz	x1, .Lsyscall_error
+ 
+ 	/* Do the system call.  */
++	/* X0:flags, x1:newsp, x2:parenttidptr, x3:newtls, x4:childtid.  */
+ 	mov	x0, x2                  /* flags  */
+-
+ 	/* New sp is already in x1.  */
+ 	mov	x2, x4			/* ptid  */
+ 	mov	x3, x5			/* tls  */
+ 	mov	x4, x6			/* ctid  */
+ 
+-#ifdef RESET_PID
+-	/* We rely on the kernel preserving the argument regsiters across a
+-	   each system call so that we can inspect the flags against after
+-	   the clone call.  */
+-	mov	x5, x0
+-#endif
+-
+ 	mov	x8, #SYS_ify(clone)
+-	/* X0:flags, x1:newsp, x2:parenttidptr, x3:newtls, x4:childtid.  */
+ 	svc	0x0
+-	cfi_endproc
+ 	cmp	x0, #0
+-	beq	2f
+-	blt	C_SYMBOL_NAME(__syscall_error)
++	beq	thread_start
++	blt	.Lsyscall_error
+ 	RET
+-1:	mov	x0, #-EINVAL
+-	b	syscall_error
++PSEUDO_END (__clone)
+ 
+-2:
++	.align	4
++	.type	thread_start, %function
++thread_start:
+ 	cfi_startproc
+ 	cfi_undefined (x30)
+ 	mov	x29, 0
++
+ #ifdef RESET_PID
+-	tbnz	x5, #CLONE_THREAD_BIT, 3f
++	tbnz	x11, #CLONE_THREAD_BIT, 3f
+ 	mov	x0, #-1
+-	tbnz	x5, #CLONE_VM_BIT, 2f
++	tbnz	x11, #CLONE_VM_BIT, 2f
+ 	mov	x8, #SYS_ify(getpid)
+ 	svc	0x0
+ 2:
+@@ -86,18 +83,16 @@ ENTRY(__clone)
+ 	sub	x1, x1, #PTHREAD_SIZEOF
+ 	str	w0, [x1, #PTHREAD_PID_OFFSET]
+ 	str	w0, [x1, #PTHREAD_TID_OFFSET]
+-
+ 3:
+ #endif
+-	/* Pick the function arg and call address from the stack and
+-	   execute.  */
+-	ldp	x1, x0, [sp], #16
+-	blr	x1
++
++	/* Pick the function arg execute.  */
++	mov	x0, x12
++	blr	x10
+ 
+ 	/* We are done, pass the return value through x0.  */
+ 	b	HIDDEN_JUMPTARGET(_exit)
+ 	cfi_endproc
+-	cfi_startproc
+-PSEUDO_END (__clone)
++	.size	thread_start, .-thread_start
+ 
+ weak_alias (__clone, clone)
+diff --git glibc-2.17-c758a686/ports/sysdeps/unix/sysv/linux/aarch64/ioctl.S glibc-2.17-c758a686/ports/sysdeps/unix/sysv/linux/aarch64/ioctl.S
+index f01fb84..be6c026 100644
+--- glibc-2.17-c758a686/ports/sysdeps/unix/sysv/linux/aarch64/ioctl.S
++++ glibc-2.17-c758a686/ports/sysdeps/unix/sysv/linux/aarch64/ioctl.S
+@@ -20,13 +20,12 @@
+ 
+ 	.text
+ ENTRY(__ioctl)
+-	movz	x8, #__NR_ioctl
+-        sxtw	x0, w0
+-        svc	#0x0
+-	cmn	x0, #0x1, lsl #12
+-	b.hi	C_SYMBOL_NAME(__syscall_error)
++	mov	x8, #__NR_ioctl
++	sxtw	x0, w0
++	svc	#0x0
++	cmn	x0, #4095
++	b.cs	.Lsyscall_error
+ 	ret
+-
+-	PSEUDO_END (__ioctl)
++PSEUDO_END (__ioctl)
+ 
+ weak_alias (__ioctl, ioctl)
+diff --git glibc-2.17-c758a686/ports/sysdeps/unix/sysv/linux/aarch64/nptl/localplt.data glibc-2.17-c758a686/ports/sysdeps/unix/sysv/linux/aarch64/nptl/localplt.data
+index 84af95d..dfca9a7 100644
+--- glibc-2.17-c758a686/ports/sysdeps/unix/sysv/linux/aarch64/nptl/localplt.data
++++ glibc-2.17-c758a686/ports/sysdeps/unix/sysv/linux/aarch64/nptl/localplt.data
+@@ -12,4 +12,3 @@ libm.so: matherr
+ libm.so: __signbit
+ libm.so: __signbitf
+ libm.so: __signbitl
+-libpthread.so: __errno_location
+diff --git glibc-2.17-c758a686/ports/sysdeps/unix/sysv/linux/aarch64/nptl/sysdep-cancel.h glibc-2.17-c758a686/ports/sysdeps/unix/sysv/linux/aarch64/nptl/sysdep-cancel.h
+index e0e5cc0..a3b9284 100644
+--- glibc-2.17-c758a686/ports/sysdeps/unix/sysv/linux/aarch64/nptl/sysdep-cancel.h
++++ glibc-2.17-c758a686/ports/sysdeps/unix/sysv/linux/aarch64/nptl/sysdep-cancel.h
+@@ -26,119 +26,60 @@
+ 
+ # undef PSEUDO
+ # define PSEUDO(name, syscall_name, args)				\
+-  .section ".text";							\
+-  .type __##syscall_name##_nocancel,%function;				\
+-  .globl __##syscall_name##_nocancel;					\
+-  __##syscall_name##_nocancel:						\
+-    cfi_startproc;							\
+-    DO_CALL (syscall_name, args);					\
+-    PSEUDO_RET;								\
+-    cfi_endproc;							\
+-    .size __##syscall_name##_nocancel,.-__##syscall_name##_nocancel;	\
+-  ENTRY (name);								\
+-    SINGLE_THREAD_P;							\
+-    DOARGS_##args;							\
+-    bne .Lpseudo_cancel;						\
+-    DO_CALL (syscall_name, 0);						\
+-    UNDOARGS_##args;							\
+-    cmn x0, 4095;							\
+-    PSEUDO_RET;								\
+-  .Lpseudo_cancel:							\
+-    DOCARGS_##args;	/* save syscall args etc. around CENABLE.  */	\
+-    CENABLE;								\
+-    mov x16, x0;	/* put mask in safe place.  */			\
+-    UNDOCARGS_##args;	/* restore syscall args.  */			\
+-    mov x8, SYS_ify (syscall_name);	/* do the call.  */		\
+-    svc	0;								\
+-    str x0, [sp, -16]!;	/* save syscall return value.  */		\
+-    cfi_adjust_cfa_offset (16);						\
+-    mov x0, x16;	 /* get mask back.  */				\
+-    CDISABLE;								\
+-    ldr x0, [sp], 16;							\
+-    cfi_adjust_cfa_offset (-16);					\
+-    ldr x30, [sp], 16;							\
+-    cfi_adjust_cfa_offset (-16);					\
+-    cfi_restore (x30);							\
+-    UNDOARGS_##args;							\
+-    cmn x0, 4095;
+-
+-# define DOCARGS_0							\
+-	str x30, [sp, -16]!;						\
+-	cfi_adjust_cfa_offset (16);					\
+-	cfi_rel_offset (x30, 0)
++	.section ".text";						\
++ENTRY (__##syscall_name##_nocancel);					\
++.Lpseudo_nocancel:							\
++	DO_CALL (syscall_name, args);					\
++.Lpseudo_finish:							\
++	cmn	x0, 4095;						\
++	b.cs	.Lsyscall_error;					\
++	.subsection 2;							\
++	.size __##syscall_name##_nocancel,.-__##syscall_name##_nocancel; \
++ENTRY (name);								\
++	SINGLE_THREAD_P(16);						\
++	cbz	w16, .Lpseudo_nocancel;					\
++	/* Setup common stack frame no matter the number of args.	\
++	   Also save the first arg, since it's basically free.  */	\
++	stp	x30, x0, [sp, -64]!;					\
++	cfi_adjust_cfa_offset (64);					\
++	cfi_rel_offset (x30, 0);					\
++	DOCARGS_##args;		/* save syscall args around CENABLE.  */ \
++	CENABLE;							\
++	mov	x16, x0;	/* save mask around syscall.  */	\
++	UNDOCARGS_##args;	/* restore syscall args.  */		\
++	DO_CALL (syscall_name, args);					\
++	str	x0, [sp, 8];	/* save result around CDISABLE.  */	\
++	mov	x0, x16;	/* restore mask for CDISABLE.  */	\
++	CDISABLE;							\
++	/* Break down the stack frame, restoring result at once.  */	\
++	ldp	x30, x0, [sp], 64;					\
++	cfi_adjust_cfa_offset (-64);					\
++	cfi_restore (x30);						\
++	b	.Lpseudo_finish;					\
++	cfi_endproc;							\
++	.size	name, .-name;						\
++	.previous
++
++# undef PSEUDO_END
++# define PSEUDO_END(name)						\
++	SYSCALL_ERROR_HANDLER;						\
++	cfi_endproc
++
++# define DOCARGS_0
++# define DOCARGS_1
++# define DOCARGS_2	str x1, [sp, 16]
++# define DOCARGS_3	stp x1, x2, [sp, 16]
++# define DOCARGS_4	DOCARGS_3; str x3, [sp, 32]
++# define DOCARGS_5	DOCARGS_3; stp x3, x4, [sp, 32]
++# define DOCARGS_6	DOCARGS_5; str x5, [sp, 48]
+ 
+ # define UNDOCARGS_0
+-
+-# define DOCARGS_1							\
+-	DOCARGS_0;							\
+-	str x0, [sp, -16]!;						\
+-	cfi_adjust_cfa_offset (16);					\
+-	cfi_rel_offset (x0, 0)
+-
+-# define UNDOCARGS_1							\
+-	ldr x0, [sp], 16;						\
+-	cfi_restore (x0);						\
+-	cfi_adjust_cfa_offset (-16);					\
+-
+-# define DOCARGS_2							\
+-	DOCARGS_1;							\
+-	str x1, [sp, -16]!;						\
+-	cfi_adjust_cfa_offset (16);					\
+-	cfi_rel_offset (x1, 0)
+-
+-# define UNDOCARGS_2							\
+-	ldr x1, [sp], 16;						\
+-	cfi_restore (x1);						\
+-	cfi_adjust_cfa_offset (-16);					\
+-	UNDOCARGS_1
+-
+-# define DOCARGS_3							\
+-	DOCARGS_2;							\
+-	str x2, [sp, -16]!;						\
+-	cfi_adjust_cfa_offset (16);					\
+-	cfi_rel_offset (x2, 0)
+-
+-# define UNDOCARGS_3							\
+-	ldr x2, [sp], 16;						\
+-	cfi_restore (x2);						\
+-	cfi_adjust_cfa_offset (-16);					\
+-	UNDOCARGS_2
+-
+-# define DOCARGS_4							\
+-	DOCARGS_3;							\
+-	str x3, [sp, -16]!;						\
+-	cfi_adjust_cfa_offset (16);					\
+-	cfi_rel_offset (x3, 0)
+-
+-# define UNDOCARGS_4							\
+-	ldr x3, [sp], 16;						\
+-	cfi_restore (x3);						\
+-	cfi_adjust_cfa_offset (-16);					\
+-	UNDOCARGS_3
+-
+-# define DOCARGS_5							\
+-	DOCARGS_4;							\
+-	str x4, [sp, -16]!;						\
+-	cfi_adjust_cfa_offset (16);					\
+-	cfi_rel_offset (x4, 0)
+-
+-# define UNDOCARGS_5							\
+-	ldr x4, [sp], 16;						\
+-	cfi_restore (x4);						\
+-	cfi_adjust_cfa_offset (-16);					\
+-	UNDOCARGS_4
+-
+-# define DOCARGS_6							\
+-	DOCARGS_5;							\
+-	str x5, [sp, -16]!;						\
+-	cfi_adjust_cfa_offset (16);					\
+-	cfi_rel_offset (x5, 0)
+-
+-# define UNDOCARGS_6							\
+-	ldr x5, [sp], 16;						\
+-	cfi_restore (x5);						\
+-	cfi_adjust_cfa_offset (-16);					\
+-	UNDOCARGS_5
++# define UNDOCARGS_1	ldr x0, [sp, 8]
++# define UNDOCARGS_2	ldp x0, x1, [sp, 8]
++# define UNDOCARGS_3	UNDOCARGS_1; ldp x1, x2, [sp, 16]
++# define UNDOCARGS_4	UNDOCARGS_2; ldp x2, x3, [sp, 24]
++# define UNDOCARGS_5	UNDOCARGS_3; ldp x3, x4, [sp, 32]
++# define UNDOCARGS_6	UNDOCARGS_4; ldp x4, x5, [sp, 40]
+ 
+ # ifdef IS_IN_libpthread
+ #  define CENABLE	bl __pthread_enable_asynccancel
+@@ -160,11 +101,9 @@
+ extern int __local_multiple_threads attribute_hidden;
+ #   define SINGLE_THREAD_P __builtin_expect (__local_multiple_threads == 0, 1)
+ #  else
+-#   define SINGLE_THREAD_P						\
+-  adrp	x16, __local_multiple_threads;					\
+-  add	x16, x16, #:lo12:__local_multiple_threads;			\
+-  ldr	x16, [x16];							\
+-  cmp	x16, 0;
++#   define SINGLE_THREAD_P(R)						\
++	adrp	x##R, __local_multiple_threads;				\
++	ldr	w##R, [x##R, :lo12:__local_multiple_threads]
+ #  endif
+ # else
+ /*  There is no __local_multiple_threads for librt, so use the TCB.  */
+@@ -173,20 +112,10 @@ extern int __local_multiple_threads attribute_hidden;
+   __builtin_expect (THREAD_GETMEM (THREAD_SELF,				\
+ 				   header.multiple_threads) == 0, 1)
+ #  else
+-#   define SINGLE_THREAD_P						\
+-  stp	x0, x30, [sp, -16]!;						\
+-  cfi_adjust_cfa_offset (16);						\
+-  cfi_rel_offset (x0, 0);						\
+-  cfi_rel_offset (x30, 8);						\
+-  bl	__read_tp;							\
+-  sub	x0, x0, PTHREAD_SIZEOF;						\
+-  ldr	x16, [x0, PTHREAD_MULTIPLE_THREADS_OFFSET];			\
+-  ldp	x0, x30, [sp], 16;						\
+-  cfi_restore (x0);							\
+-  cfi_restore (x30);							\
+-  cfi_adjust_cfa_offset (-16);						\
+-  cmp	x16, 0
+-#   define SINGLE_THREAD_P_PIC(x) SINGLE_THREAD_P
++#   define SINGLE_THREAD_P(R)						\
++	mrs	x##R, tpidr_el0;					\
++	sub	x##R, x##R, PTHREAD_SIZEOF;				\
++	ldr	w##R, [x##R, PTHREAD_MULTIPLE_THREADS_OFFSET]
+ #  endif
+ # endif
+ 
+diff --git glibc-2.17-c758a686/ports/sysdeps/unix/sysv/linux/aarch64/syscall.S glibc-2.17-c758a686/ports/sysdeps/unix/sysv/linux/aarch64/syscall.S
+index 574fdf1..fac6416 100644
+--- glibc-2.17-c758a686/ports/sysdeps/unix/sysv/linux/aarch64/syscall.S
++++ glibc-2.17-c758a686/ports/sysdeps/unix/sysv/linux/aarch64/syscall.S
+@@ -37,8 +37,6 @@ ENTRY (syscall)
+ 	mov	x6, x7
+ 	svc	0x0
+ 	cmn	x0, #4095
+-	b.cs	1f
++	b.cs	.Lsyscall_error
+ 	RET
+-1:
+-	b	SYSCALL_ERROR
+ PSEUDO_END (syscall)
+diff --git glibc-2.17-c758a686/ports/sysdeps/unix/sysv/linux/aarch64/sysdep.h glibc-2.17-c758a686/ports/sysdeps/unix/sysv/linux/aarch64/sysdep.h
+index 713bf7d..9961c03 100644
+--- glibc-2.17-c758a686/ports/sysdeps/unix/sysv/linux/aarch64/sysdep.h
++++ glibc-2.17-c758a686/ports/sysdeps/unix/sysv/linux/aarch64/sysdep.h
+@@ -58,19 +58,8 @@
+   .text;								      \
+   ENTRY (name);								      \
+     DO_CALL (syscall_name, args);					      \
+-    cmn x0, #4095;
+-
+-/* Notice the use of 'RET' instead of 'ret' the assembler is case
+-   insensitive and eglibc already uses the preprocessor symbol 'ret'
+-   so we use the upper case 'RET' to force through a ret instruction
+-   to the assembler */
+-# define PSEUDO_RET							      \
+-    b.cs 1f;								      \
+-    RET;								      \
+-    1:                                                                        \
+-    b SYSCALL_ERROR
+-# undef ret
+-# define ret PSEUDO_RET
++    cmn x0, #4095;							      \
++    b.cs .Lsyscall_error
+ 
+ # undef	PSEUDO_END
+ # define PSEUDO_END(name)						      \
+@@ -83,15 +72,7 @@
+   ENTRY (name);								      \
+     DO_CALL (syscall_name, args);
+ 
+-/* Notice the use of 'RET' instead of 'ret' the assembler is case
+-   insensitive and eglibc already uses the preprocessor symbol 'ret'
+-   so we use the upper case 'RET' to force through a ret instruction
+-   to the assembler */
+-# define PSEUDO_RET_NOERRNO						      \
+-    RET;
+-
+-# undef ret_NOERRNO
+-# define ret_NOERRNO PSEUDO_RET_NOERRNO
++# define ret_NOERRNO ret
+ 
+ # undef	PSEUDO_END_NOERRNO
+ # define PSEUDO_END_NOERRNO(name)					      \
+@@ -109,47 +90,38 @@
+ # define PSEUDO_END_ERRVAL(name) \
+   END (name)
+ 
+-# define ret_ERRVAL PSEUDO_RET_NOERRNO
++# define ret_ERRVAL ret
+ 
++# define SYSCALL_ERROR  .Lsyscall_error
+ # if NOT_IN_libc
+-#  define SYSCALL_ERROR __local_syscall_error
+ #  if RTLD_PRIVATE_ERRNO
+ #   define SYSCALL_ERROR_HANDLER				\
+-__local_syscall_error:						\
++.Lsyscall_error:						\
+ 	adrp	x1, C_SYMBOL_NAME(rtld_errno);			\
+-	add	x1, x1, #:lo12:C_SYMBOL_NAME(rtld_errno);	\
+ 	neg     w0, w0;						\
+-	str     w0, [x1];					\
++	str     w0, [x1, :lo12:C_SYMBOL_NAME(rtld_errno)];	\
+ 	mov	x0, -1;						\
+ 	RET;
+ #  else
+ 
+ #   define SYSCALL_ERROR_HANDLER				\
+-__local_syscall_error:						\
+-	stp     x29, x30, [sp, -32]!;				\
+-	cfi_adjust_cfa_offset (32);				\
+-	cfi_rel_offset (x29, 0);				\
+-	cfi_rel_offset (x30, 8);				\
+-        add     x29, sp, 0;					\
+-        str     x19, [sp,16];					\
+-	neg	x19, x0;					\
+-	bl	C_SYMBOL_NAME(__errno_location);		\
+-	str	x19, [x0];					\
++.Lsyscall_error:						\
++	adrp	x1, :gottprel:errno;				\
++	neg	w2, w0;						\
++	ldr	x1, [x1, :gottprel_lo12:errno];			\
++	mrs	x3, tpidr_el0;					\
+ 	mov	x0, -1;						\
+-        ldr     x19, [sp,16];					\
+-        ldp     x29, x30, [sp], 32;				\
+-	cfi_adjust_cfa_offset (-32);				\
+-	cfi_restore (x29);					\
+-	cfi_restore (x30);					\
++	str	w2, [x1, x3];					\
+ 	RET;
+ #  endif
+ # else
+-#  define SYSCALL_ERROR_HANDLER	/* Nothing here; code in sysdep.S is used.  */
+-#  define SYSCALL_ERROR __syscall_error
++#  define SYSCALL_ERROR_HANDLER					\
++.Lsyscall_error:						\
++	b	__syscall_error;
+ # endif
+ 
+ /* Linux takes system call args in registers:
+-	syscall number	in the SVC instruction
++	syscall number	x8
+ 	arg 1		x0
+ 	arg 2		x1
+ 	arg 3		x2
+@@ -177,28 +149,8 @@ __local_syscall_error:						\
+ 
+ # undef	DO_CALL
+ # define DO_CALL(syscall_name, args)		\
+-    DOARGS_##args				\
+     mov x8, SYS_ify (syscall_name);		\
+-    svc 0;					\
+-    UNDOARGS_##args
+-
+-# define DOARGS_0 /* nothing */
+-# define DOARGS_1 /* nothing */
+-# define DOARGS_2 /* nothing */
+-# define DOARGS_3 /* nothing */
+-# define DOARGS_4 /* nothing */
+-# define DOARGS_5 /* nothing */
+-# define DOARGS_6 /* nothing */
+-# define DOARGS_7 /* nothing */
+-
+-# define UNDOARGS_0 /* nothing */
+-# define UNDOARGS_1 /* nothing */
+-# define UNDOARGS_2 /* nothing */
+-# define UNDOARGS_3 /* nothing */
+-# define UNDOARGS_4 /* nothing */
+-# define UNDOARGS_5 /* nothing */
+-# define UNDOARGS_6 /* nothing */
+-# define UNDOARGS_7 /* nothing */
++    svc 0
+ 
+ #else /* not __ASSEMBLER__ */
+ 
+diff --git glibc-2.17-c758a686/ports/sysdeps/unix/sysv/linux/aarch64/vfork.S glibc-2.17-c758a686/ports/sysdeps/unix/sysv/linux/aarch64/vfork.S
+index f2dc49b..3fb68b9 100644
+--- glibc-2.17-c758a686/ports/sysdeps/unix/sysv/linux/aarch64/vfork.S
++++ glibc-2.17-c758a686/ports/sysdeps/unix/sysv/linux/aarch64/vfork.S
+@@ -38,10 +38,8 @@ ENTRY (__vfork)
+ 	RESTORE_PID
+ #endif
+ 	cmn	x0, #4095
+-	b.cs    1f
++	b.cs    .Lsyscall_error
+ 	RET
+-1:
+-	b	SYSCALL_ERROR
+ 
+ PSEUDO_END (__vfork)
+ libc_hidden_def (__vfork)
+-- 
+1.8.3.1
+

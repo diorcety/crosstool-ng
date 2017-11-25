@@ -1,0 +1,19 @@
+commit d421868bb85d1459b1d2df520bb26f3e11aa195a
+Author: Adhemerval Zanella <azanella@linux.vnet.ibm.com>
+Date:   Tue Mar 10 09:38:54 2015 -0400
+
+    powerpc: Fix incorrect results for pow when using FMA
+    
+    This patch adds no FMA generation for e_pow to avoid precision issues
+    for powerpc.  This fixes BZ#18104.
+
+diff --git a/sysdeps/ieee754/dbl-64/Makefile b/sysdeps/ieee754/dbl-64/Makefile
+index 35f545f..5557c75 100644
+--- a/sysdeps/ieee754/dbl-64/Makefile
++++ b/sysdeps/ieee754/dbl-64/Makefile
+@@ -2,4 +2,5 @@ ifeq ($(subdir),math)
+ # branred depends on precise IEEE double rounding
+ CFLAGS-branred.c = $(config-cflags-nofma)
+ CFLAGS-e_sqrt.c = $(config-cflags-nofma)
++CFLAGS-e_pow.c = $(config-cflags-nofma)
+ endif

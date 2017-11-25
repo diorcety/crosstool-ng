@@ -1,0 +1,220 @@
+From 0c36ea57312ce701930b879d49b3f64cead222d8 Mon Sep 17 00:00:00 2001
+From: Rajalakshmi Srinivasaraghavan <raji@linux.vnet.ibm.com>
+Date: Wed, 30 Jul 2014 05:48:25 -0500
+Subject: [PATCH] PowerPC: multiarch strncasecmp for PowerPC64
+
+commit 1c92d9a0e0be6175915128157036cf138ef64af8
+Author: Adhemerval Zanella <azanella@linux.vnet.ibm.com>
+Date:   Fri Dec 13 14:40:28 2013 -0500
+---
+ sysdeps/powerpc/powerpc64/multiarch/Makefile       |  6 +++-
+ .../powerpc/powerpc64/multiarch/ifunc-impl-list.c  | 15 ++++++++
+ .../powerpc/powerpc64/multiarch/strncase-power7.c  | 24 +++++++++++++
+ sysdeps/powerpc/powerpc64/multiarch/strncase.c     | 41 +++++++++++++++++++++
+ .../powerpc64/multiarch/strncase_l-power7.c        | 25 +++++++++++++
+ sysdeps/powerpc/powerpc64/multiarch/strncase_l.c   | 42 ++++++++++++++++++++++
+ 6 files changed, 152 insertions(+), 1 deletion(-)
+ create mode 100644 sysdeps/powerpc/powerpc64/multiarch/strncase-power7.c
+ create mode 100644 sysdeps/powerpc/powerpc64/multiarch/strncase.c
+ create mode 100644 sysdeps/powerpc/powerpc64/multiarch/strncase_l-power7.c
+ create mode 100644 sysdeps/powerpc/powerpc64/multiarch/strncase_l.c
+
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/Makefile glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/Makefile
+index 5e172da..4dca756 100644
+--- glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/Makefile
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/Makefile
+@@ -6,5 +6,9 @@ sysdep_routines += memcpy-power7 memcpy-a2 memcpy-power6 memcpy-cell \
+                   mempcpy-power7 mempcpy-ppc64 memchr-power7 memchr-ppc64 \
+                   memrchr-power7 memrchr-ppc64 rawmemchr-power7 \
+                   rawmemchr-ppc64 strlen-power7 strlen-ppc64 strnlen-power7 \
+-                  strnlen-ppc64 strcasecmp-power7 strcasecmp_l-power7
++                  strnlen-ppc64 strcasecmp-power7 strcasecmp_l-power7 \
++                  strncase-power7 strncase_l-power7
++
++CFLAGS-strncase-power7.c += -mcpu=power7 -funroll-loops
++CFLAGS-strncase_l-power7.c += -mcpu=power7 -funroll-loops
+ endif
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/ifunc-impl-list.c glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/ifunc-impl-list.c
+index ba78d97..4b8fb22 100644
+--- glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/ifunc-impl-list.c
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/ifunc-impl-list.c
+@@ -151,5 +151,20 @@ __libc_ifunc_impl_list (const char *name, struct libc_ifunc_impl *array,
+              IFUNC_IMPL_ADD (array, i, strcasecmp_l, 1,
+                              __strcasecmp_l_ppc))
+ 
++  /* Support sysdeps/powerpc/powerpc64/multiarch/strncase.c.  */
++  IFUNC_IMPL (i, name, strncasecmp,
++             IFUNC_IMPL_ADD (array, i, strncasecmp,
++                             hwcap & PPC_FEATURE_HAS_VSX,
++                             __strncasecmp_power7)
++             IFUNC_IMPL_ADD (array, i, strncasecmp, 1, __strncasecmp_ppc))
++
++  /* Support sysdeps/powerpc/powerpc64/multiarch/strncase_l.c.  */
++  IFUNC_IMPL (i, name, strncasecmp_l,
++             IFUNC_IMPL_ADD (array, i, strncasecmp_l,
++                             hwcap & PPC_FEATURE_HAS_VSX,
++                             __strncasecmp_l_power7)
++             IFUNC_IMPL_ADD (array, i, strncasecmp_l, 1,
++                             __strncasecmp_l_ppc))
++
+   return i;
+ }
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/strncase-power7.c glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/strncase-power7.c
+new file mode 100644
+index 0000000..9c5dbab
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/strncase-power7.c
+@@ -0,0 +1,24 @@
++/* Copyright (C) 2013-2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <string.h>
++
++#define __strncasecmp __strncasecmp_power7
++
++extern __typeof (strncasecmp) __strncasecmp_power7 attribute_hidden;
++
++#include <string/strncase.c>
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/strncase.c glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/strncase.c
+new file mode 100644
+index 0000000..05eba7c
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/strncase.c
+@@ -0,0 +1,41 @@
++/* Multiple versions of strncasecmp
++   Copyright (C) 2013-2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#ifndef NOT_IN_libc
++# include <string.h>
++# define strncasecmp __strncasecmp_ppc
++extern __typeof (__strncasecmp) __strncasecmp_ppc attribute_hidden;
++extern __typeof (__strncasecmp) __strncasecmp_power7 attribute_hidden;
++#endif
++
++#include <string/strncase.c>
++#undef strncasecmp
++
++#ifndef NOT_IN_libc
++# include <shlib-compat.h>
++# include "init-arch.h"
++
++/* Avoid DWARF definition DIE on ifunc symbol so that GDB can handle
++   ifunc symbol properly.  */
++extern __typeof (__strncasecmp) __libc_strncasecmp;
++libc_ifunc (__libc_strncasecmp,
++	     (hwcap & PPC_FEATURE_HAS_VSX)
++             ? __strncasecmp_power7
++             : __strncasecmp_ppc);
++weak_alias (__libc_strncasecmp, strncasecmp)
++#endif
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/strncase_l-power7.c glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/strncase_l-power7.c
+new file mode 100644
+index 0000000..8c8cd8d
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/strncase_l-power7.c
+@@ -0,0 +1,25 @@
++/* Copyright (C) 2013-2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <string.h>
++
++#define __strncasecmp_l __strncasecmp_l_power7
++#define USE_IN_EXTENDED_LOCALE_MODEL    1
++
++extern __typeof (strncasecmp_l) __strncasecmp_l_power7 attribute_hidden;
++
++#include <string/strncase.c>
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/strncase_l.c glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/strncase_l.c
+new file mode 100644
+index 0000000..4014269
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/strncase_l.c
+@@ -0,0 +1,42 @@
++/* Multiple versions of strncasecmp_l
++   Copyright (C) 2013-2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#ifndef NOT_IN_libc
++# include <string.h>
++# define strncasecmp_l __strncasecmp_l_ppc
++extern __typeof (__strncasecmp_l) __strncasecmp_l_ppc attribute_hidden;
++extern __typeof (__strncasecmp_l) __strncasecmp_l_power7 attribute_hidden;
++#endif
++
++#include <string/strncase_l.c>
++#undef strncasecmp_l
++
++#ifndef NOT_IN_libc
++# include <shlib-compat.h>
++# include "init-arch.h"
++
++/* Avoid DWARF definition DIE on ifunc symbol so that GDB can handle
++   ifunc symbol properly.  */
++extern __typeof (__strncasecmp_l) __libc_strncasecmp_l;
++libc_ifunc (__libc_strncasecmp_l,
++	     (hwcap & PPC_FEATURE_HAS_VSX)
++             ? __strncasecmp_l_power7
++             : __strncasecmp_l_ppc);
++
++weak_alias (__libc_strncasecmp_l, strncasecmp_l)
++#endif
+-- 
+1.8.3.1
+

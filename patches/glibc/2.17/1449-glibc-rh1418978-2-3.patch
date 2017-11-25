@@ -1,0 +1,20 @@
+commit d3c827e7c8208afeaed880cf8cf2515c86d10f17
+Author: Andreas Krebbel <krebbel@linux.vnet.ibm.com>
+Date:   Fri Sep 19 11:26:31 2014 +0200
+
+    stdlib/longlong.h: Add __udiv_w_sdiv prototype.
+
+Index: b/stdlib/longlong.h
+===================================================================
+--- a/stdlib/longlong.h
++++ b/stdlib/longlong.h
+@@ -1642,7 +1642,8 @@ extern UHItype __stormy16_count_leading_
+ #if !defined (udiv_qrnnd) && defined (sdiv_qrnnd)
+ #define udiv_qrnnd(q, r, nh, nl, d) \
+   do {									\
+-    USItype __r;							\
++    extern UWtype __udiv_w_sdiv (UWtype *, UWtype, UWtype, UWtype);	\
++    UWtype __r;								\
+     (q) = __udiv_w_sdiv (&__r, nh, nl, d);				\
+     (r) = __r;								\
+   } while (0)

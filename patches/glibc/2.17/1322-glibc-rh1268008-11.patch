@@ -1,0 +1,962 @@
+From 1a569200bc2875ffc474587fb6ec599aac4bad9b Mon Sep 17 00:00:00 2001
+From: Stefan Liebler <stli@linux.vnet.ibm.com>
+Date: Thu, 8 Oct 2015 10:56:59 +0200
+Subject: [PATCH 11/30] S390: Optimize strnlen and wcsnlen.
+
+upstream-commit-id: fcf40ebe2682fd65d64f94d69a3df798960cf1b7
+https://www.sourceware.org/ml/libc-alpha/2015-07/msg00082.html
+
+This patch provides optimized versions of strnlen and wcsnlen with the z13
+vector instructions.
+
+ChangeLog:
+
+	* sysdeps/s390/multiarch/strnlen-c.c: New File.
+	* sysdeps/s390/multiarch/strnlen-vx.S: Likewise.
+	* sysdeps/s390/multiarch/strnlen.c: Likewise.
+	* sysdeps/s390/multiarch/wcsnlen-c.c: Likewise.
+	* sysdeps/s390/multiarch/wcsnlen-vx.S: Likewise.
+	* sysdeps/s390/multiarch/wcsnlen.c: Likewise.
+	* sysdeps/s390/multiarch/Makefile (sysdep_routines): Add strnlen and
+	wcsnlen functions.
+	* sysdeps/s390/multiarch/ifunc-impl-list.c
+	(__libc_ifunc_impl_list): Add ifunc test for strnlen, wcsnlen.
+	* wcsmbs/wcsnlen.c: Use WCSNLEN if defined.
+	* string/test-strnlen.c: Add wcsnlen support.
+	* wcsmbs/test-wcsnlen.c: New File.
+	* wcsmbs/Makefile (strop-tests): Add wcsnlen.
+	* benchtests/bench-strnlen.c: Add wcsnlen support.
+	* benchtests/bench-wcsnlen.c: New File.
+	* benchtests/Makefile (wcsmbs-bench): Add wcsnlen.
+---
+ benchtests/Makefile                      |   2 +-
+ benchtests/bench-strnlen.c               |  73 +++++++++------
+ benchtests/bench-wcsnlen.c               |  20 ++++
+ string/test-strnlen.c                    |  87 +++++++++++-------
+ sysdeps/s390/multiarch/Makefile          |   6 +-
+ sysdeps/s390/multiarch/ifunc-impl-list.c |   3 +
+ sysdeps/s390/multiarch/strnlen-c.c       |  28 ++++++
+ sysdeps/s390/multiarch/strnlen-vx.S      | 134 +++++++++++++++++++++++++++
+ sysdeps/s390/multiarch/strnlen.c         |  29 ++++++
+ sysdeps/s390/multiarch/wcsnlen-c.c       |  25 +++++
+ sysdeps/s390/multiarch/wcsnlen-vx.S      | 151 +++++++++++++++++++++++++++++++
+ sysdeps/s390/multiarch/wcsnlen.c         |  28 ++++++
+ wcsmbs/Makefile                          |   2 +-
+ wcsmbs/test-wcsnlen-ifunc.c              |  20 ++++
+ wcsmbs/test-wcsnlen.c                    |  20 ++++
+ wcsmbs/wcsnlen.c                         |   7 +-
+ 16 files changed, 571 insertions(+), 64 deletions(-)
+ create mode 100644 benchtests/bench-wcsnlen.c
+ create mode 100644 sysdeps/s390/multiarch/strnlen-c.c
+ create mode 100644 sysdeps/s390/multiarch/strnlen-vx.S
+ create mode 100644 sysdeps/s390/multiarch/strnlen.c
+ create mode 100644 sysdeps/s390/multiarch/wcsnlen-c.c
+ create mode 100644 sysdeps/s390/multiarch/wcsnlen-vx.S
+ create mode 100644 sysdeps/s390/multiarch/wcsnlen.c
+ create mode 100644 wcsmbs/test-wcsnlen-ifunc.c
+ create mode 100644 wcsmbs/test-wcsnlen.c
+
+diff --git a/benchtests/Makefile b/benchtests/Makefile
+index 09ab87f..7bb2eef 100644
+--- a/benchtests/Makefile
++++ b/benchtests/Makefile
+@@ -38,7 +38,7 @@ string-bench := bcopy bzero memccpy memchr memcmp memcpy memmem memmove \
+ 		strcat strchr strchrnul strcmp strcpy strcspn strlen \
+ 		strncasecmp strncat strncmp strncpy strnlen strpbrk strrchr \
+ 		strspn strstr strcpy_chk stpcpy_chk memrchr strsep strtok
+-wcsmbs-bench := wcslen
++wcsmbs-bench := wcslen wcsnlen
+ string-bench-all := $(string-bench) ${wcsmbs-bench}
+ 
+ stdlib-bench := strtod
+diff --git a/benchtests/bench-strnlen.c b/benchtests/bench-strnlen.c
+index 793f9be..cbdce75 100644
+--- a/benchtests/bench-strnlen.c
++++ b/benchtests/bench-strnlen.c
+@@ -1,5 +1,5 @@
+ /* Measure strlen functions.
+-   Copyright (C) 2013 Free Software Foundation, Inc.
++   Copyright (C) 2013-2015 Free Software Foundation, Inc.
+    This file is part of the GNU C Library.
+ 
+    The GNU C Library is free software; you can redistribute it and/or
+@@ -17,17 +17,36 @@
+    <http://www.gnu.org/licenses/>.  */
+ 
+ #define TEST_MAIN
+-#define TEST_NAME "strnlen"
++#ifndef WIDE
++# define TEST_NAME "strnlen"
++#else
++# define TEST_NAME "wcsnlen"
++#endif /* WIDE */
+ #include "bench-string.h"
+ 
+-typedef size_t (*proto_t) (const char *, size_t);
+-size_t simple_strnlen (const char *, size_t);
+-
+-IMPL (simple_strnlen, 0)
+-IMPL (strnlen, 1)
++#ifndef WIDE
++# define STRNLEN strnlen
++# define CHAR char
++# define BIG_CHAR CHAR_MAX
++# define MIDDLE_CHAR 127
++# define SIMPLE_STRNLEN simple_strnlen
++#else
++# include <wchar.h>
++# define STRNLEN wcsnlen
++# define CHAR wchar_t
++# define BIG_CHAR WCHAR_MAX
++# define MIDDLE_CHAR 1121
++# define SIMPLE_STRNLEN simple_wcsnlen
++#endif /* WIDE */
++
++typedef size_t (*proto_t) (const CHAR *, size_t);
++size_t SIMPLE_STRNLEN (const CHAR *, size_t);
++
++IMPL (SIMPLE_STRNLEN, 0)
++IMPL (STRNLEN, 1)
+ 
+ size_t
+-simple_strnlen (const char *s, size_t maxlen)
++SIMPLE_STRNLEN (const CHAR *s, size_t maxlen)
+ {
+   size_t i;
+ 
+@@ -36,7 +55,7 @@ simple_strnlen (const char *s, size_t maxlen)
+ }
+ 
+ static void
+-do_one_test (impl_t *impl, const char *s, size_t maxlen, size_t exp_len)
++do_one_test (impl_t *impl, const CHAR *s, size_t maxlen, size_t exp_len)
+ {
+   size_t len = CALL (impl, s, maxlen), i, iters = INNER_LOOP_ITERS;
+   timing_t start, stop, cur;
+@@ -66,18 +85,20 @@ do_test (size_t align, size_t len, size_t maxlen, int max_char)
+ {
+   size_t i;
+ 
+-  align &= 7;
+-  if (align + len >= page_size)
++  align &= 63;
++  if ((align + len) * sizeof (CHAR) >= page_size)
+     return;
+ 
++  CHAR *buf = (CHAR *) (buf1);
++
+   for (i = 0; i < len; ++i)
+-    buf1[align + i] = 1 + 7 * i % max_char;
+-  buf1[align + len] = 0;
++    buf[align + i] = 1 + 7 * i % max_char;
++  buf[align + len] = 0;
+ 
+   printf ("Length %4zd, alignment %2zd:", len, align);
+ 
+   FOR_EACH_IMPL (impl, 0)
+-    do_one_test (impl, (char *) (buf1 + align), maxlen, MIN (len, maxlen));
++    do_one_test (impl, (CHAR *) (buf + align), maxlen, MIN (len, maxlen));
+ 
+   putchar ('\n');
+ }
+@@ -96,34 +117,34 @@ test_main (void)
+ 
+   for (i = 1; i < 8; ++i)
+     {
+-      do_test (0, i, i - 1, 127);
+-      do_test (0, i, i, 127);
+-      do_test (0, i, i + 1, 127);
++      do_test (0, i, i - 1, MIDDLE_CHAR);
++      do_test (0, i, i, MIDDLE_CHAR);
++      do_test (0, i, i + 1, MIDDLE_CHAR);
+     }
+ 
+   for (i = 1; i < 8; ++i)
+     {
+-      do_test (i, i, i - 1, 127);
+-      do_test (i, i, i, 127);
+-      do_test (i, i, i + 1, 127);
++      do_test (i, i, i - 1, MIDDLE_CHAR);
++      do_test (i, i, i, MIDDLE_CHAR);
++      do_test (i, i, i + 1, MIDDLE_CHAR);
+     }
+ 
+   for (i = 2; i <= 10; ++i)
+     {
+-      do_test (0, 1 << i, 5000, 127);
+-      do_test (1, 1 << i, 5000, 127);
++      do_test (0, 1 << i, 5000, MIDDLE_CHAR);
++      do_test (1, 1 << i, 5000, MIDDLE_CHAR);
+     }
+ 
+   for (i = 1; i < 8; ++i)
+-    do_test (0, i, 5000, 255);
++    do_test (0, i, 5000, BIG_CHAR);
+ 
+   for (i = 1; i < 8; ++i)
+-    do_test (i, i, 5000, 255);
++    do_test (i, i, 5000, BIG_CHAR);
+ 
+   for (i = 2; i <= 10; ++i)
+     {
+-      do_test (0, 1 << i, 5000, 255);
+-      do_test (1, 1 << i, 5000, 255);
++      do_test (0, 1 << i, 5000, BIG_CHAR);
++      do_test (1, 1 << i, 5000, BIG_CHAR);
+     }
+ 
+   return ret;
+diff --git a/benchtests/bench-wcsnlen.c b/benchtests/bench-wcsnlen.c
+new file mode 100644
+index 0000000..2b5a51c
+--- /dev/null
++++ b/benchtests/bench-wcsnlen.c
+@@ -0,0 +1,20 @@
++/* Measure wcsnlen functions.
++   Copyright (C) 2015 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#define WIDE 1
++#include "bench-strnlen.c"
+diff --git a/string/test-strnlen.c b/string/test-strnlen.c
+index ae959bf..43db896 100644
+--- a/string/test-strnlen.c
++++ b/string/test-strnlen.c
+@@ -1,5 +1,5 @@
+ /* Test and measure strlen functions.
+-   Copyright (C) 1999-2012 Free Software Foundation, Inc.
++   Copyright (C) 1999-2015 Free Software Foundation, Inc.
+    This file is part of the GNU C Library.
+    Written by Jakub Jelinek <jakub@redhat.com>, 1999.
+ 
+@@ -18,17 +18,36 @@
+    <http://www.gnu.org/licenses/>.  */
+ 
+ #define TEST_MAIN
+-#define TEST_NAME "strnlen"
++#ifndef WIDE
++# define TEST_NAME "strnlen"
++#else
++# define TEST_NAME "wcsnlen"
++#endif /* !WIDE */
+ #include "test-string.h"
+ 
+-typedef size_t (*proto_t) (const char *, size_t);
+-size_t simple_strnlen (const char *, size_t);
+-
+-IMPL (simple_strnlen, 0)
+-IMPL (strnlen, 1)
++#ifndef WIDE
++# define STRNLEN strnlen
++# define CHAR char
++# define BIG_CHAR CHAR_MAX
++# define MIDDLE_CHAR 127
++# define SIMPLE_STRNLEN simple_strnlen
++#else
++# include <wchar.h>
++# define STRNLEN wcsnlen
++# define CHAR wchar_t
++# define BIG_CHAR WCHAR_MAX
++# define MIDDLE_CHAR 1121
++# define SIMPLE_STRNLEN simple_wcsnlen
++#endif /* !WIDE */
++
++typedef size_t (*proto_t) (const CHAR *, size_t);
++size_t SIMPLE_STRNLEN (const CHAR *, size_t);
++
++IMPL (SIMPLE_STRNLEN, 0)
++IMPL (STRNLEN, 1)
+ 
+ size_t
+-simple_strnlen (const char *s, size_t maxlen)
++SIMPLE_STRNLEN (const CHAR *s, size_t maxlen)
+ {
+   size_t i;
+ 
+@@ -37,7 +56,7 @@ simple_strnlen (const char *s, size_t maxlen)
+ }
+ 
+ static void
+-do_one_test (impl_t *impl, const char *s, size_t maxlen, size_t exp_len)
++do_one_test (impl_t *impl, const CHAR *s, size_t maxlen, size_t exp_len)
+ {
+   size_t len = CALL (impl, s, maxlen);
+   if (len != exp_len)
+@@ -54,23 +73,25 @@ do_test (size_t align, size_t len, size_t maxlen, int max_char)
+ {
+   size_t i;
+ 
+-  align &= 7;
+-  if (align + len >= page_size)
++  align &= 63;
++  if ((align + len) * sizeof (CHAR) >= page_size)
+     return;
+ 
++  CHAR *buf = (CHAR *) (buf1);
++
+   for (i = 0; i < len; ++i)
+-    buf1[align + i] = 1 + 7 * i % max_char;
+-  buf1[align + len] = 0;
++    buf[align + i] = 1 + 7 * i % max_char;
++  buf[align + len] = 0;
+ 
+   FOR_EACH_IMPL (impl, 0)
+-    do_one_test (impl, (char *) (buf1 + align), maxlen, MIN (len, maxlen));
++    do_one_test (impl, (CHAR *) (buf + align), maxlen, MIN (len, maxlen));
+ }
+ 
+ static void
+ do_random_tests (void)
+ {
+   size_t i, j, n, align, len;
+-  unsigned char *p = buf1 + page_size - 512;
++  CHAR *p = (CHAR *) (buf1 + page_size - 512 * sizeof (CHAR));
+ 
+   for (n = 0; n < ITERATIONS; n++)
+     {
+@@ -97,25 +118,25 @@ do_random_tests (void)
+       FOR_EACH_IMPL (impl, 1)
+ 	{
+ 	  if (len > 0
+-	      && CALL (impl, (char *) (p + align), len - 1) != len - 1)
++	      && CALL (impl, (CHAR *) (p + align), len - 1) != len - 1)
+ 	    {
+ 	      error (0, 0, "Iteration %zd (limited) - wrong result in function %s (%zd) %zd != %zd, p %p",
+ 		     n, impl->name, align,
+-		     CALL (impl, (char *) (p + align), len - 1), len - 1, p);
++		     CALL (impl, (CHAR *) (p + align), len - 1), len - 1, p);
+ 	      ret = 1;
+ 	    }
+-	  if (CALL (impl, (char *) (p + align), len) != len)
++	  if (CALL (impl, (CHAR *) (p + align), len) != len)
+ 	    {
+ 	      error (0, 0, "Iteration %zd (exact) - wrong result in function %s (%zd) %zd != %zd, p %p",
+ 		     n, impl->name, align,
+-		     CALL (impl, (char *) (p + align), len), len, p);
++		     CALL (impl, (CHAR *) (p + align), len), len, p);
+ 	      ret = 1;
+ 	    }
+-	  if (CALL (impl, (char *) (p + align), len + 1) != len)
++	  if (CALL (impl, (CHAR *) (p + align), len + 1) != len)
+ 	    {
+ 	      error (0, 0, "Iteration %zd (long) - wrong result in function %s (%zd) %zd != %zd, p %p",
+ 		     n, impl->name, align,
+-		     CALL (impl, (char *) (p + align), len + 1), len, p);
++		     CALL (impl, (CHAR *) (p + align), len + 1), len, p);
+ 	      ret = 1;
+ 	    }
+ 	}
+@@ -136,34 +157,34 @@ test_main (void)
+ 
+   for (i = 1; i < 8; ++i)
+     {
+-      do_test (0, i, i - 1, 127);
+-      do_test (0, i, i, 127);
+-      do_test (0, i, i + 1, 127);
++      do_test (0, i, i - 1, MIDDLE_CHAR);
++      do_test (0, i, i, MIDDLE_CHAR);
++      do_test (0, i, i + 1, MIDDLE_CHAR);
+     }
+ 
+   for (i = 1; i < 8; ++i)
+     {
+-      do_test (i, i, i - 1, 127);
+-      do_test (i, i, i, 127);
+-      do_test (i, i, i + 1, 127);
++      do_test (i, i, i - 1, MIDDLE_CHAR);
++      do_test (i, i, i, MIDDLE_CHAR);
++      do_test (i, i, i + 1, MIDDLE_CHAR);
+     }
+ 
+   for (i = 2; i <= 10; ++i)
+     {
+-      do_test (0, 1 << i, 5000, 127);
+-      do_test (1, 1 << i, 5000, 127);
++      do_test (0, 1 << i, 5000, MIDDLE_CHAR);
++      do_test (1, 1 << i, 5000, MIDDLE_CHAR);
+     }
+ 
+   for (i = 1; i < 8; ++i)
+-    do_test (0, i, 5000, 255);
++    do_test (0, i, 5000, BIG_CHAR);
+ 
+   for (i = 1; i < 8; ++i)
+-    do_test (i, i, 5000, 255);
++    do_test (i, i, 5000, BIG_CHAR);
+ 
+   for (i = 2; i <= 10; ++i)
+     {
+-      do_test (0, 1 << i, 5000, 255);
+-      do_test (1, 1 << i, 5000, 255);
++      do_test (0, 1 << i, 5000, BIG_CHAR);
++      do_test (1, 1 << i, 5000, BIG_CHAR);
+     }
+ 
+   do_random_tests ();
+diff --git a/sysdeps/s390/multiarch/Makefile b/sysdeps/s390/multiarch/Makefile
+index 3a98098..3397f24 100644
+--- a/sysdeps/s390/multiarch/Makefile
++++ b/sysdeps/s390/multiarch/Makefile
+@@ -1,7 +1,9 @@
+ ifeq ($(subdir),string)
+-sysdep_routines += strlen strlen-vx strlen-c
++sysdep_routines += strlen strlen-vx strlen-c \
++		   strnlen strnlen-vx strnlen-c
+ endif
+ 
+ ifeq ($(subdir),wcsmbs)
+-sysdep_routines += wcslen wcslen-vx wcslen-c
++sysdep_routines += wcslen wcslen-vx wcslen-c \
++		   wcsnlen wcsnlen-vx wcsnlen-c
+ endif
+diff --git a/sysdeps/s390/multiarch/ifunc-impl-list.c b/sysdeps/s390/multiarch/ifunc-impl-list.c
+index e9639ef..bc17c59 100644
+--- a/sysdeps/s390/multiarch/ifunc-impl-list.c
++++ b/sysdeps/s390/multiarch/ifunc-impl-list.c
+@@ -82,6 +82,9 @@ __libc_ifunc_impl_list (const char *name, struct libc_ifunc_impl *array,
+   IFUNC_VX_IMPL (strlen);
+   IFUNC_VX_IMPL (wcslen);
+ 
++  IFUNC_VX_IMPL (strnlen);
++  IFUNC_VX_IMPL (wcsnlen);
++
+ #endif /* HAVE_S390_VX_ASM_SUPPORT */
+ 
+   return i;
+diff --git a/sysdeps/s390/multiarch/strnlen-c.c b/sysdeps/s390/multiarch/strnlen-c.c
+new file mode 100644
+index 0000000..50fc688
+--- /dev/null
++++ b/sysdeps/s390/multiarch/strnlen-c.c
+@@ -0,0 +1,28 @@
++/* Default strnlen implementation for S/390.
++   Copyright (C) 2015 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#if defined HAVE_S390_VX_ASM_SUPPORT && !defined NOT_IN_libc
++# define STRNLEN  __strnlen_c
++# ifdef SHARED
++#  undef libc_hidden_def
++#  define libc_hidden_def(name)					\
++  __hidden_ver1 (__strnlen_c, __GI_strnlen, __strnlen_c);
++# endif /* SHARED */
++
++# include <string/strnlen.c>
++#endif /* HAVE_S390_VX_ASM_SUPPORT && !defined NOT_IN_libc */
+diff --git a/sysdeps/s390/multiarch/strnlen-vx.S b/sysdeps/s390/multiarch/strnlen-vx.S
+new file mode 100644
+index 0000000..8c15621
+--- /dev/null
++++ b/sysdeps/s390/multiarch/strnlen-vx.S
+@@ -0,0 +1,134 @@
++/* Vector optimized 32/64 bit S/390 version of strnlen.
++   Copyright (C) 2015 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#if defined HAVE_S390_VX_ASM_SUPPORT && !defined NOT_IN_libc
++
++# include "sysdep.h"
++# include "asm-syntax.h"
++
++	.text
++
++/* size_t strnlen (const char *s, size_t maxlen)
++   Returns the number of characters in s or at most maxlen.
++
++   Register usage:
++   -r1=tmp
++   -r2=address of string
++   -r3=maxlen (number of characters to be read)
++   -r4=tmp
++   -r5=current_len and return_value
++   -v16=part of s
++*/
++ENTRY(__strnlen_vx)
++	.machine "z13"
++	.machinemode "zarch_nohighgprs"
++
++# if !defined __s390x__
++	llgfr	%r3,%r3
++# endif /* !defined __s390x__ */
++
++	clgfi	%r3,0		/* if maxlen == 0, return 0.  */
++	locgre	%r2,%r3
++	ber	%r14
++
++	vlbb	%v16,0(%r2),6	/* Load s until next 4k-byte boundary.  */
++	lcbb	%r1,0(%r2),6	/* Get bytes to 4k-byte boundary or 16.  */
++	llgfr	%r1,%r1		/* Convert 32bit to 64bit.  */
++
++	vfenezb	%v16,%v16,%v16	/* Find element not equal with zero search.  */
++	clgr	%r1,%r3
++	locgrh	%r1,%r3		/* loaded_byte_count
++				   = min (loaded_byte_count, maxlen)  */
++
++	vlgvb	%r5,%v16,7	/* Load zero index or 16 if not found.  */
++	clr	%r5,%r1		/* If found zero within loaded bytes?  */
++	locgrl	%r2,%r5		/* Then copy return value.  */
++	blr	%r14		/* And return.  */
++
++	clgr	%r1,%r3		/* If loaded_byte_count == maxlen?  */
++	locgre	%r2,%r3		/* Then copy return value.  */
++	ber	%r14		/* And return.  */
++
++	/* Align s to 16 byte.  */
++	risbgn	%r4,%r2,60,128+63,0 /* %r3 = bits 60-63 of %r2 'and' 15.  */
++	lghi	%r5,16		/* current_len = 16.  */
++	slr	%r5,%r4		/* Compute bytes to 16bytes boundary.  */
++
++	lgr	%r1,%r5		/* If %r5 + 64 < maxlen? -> loop64.  */
++	aghi	%r1,64
++	clgrjl	%r1,%r3,.Lloop64
++
++	/* Find zero in max 64byte with aligned s.  */
++.Llt64:
++	vl	%v16,0(%r5,%r2) /* Load s.  */
++	vfenezbs %v16,%v16,%v16	/* Find element not equal with zero search.  */
++	je	.Lfound		/* Jump away if zero was found.  */
++	aghi	%r5,16
++	clgrjhe	%r5,%r3,.Lfound /* current_len >= maxlen -> end.  */
++	vl	%v16,0(%r5,%r2)
++	vfenezbs %v16,%v16,%v16
++	je	.Lfound
++	aghi	%r5,16
++	clgrjhe	%r5,%r3,.Lfound
++	vl	%v16,0(%r5,%r2)
++	vfenezbs %v16,%v16,%v16
++	je	.Lfound
++	aghi	%r5,16
++	clgrjhe	%r5,%r3,.Lfound
++	vl	%v16,0(%r5,%r2)
++	vfenezbs %v16,%v16,%v16
++	j	.Lfound
++
++.Lfound48:
++	aghi	%r5,16
++.Lfound32:
++	aghi	%r5,16
++.Lfound16:
++	aghi	%r5,16
++.Lfound:
++	vlgvb	%r4,%v16,7	/* Load byte index of zero or 16 if no zero.  */
++	algr	%r5,%r4
++
++	clgr	%r5,%r3
++	locgrh	%r5,%r3		/* Return min (current_len, maxlen).  */
++	lgr	%r2,%r5
++	br	%r14
++
++	/* Find zero in 16 byte aligned loop.  */
++.Lloop64:
++	vl	%v16,0(%r5,%r2) /* Load s.  */
++	vfenezbs %v16,%v16,%v16	/* Find element not equal with zero search.  */
++	je	.Lfound		/* Jump away if zero was found.  */
++	vl	%v16,16(%r5,%r2)
++	vfenezbs %v16,%v16,%v16
++	je	.Lfound16
++	vl	%v16,32(%r5,%r2)
++	vfenezbs %v16,%v16,%v16
++	je	.Lfound32
++	vl	%v16,48(%r5,%r2)
++	vfenezbs %v16,%v16,%v16
++	je	.Lfound48
++
++	aghi	%r5,64
++	lgr	%r1,%r5		/* If %r5 + 64 < maxlen? -> loop64.  */
++	aghi	%r1,64
++	clgrjl	%r1,%r3,.Lloop64
++
++	j	.Llt64
++END(__strnlen_vx)
++#endif /* HAVE_S390_VX_ASM_SUPPORT && !defined NOT_IN_libc */
+diff --git a/sysdeps/s390/multiarch/strnlen.c b/sysdeps/s390/multiarch/strnlen.c
+new file mode 100644
+index 0000000..f036fcd
+--- /dev/null
++++ b/sysdeps/s390/multiarch/strnlen.c
+@@ -0,0 +1,29 @@
++/* Multiple versions of strnlen.
++   Copyright (C) 2015 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#if defined HAVE_S390_VX_ASM_SUPPORT && !defined NOT_IN_libc
++# include <string.h>
++# include <ifunc-resolve.h>
++
++s390_vx_libc_ifunc (__strnlen)
++weak_alias (__strnlen, strnlen)
++libc_hidden_def (strnlen)
++
++#else
++# include <string/strnlen.c>
++#endif /* !(defined HAVE_S390_VX_ASM_SUPPORT && !defined NOT_IN_libc) */
+diff --git a/sysdeps/s390/multiarch/wcsnlen-c.c b/sysdeps/s390/multiarch/wcsnlen-c.c
+new file mode 100644
+index 0000000..6d8b537
+--- /dev/null
++++ b/sysdeps/s390/multiarch/wcsnlen-c.c
+@@ -0,0 +1,25 @@
++/* Default wcsnlen implementation for S/390.
++   Copyright (C) 2015 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#if defined HAVE_S390_VX_ASM_SUPPORT && !defined NOT_IN_libc
++# define WCSNLEN  __wcsnlen_c
++
++# include <wchar.h>
++extern __typeof (__wcsnlen) __wcsnlen_c;
++# include <wcsmbs/wcsnlen.c>
++#endif
+diff --git a/sysdeps/s390/multiarch/wcsnlen-vx.S b/sysdeps/s390/multiarch/wcsnlen-vx.S
+new file mode 100644
+index 0000000..8c21630
+--- /dev/null
++++ b/sysdeps/s390/multiarch/wcsnlen-vx.S
+@@ -0,0 +1,151 @@
++/* Vector optimized 32/64 bit S/390 version of wcsnlen.
++   Copyright (C) 2015 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#if defined HAVE_S390_VX_ASM_SUPPORT && !defined NOT_IN_libc
++
++# include "sysdep.h"
++# include "asm-syntax.h"
++
++	.text
++
++/* size_t wcsnlen (const wchar_t *s, size_t maxlen)
++   Returns the number of characters in s or at most maxlen.
++
++   Register usage:
++   -r1=tmp
++   -r2=address of string
++   -r3=maxlen (number of characters to be read)
++   -r4=tmp
++   -r5=current_len and return_value
++   -v16=part of s
++*/
++ENTRY(__wcsnlen_vx)
++
++	.machine "z13"
++	.machinemode "zarch_nohighgprs"
++
++# if !defined __s390x__
++	llgfr	%r3,%r3
++# endif /* !defined __s390x__ */
++
++	clgfi	%r3,0		/* if maxlen == 0, return 0.  */
++	locgre	%r2,%r3
++	ber	%r14
++
++	vlbb	%v16,0(%r2),6	/* Load s until next 4k-byte boundary.  */
++	lcbb	%r1,0(%r2),6	/* Get bytes to 4k-byte boundary or 16.  */
++	llgfr	%r1,%r1		/* Convert 32bit to 64bit.  */
++
++	tmll	%r2,3		/* Test if s is 4-byte aligned?  */
++	jne	.Lfallback	/* And use common-code variant if not.  */
++
++	/* Check range of maxlen and convert to byte-count.  */
++# ifdef __s390x__
++	tmhh	%r3,49152	/* Test bit 0 or 1 of maxlen.  */
++	lghi	%r4,-4		/* Max byte-count is 18446744073709551612.  */
++# else
++	tmlh	%r3,49152	/* Test bit 0 or 1 of maxlen.  */
++	llilf	%r4,4294967292	/* Max byte-count is 4294967292.  */
++# endif /* !__s390x__ */
++	sllg	%r3,%r3,2	/* Convert character-count to byte-count.  */
++	locgrne	%r3,%r4		/* Use max byte-count, if bit 0/1 was one.  */
++
++	vfenezf	%v16,%v16,%v16	/* Find element not equal with zero search.  */
++	clgr	%r1,%r3
++	locgrh	%r1,%r3		/* loaded_byte_count
++				   = min (loaded_byte_count, maxlen)  */
++
++	vlgvb	%r5,%v16,7	/* Load zero index or 16 if not found.  */
++	clrjl	%r5,%r1,.Lend	/* Found zero within loaded bytes -> return.  */
++
++	clgr	%r1,%r3		/* If loaded_byte_count == maxlen -> end.  */
++	locgre	%r5,%r3
++	je	.Lend
++
++	/* Align s to 16 byte.  */
++	risbgn	%r4,%r2,60,128+63,0 /* %r3 = bits 60-63 of %r2 'and' 15.  */
++	lghi	%r5,16		/* current_len = 16.  */
++	slr	%r5,%r4		/* Compute bytes to 16bytes boundary.  */
++
++	lgr	%r1,%r5		/* If %r5 + 64 < maxlen? -> loop64.  */
++	aghi	%r1,64
++	clgrjl	%r1,%r3,.Lloop64
++
++	/* Find zero in max 64byte with aligned s.  */
++.Llt64:
++	vl	%v16,0(%r5,%r2)	/* Load s.  */
++	vfenezfs %v16,%v16,%v16	/* Find element not equal with zero search.  */
++	je	.Lfound		/* Jump away if zero was found.  */
++	aghi	%r5,16
++	clgrjhe	%r5,%r3,.Lfound /* If current_len >= maxlen -> end.  */
++	vl	%v16,0(%r5,%r2)
++	vfenezfs %v16,%v16,%v16
++	je	.Lfound
++	aghi	%r5,16
++	clgrjhe	%r5,%r3,.Lfound
++	vl	%v16,0(%r5,%r2)
++	vfenezfs %v16,%v16,%v16
++	je	.Lfound
++	aghi	%r5,16
++	clgrjhe	%r5,%r3,.Lfound
++	vl	%v16,0(%r5,%r2)
++	vfenezfs %v16,%v16,%v16
++	j	.Lfound
++
++.Lfound48:
++	aghi	%r5,16
++.Lfound32:
++	aghi	%r5,16
++.Lfound16:
++	aghi	%r5,16
++.Lfound:
++	vlgvb	%r4,%v16,7	/* Load byte index of zero or 16 if no zero.  */
++	algr	%r5,%r4
++
++	clgr	%r5,%r3
++	locgrh	%r5,%r3		/* Return min (current_len, maxlen).  */
++.Lend:
++	srlg	%r2,%r5,2	/* Convert byte-count to character-count.  */
++	br	%r14
++
++	/* Find zero in 16byte aligned loop.  */
++.Lloop64:
++	vl	%v16,0(%r5,%r2)	/* Load s.  */
++	vfenezfs %v16,%v16,%v16	/* Find element not equal with zero search.  */
++	je	.Lfound		/* Jump away if zero was found.  */
++	vl	%v16,16(%r5,%r2)
++	vfenezfs %v16,%v16,%v16
++	je	.Lfound16
++	vl	%v16,32(%r5,%r2)
++	vfenezfs %v16,%v16,%v16
++	je	.Lfound32
++	vl	%v16,48(%r5,%r2)
++	vfenezfs %v16,%v16,%v16
++	je	.Lfound48
++
++	aghi	%r5,64
++	lgr	%r1,%r5		/* If %r5 + 64 < maxlen? -> loop64.  */
++	aghi	%r1,64
++	clgrjl	%r1,%r3,.Lloop64
++
++	j	.Llt64
++
++.Lfallback:
++	jg	__wcsnlen_c
++END(__wcsnlen_vx)
++#endif /* HAVE_S390_VX_ASM_SUPPORT && !defined NOT_IN_libc */
+diff --git a/sysdeps/s390/multiarch/wcsnlen.c b/sysdeps/s390/multiarch/wcsnlen.c
+new file mode 100644
+index 0000000..fbb0cab
+--- /dev/null
++++ b/sysdeps/s390/multiarch/wcsnlen.c
+@@ -0,0 +1,28 @@
++/* Multiple versions of wcsnlen.
++   Copyright (C) 2015 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#if defined HAVE_S390_VX_ASM_SUPPORT && !defined NOT_IN_libc
++# include <wchar.h>
++# include <ifunc-resolve.h>
++
++s390_vx_libc_ifunc (__wcsnlen)
++weak_alias (__wcsnlen, wcsnlen)
++
++#else
++# include <wcsmbs/wcsnlen.c>
++#endif /* !(defined HAVE_S390_VX_ASM_SUPPORT && !defined NOT_IN_libc) */
+diff --git a/wcsmbs/Makefile b/wcsmbs/Makefile
+index 54994e2..ec0b050 100644
+--- a/wcsmbs/Makefile
++++ b/wcsmbs/Makefile
+@@ -41,7 +41,7 @@ routines := wcscat wcschr wcscmp wcscpy wcscspn wcsdup wcslen wcsncat \
+ 	    isoc99_swscanf isoc99_vswscanf \
+ 	    mbrtoc16 c16rtomb
+ 
+-strop-tests :=  wcscmp wmemcmp wcslen wcschr wcsrchr wcscpy
++strop-tests :=  wcscmp wmemcmp wcslen wcschr wcsrchr wcscpy wcsnlen
+ tests := tst-wcstof wcsmbs-tst1 tst-wcsnlen tst-btowc tst-mbrtowc \
+ 	 tst-wcrtomb tst-wcpncpy tst-mbsrtowcs tst-wchar-h tst-mbrtowc2 \
+ 	 tst-c16c32-1 wcsatcliff $(addprefix test-,$(strop-tests))
+diff --git a/wcsmbs/test-wcsnlen-ifunc.c b/wcsmbs/test-wcsnlen-ifunc.c
+new file mode 100644
+index 0000000..8aa528e
+--- /dev/null
++++ b/wcsmbs/test-wcsnlen-ifunc.c
+@@ -0,0 +1,20 @@
++/* Test and measure IFUNC implementations of wcsnlen function.
++   Copyright (C) 2015 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#define TEST_IFUNC 1
++#include "test-wcsnlen.c"
+diff --git a/wcsmbs/test-wcsnlen.c b/wcsmbs/test-wcsnlen.c
+new file mode 100644
+index 0000000..262ab30
+--- /dev/null
++++ b/wcsmbs/test-wcsnlen.c
+@@ -0,0 +1,20 @@
++/* Test wcsnlen function.
++   Copyright (C) 2015 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#define WIDE 1
++#include "../string/test-strnlen.c"
+diff --git a/wcsmbs/wcsnlen.c b/wcsmbs/wcsnlen.c
+index dff1b45..e803920 100644
+--- a/wcsmbs/wcsnlen.c
++++ b/wcsmbs/wcsnlen.c
+@@ -18,8 +18,11 @@
+ 
+ #include <wchar.h>
+ 
++#ifdef WCSNLEN
++# define __wcsnlen WCSNLEN
++#endif
+ 
+-/* Copy SRC to DEST.  */
++/* Return length of string S at most maxlen.  */
+ size_t
+ __wcsnlen (s, maxlen)
+      const wchar_t *s;
+@@ -44,4 +47,6 @@ __wcsnlen (s, maxlen)
+ 
+   return len;
+ }
++#ifndef WCSNLEN
+ weak_alias (__wcsnlen, wcsnlen)
++#endif
+-- 
+2.3.0
+

@@ -1,0 +1,382 @@
+#
+# Add all of the LOCALENTRY points for all of the functions.
+# This is required for LE to materialize the TOC.
+#
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/memchr-power7.S glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/memchr-power7.S
+index b1b4ec7..4a8d459 100644
+--- glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/memchr-power7.S
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/memchr-power7.S
+@@ -24,7 +24,8 @@
+   ENTRY_2(__memchr_power7)					\
+   .align ALIGNARG(2);						\
+   BODY_LABEL(__memchr_power7):					\
+-  cfi_startproc;
++  cfi_startproc;						\
++  LOCALENTRY(__memchr_power7)
+ 
+ #undef END
+ #define END(name)						\
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/memcmp-power4.S glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/memcmp-power4.S
+index 12db42c..9903276 100644
+--- glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/memcmp-power4.S
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/memcmp-power4.S
+@@ -25,7 +25,8 @@
+   .align ALIGNARG(alignt);					\
+   EALIGN_W_##words;						\
+   BODY_LABEL(__memcmp_power4):					\
+-  cfi_startproc;
++  cfi_startproc;						\
++  LOCALENTRY(__memcmp_power4)
+ 
+ #undef END
+ #define END(name)						\
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/memcmp-power7.S glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/memcmp-power7.S
+index 4898a88..ee31ca6 100644
+--- glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/memcmp-power7.S
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/memcmp-power7.S
+@@ -25,7 +25,8 @@
+   .align ALIGNARG(alignt);					\
+   EALIGN_W_##words;						\
+   BODY_LABEL(__memcmp_power7):					\
+-  cfi_startproc;
++  cfi_startproc;						\
++  LOCALENTRY(__memcmp_power7)
+ 
+ #undef END
+ #define END(name)						\
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/memcpy-a2.S glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/memcpy-a2.S
+index 2d5bfa9..decbcff 100644
+--- glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/memcpy-a2.S
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/memcpy-a2.S
+@@ -25,7 +25,8 @@
+   .align ALIGNARG(alignt);					\
+   EALIGN_W_##words;						\
+   BODY_LABEL(__memcpy_a2):					\
+-  cfi_startproc;
++  cfi_startproc;						\
++  LOCALENTRY(__memcpy_a2)
+ 
+ #undef END_GEN_TB
+ #define END_GEN_TB(name, mask)					\
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/memcpy-cell.S glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/memcpy-cell.S
+index 92c06be..c3c2f7f 100644
+--- glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/memcpy-cell.S
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/memcpy-cell.S
+@@ -25,7 +25,8 @@
+   .align ALIGNARG(alignt);					\
+   EALIGN_W_##words;						\
+   BODY_LABEL(__memcpy_cell):					\
+-  cfi_startproc;
++  cfi_startproc;						\
++  LOCALENTRY(__memcpy_cell)
+ 
+ #undef END_GEN_TB
+ #define END_GEN_TB(name, mask)					\
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/memcpy-power4.S glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/memcpy-power4.S
+index eb01d67..02ba9b1 100644
+--- glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/memcpy-power4.S
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/memcpy-power4.S
+@@ -25,7 +25,8 @@
+   .align ALIGNARG(alignt);					\
+   EALIGN_W_##words;						\
+   BODY_LABEL(__memcpy_power4):					\
+-  cfi_startproc;
++  cfi_startproc;						\
++  LOCALENTRY(__memcpy_power4)
+ 
+ #undef END_GEN_TB
+ #define END_GEN_TB(name, mask)					\
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/memcpy-power6.S glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/memcpy-power6.S
+index 13b514d..58e8113 100644
+--- glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/memcpy-power6.S
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/memcpy-power6.S
+@@ -25,7 +25,8 @@
+   .align ALIGNARG(alignt);					\
+   EALIGN_W_##words;						\
+   BODY_LABEL(__memcpy_power6):					\
+-  cfi_startproc;
++  cfi_startproc;						\
++  LOCALENTRY(__memcpy_power6)
+ 
+ #undef END_GEN_TB
+ #define END_GEN_TB(name, mask)					\
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/memcpy-power7.S glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/memcpy-power7.S
+index 2aea73d..1170c50 100644
+--- glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/memcpy-power7.S
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/memcpy-power7.S
+@@ -25,7 +25,8 @@
+   .align ALIGNARG(alignt);					\
+   EALIGN_W_##words;						\
+   BODY_LABEL(__memcpy_power7):					\
+-  cfi_startproc;
++  cfi_startproc;						\
++  LOCALENTRY(__memcpy_power7)
+ 
+ #undef END_GEN_TB
+ #define END_GEN_TB(name, mask)					\
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/memcpy-ppc64.S glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/memcpy-ppc64.S
+index b828915..c630654 100644
+--- glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/memcpy-ppc64.S
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/memcpy-ppc64.S
+@@ -26,7 +26,8 @@
+   .align ALIGNARG(alignt);					\
+   EALIGN_W_##words;						\
+   BODY_LABEL(__memcpy_ppc):					\
+-  cfi_startproc;
++  cfi_startproc;						\
++  LOCALENTRY(__memcpy_ppc)
+ 
+ # undef END_GEN_TB
+ # define END_GEN_TB(name, mask)					\
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/mempcpy-power7.S glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/mempcpy-power7.S
+index 6a79847..8d4b7a7 100644
+--- glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/mempcpy-power7.S
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/mempcpy-power7.S
+@@ -25,7 +25,8 @@
+   .align ALIGNARG(alignt);					\
+   EALIGN_W_##words;						\
+   BODY_LABEL(__mempcpy_power7):					\
+-  cfi_startproc;
++  cfi_startproc;						\
++  LOCALENTRY(__mempcpy_power7)
+ 
+ #undef END_GEN_TB
+ #define END_GEN_TB(name, mask)					\
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/memrchr-power7.S glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/memrchr-power7.S
+index 42ee8e2..c363215 100644
+--- glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/memrchr-power7.S
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/memrchr-power7.S
+@@ -24,7 +24,8 @@
+   ENTRY_2(__memrchr_power7)					\
+   .align ALIGNARG(2);						\
+   BODY_LABEL(__memrchr_power7):					\
+-  cfi_startproc;
++  cfi_startproc;						\
++  LOCALENTRY(__memrchr_power7)
+ 
+ #undef END
+ #define END(name)						\
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/memset-power4.S glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/memset-power4.S
+index 9074b95..968dc24 100644
+--- glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/memset-power4.S
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/memset-power4.S
+@@ -25,7 +25,8 @@
+   .align ALIGNARG(alignt);					\
+   EALIGN_W_##words;						\
+   BODY_LABEL(__memset_power4):					\
+-  cfi_startproc;
++  cfi_startproc;						\
++  LOCALENTRY(__memset_power4)
+ 
+ #undef END_GEN_TB
+ #define END_GEN_TB(name, mask)					\
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/memset-power6.S glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/memset-power6.S
+index 70688b5..65519b9 100644
+--- glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/memset-power6.S
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/memset-power6.S
+@@ -25,7 +25,8 @@
+   .align ALIGNARG(alignt);					\
+   EALIGN_W_##words;						\
+   BODY_LABEL(__memset_power6):					\
+-  cfi_startproc;
++  cfi_startproc;						\
++  LOCALENTRY(__memset_power6)
+ 
+ #undef END_GEN_TB
+ #define END_GEN_TB(name, mask)					\
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/memset-power7.S glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/memset-power7.S
+index ab226c5..86765e7 100644
+--- glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/memset-power7.S
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/memset-power7.S
+@@ -25,7 +25,8 @@
+   .align ALIGNARG(alignt);					\
+   EALIGN_W_##words;						\
+   BODY_LABEL(__memset_power7):					\
+-  cfi_startproc;
++  cfi_startproc;						\
++  LOCALENTRY(__memset_power7)
+ 
+ #undef END_GEN_TB
+ #define END_GEN_TB(name, mask)					\
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/memset-ppc64.S glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/memset-ppc64.S
+index dc5549c..3601a77 100644
+--- glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/memset-ppc64.S
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/memset-ppc64.S
+@@ -37,7 +37,8 @@ END_GEN_TB (__bzero_ppc,TB_TOCLESS)
+   .align ALIGNARG(alignt);					\
+   EALIGN_W_##words;						\
+   BODY_LABEL(__memset_ppc):					\
+-  cfi_startproc;
++  cfi_startproc;						\
++  LOCALENTRY(__memset_ppc)
+ 
+ # undef END_GEN_TB
+ # define END_GEN_TB(name, mask)					\
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/rawmemchr-power7.S glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/rawmemchr-power7.S
+index 24ae3bf..9f7533a 100644
+--- glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/rawmemchr-power7.S
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/rawmemchr-power7.S
+@@ -24,7 +24,8 @@
+   ENTRY_2(__rawmemchr_power7)					\
+   .align ALIGNARG(2);						\
+   BODY_LABEL(__rawmemchr_power7):				\
+-  cfi_startproc;
++  cfi_startproc;						\
++  LOCALENTRY(__rawmemchr_power7)
+ 
+ #undef END
+ #define END(name)						\
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/strcasecmp-power7.S glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/strcasecmp-power7.S
+index 9714f88..ad00f98 100644
+--- glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/strcasecmp-power7.S
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/strcasecmp-power7.S
+@@ -24,7 +24,8 @@
+   ENTRY_2(__strcasecmp_power7)					\
+   .align ALIGNARG(2);						\
+   BODY_LABEL(__strcasecmp_power7):				\
+-  cfi_startproc;
++  cfi_startproc;						\
++  LOCALENTRY(__strcasecmp_power7)
+ 
+ #undef END
+ #define END(name)						\
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/strcasecmp_l-power7.S glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/strcasecmp_l-power7.S
+index 117e464..81ec696 100644
+--- glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/strcasecmp_l-power7.S
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/strcasecmp_l-power7.S
+@@ -24,7 +24,8 @@
+   ENTRY_2(__strcasecmp_l_power7)				\
+   .align ALIGNARG(2);						\
+   BODY_LABEL(__strcasecmp_l_power7):				\
+-  cfi_startproc;
++  cfi_startproc;						\
++  LOCALENTRY(__strcasecmp_l_power7)
+ 
+ #undef END
+ #define END(name)						\
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/strchr-power7.S glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/strchr-power7.S
+index 0b2ca42..a3473a6 100644
+--- glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/strchr-power7.S
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/strchr-power7.S
+@@ -24,7 +24,8 @@
+   ENTRY_2(__strchr_power7)					\
+   .align ALIGNARG(2);						\
+   BODY_LABEL(__strchr_power7):					\
+-  cfi_startproc;
++  cfi_startproc;						\
++  LOCALENTRY(__strchr_power7)
+ 
+ #undef END
+ #define END(name)						\
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/strchr-ppc64.S glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/strchr-ppc64.S
+index ded9284..607668a 100644
+--- glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/strchr-ppc64.S
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/strchr-ppc64.S
+@@ -25,7 +25,8 @@
+   ENTRY_2(__strchr_ppc)						\
+   .align ALIGNARG(2);						\
+   BODY_LABEL(__strchr_ppc):					\
+-  cfi_startproc;
++  cfi_startproc;						\
++  LOCALENTRY(__strchr_ppc)
+ 
+ # undef END
+ # define END(name)						\
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/strchrnul-power7.S glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/strchrnul-power7.S
+index 87d7c03..95ead0a 100644
+--- glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/strchrnul-power7.S
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/strchrnul-power7.S
+@@ -24,7 +24,8 @@
+   ENTRY_2(__strchrnul_power7)					\
+   .align ALIGNARG(2);						\
+   BODY_LABEL(__strchrnul_power7):				\
+-  cfi_startproc;
++  cfi_startproc;						\
++  LOCALENTRY(__strchrnul_power7)
+ 
+ #undef END
+ #define END(name)						\
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/strlen-power7.S glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/strlen-power7.S
+index a38521d..c47c9d6 100644
+--- glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/strlen-power7.S
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/strlen-power7.S
+@@ -24,7 +24,8 @@
+   ENTRY_2(__strlen_power7)					\
+   .align ALIGNARG(2);						\
+   BODY_LABEL(__strlen_power7):					\
+-  cfi_startproc;
++  cfi_startproc;						\
++  LOCALENTRY(__strlen_power7)
+ 
+ #undef END
+ #define END(name)						\
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/strlen-ppc64.S glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/strlen-ppc64.S
+index b463b3a..a195e9a 100644
+--- glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/strlen-ppc64.S
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/strlen-ppc64.S
+@@ -25,7 +25,8 @@
+   ENTRY_2(__strlen_ppc)						\
+   .align ALIGNARG(2);						\
+   BODY_LABEL(__strlen_ppc):					\
+-  cfi_startproc;
++  cfi_startproc;						\
++  LOCALENTRY(__strlen_ppc)
+ 
+ # undef END
+ # define END(name)						\
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/strncmp-power4.S glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/strncmp-power4.S
+index 62cebbc..da32b0b 100644
+--- glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/strncmp-power4.S
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/strncmp-power4.S
+@@ -24,7 +24,8 @@
+   .align ALIGNARG(alignt);					\
+   EALIGN_W_##words;						\
+   BODY_LABEL(__strncmp_power4):					\
+-  cfi_startproc;
++  cfi_startproc;						\
++  LOCALENTRY(__strncmp_power4)
+ 
+ #undef END
+ #define END(name)						\
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/strncmp-power7.S glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/strncmp-power7.S
+index b0d607a..65ee0cd 100644
+--- glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/strncmp-power7.S
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/strncmp-power7.S
+@@ -24,7 +24,8 @@
+   .align ALIGNARG(alignt);					\
+   EALIGN_W_##words;						\
+   BODY_LABEL(__strncmp_power7):					\
+-  cfi_startproc;
++  cfi_startproc;						\
++  LOCALENTRY(__strncmp_power7)
+ 
+ #undef END
+ #define END(name)						\
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/strncmp-ppc64.S glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/strncmp-ppc64.S
+index 25b7f26..14a2bec 100644
+--- glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/strncmp-ppc64.S
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/strncmp-ppc64.S
+@@ -25,7 +25,8 @@
+   .align ALIGNARG(alignt);					\
+   EALIGN_W_##words;						\
+   BODY_LABEL(__strncmp_ppc):					\
+-  cfi_startproc;
++  cfi_startproc;						\
++  LOCALENTRY(__strncmp_ppc)
+ 
+ #undef END
+ #define END(name)						\
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/strnlen-power7.S glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/strnlen-power7.S
+index 909aae8..057e5a8 100644
+--- glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/strnlen-power7.S
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/strnlen-power7.S
+@@ -24,7 +24,8 @@
+   ENTRY_2(__strnlen_power7)					\
+   .align ALIGNARG(2);						\
+   BODY_LABEL(__strnlen_power7):					\
+-  cfi_startproc;
++  cfi_startproc;						\
++  LOCALENTRY(__strnlen_power7)
+ 
+ #undef END
+ #define END(name)						\

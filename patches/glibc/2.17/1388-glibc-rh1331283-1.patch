@@ -1,0 +1,34 @@
+commit 3bfff2edbef578746211ba231f3942efffd38f86
+Author: Carlos O'Donell <carlos@redhat.com>
+Date:   Thu Feb 6 11:12:48 2014 -0500
+
+    BZ #16529: Fix pedantic warning with netinet/in.h.
+    
+    When compiling with pedantic the following warning is seen:
+    
+    gcc -Wall -pedantic -O0 -o test test.c
+    In file included from test.c:3:0:
+    /path/inet/netinet/in.h:111:21: warning: comma at end of \
+    enumerator list [-Wpedantic]
+         IPPROTO_MH = 135,      /* IPv6 mobility header.  */
+                         ^
+    
+    It is valid C99 to have a trailing comma after the last item in
+    an enumeration. However it is not valid C90. If possible glibc
+    attempts to keep all headers C90 + long long without requiring
+    C99 features. In this case it's easy to fix the headers and it
+    removes the warning seem with -pedantic.
+
+diff --git a/inet/netinet/in.h b/inet/netinet/in.h
+index ad9ce6c..d8d8e53 100644
+--- a/inet/netinet/in.h
++++ b/inet/netinet/in.h
+@@ -108,7 +108,7 @@ enum
+ #define IPPROTO_NONE		IPPROTO_NONE
+     IPPROTO_DSTOPTS = 60,  /* IPv6 destination options.  */
+ #define IPPROTO_DSTOPTS		IPPROTO_DSTOPTS
+-    IPPROTO_MH = 135,      /* IPv6 mobility header.  */
++    IPPROTO_MH = 135       /* IPv6 mobility header.  */
+ #define IPPROTO_MH		IPPROTO_MH
+   };
+ #endif /* !__USE_KERNEL_IPV6_DEFS */

@@ -1,0 +1,60 @@
+Upstream patches to allow older compilers to use link.h:
+
+commit 30477995dc8a680283b4d6e02039bca09de83cf9
+Author: Marko Myllynen <myllynen@redhat.com>
+Date:   Fri May 30 10:50:21 2014 -0700
+
+    Replace __int128 with __int128_t
+    
+        * sysdeps/x86_64/link-defines.sym (BND_SIZE): Replace __int128
+        with __int128_t.
+
+commit 48332d822090e41253692053a00dfe224d3ebec0
+Author: H.J. Lu <hjl.tools@gmail.com>
+Date:   Fri Apr 25 09:33:41 2014 -0700
+
+    Replace __int128 with __int128_t in bits/link.h
+    
+    __int128 was added in GCC 4.6 and __int128_t was added before x86-64
+    was supported.  This patch replaces __int128 with __int128_t so that
+    the installed bits/link.h can be used with older GCC.
+    
+        * sysdeps/x86/bits/link.h (La_x86_64_regs): Replace __int128
+        with __int128_t.
+        (La_x86_64_retval): Likewise.
+
+diff -urN glibc-2.17-c758a686/sysdeps/x86/bits/link.h glibc-2.17-c758a686/sysdeps/x86/bits/link.h
+--- glibc-2.17-c758a686/sysdeps/x86/bits/link.h	2014-11-05 13:39:09.888988366 -0500
++++ glibc-2.17-c758a686/sysdeps/x86/bits/link.h	2014-11-05 13:39:52.800863646 -0500
+@@ -94,7 +94,7 @@
+   La_x86_64_xmm lr_xmm[8];
+   La_x86_64_vector lr_vector[8];
+ #ifndef __ILP32__
+-  __int128 lr_bnd[4];
++  __int128_t lr_bnd[4];
+ #endif
+ } La_x86_64_regs;
+ 
+@@ -110,8 +110,8 @@
+   La_x86_64_vector lrv_vector0;
+   La_x86_64_vector lrv_vector1;
+ #ifndef __ILP32__
+-  __int128 lrv_bnd0;
+-  __int128 lrv_bnd1;
++  __int128_t lrv_bnd0;
++  __int128_t lrv_bnd1;
+ #endif
+ } La_x86_64_retval;
+ 
+diff -urN glibc-2.17-c758a686/sysdeps/x86_64/link-defines.sym glibc-2.17-c758a686/sysdeps/x86_64/link-defines.sym
+--- glibc-2.17-c758a686/sysdeps/x86_64/link-defines.sym	2014-11-05 13:39:09.889988363 -0500
++++ glibc-2.17-c758a686/sysdeps/x86_64/link-defines.sym	2014-11-05 13:39:52.800863646 -0500
+@@ -6,7 +6,7 @@
+ XMM_SIZE		sizeof (La_x86_64_xmm)
+ YMM_SIZE		sizeof (La_x86_64_ymm)
+ ZMM_SIZE		sizeof (La_x86_64_zmm)
+-BND_SIZE		sizeof (__int128)
++BND_SIZE		sizeof (__int128_t)
+ 
+ LR_SIZE			sizeof (struct La_x86_64_regs)
+ LR_RDX_OFFSET		offsetof (struct La_x86_64_regs, lr_rdx)

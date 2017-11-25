@@ -1,0 +1,26 @@
+commit 7f786dc12bd60f0a134e538429fef98350e4c814
+Author: Torvald Riegel <triegel@redhat.com>
+Date:   Mon Dec 15 22:09:55 2014 +0100
+
+    Fix nptl/tst-mutex5.c: Do not skip tests if elision is enabled.
+Index: glibc-2.17-c758a686/nptl/tst-mutex5.c
+===================================================================
+--- glibc-2.17-c758a686.orig/nptl/tst-mutex5.c
++++ glibc-2.17-c758a686/nptl/tst-mutex5.c
+@@ -86,8 +86,6 @@ do_test (void)
+       return 1;
+     }
+ 
+-  /* Elided locks do not time out.  */
+-#ifndef ENABLE_LOCK_ELISION
+   if (pthread_mutex_trylock (&m) == 0)
+     {
+       puts ("mutex_trylock succeeded");
+@@ -183,7 +181,6 @@ do_test (void)
+       puts ("3rd timedlock didn't return right away");
+       return 1;
+     }
+-#endif
+ 
+   if (pthread_mutex_unlock (&m) != 0)
+     {

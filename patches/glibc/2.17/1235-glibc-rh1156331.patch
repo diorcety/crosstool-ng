@@ -1,0 +1,202 @@
+commit e276f4f310a89a925dd59e583f7a1bef2114d9a7
+Author: Siddhesh Poyarekar <siddhesh@redhat.com>
+Date:   Tue Nov 25 21:15:16 2014 +0530
+
+    ftell: seek to end only when there are unflushed bytes (BZ #17647)
+    
+    Currently we seek to end of file if there are unflushed writes or the
+    stream is in write mode, to get the current offset for writing in
+    append mode, which is the end of file.  The latter case (i.e. stream
+    is in write mode, but no unflushed writes) is unnecessary since it
+    will only happen when the stream has just been flushed, in which case
+    the recorded offset ought to be reliable.
+    
+    Removing that case lets ftell give the correct offset when it follows
+    an ftruncate.  The latter truncates the file, but does not change the
+    file position, due to which it is permissible to call ftell without an
+    intervening fseek call.
+    
+    Tested on x86_64 to verify that the added test case fails without the
+    patch and succeeds with it, and that there are no additional
+    regressions due to it.
+    
+    	[BZ #17647]
+    	* libio/fileops.c (do_ftell): Seek only when there are
+    	unflushed writes.
+    	* libio/wfileops.c (do_ftell_wide): Likewise.
+    	* libio/tst-ftell-active-handler.c (do_ftruncate_test): New
+    	test case.
+    	(do_one_test): Call it.
+
+diff --git glibc-2.17-c758a686/libio/fileops.c glibc-2.17-c758a686/libio/fileops.c
+index e0d7b76..1fc5719 100644
+--- glibc-2.17-c758a686/libio/fileops.c
++++ glibc-2.17-c758a686/libio/fileops.c
+@@ -943,15 +943,14 @@ do_ftell (_IO_FILE *fp)
+      yet.  */
+   if (fp->_IO_buf_base != NULL)
+     {
+-      bool was_writing = (fp->_IO_write_ptr > fp->_IO_write_base
+-			  || _IO_in_put_mode (fp));
++      bool unflushed_writes = (fp->_IO_write_ptr > fp->_IO_write_base);
+ 
+       bool append_mode = (fp->_flags & _IO_IS_APPENDING) == _IO_IS_APPENDING;
+ 
+       /* When we have unflushed writes in append mode, seek to the end of the
+ 	 file and record that offset.  This is the only time we change the file
+ 	 stream state and it is safe since the file handle is active.  */
+-      if (was_writing && append_mode)
++      if (unflushed_writes && append_mode)
+ 	{
+ 	  result = _IO_SYSSEEK (fp, 0, _IO_seek_end);
+ 	  if (result == _IO_pos_BAD)
+@@ -961,7 +960,7 @@ do_ftell (_IO_FILE *fp)
+ 	}
+ 
+       /* Adjust for unflushed data.  */
+-      if (!was_writing)
++      if (!unflushed_writes)
+ 	offset -= fp->_IO_read_end - fp->_IO_read_ptr;
+       /* We don't trust _IO_read_end to represent the current file offset when
+ 	 writing in append mode because the value would have to be shifted to
+diff --git glibc-2.17-c758a686/libio/tst-ftell-active-handler.c glibc-2.17-c758a686/libio/tst-ftell-active-handler.c
+index e9dc7b3..9f23c55 100644
+--- glibc-2.17-c758a686/libio/tst-ftell-active-handler.c
++++ glibc-2.17-c758a686/libio/tst-ftell-active-handler.c
+@@ -88,6 +88,95 @@ static size_t file_len;
+ typedef int (*fputs_func_t) (const void *data, FILE *fp);
+ fputs_func_t fputs_func;
+ 
++/* This test verifies that the offset reported by ftell is correct after the
++   file is truncated using ftruncate.  ftruncate does not change the file
++   offset on truncation and hence, SEEK_CUR should continue to point to the
++   old offset and not be changed to the new offset.  */
++static int
++do_ftruncate_test (const char *filename)
++{
++  FILE *fp = NULL;
++  int fd;
++  int ret = 0;
++  struct test
++    {
++      const char *mode;
++      int fd_mode;
++    } test_modes[] = {
++	  {"r+", O_RDWR},
++	  {"w", O_WRONLY},
++	  {"w+", O_RDWR},
++	  {"a", O_WRONLY},
++	  {"a+", O_RDWR}
++    };
++
++  for (int j = 0; j < 2; j++)
++    {
++      for (int i = 0; i < sizeof (test_modes) / sizeof (struct test); i++)
++	{
++	  int fileret;
++	  printf ("\tftruncate: %s (file, \"%s\"): ",
++		  j == 0 ? "fopen" : "fdopen",
++		  test_modes[i].mode);
++
++	  if (j == 0)
++	    fileret = get_handles_fopen (filename, fd, fp, test_modes[i].mode);
++	  else
++	    fileret = get_handles_fdopen (filename, fd, fp,
++					  test_modes[i].fd_mode,
++					  test_modes[i].mode);
++
++	  if (fileret != 0)
++	    return fileret;
++
++	  /* Write some data.  */
++	  size_t written = fputs_func (data, fp);
++
++	  if (written == EOF)
++	    {
++	      printf ("fputs[1] failed to write data\n");
++	      ret |= 1;
++	    }
++
++	  /* Record the offset.  */
++	  long offset = ftell (fp);
++
++	  /* Flush data to allow switching active handles.  */
++	  if (fflush (fp))
++	    {
++	      printf ("Flush failed: %m\n");
++	      ret |= 1;
++	    }
++
++	  /* Now truncate the file.  */
++	  if (ftruncate (fd, 0) != 0)
++	    {
++	      printf ("Failed to truncate file: %m\n");
++	      ret |= 1;
++	    }
++
++	  /* ftruncate does not change the offset, so there is no need to call
++	     anything to be able to switch active handles.  */
++	  long new_offset = ftell (fp);
++
++	  /* The offset should remain unchanged since ftruncate does not update
++	     it.  */
++	  if (offset != new_offset)
++	    {
++	      printf ("Incorrect offset.  Expected %zu, but got %ld\n",
++		      offset, new_offset);
++
++	      ret |= 1;
++	    }
++	  else
++	    printf ("offset = %ld\n", offset);
++
++	  fclose (fp);
++	}
++    }
++
++  return ret;
++}
+ /* Test that ftell output after a rewind is correct.  */
+ static int
+ do_rewind_test (const char *filename)
+@@ -481,6 +570,7 @@ do_one_test (const char *filename)
+   ret |= do_write_test (filename);
+   ret |= do_append_test (filename);
+   ret |= do_rewind_test (filename);
++  ret |= do_ftruncate_test (filename);
+ 
+   return ret;
+ }
+diff --git glibc-2.17-c758a686/libio/wfileops.c glibc-2.17-c758a686/libio/wfileops.c
+index 6a088b1..71281c1 100644
+--- glibc-2.17-c758a686/libio/wfileops.c
++++ glibc-2.17-c758a686/libio/wfileops.c
+@@ -626,16 +626,15 @@ do_ftell_wide (_IO_FILE *fp)
+       const wchar_t *wide_read_base;
+       const wchar_t *wide_read_ptr;
+       const wchar_t *wide_read_end;
+-      bool was_writing = ((fp->_wide_data->_IO_write_ptr
+-			   > fp->_wide_data->_IO_write_base)
+-			  || _IO_in_put_mode (fp));
++      bool unflushed_writes = (fp->_wide_data->_IO_write_ptr
++			       > fp->_wide_data->_IO_write_base);
+ 
+       bool append_mode = (fp->_flags & _IO_IS_APPENDING) == _IO_IS_APPENDING;
+ 
+       /* When we have unflushed writes in append mode, seek to the end of the
+ 	 file and record that offset.  This is the only time we change the file
+ 	 stream state and it is safe since the file handle is active.  */
+-      if (was_writing && append_mode)
++      if (unflushed_writes && append_mode)
+ 	{
+ 	  result = _IO_SYSSEEK (fp, 0, _IO_seek_end);
+ 	  if (result == _IO_pos_BAD)
+@@ -674,7 +673,7 @@ do_ftell_wide (_IO_FILE *fp)
+       struct _IO_codecvt *cv = fp->_codecvt;
+       int clen = (*cv->__codecvt_do_encoding) (cv);
+ 
+-      if (!was_writing)
++      if (!unflushed_writes)
+ 	{
+ 	  if (clen > 0)
+ 	    {

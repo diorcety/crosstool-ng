@@ -1,0 +1,34 @@
+Backport of this upstream commit, with ports/ readded to the path.
+
+commit 14d623bcd178d336b47fdb4f0c973720d56d907c
+Author: Szabolcs Nagy <nsz@port70.net>
+Date:   Thu Jul 9 09:39:51 2015 +0100
+
+    [AArch64][BZ 18400] fix elf_prpsinfo in procfs.h
+    
+    Kernel uses int pr_uid, pr_gid, but glibc used unsigned short.
+    
+    This is an ABI breaking change, but the size and alignment of
+    the struct and the layout of other members is not changed and
+    there is no known usage of pr_uid and pr_gid so it is expected
+    to be safe.
+    
+    	[BZ #18400]
+    	* sysdeps/unix/sysv/linux/aarch64/sys/procfs.h (struct elf_prpsinfo):
+    	Fix pr_uid and pr_gid members.
+
+diff --git a/ports/sysdeps/unix/sysv/linux/aarch64/sys/procfs.h b/ports/sysdeps/unix/sysv/linux/aarch64/sys/procfs.h
+index cf5e76c..ecc65ab 100644
+--- a/ports/sysdeps/unix/sysv/linux/aarch64/sys/procfs.h
++++ b/ports/sysdeps/unix/sysv/linux/aarch64/sys/procfs.h
+@@ -91,8 +91,8 @@ struct elf_prpsinfo
+     char pr_zomb;			/* Zombie.  */
+     char pr_nice;			/* Nice val.  */
+     unsigned long int pr_flag;		/* Flags.  */
+-    unsigned short int pr_uid;
+-    unsigned short int pr_gid;
++    unsigned int pr_uid;
++    unsigned int pr_gid;
+     int pr_pid, pr_ppid, pr_pgrp, pr_sid;
+     /* Lots missing */
+     char pr_fname[16];			/* Filename of executable.  */

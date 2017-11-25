@@ -1,0 +1,1522 @@
+We add back Prefer_SSE_for_memop since we still need it for all of the
+existing era implementations for RHEL 7.3. To remove it would require
+a more wholesale backport of optmized routines.
+
+commit e2e4f56056adddc3c1efe676b40a4b4f2453103b
+Author: H.J. Lu <hjl.tools@gmail.com>
+Date:   Thu Aug 13 03:37:47 2015 -0700
+
+    Add _dl_x86_cpu_features to rtld_global
+    
+    This patch adds _dl_x86_cpu_features to rtld_global in x86 ld.so
+    and initializes it early before __libc_start_main is called so that
+    cpu_features is always available when it is used and we can avoid
+    calling __init_cpu_features in IFUNC selectors.
+
+Index: glibc-2.17-c758a686/sysdeps/i386/dl-machine.h
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/i386/dl-machine.h
++++ glibc-2.17-c758a686/sysdeps/i386/dl-machine.h
+@@ -25,6 +25,7 @@
+ #include <sysdep.h>
+ #include <tls.h>
+ #include <dl-tlsdesc.h>
++#include <cpu-features.c>
+ 
+ /* Return nonzero iff ELF header is compatible with the running host.  */
+ static inline int __attribute__ ((unused))
+@@ -266,6 +267,8 @@ dl_platform_init (void)
+   if (GLRO(dl_platform) != NULL && *GLRO(dl_platform) == '\0')
+     /* Avoid an empty string which would disturb us.  */
+     GLRO(dl_platform) = NULL;
++
++  init_cpu_features (&GLRO(dl_x86_cpu_features));
+ }
+ 
+ static inline Elf32_Addr
+Index: glibc-2.17-c758a686/sysdeps/i386/dl-procinfo.c
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/i386/dl-procinfo.c
++++ glibc-2.17-c758a686/sysdeps/i386/dl-procinfo.c
+@@ -43,6 +43,22 @@
+ # define PROCINFO_CLASS
+ #endif
+ 
++#if !IS_IN (ldconfig)
++# if !defined PROCINFO_DECL && defined SHARED
++  ._dl_x86_cpu_features
++# else
++PROCINFO_CLASS struct cpu_features _dl_x86_cpu_features
++# endif
++# ifndef PROCINFO_DECL
++= { }
++# endif
++# if !defined SHARED || defined PROCINFO_DECL
++;
++# else
++,
++# endif
++#endif
++
+ #if !defined PROCINFO_DECL && defined SHARED
+   ._dl_x86_cap_flags
+ #else
+Index: glibc-2.17-c758a686/sysdeps/i386/i686/cacheinfo.c
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/i386/i686/cacheinfo.c
++++ glibc-2.17-c758a686/sysdeps/i386/i686/cacheinfo.c
+@@ -8,6 +8,5 @@
+ #define __x86_64_raw_shared_cache_size_half __x86_raw_shared_cache_size_half
+ 
+ #define DISABLE_PREFETCHW
+-#define DISABLE_PREFERRED_MEMORY_INSTRUCTION
+ 
+ #include <sysdeps/x86_64/cacheinfo.c>
+Index: glibc-2.17-c758a686/sysdeps/i386/i686/multiarch/Makefile
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/i386/i686/multiarch/Makefile
++++ glibc-2.17-c758a686/sysdeps/i386/i686/multiarch/Makefile
+@@ -1,5 +1,4 @@
+ ifeq ($(subdir),csu)
+-aux += init-arch
+ tests += test-multiarch
+ gen-as-const-headers += ifunc-defines.sym
+ endif
+Index: glibc-2.17-c758a686/sysdeps/i386/i686/multiarch/Versions
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/i386/i686/multiarch/Versions
++++ /dev/null
+@@ -1,5 +0,0 @@
+-libc {
+-  GLIBC_PRIVATE {
+-    __get_cpu_features;
+-  }
+-}
+Index: glibc-2.17-c758a686/sysdeps/i386/i686/multiarch/ifunc-defines.sym
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/i386/i686/multiarch/ifunc-defines.sym
++++ glibc-2.17-c758a686/sysdeps/i386/i686/multiarch/ifunc-defines.sym
+@@ -4,7 +4,6 @@
+ --
+ 
+ CPU_FEATURES_SIZE	sizeof (struct cpu_features)
+-KIND_OFFSET		offsetof (struct cpu_features, kind)
+ CPUID_OFFSET		offsetof (struct cpu_features, cpuid)
+ CPUID_SIZE		sizeof (struct cpuid_registers)
+ CPUID_EAX_OFFSET	offsetof (struct cpuid_registers, eax)
+Index: glibc-2.17-c758a686/sysdeps/i386/ldsodefs.h
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/i386/ldsodefs.h
++++ glibc-2.17-c758a686/sysdeps/i386/ldsodefs.h
+@@ -20,6 +20,7 @@
+ #define	_I386_LDSODEFS_H	1
+ 
+ #include <elf.h>
++#include <cpu-features.h>
+ 
+ struct La_i86_regs;
+ struct La_i86_retval;
+Index: glibc-2.17-c758a686/sysdeps/unix/sysv/linux/x86_64/dl-procinfo.c
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/unix/sysv/linux/x86_64/dl-procinfo.c
++++ glibc-2.17-c758a686/sysdeps/unix/sysv/linux/x86_64/dl-procinfo.c
+@@ -1,5 +1,5 @@
+ #if IS_IN (ldconfig)
+ # include <sysdeps/i386/dl-procinfo.c>
+ #else
+-# include <sysdeps/generic/dl-procinfo.c>
++# include <sysdeps/x86_64/dl-procinfo.c>
+ #endif
+Index: glibc-2.17-c758a686/sysdeps/x86/Makefile
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/x86/Makefile
++++ glibc-2.17-c758a686/sysdeps/x86/Makefile
+@@ -7,3 +7,14 @@ $(objpfx)tst-xmmymmzmm.out: ../sysdeps/x
+ 	@echo "Checking ld.so for SSE register use.  This will take a few seconds..."
+ 	$(SHELL) $< $(objpfx) '$(NM)' '$(OBJDUMP)' '$(READELF)' > $@
+ endif
++
++ifeq ($(subdir),csu)
++gen-as-const-headers += cpu-features-offsets.sym rtld-global-offsets.sym
++endif
++
++ifeq ($(subdir),elf)
++sysdep-dl-routines += dl-get-cpu-features
++
++tests += tst-get-cpu-features
++tests-static += tst-get-cpu-features-static
++endif
+Index: glibc-2.17-c758a686/sysdeps/x86/Versions
+===================================================================
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/x86/Versions
+@@ -0,0 +1,5 @@
++ld {
++  GLIBC_PRIVATE {
++    __get_cpu_features;
++  }
++}
+Index: glibc-2.17-c758a686/sysdeps/x86/cpu-features-offsets.sym
+===================================================================
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/x86/cpu-features-offsets.sym
+@@ -0,0 +1,7 @@
++#define SHARED 1
++
++#include <ldsodefs.h>
++
++#define rtld_global_ro_offsetof(mem) offsetof (struct rtld_global_ro, mem)
++
++RTLD_GLOBAL_RO_DL_X86_CPU_FEATURES_OFFSET rtld_global_ro_offsetof (_dl_x86_cpu_features)
+Index: glibc-2.17-c758a686/sysdeps/x86/cpu-features.c
+===================================================================
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/x86/cpu-features.c
+@@ -0,0 +1,213 @@
++/* Initialize CPU feature data.
++   This file is part of the GNU C Library.
++   Copyright (C) 2008-2015 Free Software Foundation, Inc.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <cpuid.h>
++#include <cpu-features.h>
++
++static inline void
++get_common_indeces (struct cpu_features *cpu_features,
++		    unsigned int *family, unsigned int *model)
++{
++  unsigned int eax;
++  __cpuid (1, eax, cpu_features->cpuid[COMMON_CPUID_INDEX_1].ebx,
++	   cpu_features->cpuid[COMMON_CPUID_INDEX_1].ecx,
++	   cpu_features->cpuid[COMMON_CPUID_INDEX_1].edx);
++  GLRO(dl_x86_cpu_features).cpuid[COMMON_CPUID_INDEX_1].eax = eax;
++  *family = (eax >> 8) & 0x0f;
++  *model = (eax >> 4) & 0x0f;
++}
++
++static inline void
++init_cpu_features (struct cpu_features *cpu_features)
++{
++  unsigned int ebx, ecx, edx;
++  unsigned int family = 0;
++  unsigned int model = 0;
++  enum cpu_features_kind kind;
++
++  __cpuid (0, cpu_features->max_cpuid, ebx, ecx, edx);
++
++  /* This spells out "GenuineIntel".  */
++  if (ebx == 0x756e6547 && ecx == 0x6c65746e && edx == 0x49656e69)
++    {
++      kind = arch_kind_intel;
++
++      get_common_indeces (cpu_features, &family, &model);
++
++      /* Intel processors prefer SSE instruction for memory/string
++        routines if they are available.  */
++      cpu_features->feature[index_Prefer_SSE_for_memop]
++        |= bit_Prefer_SSE_for_memop;
++
++      unsigned int eax = cpu_features->cpuid[COMMON_CPUID_INDEX_1].eax;
++      unsigned int extended_family = (eax >> 20) & 0xff;
++      unsigned int extended_model = (eax >> 12) & 0xf0;
++      if (family == 0x0f)
++	{
++	  family += extended_family;
++	  model += extended_model;
++	}
++      else if (family == 0x06)
++	{
++	  ecx = cpu_features->cpuid[COMMON_CPUID_INDEX_1].ecx;
++	  model += extended_model;
++	  switch (model)
++	    {
++	    case 0x1c:
++	    case 0x26:
++	      /* BSF is slow on Atom.  */
++	      cpu_features->feature[index_Slow_BSF] |= bit_Slow_BSF;
++	      break;
++
++	    case 0x37:
++	    case 0x4a:
++	    case 0x4d:
++	    case 0x5a:
++	    case 0x5d:
++	      /* Unaligned load versions are faster than SSSE3
++		 on Silvermont.  */
++#if index_Fast_Unaligned_Load != index_Prefer_PMINUB_for_stringop
++# error index_Fast_Unaligned_Load != index_Prefer_PMINUB_for_stringop
++#endif
++#if index_Fast_Unaligned_Load != index_Slow_SSE4_2
++# error index_Fast_Unaligned_Load != index_Slow_SSE4_2
++#endif
++	      cpu_features->feature[index_Fast_Unaligned_Load]
++		|= (bit_Fast_Unaligned_Load
++		    | bit_Prefer_PMINUB_for_stringop
++		    | bit_Slow_SSE4_2);
++	      break;
++
++	    default:
++	      /* Unknown family 0x06 processors.  Assuming this is one
++		 of Core i3/i5/i7 processors if AVX is available.  */
++	      if ((ecx & bit_AVX) == 0)
++		break;
++
++	    case 0x1a:
++	    case 0x1e:
++	    case 0x1f:
++	    case 0x25:
++	    case 0x2c:
++	    case 0x2e:
++	    case 0x2f:
++	      /* Rep string instructions, copy backward, unaligned loads
++		 and pminub are fast on Intel Core i3, i5 and i7.  */
++#if index_Fast_Rep_String != index_Fast_Copy_Backward
++# error index_Fast_Rep_String != index_Fast_Copy_Backward
++#endif
++#if index_Fast_Rep_String != index_Fast_Unaligned_Load
++# error index_Fast_Rep_String != index_Fast_Unaligned_Load
++#endif
++#if index_Fast_Rep_String != index_Prefer_PMINUB_for_stringop
++# error index_Fast_Rep_String != index_Prefer_PMINUB_for_stringop
++#endif
++	      cpu_features->feature[index_Fast_Rep_String]
++		|= (bit_Fast_Rep_String
++		    | bit_Fast_Copy_Backward
++		    | bit_Fast_Unaligned_Load
++		    | bit_Prefer_PMINUB_for_stringop);
++	      break;
++	    }
++	}
++    }
++  /* This spells out "AuthenticAMD".  */
++  else if (ebx == 0x68747541 && ecx == 0x444d4163 && edx == 0x69746e65)
++    {
++      kind = arch_kind_amd;
++
++      get_common_indeces (cpu_features, &family, &model);
++
++      ecx = cpu_features->cpuid[COMMON_CPUID_INDEX_1].ecx;
++
++      /* AMD processors prefer SSE instructions for memory/string routines
++        if they are available, otherwise they prefer integer instructions.  */
++      if ((ecx & 0x200))
++	cpu_features->feature[index_Prefer_SSE_for_memop]
++	  |= bit_Prefer_SSE_for_memop;
++
++      unsigned int eax;
++      __cpuid (0x80000000, eax, ebx, ecx, edx);
++      if (eax >= 0x80000001)
++	__cpuid (0x80000001,
++		 cpu_features->cpuid[COMMON_CPUID_INDEX_80000001].eax,
++		 cpu_features->cpuid[COMMON_CPUID_INDEX_80000001].ebx,
++		 cpu_features->cpuid[COMMON_CPUID_INDEX_80000001].ecx,
++		 cpu_features->cpuid[COMMON_CPUID_INDEX_80000001].edx);
++    }
++  else
++    kind = arch_kind_other;
++
++  if (cpu_features->max_cpuid >= 7)
++    __cpuid_count (7, 0,
++		   cpu_features->cpuid[COMMON_CPUID_INDEX_7].eax,
++		   cpu_features->cpuid[COMMON_CPUID_INDEX_7].ebx,
++		   cpu_features->cpuid[COMMON_CPUID_INDEX_7].ecx,
++		   cpu_features->cpuid[COMMON_CPUID_INDEX_7].edx);
++
++  /* Can we call xgetbv?  */
++  if (HAS_CPU_FEATURE (OSXSAVE))
++    {
++      unsigned int xcrlow;
++      unsigned int xcrhigh;
++      asm ("xgetbv" : "=a" (xcrlow), "=d" (xcrhigh) : "c" (0));
++      /* Is YMM and XMM state usable?  */
++      if ((xcrlow & (bit_YMM_state | bit_XMM_state)) ==
++	  (bit_YMM_state | bit_XMM_state))
++	{
++	  /* Determine if AVX is usable.  */
++	  if (HAS_CPU_FEATURE (AVX))
++	    cpu_features->feature[index_AVX_Usable] |= bit_AVX_Usable;
++#if index_AVX2_Usable != index_AVX_Fast_Unaligned_Load
++# error index_AVX2_Usable != index_AVX_Fast_Unaligned_Load
++#endif
++	  /* Determine if AVX2 is usable.  Unaligned load with 256-bit
++	     AVX registers are faster on processors with AVX2.  */
++	  if (HAS_CPU_FEATURE (AVX2))
++	    cpu_features->feature[index_AVX2_Usable]
++	      |= bit_AVX2_Usable | bit_AVX_Fast_Unaligned_Load;
++	  /* Check if OPMASK state, upper 256-bit of ZMM0-ZMM15 and
++	     ZMM16-ZMM31 state are enabled.  */
++	  if ((xcrlow & (bit_Opmask_state | bit_ZMM0_15_state
++			 | bit_ZMM16_31_state)) ==
++	      (bit_Opmask_state | bit_ZMM0_15_state | bit_ZMM16_31_state))
++	    {
++	      /* Determine if AVX512F is usable.  */
++	      if (HAS_CPU_FEATURE (AVX512F))
++		{
++		  cpu_features->feature[index_AVX512F_Usable]
++		    |= bit_AVX512F_Usable;
++		  /* Determine if AVX512DQ is usable.  */
++		  if (HAS_CPU_FEATURE (AVX512DQ))
++		    cpu_features->feature[index_AVX512DQ_Usable]
++		      |= bit_AVX512DQ_Usable;
++		}
++	    }
++	  /* Determine if FMA is usable.  */
++	  if (HAS_CPU_FEATURE (FMA))
++	    cpu_features->feature[index_FMA_Usable] |= bit_FMA_Usable;
++	  /* Determine if FMA4 is usable.  */
++	  if (HAS_CPU_FEATURE (FMA4))
++	    cpu_features->feature[index_FMA4_Usable] |= bit_FMA4_Usable;
++	}
++    }
++
++  cpu_features->family = family;
++  cpu_features->model = model;
++  cpu_features->kind = kind;
++}
+Index: glibc-2.17-c758a686/sysdeps/x86/cpu-features.h
+===================================================================
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/x86/cpu-features.h
+@@ -0,0 +1,273 @@
++/* This file is part of the GNU C Library.
++   Copyright (C) 2008-2015 Free Software Foundation, Inc.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#ifndef cpu_features_h
++#define cpu_features_h
++
++#define bit_Fast_Rep_String		(1 << 0)
++#define bit_Fast_Copy_Backward		(1 << 1)
++#define bit_Slow_BSF			(1 << 2)
++#define bit_Prefer_SSE_for_memop	(1 << 3)
++#define bit_Fast_Unaligned_Load		(1 << 4)
++#define bit_Prefer_PMINUB_for_stringop	(1 << 5)
++#define bit_AVX_Usable			(1 << 6)
++#define bit_FMA_Usable			(1 << 7)
++#define bit_FMA4_Usable			(1 << 8)
++#define bit_Slow_SSE4_2			(1 << 9)
++#define bit_AVX2_Usable			(1 << 10)
++#define bit_AVX_Fast_Unaligned_Load	(1 << 11)
++#define bit_AVX512F_Usable		(1 << 12)
++#define bit_AVX512DQ_Usable		(1 << 13)
++
++/* CPUID Feature flags.  */
++
++/* COMMON_CPUID_INDEX_1.  */
++#define bit_SSE2	(1 << 26)
++#define bit_SSSE3	(1 << 9)
++#define bit_SSE4_1	(1 << 19)
++#define bit_SSE4_2	(1 << 20)
++#define bit_OSXSAVE	(1 << 27)
++#define bit_AVX		(1 << 28)
++#define bit_POPCOUNT	(1 << 23)
++#define bit_FMA		(1 << 12)
++#define bit_FMA4	(1 << 16)
++
++/* COMMON_CPUID_INDEX_7.  */
++#define bit_RTM		(1 << 11)
++#define bit_AVX2	(1 << 5)
++#define bit_AVX512F	(1 << 16)
++#define bit_AVX512DQ	(1 << 17)
++
++/* XCR0 Feature flags.  */
++#define bit_XMM_state  (1 << 1)
++#define bit_YMM_state  (2 << 1)
++#define bit_Opmask_state	(1 << 5)
++#define bit_ZMM0_15_state	(1 << 6)
++#define bit_ZMM16_31_state	(1 << 7)
++
++/* The integer bit array index for the first set of internal feature bits.  */
++#define FEATURE_INDEX_1 0
++
++/* The current maximum size of the feature integer bit array.  */
++#define FEATURE_INDEX_MAX 1
++
++#ifdef	__ASSEMBLER__
++
++# include <ifunc-defines.h>
++# include <rtld-global-offsets.h>
++
++# define index_SSE2	COMMON_CPUID_INDEX_1*CPUID_SIZE+CPUID_EDX_OFFSET
++# define index_SSSE3	COMMON_CPUID_INDEX_1*CPUID_SIZE+CPUID_ECX_OFFSET
++# define index_SSE4_1	COMMON_CPUID_INDEX_1*CPUID_SIZE+CPUID_ECX_OFFSET
++# define index_SSE4_2	COMMON_CPUID_INDEX_1*CPUID_SIZE+CPUID_ECX_OFFSET
++# define index_AVX	COMMON_CPUID_INDEX_1*CPUID_SIZE+CPUID_ECX_OFFSET
++# define index_AVX2	COMMON_CPUID_INDEX_7*CPUID_SIZE+CPUID_EBX_OFFSET
++
++# define index_Fast_Rep_String		FEATURE_INDEX_1*FEATURE_SIZE
++# define index_Fast_Copy_Backward	FEATURE_INDEX_1*FEATURE_SIZE
++# define index_Slow_BSF			FEATURE_INDEX_1*FEATURE_SIZE
++# define index_Prefer_SSE_for_memop	FEATURE_INDEX_1*FEATURE_SIZE
++# define index_Fast_Unaligned_Load	FEATURE_INDEX_1*FEATURE_SIZE
++# define index_Prefer_PMINUB_for_stringop FEATURE_INDEX_1*FEATURE_SIZE
++# define index_AVX_Usable		FEATURE_INDEX_1*FEATURE_SIZE
++# define index_FMA_Usable		FEATURE_INDEX_1*FEATURE_SIZE
++# define index_FMA4_Usable		FEATURE_INDEX_1*FEATURE_SIZE
++# define index_Slow_SSE4_2		FEATURE_INDEX_1*FEATURE_SIZE
++# define index_AVX2_Usable		FEATURE_INDEX_1*FEATURE_SIZE
++# define index_AVX_Fast_Unaligned_Load	FEATURE_INDEX_1*FEATURE_SIZE
++# define index_AVX512F_Usable		FEATURE_INDEX_1*FEATURE_SIZE
++# define index_AVX512DQ_Usable		FEATURE_INDEX_1*FEATURE_SIZE
++
++# if defined (_LIBC) && !IS_IN (nonlib)
++#  ifdef __x86_64__
++#   ifdef SHARED
++#    if IS_IN (rtld)
++#     define LOAD_RTLD_GLOBAL_RO_RDX
++#     define HAS_FEATURE(offset, name) \
++  testl $(bit_##name), _rtld_local_ro+offset+(index_##name)(%rip)
++#    else
++#      define LOAD_RTLD_GLOBAL_RO_RDX \
++  mov _rtld_global_ro@GOTPCREL(%rip), %RDX_LP
++#     define HAS_FEATURE(offset, name) \
++  testl $(bit_##name), \
++	RTLD_GLOBAL_RO_DL_X86_CPU_FEATURES_OFFSET+offset+(index_##name)(%rdx)
++#    endif
++#   else /* SHARED */
++#    define LOAD_RTLD_GLOBAL_RO_RDX
++#    define HAS_FEATURE(offset, name) \
++  testl $(bit_##name), _dl_x86_cpu_features+offset+(index_##name)(%rip)
++#   endif /* !SHARED */
++#  else  /* __x86_64__ */
++#   ifdef SHARED
++#    define LOAD_FUNC_GOT_EAX(func) \
++  leal func@GOTOFF(%edx), %eax
++#    if IS_IN (rtld)
++#    define LOAD_GOT_AND_RTLD_GLOBAL_RO \
++  LOAD_PIC_REG(dx)
++#     define HAS_FEATURE(offset, name) \
++  testl $(bit_##name), offset+(index_##name)+_rtld_local_ro@GOTOFF(%edx)
++#    else
++#     define LOAD_GOT_AND_RTLD_GLOBAL_RO \
++  LOAD_PIC_REG(dx); \
++  mov _rtld_global_ro@GOT(%edx), %ecx
++#     define HAS_FEATURE(offset, name) \
++  testl $(bit_##name), \
++	RTLD_GLOBAL_RO_DL_X86_CPU_FEATURES_OFFSET+offset+(index_##name)(%ecx)
++#    endif
++#   else  /* SHARED */
++#    define LOAD_FUNC_GOT_EAX(func) \
++  leal func, %eax
++#    define LOAD_GOT_AND_RTLD_GLOBAL_RO
++#    define HAS_FEATURE(offset, name) \
++  testl $(bit_##name), _dl_x86_cpu_features+offset+(index_##name)
++#   endif /* !SHARED */
++#  endif /* !__x86_64__ */
++# else /* _LIBC && !nonlib */
++#  error "Sorry, <cpu-features.h> is unimplemented for assembler"
++# endif /* !_LIBC || nonlib */
++
++/* HAS_* evaluates to true if we may use the feature at runtime.  */
++# define HAS_CPU_FEATURE(name)	HAS_FEATURE (CPUID_OFFSET, name)
++# define HAS_ARCH_FEATURE(name) HAS_FEATURE (FEATURE_OFFSET, name)
++
++#else	/* __ASSEMBLER__ */
++
++# include <sys/param.h>
++# include <sys/types.h>
++# include <sysdep.h>
++# include <stdbool.h>
++
++/* Ugly hack to make it possible to select a strstr and strcasestr
++   implementation that avoids using the stack for 16-byte aligned
++   SSE temporaries.  Doing so makes it possible to call the functions
++   with a stack that's not 16-byte aligned as can happen, for example,
++   as a result of compiling the functions' callers with the GCC
++   -mpreferred-stack-boubdary=2 or =3 option, or with the ICC
++   -falign-stack=assume-4-byte option.  See rhbz 1150282 for details.
++
++   The ifunc selector uses the unaligned version by default if this
++   file exists and is accessible.  */
++# define ENABLE_STRSTR_UNALIGNED_PATHNAME \
++    "/etc/sysconfig/64bit_strstr_via_64bit_strstr_sse2_unaligned"
++
++static bool __attribute__ ((unused))
++use_unaligned_strstr (void)
++{
++  struct stat unaligned_strstr_etc_sysconfig_file;
++
++  /* TLS may not have been set up yet, so avoid using stat since it tries to
++     set errno.  */
++  return INTERNAL_SYSCALL (stat, , 2,
++			   ENABLE_STRSTR_UNALIGNED_PATHNAME,
++			   &unaligned_strstr_etc_sysconfig_file) == 0;
++}
++
++enum
++  {
++    COMMON_CPUID_INDEX_1 = 0,
++    COMMON_CPUID_INDEX_7,
++    COMMON_CPUID_INDEX_80000001,	/* for AMD */
++    /* Keep the following line at the end.  */
++    COMMON_CPUID_INDEX_MAX
++  };
++
++struct cpu_features
++{
++  enum cpu_features_kind
++    {
++      arch_kind_unknown = 0,
++      arch_kind_intel,
++      arch_kind_amd,
++      arch_kind_other
++    } kind;
++  int max_cpuid;
++  struct cpuid_registers
++  {
++    unsigned int eax;
++    unsigned int ebx;
++    unsigned int ecx;
++    unsigned int edx;
++  } cpuid[COMMON_CPUID_INDEX_MAX];
++  unsigned int family;
++  unsigned int model;
++  unsigned int feature[FEATURE_INDEX_MAX];
++};
++
++/* Used from outside of glibc to get access to the CPU features
++   structure.  */
++extern const struct cpu_features *__get_cpu_features (void)
++     __attribute__ ((const));
++
++# if defined (_LIBC) && !IS_IN (nonlib)
++/* Unused for x86.  */
++#  define INIT_ARCH()
++#  define __get_cpu_features()	(&GLRO(dl_x86_cpu_features))
++# endif
++
++
++/* HAS_* evaluates to true if we may use the feature at runtime.  */
++# define HAS_CPU_FEATURE(name) \
++  ((__get_cpu_features ()->cpuid[index_##name].reg_##name & (bit_##name)) != 0)
++# define HAS_ARCH_FEATURE(name) \
++  ((__get_cpu_features ()->feature[index_##name] & (bit_##name)) != 0)
++
++# define index_SSE2		COMMON_CPUID_INDEX_1
++# define index_SSSE3		COMMON_CPUID_INDEX_1
++# define index_SSE4_1		COMMON_CPUID_INDEX_1
++# define index_SSE4_2		COMMON_CPUID_INDEX_1
++# define index_AVX		COMMON_CPUID_INDEX_1
++# define index_AVX2		COMMON_CPUID_INDEX_7
++# define index_AVX512F		COMMON_CPUID_INDEX_7
++# define index_AVX512DQ		COMMON_CPUID_INDEX_7
++# define index_RTM		COMMON_CPUID_INDEX_7
++# define index_FMA		COMMON_CPUID_INDEX_1
++# define index_FMA4		COMMON_CPUID_INDEX_80000001
++# define index_POPCOUNT		COMMON_CPUID_INDEX_1
++# define index_OSXSAVE		COMMON_CPUID_INDEX_1
++
++# define reg_SSE2		edx
++# define reg_SSSE3		ecx
++# define reg_SSE4_1		ecx
++# define reg_SSE4_2		ecx
++# define reg_AVX		ecx
++# define reg_AVX2		ebx
++# define reg_AVX512F		ebx
++# define reg_AVX512DQ		ebx
++# define reg_RTM		ebx
++# define reg_FMA		ecx
++# define reg_FMA4		ecx
++# define reg_POPCOUNT		ecx
++# define reg_OSXSAVE		ecx
++
++# define index_Fast_Rep_String		FEATURE_INDEX_1
++# define index_Fast_Copy_Backward	FEATURE_INDEX_1
++# define index_Slow_BSF			FEATURE_INDEX_1
++# define index_Prefer_SSE_for_memop	FEATURE_INDEX_1
++# define index_Fast_Unaligned_Load	FEATURE_INDEX_1
++# define index_Prefer_PMINUB_for_stringop FEATURE_INDEX_1
++# define index_AVX_Usable		FEATURE_INDEX_1
++# define index_FMA_Usable		FEATURE_INDEX_1
++# define index_FMA4_Usable		FEATURE_INDEX_1
++# define index_Slow_SSE4_2		FEATURE_INDEX_1
++# define index_AVX2_Usable		FEATURE_INDEX_1
++# define index_AVX_Fast_Unaligned_Load	FEATURE_INDEX_1
++# define index_AVX512F_Usable		FEATURE_INDEX_1
++# define index_AVX512DQ_Usable		FEATURE_INDEX_1
++
++#endif	/* !__ASSEMBLER__ */
++
++#endif  /* cpu_features_h */
+Index: glibc-2.17-c758a686/sysdeps/x86/dl-get-cpu-features.c
+===================================================================
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/x86/dl-get-cpu-features.c
+@@ -0,0 +1,27 @@
++/* This file is part of the GNU C Library.
++   Copyright (C) 2015 Free Software Foundation, Inc.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++
++#include <ldsodefs.h>
++
++#undef __get_cpu_features
++
++const struct cpu_features *
++__get_cpu_features (void)
++{
++  return &GLRO(dl_x86_cpu_features);
++}
+Index: glibc-2.17-c758a686/sysdeps/x86/libc-start.c
+===================================================================
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/x86/libc-start.c
+@@ -0,0 +1,41 @@
++/* Copyright (C) 2015 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#ifdef SHARED
++# include <csu/libc-start.c>
++# else
++/* The main work is done in the generic function.  */
++# define LIBC_START_DISABLE_INLINE
++# define LIBC_START_MAIN generic_start_main
++# include <csu/libc-start.c>
++# include <cpu-features.h>
++# include <cpu-features.c>
++
++extern struct cpu_features _dl_x86_cpu_features;
++
++int
++__libc_start_main (int (*main) (int, char **, char ** MAIN_AUXVEC_DECL),
++		   int argc, char **argv,
++		   __typeof (main) init,
++		   void (*fini) (void),
++		   void (*rtld_fini) (void), void *stack_end)
++{
++  init_cpu_features (&_dl_x86_cpu_features);
++  return generic_start_main (main, argc, argv, init, fini, rtld_fini,
++			     stack_end);
++}
++#endif
+Index: glibc-2.17-c758a686/sysdeps/x86/rtld-global-offsets.sym
+===================================================================
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/x86/rtld-global-offsets.sym
+@@ -0,0 +1,7 @@
++#define SHARED 1
++
++#include <ldsodefs.h>
++
++#define rtld_global_ro_offsetof(mem) offsetof (struct rtld_global_ro, mem)
++
++RTLD_GLOBAL_RO_DL_X86_CPU_FEATURES_OFFSET rtld_global_ro_offsetof (_dl_x86_cpu_features)
+Index: glibc-2.17-c758a686/sysdeps/x86/tst-get-cpu-features-static.c
+===================================================================
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/x86/tst-get-cpu-features-static.c
+@@ -0,0 +1 @@
++#include "tst-get-cpu-features.c"
+Index: glibc-2.17-c758a686/sysdeps/x86/tst-get-cpu-features.c
+===================================================================
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/x86/tst-get-cpu-features.c
+@@ -0,0 +1,31 @@
++/* Test case for x86 __get_cpu_features interface
++   Copyright (C) 2015 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <stdlib.h>
++#include <cpu-features.h>
++
++static int
++do_test (void)
++{
++  if (__get_cpu_features ()->kind == arch_kind_unknown)
++    abort ();
++  return 0;
++}
++
++#define TEST_FUNCTION do_test ()
++#include "../../test-skeleton.c"
+Index: glibc-2.17-c758a686/sysdeps/x86_64/cacheinfo.c
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/x86_64/cacheinfo.c
++++ glibc-2.17-c758a686/sysdeps/x86_64/cacheinfo.c
+@@ -21,40 +21,11 @@
+ #include <stdlib.h>
+ #include <unistd.h>
+ #include <cpuid.h>
++#include "multiarch/init-arch.h"
+ 
+-#ifndef __cpuid_count
+-/* FIXME: Provide __cpuid_count if it isn't defined.  Copied from gcc
+-   4.4.0.  Remove this if gcc 4.4 is the minimum requirement.  */
+-# if defined(__i386__) && defined(__PIC__)
+-/* %ebx may be the PIC register.  */
+-#  define __cpuid_count(level, count, a, b, c, d)		\
+-  __asm__ ("xchg{l}\t{%%}ebx, %1\n\t"			\
+-	   "cpuid\n\t"					\
+-	   "xchg{l}\t{%%}ebx, %1\n\t"			\
+-	   : "=a" (a), "=r" (b), "=c" (c), "=d" (d)	\
+-	   : "0" (level), "2" (count))
+-# else
+-#  define __cpuid_count(level, count, a, b, c, d)		\
+-  __asm__ ("cpuid\n\t"					\
+-	   : "=a" (a), "=b" (b), "=c" (c), "=d" (d)	\
+-	   : "0" (level), "2" (count))
+-# endif
+-#endif
+-
+-#ifdef USE_MULTIARCH
+-# include "multiarch/init-arch.h"
+-
+-# define is_intel __cpu_features.kind == arch_kind_intel
+-# define is_amd __cpu_features.kind == arch_kind_amd
+-# define max_cpuid __cpu_features.max_cpuid
+-#else
+-  /* This spells out "GenuineIntel".  */
+-# define is_intel \
+-  ebx == 0x756e6547 && ecx == 0x6c65746e && edx == 0x49656e69
+-  /* This spells out "AuthenticAMD".  */
+-# define is_amd \
+-  ebx == 0x68747541 && ecx == 0x444d4163 && edx == 0x69746e65
+-#endif
++#define is_intel GLRO(dl_x86_cpu_features).kind == arch_kind_intel
++#define is_amd GLRO(dl_x86_cpu_features).kind == arch_kind_amd
++#define max_cpuid GLRO(dl_x86_cpu_features).max_cpuid
+ 
+ static const struct intel_02_cache_info
+ {
+@@ -237,21 +208,8 @@ intel_check_word (int name, unsigned int
+ 	      /* Intel reused this value.  For family 15, model 6 it
+ 		 specifies the 3rd level cache.  Otherwise the 2nd
+ 		 level cache.  */
+-	      unsigned int family;
+-	      unsigned int model;
+-#ifdef USE_MULTIARCH
+-	      family = __cpu_features.family;
+-	      model = __cpu_features.model;
+-#else
+-	      unsigned int eax;
+-	      unsigned int ebx;
+-	      unsigned int ecx;
+-	      unsigned int edx;
+-	      __cpuid (1, eax, ebx, ecx, edx);
+-
+-	      family = ((eax >> 20) & 0xff) + ((eax >> 8) & 0xf);
+-	      model = (((eax >>16) & 0xf) << 4) + ((eax >> 4) & 0xf);
+-#endif
++	      unsigned int family = GLRO(dl_x86_cpu_features).family;
++	      unsigned int model = GLRO(dl_x86_cpu_features).model;
+ 
+ 	      if (family == 15 && model == 6)
+ 		{
+@@ -478,18 +436,6 @@ long int
+ attribute_hidden
+ __cache_sysconf (int name)
+ {
+-#ifdef USE_MULTIARCH
+-  if (__cpu_features.kind == arch_kind_unknown)
+-    __init_cpu_features ();
+-#else
+-  /* Find out what brand of processor.  */
+-  unsigned int max_cpuid;
+-  unsigned int ebx;
+-  unsigned int ecx;
+-  unsigned int edx;
+-  __cpuid (0, max_cpuid, ebx, ecx, edx);
+-#endif
+-
+   if (is_intel)
+     return handle_intel (name, max_cpuid);
+ 
+@@ -525,18 +471,6 @@ long int __x86_64_raw_shared_cache_size
+ int __x86_64_prefetchw attribute_hidden;
+ #endif
+ 
+-#ifndef DISABLE_PREFERRED_MEMORY_INSTRUCTION
+-/* Instructions preferred for memory and string routines.
+-
+-  0: Regular instructions
+-  1: MMX instructions
+-  2: SSE2 instructions
+-  3: SSSE3 instructions
+-
+-  */
+-int __x86_64_preferred_memory_instruction attribute_hidden;
+-#endif
+-
+ 
+ static void
+ __attribute__((constructor))
+@@ -553,14 +487,6 @@ init_cacheinfo (void)
+   unsigned int level;
+   unsigned int threads = 0;
+ 
+-#ifdef USE_MULTIARCH
+-  if (__cpu_features.kind == arch_kind_unknown)
+-    __init_cpu_features ();
+-#else
+-  int max_cpuid;
+-  __cpuid (0, max_cpuid, ebx, ecx, edx);
+-#endif
+-
+   if (is_intel)
+     {
+       data = handle_intel (_SC_LEVEL1_DCACHE_SIZE, max_cpuid);
+@@ -576,34 +502,13 @@ init_cacheinfo (void)
+ 	  shared = handle_intel (_SC_LEVEL2_CACHE_SIZE, max_cpuid);
+ 	}
+ 
+-      unsigned int ebx_1;
+-
+-#ifdef USE_MULTIARCH
+-      eax = __cpu_features.cpuid[COMMON_CPUID_INDEX_1].eax;
+-      ebx_1 = __cpu_features.cpuid[COMMON_CPUID_INDEX_1].ebx;
+-      ecx = __cpu_features.cpuid[COMMON_CPUID_INDEX_1].ecx;
+-      edx = __cpu_features.cpuid[COMMON_CPUID_INDEX_1].edx;
+-#else
+-      __cpuid (1, eax, ebx_1, ecx, edx);
+-#endif
+-
+-      unsigned int family = (eax >> 8) & 0x0f;
+-      unsigned int model = (eax >> 4) & 0x0f;
+-      unsigned int extended_model = (eax >> 12) & 0xf0;
+-
+-#ifndef DISABLE_PREFERRED_MEMORY_INSTRUCTION
+-      /* Intel prefers SSSE3 instructions for memory/string routines
+-	 if they are available.  */
+-      if ((ecx & 0x200))
+-	__x86_64_preferred_memory_instruction = 3;
+-      else
+-	__x86_64_preferred_memory_instruction = 2;
+-#endif
+-
+       /* Figure out the number of logical threads that share the
+ 	 highest cache level.  */
+       if (max_cpuid >= 4)
+ 	{
++	  unsigned int family = GLRO(dl_x86_cpu_features).family;
++	  unsigned int model = GLRO(dl_x86_cpu_features).model;
++
+ 	  int i = 0;
+ 
+ 	  /* Query until desired cache level is enumerated.  */
+@@ -655,7 +560,6 @@ init_cacheinfo (void)
+ 	  threads += 1;
+ 	  if (threads > 2 && level == 2 && family == 6)
+ 	    {
+-	      model += extended_model;
+ 	      switch (model)
+ 		{
+ 		case 0x57:
+@@ -678,7 +582,9 @@ init_cacheinfo (void)
+ 	intel_bug_no_cache_info:
+ 	  /* Assume that all logical threads share the highest cache level.  */
+ 
+-	  threads = (ebx_1 >> 16) & 0xff;
++	  threads
++	    = ((GLRO(dl_x86_cpu_features).cpuid[COMMON_CPUID_INDEX_1].ebx
++		>> 16) & 0xff);
+ 	}
+ 
+       /* Cap usage of highest cache level to the number of supported
+@@ -693,25 +599,6 @@ init_cacheinfo (void)
+       long int core = handle_amd (_SC_LEVEL2_CACHE_SIZE);
+       shared = handle_amd (_SC_LEVEL3_CACHE_SIZE);
+ 
+-#ifndef DISABLE_PREFERRED_MEMORY_INSTRUCTION
+-# ifdef USE_MULTIARCH
+-      eax = __cpu_features.cpuid[COMMON_CPUID_INDEX_1].eax;
+-      ebx = __cpu_features.cpuid[COMMON_CPUID_INDEX_1].ebx;
+-      ecx = __cpu_features.cpuid[COMMON_CPUID_INDEX_1].ecx;
+-      edx = __cpu_features.cpuid[COMMON_CPUID_INDEX_1].edx;
+-# else
+-      __cpuid (1, eax, ebx, ecx, edx);
+-# endif
+-
+-      /* AMD prefers SSSE3 instructions for memory/string routines
+-	 if they are avaiable, otherwise it prefers integer
+-	 instructions.  */
+-      if ((ecx & 0x200))
+-	__x86_64_preferred_memory_instruction = 3;
+-      else
+-	__x86_64_preferred_memory_instruction = 0;
+-#endif
+-
+       /* Get maximum extended function. */
+       __cpuid (0x80000000, max_cpuid_ex, ebx, ecx, edx);
+ 
+Index: glibc-2.17-c758a686/sysdeps/x86_64/dl-machine.h
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/x86_64/dl-machine.h
++++ glibc-2.17-c758a686/sysdeps/x86_64/dl-machine.h
+@@ -26,6 +26,7 @@
+ #include <sysdep.h>
+ #include <tls.h>
+ #include <dl-tlsdesc.h>
++#include <cpu-features.c>
+ 
+ /* Return nonzero iff ELF header is compatible with the running host.  */
+ static inline int __attribute__ ((unused))
+@@ -200,6 +201,8 @@ dl_platform_init (void)
+   if (GLRO(dl_platform) != NULL && *GLRO(dl_platform) == '\0')
+     /* Avoid an empty string which would disturb us.  */
+     GLRO(dl_platform) = NULL;
++
++  init_cpu_features (&GLRO(dl_x86_cpu_features));
+ }
+ 
+ static inline ElfW(Addr)
+Index: glibc-2.17-c758a686/sysdeps/x86_64/dl-procinfo.c
+===================================================================
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/x86_64/dl-procinfo.c
+@@ -0,0 +1,57 @@
++/* Data for x86-64 version of processor capability information.
++   Copyright (C) 2015 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++/* If anything should be added here check whether the size of each string
++   is still ok with the given array size.
++
++   All the #ifdefs in the definitions are quite irritating but
++   necessary if we want to avoid duplicating the information.  There
++   are three different modes:
++
++   - PROCINFO_DECL is defined.  This means we are only interested in
++     declarations.
++
++   - PROCINFO_DECL is not defined:
++
++     + if SHARED is defined the file is included in an array
++       initializer.  The .element = { ... } syntax is needed.
++
++     + if SHARED is not defined a normal array initialization is
++       needed.
++  */
++
++#ifndef PROCINFO_CLASS
++# define PROCINFO_CLASS
++#endif
++
++#if !defined PROCINFO_DECL && defined SHARED
++  ._dl_x86_cpu_features
++#else
++PROCINFO_CLASS struct cpu_features _dl_x86_cpu_features
++#endif
++#ifndef PROCINFO_DECL
++= { }
++#endif
++#if !defined SHARED || defined PROCINFO_DECL
++;
++#else
++,
++#endif
++
++#undef PROCINFO_DECL
++#undef PROCINFO_CLASS
+Index: glibc-2.17-c758a686/sysdeps/x86_64/ldsodefs.h
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/x86_64/ldsodefs.h
++++ glibc-2.17-c758a686/sysdeps/x86_64/ldsodefs.h
+@@ -20,6 +20,7 @@
+ #define	_X86_64_LDSODEFS_H	1
+ 
+ #include <elf.h>
++#include <cpu-features.h>
+ 
+ struct La_x86_64_regs;
+ struct La_x86_64_retval;
+Index: glibc-2.17-c758a686/sysdeps/x86_64/multiarch/Makefile
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/x86_64/multiarch/Makefile
++++ glibc-2.17-c758a686/sysdeps/x86_64/multiarch/Makefile
+@@ -1,5 +1,4 @@
+ ifeq ($(subdir),csu)
+-aux += init-arch
+ tests += test-multiarch
+ gen-as-const-headers += ifunc-defines.sym
+ endif
+Index: glibc-2.17-c758a686/sysdeps/x86_64/multiarch/Versions
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/x86_64/multiarch/Versions
++++ /dev/null
+@@ -1,5 +0,0 @@
+-libc {
+-  GLIBC_PRIVATE {
+-    __get_cpu_features;
+-  }
+-}
+Index: glibc-2.17-c758a686/sysdeps/x86_64/multiarch/cacheinfo.c
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/x86_64/multiarch/cacheinfo.c
++++ /dev/null
+@@ -1,2 +0,0 @@
+-#define DISABLE_PREFERRED_MEMORY_INSTRUCTION
+-#include "../cacheinfo.c"
+Index: glibc-2.17-c758a686/sysdeps/x86_64/multiarch/ifunc-defines.sym
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/x86_64/multiarch/ifunc-defines.sym
++++ glibc-2.17-c758a686/sysdeps/x86_64/multiarch/ifunc-defines.sym
+@@ -4,7 +4,6 @@
+ --
+ 
+ CPU_FEATURES_SIZE	sizeof (struct cpu_features)
+-KIND_OFFSET		offsetof (struct cpu_features, kind)
+ CPUID_OFFSET		offsetof (struct cpu_features, cpuid)
+ CPUID_SIZE		sizeof (struct cpuid_registers)
+ CPUID_EAX_OFFSET	offsetof (struct cpuid_registers, eax)
+Index: glibc-2.17-c758a686/sysdeps/x86_64/multiarch/init-arch.c
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/x86_64/multiarch/init-arch.c
++++ /dev/null
+@@ -1,183 +0,0 @@
+-/* Initialize CPU feature data.
+-   This file is part of the GNU C Library.
+-   Copyright (C) 2008-2012 Free Software Foundation, Inc.
+-   Contributed by Ulrich Drepper <drepper@redhat.com>.
+-
+-   The GNU C Library is free software; you can redistribute it and/or
+-   modify it under the terms of the GNU Lesser General Public
+-   License as published by the Free Software Foundation; either
+-   version 2.1 of the License, or (at your option) any later version.
+-
+-   The GNU C Library is distributed in the hope that it will be useful,
+-   but WITHOUT ANY WARRANTY; without even the implied warranty of
+-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+-   Lesser General Public License for more details.
+-
+-   You should have received a copy of the GNU Lesser General Public
+-   License along with the GNU C Library; if not, see
+-   <http://www.gnu.org/licenses/>.  */
+-
+-#include <atomic.h>
+-#include <cpuid.h>
+-#include "init-arch.h"
+-
+-
+-struct cpu_features __cpu_features attribute_hidden;
+-
+-
+-static void
+-get_common_indeces (unsigned int *family, unsigned int *model)
+-{
+-  __cpuid (1, __cpu_features.cpuid[COMMON_CPUID_INDEX_1].eax,
+-	   __cpu_features.cpuid[COMMON_CPUID_INDEX_1].ebx,
+-	   __cpu_features.cpuid[COMMON_CPUID_INDEX_1].ecx,
+-	   __cpu_features.cpuid[COMMON_CPUID_INDEX_1].edx);
+-
+-  unsigned int eax = __cpu_features.cpuid[COMMON_CPUID_INDEX_1].eax;
+-  *family = (eax >> 8) & 0x0f;
+-  *model = (eax >> 4) & 0x0f;
+-}
+-
+-
+-void
+-__init_cpu_features (void)
+-{
+-  unsigned int ebx;
+-  unsigned int ecx;
+-  unsigned int edx;
+-  unsigned int family = 0;
+-  unsigned int model = 0;
+-  enum cpu_features_kind kind;
+-
+-  __cpuid (0, __cpu_features.max_cpuid, ebx, ecx, edx);
+-
+-  /* This spells out "GenuineIntel".  */
+-  if (ebx == 0x756e6547 && ecx == 0x6c65746e && edx == 0x49656e69)
+-    {
+-      kind = arch_kind_intel;
+-
+-      get_common_indeces (&family, &model);
+-
+-      /* Intel processors prefer SSE instruction for memory/string
+-	 routines if they are available.  */
+-      __cpu_features.feature[index_Prefer_SSE_for_memop]
+-	|= bit_Prefer_SSE_for_memop;
+-
+-      unsigned int eax = __cpu_features.cpuid[COMMON_CPUID_INDEX_1].eax;
+-      unsigned int extended_family = (eax >> 20) & 0xff;
+-      unsigned int extended_model = (eax >> 12) & 0xf0;
+-      if (family == 0x0f)
+-	{
+-	  family += extended_family;
+-	  model += extended_model;
+-	}
+-      else if (family == 0x06)
+-	{
+-	  ecx = __cpu_features.cpuid[COMMON_CPUID_INDEX_1].ecx;
+-	  model += extended_model;
+-	  switch (model)
+-	    {
+-	    case 0x1c:
+-	    case 0x26:
+-	      /* BSF is slow on Atom.  */
+-	      __cpu_features.feature[index_Slow_BSF] |= bit_Slow_BSF;
+-	      break;
+-
+-	    default:
+-	      /* Unknown family 0x06 processors.  Assuming this is one
+-		 of Core i3/i5/i7 processors if AVX is available.  */
+-	      if ((ecx & bit_AVX) == 0)
+-		break;
+-
+-	    case 0x1a:
+-	    case 0x1e:
+-	    case 0x1f:
+-	    case 0x25:
+-	    case 0x2c:
+-	    case 0x2e:
+-	    case 0x2f:
+-	      /* Rep string instructions, copy backward, unaligned loads
+-		 and pminub are fast on Intel Core i3, i5 and i7.  */
+-#if index_Fast_Rep_String != index_Fast_Copy_Backward
+-# error index_Fast_Rep_String != index_Fast_Copy_Backward
+-#endif
+-#if index_Fast_Rep_String != index_Fast_Unaligned_Load
+-# error index_Fast_Rep_String != index_Fast_Unaligned_Load
+-#endif
+-#if index_Fast_Rep_String != index_Prefer_PMINUB_for_stringop
+-# error index_Fast_Rep_String != index_Prefer_PMINUB_for_stringop
+-#endif
+-	      __cpu_features.feature[index_Fast_Rep_String]
+-		|= (bit_Fast_Rep_String
+-		    | bit_Fast_Copy_Backward
+-		    | bit_Fast_Unaligned_Load
+-		    | bit_Prefer_PMINUB_for_stringop);
+-	      break;
+-	    }
+-	}
+-    }
+-  /* This spells out "AuthenticAMD".  */
+-  else if (ebx == 0x68747541 && ecx == 0x444d4163 && edx == 0x69746e65)
+-    {
+-      kind = arch_kind_amd;
+-
+-      get_common_indeces (&family, &model);
+-
+-      ecx = __cpu_features.cpuid[COMMON_CPUID_INDEX_1].ecx;
+-
+-      /* AMD processors prefer SSE instructions for memory/string routines
+-	 if they are available, otherwise they prefer integer instructions.  */
+-      if ((ecx & 0x200))
+-	__cpu_features.feature[index_Prefer_SSE_for_memop]
+-	  |= bit_Prefer_SSE_for_memop;
+-
+-      unsigned int eax;
+-      __cpuid (0x80000000, eax, ebx, ecx, edx);
+-      if (eax >= 0x80000001)
+-	__cpuid (0x80000001,
+-		 __cpu_features.cpuid[COMMON_CPUID_INDEX_80000001].eax,
+-		 __cpu_features.cpuid[COMMON_CPUID_INDEX_80000001].ebx,
+-		 __cpu_features.cpuid[COMMON_CPUID_INDEX_80000001].ecx,
+-		 __cpu_features.cpuid[COMMON_CPUID_INDEX_80000001].edx);
+-    }
+-  else
+-    kind = arch_kind_other;
+-
+-  /* Can we call xgetbv?  */
+-  if (CPUID_OSXSAVE)
+-    {
+-      unsigned int xcrlow;
+-      unsigned int xcrhigh;
+-      asm ("xgetbv" : "=a" (xcrlow), "=d" (xcrhigh) : "c" (0));
+-      /* Is YMM and XMM state usable?  */
+-      if ((xcrlow & (bit_YMM_state | bit_XMM_state)) ==
+-	  (bit_YMM_state | bit_XMM_state))
+-	{
+-	  /* Determine if AVX is usable.  */
+-	  if (CPUID_AVX)
+-	    __cpu_features.feature[index_AVX_Usable] |= bit_AVX_Usable;
+-	  /* Determine if FMA is usable.  */
+-	  if (CPUID_FMA)
+-	    __cpu_features.feature[index_FMA_Usable] |= bit_FMA_Usable;
+-	  /* Determine if FMA4 is usable.  */
+-	  if (CPUID_FMA4)
+-	    __cpu_features.feature[index_FMA4_Usable] |= bit_FMA4_Usable;
+-	}
+-    }
+-
+-  __cpu_features.family = family;
+-  __cpu_features.model = model;
+-  atomic_write_barrier ();
+-  __cpu_features.kind = kind;
+-}
+-
+-#undef __get_cpu_features
+-
+-const struct cpu_features *
+-__get_cpu_features (void)
+-{
+-  if (__cpu_features.kind == arch_kind_unknown)
+-    __init_cpu_features ();
+-
+-  return &__cpu_features;
+-}
+Index: glibc-2.17-c758a686/sysdeps/x86_64/multiarch/init-arch.h
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/x86_64/multiarch/init-arch.h
++++ glibc-2.17-c758a686/sysdeps/x86_64/multiarch/init-arch.h
+@@ -15,183 +15,8 @@
+    License along with the GNU C Library; if not, see
+    <http://www.gnu.org/licenses/>.  */
+ 
+-#define bit_Fast_Rep_String		(1 << 0)
+-#define bit_Fast_Copy_Backward		(1 << 1)
+-#define bit_Slow_BSF			(1 << 2)
+-#define bit_Prefer_SSE_for_memop	(1 << 3)
+-#define bit_Fast_Unaligned_Load		(1 << 4)
+-#define bit_Prefer_PMINUB_for_stringop	(1 << 5)
+-#define bit_AVX_Usable			(1 << 6)
+-#define bit_FMA_Usable			(1 << 7)
+-#define bit_FMA4_Usable			(1 << 8)
+-
+-/* CPUID Feature flags.  */
+-#define bit_SSE2	(1 << 26)
+-#define bit_SSSE3	(1 << 9)
+-#define bit_SSE4_1	(1 << 19)
+-#define bit_SSE4_2	(1 << 20)
+-#define bit_OSXSAVE	(1 << 27)
+-#define bit_AVX		(1 << 28)
+-#define bit_POPCOUNT	(1 << 23)
+-#define bit_FMA		(1 << 12)
+-#define bit_FMA4	(1 << 16)
+-
+-/* XCR0 Feature flags.  */
+-#define bit_XMM_state  (1 << 1)
+-#define bit_YMM_state  (2 << 1)
+-
+-#ifdef	__ASSEMBLER__
+-
+-# include <ifunc-defines.h>
+-
+-# define index_SSE2	COMMON_CPUID_INDEX_1*CPUID_SIZE+CPUID_EDX_OFFSET
+-# define index_SSSE3	COMMON_CPUID_INDEX_1*CPUID_SIZE+CPUID_ECX_OFFSET
+-# define index_SSE4_1	COMMON_CPUID_INDEX_1*CPUID_SIZE+CPUID_ECX_OFFSET
+-# define index_SSE4_2	COMMON_CPUID_INDEX_1*CPUID_SIZE+CPUID_ECX_OFFSET
+-# define index_AVX	COMMON_CPUID_INDEX_1*CPUID_SIZE+CPUID_ECX_OFFSET
+-
+-# define index_Fast_Rep_String		FEATURE_INDEX_1*FEATURE_SIZE
+-# define index_Fast_Copy_Backward	FEATURE_INDEX_1*FEATURE_SIZE
+-# define index_Slow_BSF			FEATURE_INDEX_1*FEATURE_SIZE
+-# define index_Prefer_SSE_for_memop	FEATURE_INDEX_1*FEATURE_SIZE
+-# define index_Fast_Unaligned_Load	FEATURE_INDEX_1*FEATURE_SIZE
+-# define index_Prefer_PMINUB_for_stringop FEATURE_INDEX_1*FEATURE_SIZE
+-# define index_AVX_Usable		FEATURE_INDEX_1*FEATURE_SIZE
+-# define index_FMA_Usable		FEATURE_INDEX_1*FEATURE_SIZE
+-# define index_FMA4_Usable		FEATURE_INDEX_1*FEATURE_SIZE
+-
+-#else	/* __ASSEMBLER__ */
+-
+-# include <sys/param.h>
+-# include <sys/types.h>
+-# include <sysdep.h>
+-# include <stdbool.h>
+-
+-/* Ugly hack to make it possible to select a strstr and strcasestr
+-   implementation that avoids using the stack for 16-byte aligned
+-   SSE temporaries.  Doing so makes it possible to call the functions
+-   with a stack that's not 16-byte aligned as can happen, for example,
+-   as a result of compiling the functions' callers with the GCC
+-   -mpreferred-stack-boubdary=2 or =3 option, or with the ICC
+-   -falign-stack=assume-4-byte option.  See rhbz 1150282 for details.
+-
+-   The ifunc selector uses the unaligned version by default if this
+-   file exists and is accessible.  */
+-# define ENABLE_STRSTR_UNALIGNED_PATHNAME \
+-    "/etc/sysconfig/64bit_strstr_via_64bit_strstr_sse2_unaligned"
+-
+-static bool __attribute__ ((unused))
+-use_unaligned_strstr (void)
+-{
+-  struct stat unaligned_strstr_etc_sysconfig_file;
+-
+-  /* TLS may not have been set up yet, so avoid using stat since it tries to
+-     set errno.  */
+-  return INTERNAL_SYSCALL (stat, , 2,
+-                           ENABLE_STRSTR_UNALIGNED_PATHNAME,
+-                           &unaligned_strstr_etc_sysconfig_file) == 0;
+-}
+-
+-enum
+-  {
+-    COMMON_CPUID_INDEX_1 = 0,
+-    COMMON_CPUID_INDEX_80000001,	/* for AMD */
+-    /* Keep the following line at the end.  */
+-    COMMON_CPUID_INDEX_MAX
+-  };
+-
+-enum
+-  {
+-    FEATURE_INDEX_1 = 0,
+-    /* Keep the following line at the end.  */
+-    FEATURE_INDEX_MAX
+-  };
+-
+-extern struct cpu_features
+-{
+-  enum cpu_features_kind
+-    {
+-      arch_kind_unknown = 0,
+-      arch_kind_intel,
+-      arch_kind_amd,
+-      arch_kind_other
+-    } kind;
+-  int max_cpuid;
+-  struct cpuid_registers
+-  {
+-    unsigned int eax;
+-    unsigned int ebx;
+-    unsigned int ecx;
+-    unsigned int edx;
+-  } cpuid[COMMON_CPUID_INDEX_MAX];
+-  unsigned int family;
+-  unsigned int model;
+-  unsigned int feature[FEATURE_INDEX_MAX];
+-} __cpu_features attribute_hidden;
+-
+-
+-extern void __init_cpu_features (void) attribute_hidden;
+-# define INIT_ARCH() \
+-  do							\
+-    if (__cpu_features.kind == arch_kind_unknown)	\
+-      __init_cpu_features ();				\
+-  while (0)
+-
+-/* Used from outside libc.so to get access to the CPU features structure.  */
+-extern const struct cpu_features *__get_cpu_features (void)
+-     __attribute__ ((const));
+-
+-# if IS_IN (libc)
+-#  define __get_cpu_features()	(&__cpu_features)
+-# endif
+-
+-# define HAS_CPU_FEATURE(idx, reg, bit) \
+-  ((__get_cpu_features ()->cpuid[idx].reg & (bit)) != 0)
+-
+-/* Following are the feature tests used throughout libc.  */
+-
+-/* CPUID_* evaluates to true if the feature flag is enabled.
+-   We always use &__cpu_features because the HAS_CPUID_* macros
+-   are called only within __init_cpu_features, where we can't
+-   call __get_cpu_features without infinite recursion.  */
+-# define HAS_CPUID_FLAG(idx, reg, bit) \
+-  (((&__cpu_features)->cpuid[idx].reg & (bit)) != 0)
+-
+-# define CPUID_OSXSAVE \
+-  HAS_CPUID_FLAG (COMMON_CPUID_INDEX_1, ecx, bit_OSXSAVE)
+-# define CPUID_AVX \
+-  HAS_CPUID_FLAG (COMMON_CPUID_INDEX_1, ecx, bit_AVX)
+-# define CPUID_FMA \
+-  HAS_CPUID_FLAG (COMMON_CPUID_INDEX_1, ecx, bit_FMA)
+-# define CPUID_FMA4 \
+-  HAS_CPUID_FLAG (COMMON_CPUID_INDEX_80000001, ecx, bit_FMA4)
+-
+-/* HAS_* evaluates to true if we may use the feature at runtime.  */
+-# define HAS_SSE2	HAS_CPU_FEATURE (COMMON_CPUID_INDEX_1, edx, bit_SSE2)
+-# define HAS_POPCOUNT	HAS_CPU_FEATURE (COMMON_CPUID_INDEX_1, ecx, bit_POPCOUNT)
+-# define HAS_SSSE3	HAS_CPU_FEATURE (COMMON_CPUID_INDEX_1, ecx, bit_SSSE3)
+-# define HAS_SSE4_1	HAS_CPU_FEATURE (COMMON_CPUID_INDEX_1, ecx, bit_SSE4_1)
+-# define HAS_SSE4_2	HAS_CPU_FEATURE (COMMON_CPUID_INDEX_1, ecx, bit_SSE4_2)
+-
+-# define index_Fast_Rep_String		FEATURE_INDEX_1
+-# define index_Fast_Copy_Backward	FEATURE_INDEX_1
+-# define index_Slow_BSF			FEATURE_INDEX_1
+-# define index_Prefer_SSE_for_memop	FEATURE_INDEX_1
+-# define index_Fast_Unaligned_Load	FEATURE_INDEX_1
+-# define index_AVX_Usable		FEATURE_INDEX_1
+-# define index_FMA_Usable		FEATURE_INDEX_1
+-# define index_FMA4_Usable		FEATURE_INDEX_1
+-
+-# define HAS_ARCH_FEATURE(name) \
+-  ((__get_cpu_features ()->feature[index_##name] & (bit_##name)) != 0)
+-
+-# define HAS_FAST_REP_STRING		HAS_ARCH_FEATURE (Fast_Rep_String)
+-# define HAS_FAST_COPY_BACKWARD		HAS_ARCH_FEATURE (Fast_Copy_Backward)
+-# define HAS_SLOW_BSF			HAS_ARCH_FEATURE (Slow_BSF)
+-# define HAS_PREFER_SSE_FOR_MEMOP	HAS_ARCH_FEATURE (Prefer_SSE_for_memop)
+-# define HAS_FAST_UNALIGNED_LOAD	HAS_ARCH_FEATURE (Fast_Unaligned_Load)
+-# define HAS_AVX			HAS_ARCH_FEATURE (AVX_Usable)
+-# define HAS_FMA			HAS_ARCH_FEATURE (FMA_Usable)
+-# define HAS_FMA4			HAS_ARCH_FEATURE (FMA4_Usable)
+-
+-#endif	/* __ASSEMBLER__ */
++#ifdef  __ASSEMBLER__
++# include <cpu-features.h>
++#else
++# include <ldsodefs.h>
++#endif

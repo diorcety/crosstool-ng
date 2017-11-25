@@ -1,0 +1,20 @@
+diff -Nru glibc-2.17-c758a686/elf/dl-load.c glibc-2.17-c758a686/elf/dl-load.c
+--- glibc-2.17-c758a686/elf/dl-load.c	2012-06-06 13:07:41.727524312 -0600
++++ glibc-2.17-c758a686/elf/dl-load.c	2012-06-06 13:11:19.308681002 -0600
+@@ -2093,10 +2093,14 @@ _dl_map_object (struct link_map *loader,
+ 	  soname = ((const char *) D_PTR (l, l_info[DT_STRTAB])
+ 		    + l->l_info[DT_SONAME]->d_un.d_val);
+ 	  if (strcmp (name, soname) != 0)
+-	    continue;
++#ifdef __arm__
++	    if (strcmp (name, "ld-linux.so.3")
++		|| strcmp (soname, "ld-linux-armhf.so.3"))
++#endif
++	      continue;
+ 
+ 	  /* We have a match on a new name -- cache it.  */
+-	  add_name_to_object (l, soname);
++	  add_name_to_object (l, name);
+ 	  l->l_soname_added = 1;
+ 	}
+ 

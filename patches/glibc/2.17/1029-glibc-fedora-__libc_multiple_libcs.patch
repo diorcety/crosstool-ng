@@ -1,0 +1,83 @@
+From 16552c01a66633c9e412984d9d92616bd4e5303c Mon Sep 17 00:00:00 2001
+From: Andreas Schwab <schwab@redhat.com>
+Date: Fri, 11 Jun 2010 11:04:11 +0200
+Subject: [PATCH] Properly set __libc_multiple_libcs
+
+* elf/rtld.c (_dl_starting_up): Always define.
+(dl_main): Always set _dl_starting_up.
+* elf/dl-support.c (_dl_starting_up): Always define.
+* elf/dl-init.c (_dl_init): Always clear _dl_starting_up.
+
+---
+ ChangeLog        |    7 +++++++
+ elf/dl-init.c    |    4 ----
+ elf/dl-support.c |    2 --
+ elf/rtld.c       |    4 ----
+ 4 files changed, 7 insertions(+), 10 deletions(-)
+
+--- glibc-2.17-c758a686/elf/dl-init.c
++++ glibc-2.17-c758a686/elf/dl-init.c
+@@ -23,11 +23,9 @@
+ /* Type of the initializer.  */
+ typedef void (*init_t) (int, char **, char **);
+ 
+-#ifndef HAVE_INLINED_SYSCALLS
+ /* Flag, nonzero during startup phase.  */
+ extern int _dl_starting_up;
+ extern int _dl_starting_up_internal attribute_hidden;
+-#endif
+ 
+ 
+ static void
+@@ -132,9 +130,7 @@ _dl_init (struct link_map *main_map, int argc, char **argv, char **env)
+   while (i-- > 0)
+     call_init (main_map->l_initfini[i], argc, argv, env);
+ 
+-#ifndef HAVE_INLINED_SYSCALLS
+   /* Finished starting up.  */
+   INTUSE(_dl_starting_up) = 0;
+-#endif
+ }
+ INTDEF (_dl_init)
+--- glibc-2.17-c758a686/elf/dl-support.c
++++ glibc-2.17-c758a686/elf/dl-support.c
+@@ -81,10 +81,8 @@ unsigned long long _dl_load_adds;
+    create a fake scope containing nothing.  */
+ struct r_scope_elem _dl_initial_searchlist;
+ 
+-#ifndef HAVE_INLINED_SYSCALLS
+ /* Nonzero during startup.  */
+ int _dl_starting_up = 1;
+-#endif
+ 
+ /* Random data provided by the kernel.  */
+ void *_dl_random;
+--- glibc-2.17-c758a686/elf/rtld.c
++++ glibc-2.17-c758a686/elf/rtld.c
+@@ -106,7 +106,6 @@ static struct audit_list
+   struct audit_list *next;
+ } *audit_list;
+ 
+-#ifndef HAVE_INLINED_SYSCALLS
+ /* Set nonzero during loading and initialization of executable and
+    libraries, cleared before the executable's entry point runs.  This
+    must not be initialized to nonzero, because the unused dynamic
+@@ -116,7 +115,6 @@ static struct audit_list
+    never be called.  */
+ int _dl_starting_up = 0;
+ INTVARDEF(_dl_starting_up)
+-#endif
+ 
+ /* This is the structure which defines all variables global to ld.so
+    (except those which cannot be added for some reason).  */
+@@ -929,10 +927,8 @@ dl_main (const ElfW(Phdr) *phdr,
+   /* Process the environment variable which control the behaviour.  */
+   process_envvars (&mode);
+ 
+-#ifndef HAVE_INLINED_SYSCALLS
+   /* Set up a flag which tells we are just starting.  */
+   INTUSE(_dl_starting_up) = 1;
+-#endif
+ 
+   if (*user_entry == (ElfW(Addr)) ENTRY_POINT)
+     {

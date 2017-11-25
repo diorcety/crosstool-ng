@@ -1,0 +1,46 @@
+commit 164fd39d05925717e75715929c7ced14a2c1505e
+Author: Andreas Jaeger <aj@suse.de>
+Date:   Fri May 3 20:51:27 2013 +0200
+
+    Sync with Linux 3.9
+    
+            * sysdeps/gnu/netinet/tcp.h (TCP_TIMESTAMP): New value, from
+            Linux 3.9.
+            * sysdeps/unix/sysv/linux/bits/socket.h (PF_VSOCK, AF_VSOCK):
+            Add.
+            (PF_MAX): Adjust for VSOCK change.
+
+Index: b/sysdeps/gnu/netinet/tcp.h
+===================================================================
+--- a/sysdeps/gnu/netinet/tcp.h
++++ b/sysdeps/gnu/netinet/tcp.h
+@@ -60,6 +60,7 @@
+ #define TCP_QUEUE_SEQ		 21 /* Set sequence number of repaired queue. */
+ #define TCP_REPAIR_OPTIONS	 22 /* Repair TCP connection options */
+ #define TCP_FASTOPEN		 23 /* Enable FastOpen on listeners */
++#define TCP_TIMESTAMP		 24 /* TCP time stamp */
+ 
+ #ifdef __USE_MISC
+ # include <sys/types.h>
+Index: b/sysdeps/unix/sysv/linux/bits/socket.h
+===================================================================
+--- a/sysdeps/unix/sysv/linux/bits/socket.h
++++ b/sysdeps/unix/sysv/linux/bits/socket.h
+@@ -80,7 +80,8 @@ typedef __socklen_t socklen_t;
+ #define PF_CAIF		37	/* CAIF sockets.  */
+ #define PF_ALG		38	/* Algorithm sockets.  */
+ #define PF_NFC		39	/* NFC sockets.  */
+-#define	PF_MAX		40	/* For now..  */
++#define PF_VSOCK	40	/* vSockets.  */
++#define	PF_MAX		41	/* For now..  */
+ 
+ /* Address families.  */
+ #define	AF_UNSPEC	PF_UNSPEC
+@@ -124,6 +125,7 @@ typedef __socklen_t socklen_t;
+ #define AF_CAIF		PF_CAIF
+ #define AF_ALG		PF_ALG
+ #define AF_NFC		PF_NFC
++#define AF_VSOCK	PF_VSOCK
+ #define	AF_MAX		PF_MAX
+ 
+ /* Socket level values.  Others are defined in the appropriate headers.

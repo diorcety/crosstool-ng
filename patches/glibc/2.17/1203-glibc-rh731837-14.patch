@@ -1,0 +1,226 @@
+From 942cdf02caef0ea4fe257cf5898754b9b1897c4a Mon Sep 17 00:00:00 2001
+From: Rajalakshmi Srinivasaraghavan <raji@linux.vnet.ibm.com>
+Date: Wed, 30 Jul 2014 05:58:14 -0500
+Subject: [PATCH] PowerPC: multiarch strchrnul for PowerPC64
+
+commit 9ee2969b057862443b81789b56a61514edf34779
+Author: Adhemerval Zanella <azanella@linux.vnet.ibm.com>
+Date:   Fri Dec 13 14:50:26 2013 -0500
+
+Added sysdeps/powerpc/powerpc32/power4/multiarch/strchrnul-ppc32.c and
+string/strchrnul.c apart from original commit.
+---
+ string/strchrnul.c                                 |  6 +++-
+ .../powerpc32/power4/multiarch/strchrnul-ppc32.c   | 28 ++++++++++++++++
+ sysdeps/powerpc/powerpc64/multiarch/Makefile       |  3 +-
+ .../powerpc/powerpc64/multiarch/ifunc-impl-list.c  |  8 +++++
+ .../powerpc/powerpc64/multiarch/strchrnul-power7.S | 38 ++++++++++++++++++++++
+ .../powerpc/powerpc64/multiarch/strchrnul-ppc64.c  | 19 +++++++++++
+ sysdeps/powerpc/powerpc64/multiarch/strchrnul.c    | 37 +++++++++++++++++++++
+ 7 files changed, 137 insertions(+), 2 deletions(-)
+ create mode 100644 sysdeps/powerpc/powerpc32/power4/multiarch/strchrnul-ppc32.c
+ create mode 100644 sysdeps/powerpc/powerpc64/multiarch/strchrnul-power7.S
+ create mode 100644 sysdeps/powerpc/powerpc64/multiarch/strchrnul-ppc64.c
+ create mode 100644 sysdeps/powerpc/powerpc64/multiarch/strchrnul.c
+
+diff --git glibc-2.17-c758a686/string/strchrnul.c glibc-2.17-c758a686/string/strchrnul.c
+index 0db5e23..39540a3 100644
+--- glibc-2.17-c758a686/string/strchrnul.c
++++ glibc-2.17-c758a686/string/strchrnul.c
+@@ -27,9 +27,13 @@
+ #undef __strchrnul
+ #undef strchrnul
+ 
++#ifndef STRCHRNUL
++# define STRCHRNUL __strchrnul
++#endif
++
+ /* Find the first occurrence of C in S or the final NUL byte.  */
+ char *
+-__strchrnul (s, c_in)
++STRCHRNUL (s, c_in)
+      const char *s;
+      int c_in;
+ {
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc32/power4/multiarch/strchrnul-ppc32.c glibc-2.17-c758a686/sysdeps/powerpc/powerpc32/power4/multiarch/strchrnul-ppc32.c
+new file mode 100644
+index 0000000..950643a
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc32/power4/multiarch/strchrnul-ppc32.c
+@@ -0,0 +1,28 @@
++/* PowerPC32 default implementation of strchrnul.
++   Copyright (C) 2013-2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <string.h>
++
++#define STRCHRNUL  __strchrnul_ppc
++
++#undef weak_alias
++#define weak_alias(a,b )
++
++extern __typeof (strchrnul) __strchrnul_ppc attribute_hidden;
++
++#include <string/strchrnul.c>
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/Makefile glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/Makefile
+index f7c5853..15b86bd 100644
+--- glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/Makefile
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/Makefile
+@@ -8,7 +8,8 @@ sysdep_routines += memcpy-power7 memcpy-a2 memcpy-power6 memcpy-cell \
+                   rawmemchr-ppc64 strlen-power7 strlen-ppc64 strnlen-power7 \
+                   strnlen-ppc64 strcasecmp-power7 strcasecmp_l-power7 \
+                   strncase-power7 strncase_l-power7 strncmp-power7 \
+-                  strncmp-power4 strncmp-ppc64 strchr-power7 strchr-ppc64
++                  strncmp-power4 strncmp-ppc64 strchr-power7 strchr-ppc64 \
++                  strchrnul-power7 strchrnul-ppc64
+ 
+ CFLAGS-strncase-power7.c += -mcpu=power7 -funroll-loops
+ CFLAGS-strncase_l-power7.c += -mcpu=power7 -funroll-loops
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/ifunc-impl-list.c glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/ifunc-impl-list.c
+index 3b005ea..9e3b89d 100644
+--- glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/ifunc-impl-list.c
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/ifunc-impl-list.c
+@@ -94,6 +94,14 @@ __libc_ifunc_impl_list (const char *name, struct libc_ifunc_impl *array,
+                              __strchr_power7)
+              IFUNC_IMPL_ADD (array, i, strchr, 1,
+                              __strchr_ppc))
++
++  /* Support sysdeps/powerpc/powerpc64/multiarch/strchrnul.c.  */
++  IFUNC_IMPL (i, name, strchrnul,
++             IFUNC_IMPL_ADD (array, i, strchrnul,
++                             hwcap & PPC_FEATURE_HAS_VSX,
++                             __strchrnul_power7)
++             IFUNC_IMPL_ADD (array, i, strchrnul, 1,
++                             __strchrnul_ppc))
+ #endif
+ 
+   /* Support sysdeps/powerpc/powerpc64/multiarch/memcmp.c.  */
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/strchrnul-power7.S glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/strchrnul-power7.S
+new file mode 100644
+index 0000000..87d7c03
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/strchrnul-power7.S
+@@ -0,0 +1,38 @@
++/* Optimized strchrnul implementation for POWER7.
++   Copyright (C) 2013-2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <sysdep.h>
++
++#undef ENTRY
++#define ENTRY(name)						\
++  .section ".text";						\
++  ENTRY_2(__strchrnul_power7)					\
++  .align ALIGNARG(2);						\
++  BODY_LABEL(__strchrnul_power7):				\
++  cfi_startproc;
++
++#undef END
++#define END(name)						\
++  cfi_endproc;							\
++  TRACEBACK(__strchrnul_power7)					\
++  END_2(__strchrnul_power7)
++
++#undef libc_hidden_builtin_def
++#define libc_hidden_builtin_def(name)
++
++#include <sysdeps/powerpc/powerpc64/power7/strchrnul.S>
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/strchrnul-ppc64.c glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/strchrnul-ppc64.c
+new file mode 100644
+index 0000000..a76b335
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/strchrnul-ppc64.c
+@@ -0,0 +1,19 @@
++/* PowerPC64 default implementation of strchrnul.
++   Copyright (C) 2013-2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <sysdeps/powerpc/powerpc32/power4/multiarch/strchrnul-ppc32.c>
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/strchrnul.c glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/strchrnul.c
+new file mode 100644
+index 0000000..dab1cbf
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/strchrnul.c
+@@ -0,0 +1,37 @@
++/* Multiple versions of strchrnul.
++   Copyright (C) 2013-2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#ifndef NOT_IN_libc
++# include <string.h>
++# include <shlib-compat.h>
++# include "init-arch.h"
++
++extern __typeof (__strchrnul) __strchrnul_ppc attribute_hidden;
++extern __typeof (__strchrnul) __strchrnul_power7 attribute_hidden;
++
++/* Avoid DWARF definition DIE on ifunc symbol so that GDB can handle
++   ifunc symbol properly.  */
++libc_ifunc (__strchrnul,
++	    (hwcap & PPC_FEATURE_HAS_VSX)
++            ? __strchrnul_power7
++            : __strchrnul_ppc);
++
++weak_alias (__strchrnul, strchrnul)
++#else
++#include <string/strchrnul.c>
++#endif
+-- 
+1.8.3.1
+

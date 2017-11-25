@@ -1,0 +1,21 @@
+commit 5cffc05ed5c7fea312f2822d388afc025d03c08a
+Author: H.J. Lu <hjl.tools@gmail.com>
+Date:   Mon Apr 27 09:57:51 2015 -0700
+
+    Check tzspec_len == 0 in __tzfile_read
+    
+    	[BZ#18333]
+    	* time/tzset.c (__tzfile_read): Check tzspec_len == 0.
+
+--- a/time/tzfile.c
++++ b/time/tzfile.c
+@@ -283,7 +283,8 @@
+       if (__builtin_expect (tzspec_len == 0 || tzspec_len - 1 < num_isgmt, 0))
+ 	goto lose;
+       tzspec_len -= num_isgmt + 1;
+-      if (__builtin_expect (SIZE_MAX - total_size < tzspec_len, 0))
++      if (__builtin_expect (tzspec_len == 0
++                            || SIZE_MAX - total_size < tzspec_len, 0))
+ 	goto lose;
+     }
+   if (__builtin_expect (SIZE_MAX - total_size - tzspec_len < extra, 0))

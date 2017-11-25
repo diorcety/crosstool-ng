@@ -1,0 +1,390 @@
+commit 977f4b31b7ca4a4e498c397f3fd70510694bbd86
+Author: Siddhesh Poyarekar <siddhesh@redhat.com>
+Date:   Wed Oct 30 16:13:37 2013 +0530
+
+    Fix reads for sizes larger than INT_MAX in AF_INET lookup
+    
+    Currently for AF_INET lookups from the hosts file, buffer sizes larger
+    than INT_MAX silently overflow and may result in access beyond bounds
+    of a buffer.  This happens when the number of results in an AF_INET
+    lookup in /etc/hosts are very large.
+    
+    There are two aspects to the problem.  One problem is that the size
+    computed from the buffer size is stored into an int, which results in
+    overflow for large sizes.  Additionally, even if this size was
+    expanded, the function used to read content into the buffer (fgets)
+    accepts only int sizes.  As a result, the fix is to have a function
+    wrap around fgets that calls it multiple times with int sizes if
+    necessary.
+
+(The previous commit fixes upstream bug 16071.)
+
+commit ac60763eac3d43b7234dd21286ad3ec3f17957fc
+Author: Andreas Schwab <schwab@suse.de>
+Date:   Mon Jun 23 10:24:45 2014 +0200
+
+    Don't ignore too long lines in nss_files (BZ #17079)
+
+commit e07aabba73ea62e7dfa0512507c92efb851fbdbe
+Author: Florian Weimer <fweimer@redhat.com>
+Date:   Tue Sep 22 13:20:18 2015 +0200
+
+    Add test case for bug 18287
+
+commit 90fa42a1d7b78de0d75f7e3af362275b2abe807f
+Author: Florian Weimer <fweimer@redhat.com>
+Date:   Tue Sep 22 13:40:17 2015 +0200
+
+    Test in commit e07aabba73ea62e7dfa0512507c92efb851fbdbe is for bug 17079
+
+diff -u b/nss/nss_files/files-XXX.c b/nss/nss_files/files-XXX.c
+--- b/nss/nss_files/files-XXX.c
++++ b/nss/nss_files/files-XXX.c
+@@ -179,8 +179,53 @@
+   return NSS_STATUS_SUCCESS;
+ }
+ 
+-/* Parsing the database file into `struct STRUCTURE' data structures.  */
+ 
++typedef enum
++{
++  gcr_ok = 0,
++  gcr_error = -1,
++  gcr_overflow = -2
++} get_contents_ret;
++
++/* Hack around the fact that fgets only accepts int sizes.  */
++static get_contents_ret
++get_contents (char *linebuf, size_t len, FILE *stream)
++{
++  size_t remaining_len = len;
++  char *curbuf = linebuf;
++
++  do
++    {
++      int curlen = ((remaining_len > (size_t) INT_MAX) ? INT_MAX
++		    : remaining_len);
++
++      /* Terminate the line so that we can test for overflow.  */
++      ((unsigned char *) curbuf)[curlen - 1] = 0xff;
++
++      char *p = fgets_unlocked (curbuf, curlen, stream);
++
++      /* EOF or read error.  */
++      if (p == NULL)
++        return gcr_error;
++
++      /* Done reading in the line.  */
++      if (((unsigned char *) curbuf)[curlen - 1] == 0xff)
++        return gcr_ok;
++
++      /* Drop the terminating '\0'.  */
++      remaining_len -= curlen - 1;
++      curbuf += curlen - 1;
++    }
++  /* fgets copies one less than the input length.  Our last iteration is of
++     REMAINING_LEN and once that is done, REMAINING_LEN is decremented by
++     REMAINING_LEN - 1, leaving the result as 1.  */
++  while (remaining_len > 1);
++
++  /* This means that the current buffer was not large enough.  */
++  return gcr_overflow;
++}
++
++/* Parsing the database file into `struct STRUCTURE' data structures.  */
+ static enum nss_status
+ internal_getent (struct STRUCTURE *result,
+ 		 char *buffer, size_t buflen, int *errnop H_ERRNO_PROTO
+@@ -188,7 +233,7 @@
+ {
+   char *p;
+   struct parser_data *data = (void *) buffer;
+-  int linebuflen = buffer + buflen - data->linebuffer;
++  size_t linebuflen = buffer + buflen - data->linebuffer;
+   int parse_result;
+ 
+   if (buflen < sizeof *data + 2)
+@@ -200,17 +245,16 @@
+ 
+   do
+     {
+-      /* Terminate the line so that we can test for overflow.  */
+-      ((unsigned char *) data->linebuffer)[linebuflen - 1] = '\xff';
++      get_contents_ret r = get_contents (data->linebuffer, linebuflen, stream);
+ 
+-      p = fgets_unlocked (data->linebuffer, linebuflen, stream);
+-      if (p == NULL)
++      if (r == gcr_error)
+ 	{
+ 	  /* End of file or read error.  */
+ 	  H_ERRNO_SET (HOST_NOT_FOUND);
+ 	  return NSS_STATUS_NOTFOUND;
+ 	}
+-      else if (((unsigned char *) data->linebuffer)[linebuflen - 1] != 0xff)
++
++      if (r == gcr_overflow)
+ 	{
+ 	  /* The line is too long.  Give the user the opportunity to
+ 	     enlarge the buffer.  */
+@@ -219,7 +263,8 @@
+ 	  return NSS_STATUS_TRYAGAIN;
+ 	}
+ 
+-      /* Skip leading blanks.  */
++      /* Everything OK.  Now skip leading blanks.  */
++      p = data->linebuffer;
+       while (isspace (*p))
+ 	++p;
+     }
+
+diff a/nss/bug17079.c b/nss/bug17079.c
+--- /dev/null
++++ b/nss/bug17079.c
+@@ -0,0 +1,236 @@
++/* Test for bug 17079: heap overflow in NSS with small buffers.
++   Copyright (C) 2015 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <errno.h>
++#include <pwd.h>
++#include <stdbool.h>
++#include <stdio.h>
++#include <stdlib.h>
++#include <string.h>
++
++/* Check if two passwd structs contain the same data.  */
++static bool
++equal (const struct passwd *a, const struct passwd *b)
++{
++  return strcmp (a->pw_name, b->pw_name) == 0
++    && strcmp (a->pw_passwd, b->pw_passwd) == 0
++    && a->pw_uid == b->pw_uid
++    && a->pw_gid == b->pw_gid
++    && strcmp (a->pw_gecos, b->pw_gecos) == 0
++    && strcmp (a->pw_dir, b->pw_dir) == 0
++    && strcmp (a->pw_shell, b->pw_shell) == 0;
++}
++
++enum { MAX_TEST_ITEMS = 10 };
++static struct passwd test_items[MAX_TEST_ITEMS];
++static int test_count;
++
++/* Initialize test_items and test_count above, with data from the
++   passwd database.  */
++static bool
++init_test_items (void)
++{
++  setpwent ();
++  do
++    {
++      struct passwd *pwd = getpwent ();
++      if (pwd == NULL)
++        break;
++      struct passwd *target = test_items + test_count;
++      target->pw_name = strdup (pwd->pw_name);
++      target->pw_passwd = strdup (pwd->pw_passwd);
++      target->pw_uid = pwd->pw_uid;
++      target->pw_gid = pwd->pw_gid;
++      target->pw_gecos = strdup (pwd->pw_gecos);
++      target->pw_dir = strdup (pwd->pw_dir);
++      target->pw_shell = strdup (pwd->pw_shell);
++    }
++  while (++test_count < MAX_TEST_ITEMS);
++  endpwent ();
++
++  /* Filter out those test items which cannot be looked up by name or
++     UID.  */
++  bool found = false;
++  for (int i = 0; i < test_count; ++i)
++    {
++      struct passwd *pwd1 = getpwnam (test_items[i].pw_name);
++      struct passwd *pwd2 = getpwuid (test_items[i].pw_uid);
++      if (pwd1 == NULL || !equal (pwd1, test_items + i)
++          || pwd2 == NULL || !equal (pwd2, test_items + i))
++        test_items[i].pw_name = NULL;
++      else
++        found = true;
++    }
++
++  if (!found)
++    puts ("error: no accounts found which can be looked up by name and UID.");
++  return found;
++}
++
++/* Set to true if an error is encountered.  */
++static bool errors;
++
++/* Return true if the padding has not been tampered with.  */
++static bool
++check_padding (char *buffer, size_t size, char pad)
++{
++  char *end = buffer + size;
++  while (buffer < end)
++    {
++      if (*buffer != pad)
++        return false;
++      ++buffer;
++    }
++  return true;
++}
++
++/* Test one buffer size and padding combination.  */
++static void
++test_one (const struct passwd *item, size_t buffer_size,
++           char pad, size_t padding_size)
++{
++  char *buffer = malloc (buffer_size + padding_size);
++  if (buffer == NULL)
++    {
++      puts ("error: malloc failure");
++      errors = true;
++      return;
++    }
++
++  struct passwd pwd;
++  struct passwd *result;
++  int ret;
++
++  /* Test getpwname_r.  */
++  memset (buffer, pad, buffer_size + padding_size);
++  pwd = (struct passwd) {};
++  ret = getpwnam_r (item->pw_name, &pwd, buffer, buffer_size, &result);
++  if (!check_padding (buffer + buffer_size, padding_size, pad))
++    {
++      printf ("error: padding change: "
++              "name \"%s\", buffer size %zu, padding size %zu, pad 0x%02x\n",
++              item->pw_name, buffer_size, padding_size, (unsigned char) pad);
++      errors = true;
++    }
++  if (ret == 0)
++    {
++      if (result == NULL)
++        {
++          printf ("error: no data: name \"%s\", buffer size %zu\n",
++                  item->pw_name, buffer_size);
++          errors = true;
++        }
++      else if (!equal (item, result))
++        {
++          printf ("error: lookup mismatch: name \"%s\", buffer size %zu\n",
++                  item->pw_name, buffer_size);
++          errors = true;
++        }
++    }
++  else if (ret != ERANGE)
++    {
++      errno = ret;
++      printf ("error: lookup failure for name \"%s\": %m (%d)\n",
++              item->pw_name, ret);
++      errors = true;
++    }
++
++  /* Test getpwuid_r.  */
++  memset (buffer, pad, buffer_size + padding_size);
++  pwd = (struct passwd) {};
++  ret = getpwuid_r (item->pw_uid, &pwd, buffer, buffer_size, &result);
++  if (!check_padding (buffer + buffer_size, padding_size, pad))
++    {
++      printf ("error: padding change: "
++              "UID %ld, buffer size %zu, padding size %zu, pad 0x%02x\n",
++              (long) item->pw_uid, buffer_size, padding_size,
++              (unsigned char) pad);
++      errors = true;
++    }
++  if (ret == 0)
++    {
++      if (result == NULL)
++        {
++          printf ("error: no data: UID %ld, buffer size %zu\n",
++                  (long) item->pw_uid, buffer_size);
++          errors = true;
++        }
++      else if (!equal (item, result))
++        {
++          printf ("error: lookup mismatch: UID %ld, buffer size %zu\n",
++                  (long) item->pw_uid, buffer_size);
++          errors = true;
++        }
++    }
++  else if (ret != ERANGE)
++    {
++      errno = ret;
++      printf ("error: lookup failure for UID \"%ld\": %m (%d)\n",
++              (long) item->pw_uid, ret);
++      errors = true;
++    }
++
++  free (buffer);
++}
++
++/* Test one buffer size with different paddings.  */
++static void
++test_buffer_size (size_t buffer_size)
++{
++  for (int i = 0; i < test_count; ++i)
++    for (size_t padding_size = 0; padding_size < 3; ++padding_size)
++      {
++        test_one (test_items + i, buffer_size, '\0', padding_size);
++        if (padding_size > 0)
++          {
++            test_one (test_items + i, buffer_size, ':', padding_size);
++            test_one (test_items + i, buffer_size, '\n', padding_size);
++            test_one (test_items + i, buffer_size, '\xff', padding_size);
++            test_one (test_items + i, buffer_size, '@', padding_size);
++          }
++      }
++}
++
++int
++do_test (void)
++{
++  if (!init_test_items ())
++    return 1;
++  printf ("info: %d test items\n", test_count);
++
++  for (size_t buffer_size = 0; buffer_size <= 65; ++buffer_size)
++    test_buffer_size (buffer_size);
++  for (size_t buffer_size = 64 + 4; buffer_size < 256; buffer_size += 4)
++    test_buffer_size (buffer_size);
++  test_buffer_size (255);
++  test_buffer_size (257);
++  for (size_t buffer_size = 256; buffer_size < 512; buffer_size += 8)
++    test_buffer_size (buffer_size);
++  test_buffer_size (511);
++  test_buffer_size (513);
++  test_buffer_size (1024);
++  test_buffer_size (2048);
++
++  if (errors)
++    return 1;
++  else
++    return 0;
++}
++
++#define TEST_FUNCTION do_test ()
++#include "../test-skeleton.c"
+diff a/nss/Makefile b/nss/Makefile
+--- a/nss/Makefile
++++ b/nss/Makefile
+@@ -39,6 +39,6 @@
+ extra-objs		+= $(makedb-modules:=.o)
+ 
+-tests			= test-netdb tst-nss-test1
++tests			= test-netdb tst-nss-test1 bug17079
+ xtests			= bug-erange
+ 
+ include ../Makeconfig

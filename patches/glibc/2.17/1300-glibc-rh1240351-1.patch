@@ -1,0 +1,11 @@
+    Removed file as a prerequisite for bug 1213267 - [7.3 FEAT] Configure
+    glibc with --with-cpu=power8 --with-tune=power8 for RHEL7.3 ppc64le.
+
+diff --git a/sysdeps/unix/sysv/linux/powerpc/powerpc64/power8/Implies b/sysdeps/unix/sysv/linux/powerpc/powerpc64/power8/Implies
+deleted file mode 100644
+index fad2505..0000000
+--- a/sysdeps/unix/sysv/linux/powerpc/powerpc64/power8/Implies
++++ /dev/null
+@@ -1,2 +0,0 @@
+-powerpc/powerpc64/power8/fpu
+-powerpc/powerpc64/power8

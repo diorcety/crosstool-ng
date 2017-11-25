@@ -1,0 +1,65 @@
+diff -pruN glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/lowlevellock.c glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/lowlevellock.c
+--- glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/lowlevellock.c	2012-12-25 08:32:13.000000000 +0530
++++ glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/lowlevellock.c	2014-09-05 21:50:56.982975803 +0530
+@@ -21,11 +21,13 @@
+ #include <sysdep.h>
+ #include <lowlevellock.h>
+ #include <sys/time.h>
++#include <stap-probe.h>
+ 
+ 
+ void
+ __lll_lock_wait_private (int *futex)
+ {
++  LIBC_PROBE (lll_lock_wait_private, 1, futex);
+   if (*futex == 2)
+     lll_futex_wait (futex, 2, LLL_PRIVATE);
+ 
+@@ -39,6 +42,7 @@ __lll_lock_wait_private (int *futex)
+ void
+ __lll_lock_wait (int *futex, int private)
+ {
++  LIBC_PROBE (lll_lock_wait, 2, futex, FUTEX_WAIT | private);
+   if (*futex == 2)
+     lll_futex_wait (futex, 2, private);
+ 
+diff -pruN glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/powerpc/lowlevellock.h glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/powerpc/lowlevellock.h
+--- glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/powerpc/lowlevellock.h	2012-12-25 08:32:13.000000000 +0530
++++ glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/powerpc/lowlevellock.h	2014-09-05 21:51:58.722483631 +0530
+@@ -19,6 +19,8 @@
+ #ifndef _LOWLEVELLOCK_H
+ #define _LOWLEVELLOCK_H	1
+ 
++#include <stap-probe.h>
++
+ #include <time.h>
+ #include <sys/param.h>
+ #include <bits/pthreadtypes.h>
+@@ -106,6 +108,7 @@
+     INTERNAL_SYSCALL_DECL (__err);					      \
+     long int __ret;							      \
+ 									      \
++    LIBC_PROBE (lll_futex_wake, 3, futexp, nr, private);		      \
+     __ret = INTERNAL_SYSCALL (futex, __err, 4, (futexp),		      \
+ 			      __lll_private_flag (FUTEX_WAKE, private),	      \
+ 			      (nr), 0);					      \
+diff -pruN glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/s390/lowlevellock.h glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/s390/lowlevellock.h
+--- glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/s390/lowlevellock.h	2012-12-25 08:32:13.000000000 +0530
++++ glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/s390/lowlevellock.h	2014-09-05 21:51:58.722483631 +0530
+@@ -19,6 +19,8 @@
+ #ifndef _LOWLEVELLOCK_H
+ #define _LOWLEVELLOCK_H	1
+ 
++#include <stap-probe.h>
++
+ #include <time.h>
+ #include <sys/param.h>
+ #include <bits/pthreadtypes.h>
+@@ -122,6 +124,7 @@
+     register unsigned long int __r4 asm ("4") = (unsigned long int) (nr);     \
+     register unsigned long int __result asm ("2");			      \
+ 									      \
++    LIBC_PROBE (lll_futex_wake, 3, futex, nr, private);			      \
+     __asm __volatile ("svc %b1"						      \
+ 		      : "=d" (__result)					      \
+ 		      : "i" (SYS_futex), "0" (__r2), "d" (__r3), "d" (__r4)   \

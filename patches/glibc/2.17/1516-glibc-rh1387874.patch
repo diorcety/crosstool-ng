@@ -1,0 +1,23 @@
+commit c6fe55cf6089fc5cf1cea15fc7e1c9a8b90d9fda
+Author: Andreas Jaeger <aj@suse.de>
+Date:   Fri Jan 11 11:53:13 2013 +0100
+
+    Add MSG_FASTOPEN
+    
+    	[BZ #15003]
+    	* sysdeps/unix/sysv/linux/bits/socket.h (MSG_FASTOPEN): New
+    	value. Sync with Linux 3.7.
+
+diff --git a/sysdeps/unix/sysv/linux/bits/socket.h b/sysdeps/unix/sysv/linux/bits/socket.h
+index 25b115e..eadd7d9 100644
+--- a/sysdeps/unix/sysv/linux/bits/socket.h
++++ b/sysdeps/unix/sysv/linux/bits/socket.h
+@@ -207,6 +207,8 @@ enum
+ #define	MSG_MORE	MSG_MORE
+     MSG_WAITFORONE	= 0x10000, /* Wait for at least one packet to return.*/
+ #define MSG_WAITFORONE	MSG_WAITFORONE
++    MSG_FASTOPEN	= 0x20000000, /* Send data in TCP SYN.  */
++#define MSG_FASTOPEN	MSG_FASTOPEN
+ 
+     MSG_CMSG_CLOEXEC	= 0x40000000	/* Set close_on_exit for file
+ 					   descriptor received through

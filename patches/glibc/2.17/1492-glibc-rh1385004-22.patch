@@ -1,0 +1,411 @@
+From 1e5a0d609f20a613e1e989802bbe479f61bed1ca Mon Sep 17 00:00:00 2001
+From: Rajalakshmi Srinivasaraghavan <raji@linux.vnet.ibm.com>
+Date: Thu, 1 Dec 2016 11:35:43 +0530
+Subject: [PATCH] powerpc: strcmp optimization for power9
+
+Vectorized loops are used for strings > 32B when compared
+to power8 optimization.
+
+Tested on power9 ppc64le simulator.
+
+(cherry picked from commit 80ab6401a9bb566de940cc6a5fb7a6af650f17b9)
+
+Conflicts:
+	sysdeps/powerpc/powerpc64/multiarch/strcmp.c
+---
+ ChangeLog                                          |  11 +
+ sysdeps/powerpc/powerpc64/multiarch/Makefile       |   2 +-
+ .../powerpc/powerpc64/multiarch/ifunc-impl-list.c  |   3 +
+ .../powerpc/powerpc64/multiarch/strcmp-power9.S    |  40 +++
+ sysdeps/powerpc/powerpc64/multiarch/strcmp.c       |  13 +-
+ sysdeps/powerpc/powerpc64/power9/strcmp.S          | 278 +++++++++++++++++++++
+ 6 files changed, 341 insertions(+), 6 deletions(-)
+ create mode 100644 sysdeps/powerpc/powerpc64/multiarch/strcmp-power9.S
+ create mode 100644 sysdeps/powerpc/powerpc64/power9/strcmp.S
+
+diff --git a/ChangeLog b/ChangeLog
+index 6d6aab3..57152b8 100644
+diff --git a/sysdeps/powerpc/powerpc64/multiarch/Makefile b/sysdeps/powerpc/powerpc64/multiarch/Makefile
+index e3ac285..2c83c22 100644
+--- a/sysdeps/powerpc/powerpc64/multiarch/Makefile
++++ b/sysdeps/powerpc/powerpc64/multiarch/Makefile
+@@ -16,7 +16,7 @@ sysdep_routines += memcpy-power7 memcpy-a2 memcpy-power6 memcpy-cell \
+                   strncase-ppc64 strncase-power8 \
+                   strcasestr-power8 strcasestr-ppc64 \
+                   strcat-power8 strcat-power7 strcat-ppc64 \
+-                  strcmp-power8 strcmp-power7 strcmp-ppc64 \
++                  strcmp-power9 strcmp-power8 strcmp-power7 strcmp-ppc64 \
+                   strcpy-power8 strcpy-power7 strcpy-ppc64 \
+                   strcspn-power8 strcspn-ppc64 \
+                   stpncpy-power8 stpncpy-power7 stpncpy-ppc64 \
+diff --git a/sysdeps/powerpc/powerpc64/multiarch/ifunc-impl-list.c b/sysdeps/powerpc/powerpc64/multiarch/ifunc-impl-list.c
+index aabd7bc..404a226 100644
+--- a/sysdeps/powerpc/powerpc64/multiarch/ifunc-impl-list.c
++++ b/sysdeps/powerpc/powerpc64/multiarch/ifunc-impl-list.c
+@@ -311,6 +311,9 @@ __libc_ifunc_impl_list (const char *name, struct libc_ifunc_impl *array,
+   /* Support sysdeps/powerpc/powerpc64/multiarch/strcmp.c.  */
+   IFUNC_IMPL (i, name, strcmp,
+ 	      IFUNC_IMPL_ADD (array, i, strcmp,
++			      hwcap2 & PPC_FEATURE2_ARCH_3_00,
++			      __strcmp_power9)
++	      IFUNC_IMPL_ADD (array, i, strcmp,
+ 			      hwcap2 & PPC_FEATURE2_ARCH_2_07,
+ 			      __strcmp_power8)
+ 	      IFUNC_IMPL_ADD (array, i, strcmp,
+diff --git a/sysdeps/powerpc/powerpc64/multiarch/strcmp-power9.S b/sysdeps/powerpc/powerpc64/multiarch/strcmp-power9.S
+new file mode 100644
+index 0000000..0a09e5b
+--- /dev/null
++++ b/sysdeps/powerpc/powerpc64/multiarch/strcmp-power9.S
+@@ -0,0 +1,40 @@
++/* Optimized strcmp implementation for POWER9/PPC64.
++   Copyright (C) 2016 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <sysdep.h>
++
++#undef EALIGN
++#define EALIGN(name, alignt, words)				\
++  .section ".text";						\
++  ENTRY_2(__strcmp_power9)					\
++  .align ALIGNARG(alignt);					\
++  EALIGN_W_##words;						\
++  BODY_LABEL(__strcmp_power9):					\
++  cfi_startproc;						\
++  LOCALENTRY(__strcmp_power9)
++
++#undef END
++#define END(name)						\
++  cfi_endproc;							\
++  TRACEBACK(__strcmp_power9)					\
++  END_2(__strcmp_power9)
++
++#undef libc_hidden_builtin_def
++#define libc_hidden_builtin_def(name)
++
++#include <sysdeps/powerpc/powerpc64/power9/strcmp.S>
+diff --git a/sysdeps/powerpc/powerpc64/multiarch/strcmp.c b/sysdeps/powerpc/powerpc64/multiarch/strcmp.c
+index b45ba1f..7345f5a 100644
+--- a/sysdeps/powerpc/powerpc64/multiarch/strcmp.c
++++ b/sysdeps/powerpc/powerpc64/multiarch/strcmp.c
+@@ -24,11 +24,14 @@
+ extern __typeof (strcmp) __strcmp_ppc attribute_hidden;
+ extern __typeof (strcmp) __strcmp_power7 attribute_hidden;
+ extern __typeof (strcmp) __strcmp_power8 attribute_hidden;
++extern __typeof (strcmp) __strcmp_power9 attribute_hidden;
+ 
+ libc_ifunc (strcmp,
+-            (hwcap2 & PPC_FEATURE2_ARCH_2_07)
+-              ? __strcmp_power8 :
+-              (hwcap & PPC_FEATURE_HAS_VSX)
+-              ? __strcmp_power7
+-            : __strcmp_ppc);
++	    (hwcap2 & PPC_FEATURE2_ARCH_3_00)
++	      ? __strcmp_power9 :
++	    (hwcap2 & PPC_FEATURE2_ARCH_2_07)
++	      ? __strcmp_power8 :
++	    (hwcap & PPC_FEATURE_HAS_VSX)
++	      ? __strcmp_power7
++	    : __strcmp_ppc);
+ #endif
+diff --git a/sysdeps/powerpc/powerpc64/power9/strcmp.S b/sysdeps/powerpc/powerpc64/power9/strcmp.S
+new file mode 100644
+index 0000000..754d508
+--- /dev/null
++++ b/sysdeps/powerpc/powerpc64/power9/strcmp.S
+@@ -0,0 +1,278 @@
++/* Optimized strcmp implementation for PowerPC64/POWER9.
++   Copyright (C) 2016 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++#ifdef __LITTLE_ENDIAN__
++#include <sysdep.h>
++
++/* Implements the function
++
++   int [r3] strcmp (const char *s1 [r3], const char *s2 [r4])
++
++   The implementation uses unaligned doubleword access for first 32 bytes
++   as in POWER8 patch and uses vectorised loops after that.  */
++
++/* TODO: Change this to actual instructions when minimum binutils is upgraded
++   to 2.27. Macros are defined below for these newer instructions in order
++   to maintain compatibility.  */
++# define VCTZLSBB(r,v) .long (0x10010602 | ((r)<<(32-11)) | ((v)<<(32-21)))
++
++# define VEXTUBRX(t,a,b) .long (0x1000070d \
++				| ((t)<<(32-11))  \
++				| ((a)<<(32-16))  \
++				| ((b)<<(32-21)) )
++
++# define VCMPNEZB(t,a,b) .long (0x10000507 \
++				| ((t)<<(32-11))  \
++				| ((a)<<(32-16))  \
++				| ((b)<<(32-21)) )
++
++/* Get 16 bytes for unaligned case.
++   reg1: Vector to hold next 16 bytes.
++   reg2: Address to read from.
++   reg3: Permute control vector.  */
++# define GET16BYTES(reg1, reg2, reg3) \
++	lvx	reg1, 0, reg2; \
++	vperm	v8, v2, reg1, reg3; \
++	vcmpequb.	v8, v0, v8; \
++	beq	cr6, 1f; \
++	vspltisb	v9, 0; \
++	b	2f; \
++	.align 4; \
++1: \
++	addi    r6, reg2, 16; \
++	lvx     v9, 0, r6; \
++2: \
++	vperm   reg1, v9, reg1, reg3;
++
++/* TODO: change this to .machine power9 when the minimum required binutils
++   allows it.  */
++
++	.machine  power7
++EALIGN (strcmp, 4, 0)
++	li	r0, 0
++
++	/* Check if [s1]+32 or [s2]+32 will cross a 4K page boundary using
++	   the code:
++
++	    (((size_t) s1) % PAGE_SIZE > (PAGE_SIZE - ITER_SIZE))
++
++	   with PAGE_SIZE being 4096 and ITER_SIZE begin 32.  */
++
++	rldicl	r7, r3, 0, 52
++	rldicl	r9, r4, 0, 52
++	cmpldi	cr7, r7, 4096-32
++	bgt	cr7, L(pagecross_check)
++	cmpldi	cr5, r9, 4096-32
++	bgt	cr5, L(pagecross_check)
++
++	/* For short strings up to 32 bytes,  load both s1 and s2 using
++	   unaligned dwords and compare.  */
++	ld	r8, 0(r3)
++	ld	r10, 0(r4)
++	cmpb	r12, r8, r0
++	cmpb	r11, r8, r10
++	orc.	r9, r12, r11
++	bne	cr0, L(different_nocmpb)
++
++	ld	r8, 8(r3)
++	ld	r10, 8(r4)
++	cmpb	r12, r8, r0
++	cmpb	r11, r8, r10
++	orc.	r9, r12, r11
++	bne	cr0, L(different_nocmpb)
++
++	ld	r8, 16(r3)
++	ld	r10, 16(r4)
++	cmpb	r12, r8, r0
++	cmpb	r11, r8, r10
++	orc.	r9, r12, r11
++	bne	cr0, L(different_nocmpb)
++
++	ld	r8, 24(r3)
++	ld	r10, 24(r4)
++	cmpb	r12, r8, r0
++	cmpb	r11, r8, r10
++	orc.	r9, r12, r11
++	bne	cr0, L(different_nocmpb)
++
++	addi	r7, r3, 32
++	addi	r4, r4, 32
++
++L(align):
++	/* Now it has checked for first 32 bytes.  */
++	vspltisb	v0, 0
++	vspltisb	v2, -1
++	lvsr	v6, 0, r4   /* Compute mask.  */
++	or	r5, r4, r7
++	andi.	r5, r5, 0xF
++	beq	cr0, L(aligned)
++	andi.	r5, r7, 0xF
++	beq	cr0, L(s1_align)
++	lvsr	v10, 0, r7   /* Compute mask.  */
++
++	/* Both s1 and s2 are unaligned.  */
++	GET16BYTES(v4, r7, v10)
++	GET16BYTES(v5, r4, v6)
++	VCMPNEZB(v7, v5, v4)
++	beq	cr6, L(match)
++	b	L(different)
++
++	/* Align s1 to qw and adjust s2 address.  */
++	.align  4
++L(match):
++	clrldi	r6, r7, 60
++	subfic	r5, r6, 16
++	add	r7, r7, r5
++	add	r4, r4, r5
++	andi.	r5, r4, 0xF
++	beq	cr0, L(aligned)
++	lvsr	v6, 0, r4
++	/* There are 2 loops depending on the input alignment.
++	   Each loop gets 16 bytes from s1 and s2 and compares.
++	   Loop until a mismatch or null occurs.  */
++L(s1_align):
++	lvx	v4, r7, r0
++	GET16BYTES(v5, r4, v6)
++	VCMPNEZB(v7, v5, v4)
++	addi	r7, r7, 16
++	addi	r4, r4, 16
++	bne	cr6, L(different)
++
++	lvx	v4, r7, r0
++	GET16BYTES(v5, r4, v6)
++	VCMPNEZB(v7, v5, v4)
++	addi	r7, r7, 16
++	addi	r4, r4, 16
++	bne	cr6, L(different)
++
++	lvx	v4, r7, r0
++	GET16BYTES(v5, r4, v6)
++	VCMPNEZB(v7, v5, v4)
++	addi	r7, r7, 16
++	addi	r4, r4, 16
++	bne	cr6, L(different)
++
++	lvx	v4, r7, r0
++	GET16BYTES(v5, r4, v6)
++	VCMPNEZB(v7, v5, v4)
++	addi	r7, r7, 16
++	addi	r4, r4, 16
++	beq	cr6, L(s1_align)
++	b	L(different)
++
++	.align  4
++L(aligned):
++	lvx	v4, 0, r7
++	lvx	v5, 0, r4
++	VCMPNEZB(v7, v5, v4)
++	addi	r7, r7, 16
++	addi	r4, r4, 16
++	bne	cr6, L(different)
++
++	lvx	v4, 0, r7
++	lvx	v5, 0, r4
++	VCMPNEZB(v7, v5, v4)
++	addi	r7, r7, 16
++	addi	r4, r4, 16
++	bne	cr6, L(different)
++
++	lvx	v4, 0, r7
++	lvx	v5, 0, r4
++	VCMPNEZB(v7, v5, v4)
++	addi	r7, r7, 16
++	addi	r4, r4, 16
++	bne	cr6, L(different)
++
++	lvx	v4, 0, r7
++	lvx	v5, 0, r4
++	VCMPNEZB(v7, v5, v4)
++	addi	r7, r7, 16
++	addi	r4, r4, 16
++	beq	cr6, L(aligned)
++
++	/* Calculate and return the difference.  */
++L(different):
++	VCTZLSBB(r6, v7)
++	VEXTUBRX(r5, r6, v4)
++	VEXTUBRX(r4, r6, v5)
++	subf	r3, r4, r5
++	extsw	r3, r3
++	blr
++
++	.align  4
++L(different_nocmpb):
++	neg	r3, r9
++	and	r9, r9, r3
++	cntlzd	r9, r9
++	subfic	r9, r9, 63
++	srd	r3, r8, r9
++	srd	r10, r10, r9
++	rldicl	r10, r10, 0, 56
++	rldicl	r3, r3, 0, 56
++	subf	r3, r10, r3
++	extsw	r3, r3
++	blr
++
++	.align	4
++L(pagecross_check):
++	subfic	r9, r9, 4096
++	subfic	r7, r7, 4096
++	cmpld	cr7, r7, r9
++	bge	cr7, L(pagecross)
++	mr	r7, r9
++
++	/* If unaligned 16 bytes reads across a 4K page boundary, it uses
++	   a simple byte a byte comparison until the page alignment for s1
++	   is reached.  */
++L(pagecross):
++	add	r7, r3, r7
++	subf	r9, r3, r7
++	mtctr	r9
++
++	.align	4
++L(pagecross_loop):
++	/* Loads a byte from s1 and s2, compare if *s1 is equal to *s2
++	   and if *s1 is '\0'.  */
++	lbz	r9, 0(r3)
++	lbz	r10, 0(r4)
++	addi	r3, r3, 1
++	addi	r4, r4, 1
++	cmplw	cr7, r9, r10
++	cmpdi	cr5, r9, r0
++	bne	cr7, L(pagecross_ne)
++	beq	cr5, L(pagecross_nullfound)
++	bdnz	L(pagecross_loop)
++	b	L(align)
++
++	.align	4
++L(pagecross_ne):
++	extsw	r3, r9
++	mr	r9, r10
++L(pagecross_retdiff):
++	subf	r9, r9, r3
++	extsw	r3, r9
++	blr
++
++	.align	4
++L(pagecross_nullfound):
++	li	r3, 0
++	b	L(pagecross_retdiff)
++END (strcmp)
++libc_hidden_builtin_def (strcmp)
++#else
++#include <sysdeps/powerpc/powerpc64/power8/strcmp.S>
++#endif
+-- 
+2.1.0
+

@@ -1,0 +1,185 @@
+Add --list-archive FILE support to localedef.
+
+This feature largely supports the integrated work
+for InstLang support, and does not explicitly change
+any help text or behaviour at the API level for these
+routines. The basic purpose is to allow a file name to
+propagate to through the internal APIs to be used instead
+of the default locale archive. Given that build-locale-archive
+links against copies of the internal API it can use these
+non-public APIs without problem.
+
+commit eaa1d42819c1d43f27552dfa55accfcc4ac25d54
+Author: Carlos O'Donell <carlos@redhat.com>
+Date:   Mon Feb 24 22:33:35 2014 -0500
+
+    Fix failure load locale template.
+    
+    The call to open_tmpl_archive was being passed a pointer to an
+    object allocated on the stack. The object on the stack is not
+    guaranteed to be initialized to zero so we need to minimally
+    initialize `fname' in the struct locarhandle to ensure that
+    open_tml_archive loads the default tempalte.
+    
+    This error was seen while debugging glibc installs in a qemu
+    VM where it is more likely the stack pages were dirty. It has
+    not been reported on non-VM systems.
+
+commit f6520166f41d58832351d35cfa987ecbb44f5986
+Author: Carlos O'Donell <carlos@redhat.com>
+Date:   Fri Oct 18 23:27:45 2013 -0400
+
+    Allow fill_archive to be called with NULL fname.
+    
+    The fill_archive function should support being
+    called with a NULL fname argument. A NULL fname
+    argument indicates that the default archive should
+    be opened. We enable this by setting ah.fname to
+    NULL before initializing ah or calling open_archive.
+    This way if fname is NULL then ah.fname remains NULL
+    and open_archive opens the default archive.
+
+commit c2021d0b305d436734709186c8c5dca254f77770
+Author: Carlos O'Donell <carlos@redhat.com>
+Date:   Thu Oct 3 05:22:51 2013 -0400
+
+[snip]
+    - Support `--list-archive FILE' in localedef utility.
+
+Index: glibc-2.17-c758a686/locale/locarchive.h
+===================================================================
+--- glibc-2.17-c758a686.orig/locale/locarchive.h
++++ glibc-2.17-c758a686/locale/locarchive.h
+@@ -80,6 +80,8 @@ struct locrecent
+ 
+ struct locarhandle
+ {
++  /* Full path to the locale archive file.  */
++  const char *fname;
+   int fd;
+   void *addr;
+   size_t mmaped;
+Index: glibc-2.17-c758a686/locale/programs/localedef.c
+===================================================================
+--- glibc-2.17-c758a686.orig/locale/programs/localedef.c
++++ glibc-2.17-c758a686/locale/programs/localedef.c
+@@ -202,7 +202,7 @@ main (int argc, char *argv[])
+ 
+   /* Handle a few special cases.  */
+   if (list_archive)
+-    show_archive_content (verbose);
++    show_archive_content (remaining > 1 ? argv[remaining] : NULL, verbose);
+   if (add_to_archive)
+     return add_locales_to_archive (argc - remaining, &argv[remaining],
+ 				   replace_archive);
+Index: glibc-2.17-c758a686/locale/programs/localedef.h
+===================================================================
+--- glibc-2.17-c758a686.orig/locale/programs/localedef.h
++++ glibc-2.17-c758a686/locale/programs/localedef.h
+@@ -176,7 +176,8 @@ extern int add_locales_to_archive (size_
+ /* Removed named locales from archive.  */
+ extern int delete_locales_from_archive (size_t nlist, char *list[]);
+ 
+-/* List content of locale archive.  */
+-extern void show_archive_content (int verbose) __attribute__ ((noreturn));
++/* List content of locale archive. If FNAME is non-null use that as
++   the locale archive to list, otherwise the default.  */
++extern void show_archive_content (char *fname, int verbose) __attribute__ ((noreturn));
+ 
+ #endif /* localedef.h */
+Index: glibc-2.17-c758a686/locale/programs/locarchive.c
+===================================================================
+--- glibc-2.17-c758a686.orig/locale/programs/locarchive.c
++++ glibc-2.17-c758a686/locale/programs/locarchive.c
+@@ -197,6 +197,7 @@ create_archive (const char *archivefname
+ 	     _("cannot change mode of new locale archive"));
+     }
+ 
++  ah->fname = NULL;
+   ah->fd = fd;
+   ah->addr = p;
+   ah->mmaped = total;
+@@ -519,11 +520,19 @@ open_archive (struct locarhandle *ah, bo
+   struct locarhead head;
+   int retry = 0;
+   size_t prefix_len = output_prefix ? strlen (output_prefix) : 0;
+-  char archivefname[prefix_len + sizeof (ARCHIVE_NAME)];
+-
+-  if (output_prefix)
+-    memcpy (archivefname, output_prefix, prefix_len);
+-  strcpy (archivefname + prefix_len, ARCHIVE_NAME);
++  char fname[prefix_len + sizeof (ARCHIVE_NAME)];
++  char *archivefname = ah->fname;
++  bool defaultfname = false;
++
++  /* If ah has a non-NULL fname open that otherwise open the default.  */
++  if (archivefname == NULL)
++    {
++      defaultfname = true;
++      archivefname = fname;
++      if (output_prefix)
++        memcpy (archivefname, output_prefix, prefix_len);
++      strcpy (archivefname + prefix_len, ARCHIVE_NAME);
++    }
+ 
+   while (1)
+     {
+@@ -531,8 +540,11 @@ open_archive (struct locarhandle *ah, bo
+       fd = open64 (archivefname, readonly ? O_RDONLY : O_RDWR);
+       if (fd == -1)
+ 	{
+-	  /* Maybe the file does not yet exist.  */
+-	  if (errno == ENOENT)
++	  /* Maybe the file does not yet exist? If we are opening
++	     the default locale archive we ignore the failure and
++	     list an empty archive, otherwise we print an error
++	     and exit.  */
++	  if (errno == ENOENT && defaultfname)
+ 	    {
+ 	      if (readonly)
+ 		{
+@@ -1258,6 +1270,7 @@ add_locales_to_archive (nlist, list, rep
+ 
+   /* Open the archive.  This call never returns if we cannot
+      successfully open the archive.  */
++  ah.fname = NULL;
+   open_archive (&ah, false);
+ 
+   while (nlist-- > 0)
+@@ -1457,6 +1470,7 @@ delete_locales_from_archive (nlist, list
+ 
+   /* Open the archive.  This call never returns if we cannot
+      successfully open the archive.  */
++  ah.fname = NULL;
+   open_archive (&ah, false);
+ 
+   head = ah.addr;
+@@ -1545,7 +1559,7 @@ dataentcmp (const void *a, const void *b
+ 
+ 
+ void
+-show_archive_content (int verbose)
++show_archive_content (char *fname, int verbose)
+ {
+   struct locarhandle ah;
+   struct locarhead *head;
+@@ -1555,6 +1569,7 @@ show_archive_content (int verbose)
+ 
+   /* Open the archive.  This call never returns if we cannot
+      successfully open the archive.  */
++  ah.fname = fname;
+   open_archive (&ah, true);
+ 
+   head = ah.addr;
+Index: glibc-2.17-c758a686/locale/programs/locfile.c
+===================================================================
+--- glibc-2.17-c758a686.orig/locale/programs/locfile.c
++++ glibc-2.17-c758a686/locale/programs/locfile.c
+@@ -337,6 +337,7 @@ write_all_categories (struct localedef_t
+ 
+       /* Open the archive.  This call never returns if we cannot
+ 	 successfully open the archive.  */
++      ah.fname = NULL;
+       open_archive (&ah, false);
+ 
+       if (add_locale_to_archive (&ah, locname, to_archive, true) != 0)

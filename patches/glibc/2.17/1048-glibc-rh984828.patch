@@ -1,0 +1,239 @@
+#* CVE-2013-2207 Incorrectly granting access to another user's pseudo-terminal
+#  has been fixed by disabling the use of pt_chown (Bugzilla #15755).
+#  Distributions can re-enable building and using pt_chown via the new configure
+#  option `--enable-pt_chown'.  Enabling the use of pt_chown carries with it
+#  considerable security risks and should only be used if the distribution
+#  understands and accepts the risks.
+#
+#2013-07-21  Siddhesh Poyarekar  <siddhesh@redhat.com>
+#	    Andreas Schwab  <schwab@suse.de>
+#	    Roland McGrath  <roland@hack.frob.com>
+#	    Joseph Myers  <joseph@codesourcery.com>
+#	    Carlos O'Donell  <carlos@redhat.com>
+#
+#	[BZ #15755]
+#	* config.h.in: Define HAVE_PT_CHOWN.
+#	* config.make.in (build-pt-chown): New variable.
+#	* configure.in (--enable-pt_chown): New configure option.
+#	* configure: Regenerate.
+#	* login/Makefile: Include Makeconfig.  Build pt_chown only if
+#	build-pt-chown is enabled.
+#	* sysdeps/unix/grantpt.c (grantpt) [HAVE_PT_CHOWN]: Spawn
+#	pt_chown to fix pty ownership.
+#	* sysdeps/unix/sysv/linux/grantpt.c [HAVE_PT_CHOWN]: Define
+#	CLOSE_ALL_FDS.
+#	* manual/install.texi (Configuring and compiling): Mention
+#	--enable-pt_chown. Add @findex for grantpt.
+#	* INSTALL: Regenerate.
+#
+diff -Nru glibc-2.17-c758a686/config.h.in glibc-2.17-c758a686/config.h.in
+--- glibc-2.17-c758a686/config.h.in	2012-12-24 22:02:13.000000000 -0500
++++ glibc-2.17-c758a686/config.h.in	2013-07-24 00:20:07.651301252 -0400
+@@ -232,4 +232,7 @@
+ /* The ARM hard-float ABI is being used.  */
+ #undef HAVE_ARM_PCS_VFP
+ 
++/* The pt_chown binary is being built and used by grantpt.  */
++#undef HAVE_PT_CHOWN
++
+ #endif
+diff -Nru glibc-2.17-c758a686/config.make.in glibc-2.17-c758a686/config.make.in
+--- glibc-2.17-c758a686/config.make.in	2012-12-24 22:02:13.000000000 -0500
++++ glibc-2.17-c758a686/config.make.in	2013-07-24 00:21:15.244176098 -0400
+@@ -101,6 +101,7 @@ force-install = @force_install@
+ link-obsolete-rpc = @link_obsolete_rpc@
+ build-nscd = @build_nscd@
+ use-nscd = @use_nscd@
++build-pt-chown = @build_pt_chown@
+ 
+ # Build tools.
+ CC = @CC@
+diff -Nru glibc-2.17-c758a686/configure glibc-2.17-c758a686/configure
+--- glibc-2.17-c758a686/configure	2013-07-24 00:25:10.090174244 -0400
++++ glibc-2.17-c758a686/configure	2013-07-24 00:20:07.769174345 -0400
+@@ -653,6 +653,7 @@ multi_arch
+ base_machine
+ add_on_subdirs
+ add_ons
++build_pt_chown
+ build_nscd
+ link_obsolete_rpc
+ libc_cv_nss_crypt
+@@ -759,6 +760,7 @@ enable_obsolete_rpc
+ enable_systemtap
+ enable_build_nscd
+ enable_nscd
++enable_pt_chown
+ with_cpu
+ '
+       ac_precious_vars='build_alias
+@@ -1419,6 +1421,7 @@ Optional Features:
+   --enable-systemtap      enable systemtap static probe points [default=no]
+   --disable-build-nscd    disable building and installing the nscd daemon
+   --disable-nscd          library functions will not contact the nscd daemon
++  --enable-pt_chown       Enable building and installing pt_chown
+ 
+ Optional Packages:
+   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
+@@ -3934,6 +3937,19 @@ else
+ fi
+ 
+ 
++# Check whether --enable-pt_chown was given.
++if test "${enable_pt_chown+set}" = set; then :
++  enableval=$enable_pt_chown; build_pt_chown=$enableval
++else
++  build_pt_chown=no
++fi
++
++
++if test $build_pt_chown = yes; then
++  $as_echo "#define HAVE_PT_CHOWN 1" >>confdefs.h
++
++fi
++
+ # The way shlib-versions is used to generate soversions.mk uses a
+ # fairly simplistic model for name recognition that can't distinguish
+ # i486-pc-linux-gnu fully from i486-pc-gnu.  So we mutate a $host_os
+diff -Nru glibc-2.17-c758a686/configure.in glibc-2.17-c758a686/configure.in
+--- glibc-2.17-c758a686/configure.in	2012-12-24 22:02:13.000000000 -0500
++++ glibc-2.17-c758a686/configure.in	2013-07-24 00:20:07.658298658 -0400
+@@ -315,6 +315,16 @@ AC_ARG_ENABLE([nscd],
+ 	      [use_nscd=$enableval],
+ 	      [use_nscd=yes])
+ 
++AC_ARG_ENABLE([pt_chown],
++	      [AS_HELP_STRING([--enable-pt_chown],
++	       [Enable building and installing pt_chown])],
++	      [build_pt_chown=$enableval],
++	      [build_pt_chown=no])
++AC_SUBST(build_pt_chown)
++if test $build_pt_chown = yes; then
++  AC_DEFINE(HAVE_PT_CHOWN)
++fi
++
+ # The way shlib-versions is used to generate soversions.mk uses a
+ # fairly simplistic model for name recognition that can't distinguish
+ # i486-pc-linux-gnu fully from i486-pc-gnu.  So we mutate a $host_os
+diff -Nru glibc-2.17-c758a686/INSTALL glibc-2.17-c758a686/INSTALL
+--- glibc-2.17-c758a686/INSTALL	2012-12-24 22:02:13.000000000 -0500
++++ glibc-2.17-c758a686/INSTALL	2013-07-24 00:20:07.650300624 -0400
+@@ -128,6 +128,18 @@ will be used, and CFLAGS sets optimizati
+      this can be prevented though there generally is no reason since it
+      creates compatibility problems.
+ 
++`--enable-pt_chown'
++     The file `pt_chown' is a helper binary for `grantpt' (*note
++     Pseudo-Terminals: Allocation.) that is installed setuid root to
++     fix up pseudo-terminal ownership.  It is not built by default
++     because systems using the Linux kernel are commonly built with the
++     `devpts' filesystem enabled and mounted at `/dev/pts', which
++     manages pseudo-terminal ownership automatically.  By using
++     `--enable-pt_chown', you may build `pt_chown' and install it
++     setuid and owned by `root'.  The use of `pt_chown' introduces
++     additional security risks to the system and you should enable it
++     only if you understand and accept those risks.
++
+ `--build=BUILD-SYSTEM'
+ `--host=HOST-SYSTEM'
+      These options are for cross-compiling.  If you specify both
+diff -Nru glibc-2.17-c758a686/login/Makefile glibc-2.17-c758a686/login/Makefile
+--- glibc-2.17-c758a686/login/Makefile	2012-12-24 22:02:13.000000000 -0500
++++ glibc-2.17-c758a686/login/Makefile	2013-07-24 00:20:07.660298670 -0400
+@@ -29,9 +29,15 @@ routines := getutent getutent_r getutid 
+ 
+ CFLAGS-grantpt.c = -DLIBEXECDIR='"$(libexecdir)"'
+ 
+-others = utmpdump pt_chown
++others = utmpdump
++
++include ../Makeconfig
++
++ifeq (yes,$(build-pt-chown))
++others += pt_chown
+ others-pie = pt_chown
+ install-others-programs = $(inst_libexecdir)/pt_chown
++endif
+ 
+ subdir-dirs = programs
+ vpath %.c programs
+diff -Nru glibc-2.17-c758a686/manual/install.texi glibc-2.17-c758a686/manual/install.texi
+--- glibc-2.17-c758a686/manual/install.texi	2012-12-24 22:02:13.000000000 -0500
++++ glibc-2.17-c758a686/manual/install.texi	2013-07-24 00:20:07.662298261 -0400
+@@ -155,6 +155,20 @@ if the used tools support it.  By using 
+ prevented though there generally is no reason since it creates
+ compatibility problems.
+ 
++@pindex pt_chown
++@findex grantpt
++@item --enable-pt_chown
++The file @file{pt_chown} is a helper binary for @code{grantpt}
++(@pxref{Allocation, Pseudo-Terminals}) that is installed setuid root to
++fix up pseudo-terminal ownership.  It is not built by default because
++systems using the Linux kernel are commonly built with the @code{devpts}
++filesystem enabled and mounted at @file{/dev/pts}, which manages
++pseudo-terminal ownership automatically.  By using
++@samp{--enable-pt_chown}, you may build @file{pt_chown} and install it
++setuid and owned by @code{root}.  The use of @file{pt_chown} introduces
++additional security risks to the system and you should enable it only if
++you understand and accept those risks.
++
+ @item --build=@var{build-system}
+ @itemx --host=@var{host-system}
+ These options are for cross-compiling.  If you specify both options and
+diff -Nru glibc-2.17-c758a686/sysdeps/unix/grantpt.c glibc-2.17-c758a686/sysdeps/unix/grantpt.c
+--- glibc-2.17-c758a686/sysdeps/unix/grantpt.c	2012-12-24 22:02:13.000000000 -0500
++++ glibc-2.17-c758a686/sysdeps/unix/grantpt.c	2013-07-24 00:20:07.663299235 -0400
+@@ -173,9 +173,10 @@ grantpt (int fd)
+   retval = 0;
+   goto cleanup;
+ 
+-  /* We have to use the helper program.  */
++  /* We have to use the helper program if it is available.  */
+  helper:;
+ 
++#ifdef HAVE_PT_CHOWN
+   pid_t pid = __fork ();
+   if (pid == -1)
+     goto cleanup;
+@@ -190,9 +191,9 @@ grantpt (int fd)
+ 	if (__dup2 (fd, PTY_FILENO) < 0)
+ 	  _exit (FAIL_EBADF);
+ 
+-#ifdef CLOSE_ALL_FDS
++# ifdef CLOSE_ALL_FDS
+       CLOSE_ALL_FDS ();
+-#endif
++# endif
+ 
+       execle (_PATH_PT_CHOWN, basename (_PATH_PT_CHOWN), NULL, NULL);
+       _exit (FAIL_EXEC);
+@@ -231,6 +232,7 @@ grantpt (int fd)
+ 	    assert(! "getpt: internal error: invalid exit code from pt_chown");
+ 	  }
+     }
++#endif
+ 
+  cleanup:
+   if (buf != _buf)
+diff -Nru glibc-2.17-c758a686/sysdeps/unix/sysv/linux/grantpt.c glibc-2.17-c758a686/sysdeps/unix/sysv/linux/grantpt.c
+--- glibc-2.17-c758a686/sysdeps/unix/sysv/linux/grantpt.c	2012-12-24 22:02:13.000000000 -0500
++++ glibc-2.17-c758a686/sysdeps/unix/sysv/linux/grantpt.c	2013-07-24 00:20:07.664298465 -0400
+@@ -11,7 +11,7 @@
+ 
+ #include "pty-private.h"
+ 
+-
++#if HAVE_PT_CHOWN
+ /* Close all file descriptors except the one specified.  */
+ static void
+ close_all_fds (void)
+@@ -38,6 +38,7 @@ close_all_fds (void)
+       __dup2 (STDOUT_FILENO, STDERR_FILENO);
+     }
+ }
+-#define CLOSE_ALL_FDS() close_all_fds()
++# define CLOSE_ALL_FDS() close_all_fds()
++#endif
+ 
+ #include <sysdeps/unix/grantpt.c>

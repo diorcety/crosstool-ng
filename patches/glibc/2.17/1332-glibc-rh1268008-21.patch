@@ -1,0 +1,664 @@
+From 24020ef9258267c5d65ab37dbf118bf52e4995d2 Mon Sep 17 00:00:00 2001
+From: Stefan Liebler <stli@linux.vnet.ibm.com>
+Date: Thu, 8 Oct 2015 12:40:02 +0200
+Subject: [PATCH 21/30] S390: Optimize strchrnul and wcschrnul.
+
+upstream-commit-id: d23d4ef19f1f5463745f2af205acb8c4975fd680
+https://www.sourceware.org/ml/libc-alpha/2015-07/msg00098.html
+
+This patch provides optimized versions of strchrnul and wcschrnul with the z13
+vector instructions.
+
+ChangeLog:
+
+	* sysdeps/s390/multiarch/strchrnul-c.c: New File.
+	* sysdeps/s390/multiarch/strchrnul-vx.S: Likewise.
+	* sysdeps/s390/multiarch/strchrnul.c: Likewise.
+	* sysdeps/s390/multiarch/wcschrnul-c.c: Likewise.
+	* sysdeps/s390/multiarch/wcschrnul-vx.S: Likewise.
+	* sysdeps/s390/multiarch/wcschrnul.c: Likewise.
+	* sysdeps/s390/multiarch/Makefile (sysdep_routines): Add strchrnul and
+	wcschrnul functions.
+	* sysdeps/s390/multiarch/ifunc-impl-list.c
+	(__libc_ifunc_impl_list): Add ifunc test for strchrnul, wcschrnul.
+	* wcsmbs/wcschrnul.c: Use WCSCHRNUL if defined.
+	* string/test-strchr.c: Add wcschrnul support.
+	* wcsmbs/test-wcschrnul.c: New File.
+	* wcsmbs/Makefile (strop-tests): Add wcschrnul.
+	* benchtests/bench-strchr.c: Add wcschrnul support.
+	* benchtests/bench-wcschrnul.c: New File.
+	* benchtests/Makefile (wcsmbs-bench): Add wcschrnul.
+---
+ benchtests/Makefile                      |  2 +-
+ benchtests/bench-strchr.c                | 22 ++++++--
+ benchtests/bench-wcschrnul.c             | 20 +++++++
+ string/test-strchr.c                     | 24 ++++++--
+ sysdeps/s390/multiarch/Makefile          |  6 +-
+ sysdeps/s390/multiarch/ifunc-impl-list.c |  3 +
+ sysdeps/s390/multiarch/strchrnul-c.c     | 26 +++++++++
+ sysdeps/s390/multiarch/strchrnul-vx.S    | 93 ++++++++++++++++++++++++++++++
+ sysdeps/s390/multiarch/strchrnul.c       | 28 +++++++++
+ sysdeps/s390/multiarch/wcschrnul-c.c     | 25 ++++++++
+ sysdeps/s390/multiarch/wcschrnul-vx.S    | 97 ++++++++++++++++++++++++++++++++
+ sysdeps/s390/multiarch/wcschrnul.c       | 28 +++++++++
+ wcsmbs/Makefile                          |  2 +-
+ wcsmbs/test-wcschrnul-ifunc.c            | 20 +++++++
+ wcsmbs/test-wcschrnul.c                  | 20 +++++++
+ wcsmbs/wcschrnul.c                       |  5 ++
+ 16 files changed, 405 insertions(+), 16 deletions(-)
+ create mode 100644 benchtests/bench-wcschrnul.c
+ create mode 100644 sysdeps/s390/multiarch/strchrnul-c.c
+ create mode 100644 sysdeps/s390/multiarch/strchrnul-vx.S
+ create mode 100644 sysdeps/s390/multiarch/strchrnul.c
+ create mode 100644 sysdeps/s390/multiarch/wcschrnul-c.c
+ create mode 100644 sysdeps/s390/multiarch/wcschrnul-vx.S
+ create mode 100644 sysdeps/s390/multiarch/wcschrnul.c
+ create mode 100644 wcsmbs/test-wcschrnul-ifunc.c
+ create mode 100644 wcsmbs/test-wcschrnul.c
+
+diff --git a/benchtests/Makefile b/benchtests/Makefile
+index bcb0288..d34bb3d 100644
+--- a/benchtests/Makefile
++++ b/benchtests/Makefile
+@@ -39,7 +39,7 @@ string-bench := bcopy bzero memccpy memchr memcmp memcpy memmem memmove \
+ 		strncasecmp strncat strncmp strncpy strnlen strpbrk strrchr \
+ 		strspn strstr strcpy_chk stpcpy_chk memrchr strsep strtok
+ wcsmbs-bench := wcslen wcsnlen wcscpy wcpcpy wcsncpy wcpncpy wcscat wcsncat \
+-		wcsncmp wcsncmp wcschr
++		wcsncmp wcsncmp wcschr wcschrnul
+ string-bench-all := $(string-bench) ${wcsmbs-bench}
+ 
+ stdlib-bench := strtod
+diff --git a/benchtests/bench-strchr.c b/benchtests/bench-strchr.c
+index d432ba5..9b1aaf9 100644
+--- a/benchtests/bench-strchr.c
++++ b/benchtests/bench-strchr.c
+@@ -22,10 +22,14 @@
+ #  define TEST_NAME "strchrnul"
+ # else
+ #  define TEST_NAME "strchr"
+-# endif
++# endif /* !USE_FOR_STRCHRNUL */
+ #else
+-# define TEST_NAME "wcschr"
+-#endif
++# ifdef USE_FOR_STRCHRNUL
++#  define TEST_NAME "wcschrnul"
++# else
++#  define TEST_NAME "wcschr"
++# endif /* !USE_FOR_STRCHRNUL */
++#endif /* WIDE */
+ #include "bench-string.h"
+ 
+ #ifndef WIDE
+@@ -44,20 +48,26 @@
+ # define UCHAR unsigned char
+ #else
+ # include <wchar.h>
+-# define STRCHR wcschr
++# ifdef USE_FOR_STRCHRNUL
++#  define STRCHR wcschrnul
++#  define stupid_STRCHR stupid_WCSCHRNUL
++#  define simple_STRCHR simple_WCSCHRNUL
++# else
++#  define STRCHR wcschr
++# endif /* !USE_FOR_STRCHRNUL */
+ # define STRLEN wcslen
+ # define CHAR wchar_t
+ # define BIG_CHAR WCHAR_MAX
+ # define MIDDLE_CHAR 1121
+ # define SMALL_CHAR 851
+ # define UCHAR wchar_t
+-#endif
++#endif /* WIDE */
+ 
+ #ifdef USE_FOR_STRCHRNUL
+ # define NULLRET(endptr) endptr
+ #else
+ # define NULLRET(endptr) NULL
+-#endif
++#endif /* !USE_FOR_STRCHRNUL */
+ 
+ 
+ typedef CHAR *(*proto_t) (const CHAR *, int);
+diff --git a/benchtests/bench-wcschrnul.c b/benchtests/bench-wcschrnul.c
+new file mode 100644
+index 0000000..124b602
+--- /dev/null
++++ b/benchtests/bench-wcschrnul.c
+@@ -0,0 +1,20 @@
++/* Measure wcschrnul functions.
++   Copyright (C) 2015 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#define WIDE 1
++#include "bench-strchrnul.c"
+diff --git a/string/test-strchr.c b/string/test-strchr.c
+index b84e138..1cd14d7 100644
+--- a/string/test-strchr.c
++++ b/string/test-strchr.c
+@@ -26,8 +26,12 @@
+ #  define TEST_NAME "strchr"
+ # endif
+ #else
+-# define TEST_NAME "wcschr"
+-#endif
++# ifdef USE_FOR_STRCHRNUL
++#  define TEST_NAME "wcschrnul"
++# else
++#  define TEST_NAME "wcschr"
++# endif /* !USE_FOR_STRCHRNUL */
++#endif /* WIDE */
+ #include "test-string.h"
+ 
+ #ifndef WIDE
+@@ -44,15 +48,23 @@
+ # define MIDDLE_CHAR 127
+ # define SMALL_CHAR 23
+ # define UCHAR unsigned char
++# define L(s) s
+ #else
+ # include <wchar.h>
+-# define STRCHR wcschr
++# ifdef USE_FOR_STRCHRNUL
++#  define STRCHR wcschrnul
++#  define stupid_STRCHR stupid_WCSCHRNUL
++#  define simple_STRCHR simple_WCSCHRNUL
++# else
++#  define STRCHR wcschr
++# endif /* !USE_FOR_STRCHRNUL */
+ # define STRLEN wcslen
+ # define CHAR wchar_t
+ # define BIG_CHAR WCHAR_MAX
+ # define MIDDLE_CHAR 1121
+ # define SMALL_CHAR 851
+ # define UCHAR wchar_t
++# define L(s) L ## s
+ #endif
+ 
+ #ifdef USE_FOR_STRCHRNUL
+@@ -219,9 +231,9 @@ do_random_tests (void)
+ static void
+ check1 (void)
+ {
+-  char s[] __attribute__((aligned(16))) = "\xff";
+-  char c = '\xfe';
+-  char *exp_result = stupid_STRCHR (s, c);
++  CHAR s[] __attribute__((aligned(16))) = L ("\xff");
++  CHAR c = L ('\xfe');
++  CHAR *exp_result = stupid_STRCHR (s, c);
+ 
+   FOR_EACH_IMPL (impl, 0)
+     check_result (impl, s, c, exp_result);
+diff --git a/sysdeps/s390/multiarch/Makefile b/sysdeps/s390/multiarch/Makefile
+index 1a3673b..b6b64c9 100644
+--- a/sysdeps/s390/multiarch/Makefile
++++ b/sysdeps/s390/multiarch/Makefile
+@@ -9,7 +9,8 @@ sysdep_routines += strlen strlen-vx strlen-c \
+ 		   strncat strncat-vx strncat-c \
+ 		   strcmp strcmp-vx \
+ 		   strncmp strncmp-vx strncmp-c \
+-		   strchr strchr-vx strchr-c
++		   strchr strchr-vx strchr-c \
++		   strchrnul strchrnul-vx strchrnul-c
+ endif
+ 
+ ifeq ($(subdir),wcsmbs)
+@@ -23,5 +24,6 @@ sysdep_routines += wcslen wcslen-vx wcslen-c \
+ 		   wcsncat wcsncat-vx wcsncat-c \
+ 		   wcscmp wcscmp-vx wcscmp-c \
+ 		   wcsncmp wcsncmp-vx wcsncmp-c \
+-		   wcschr wcschr-vx wcschr-c
++		   wcschr wcschr-vx wcschr-c \
++		   wcschrnul wcschrnul-vx wcschrnul-c
+ endif
+diff --git a/sysdeps/s390/multiarch/ifunc-impl-list.c b/sysdeps/s390/multiarch/ifunc-impl-list.c
+index b0782ff..ea474a8 100644
+--- a/sysdeps/s390/multiarch/ifunc-impl-list.c
++++ b/sysdeps/s390/multiarch/ifunc-impl-list.c
+@@ -112,6 +112,9 @@ __libc_ifunc_impl_list (const char *name, struct libc_ifunc_impl *array,
+   IFUNC_VX_IMPL (strchr);
+   IFUNC_VX_IMPL (wcschr);
+ 
++  IFUNC_VX_IMPL (strchrnul);
++  IFUNC_VX_IMPL (wcschrnul);
++
+ #endif /* HAVE_S390_VX_ASM_SUPPORT */
+ 
+   return i;
+diff --git a/sysdeps/s390/multiarch/strchrnul-c.c b/sysdeps/s390/multiarch/strchrnul-c.c
+new file mode 100644
+index 0000000..7615217
+--- /dev/null
++++ b/sysdeps/s390/multiarch/strchrnul-c.c
+@@ -0,0 +1,26 @@
++/* Default strchrnul implementation for S/390.
++   Copyright (C) 2015 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#if defined HAVE_S390_VX_ASM_SUPPORT && !defined NOT_IN_libc
++# define STRCHRNUL  __strchrnul_c
++# define __strchrnul STRCHRNUL
++# undef weak_alias
++# define weak_alias(name, alias)
++
++# include <string/strchrnul.c>
++#endif
+diff --git a/sysdeps/s390/multiarch/strchrnul-vx.S b/sysdeps/s390/multiarch/strchrnul-vx.S
+new file mode 100644
+index 0000000..2c5f167
+--- /dev/null
++++ b/sysdeps/s390/multiarch/strchrnul-vx.S
+@@ -0,0 +1,93 @@
++/* Vector optimized 32/64 bit S/390 version of strchrnul.
++   Copyright (C) 2015 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#if defined HAVE_S390_VX_ASM_SUPPORT && !defined NOT_IN_libc
++
++# include "sysdep.h"
++# include "asm-syntax.h"
++
++	.text
++
++/* char *strchrnul (const char *s, int c)
++   Returns pointer to first c or to \0 if c not found.
++
++   Register usage:
++   -r1=tmp
++   -r2=s and return pointer
++   -r3=c
++   -r4=tmp
++   -r5=current_len
++   -v16=part of s
++   -v18=vector with c replicated in every byte
++*/
++ENTRY(__strchrnul_vx)
++	.machine "z13"
++	.machinemode "zarch_nohighgprs"
++
++	vlbb	%v16,0(%r2),6	/* Load s until next 4k-byte boundary.  */
++	lcbb	%r1,0(%r2),6	/* Get bytes to 4k-byte boundary or 16.  */
++
++	lghi	%r5,0		/* current_len = 0.  */
++
++	vlvgb	%v18,%r3,0	/* Generate vector which elements are all c.
++				   If c > 255, c will be truncated.  */
++	vrepb	%v18,%v18,0
++
++	vfeezbs	%v16,%v16,%v18	/* Find element equal with zero search.  */
++	vlgvb	%r4,%v16,7	/* Load byte index of character or zero.  */
++	clrjl	%r4,%r1,.Lfound /* Return if c/zero is in loaded bytes.  */
++
++	/* Align s to 16 byte.  */
++	risbgn	%r4,%r2,60,128+63,0 /* %r3 = bits 60-63 of %r2 'and' 15.  */
++	lghi	%r5,16		/* current_len = 16.  */
++	slr	%r5,%r4		/* Compute bytes to 16bytes boundary.  */
++
++	/* Find c/zero in 16byte aligned loop */
++.Lloop:
++	vl	%v16,0(%r5,%r2) /* Load s */
++	vfeezbs	%v16,%v16,%v18	/* Find element equal with zero search.  */
++	jno	.Lfound		/* Found c/zero (cc=0|1|2).  */
++	vl	%v16,16(%r5,%r2)
++	vfeezbs	%v16,%v16,%v18
++	jno	.Lfound16
++	vl	%v16,32(%r5,%r2)
++	vfeezbs	%v16,%v16,%v18
++	jno	.Lfound32
++	vl	%v16,48(%r5,%r2)
++	vfeezbs	%v16,%v16,%v18
++	jno	.Lfound48
++
++	aghi	%r5,64
++	j	.Lloop		/* No character and no zero -> loop.  */
++
++	/* Found character or zero */
++.Lfound48:
++	aghi	%r5,16
++.Lfound32:
++	aghi	%r5,16
++.Lfound16:
++	aghi	%r5,16
++.Lfound:
++	vlgvb	%r1,%v16,7	/* Load byte index of character.  */
++	algr	%r5,%r1
++	la	%r2,0(%r5,%r2)	/* Return pointer to character.  */
++
++.Lend:
++	br	%r14
++END(__strchrnul_vx)
++#endif /* HAVE_S390_VX_ASM_SUPPORT && !defined NOT_IN_libc */
+diff --git a/sysdeps/s390/multiarch/strchrnul.c b/sysdeps/s390/multiarch/strchrnul.c
+new file mode 100644
+index 0000000..73fcf19
+--- /dev/null
++++ b/sysdeps/s390/multiarch/strchrnul.c
+@@ -0,0 +1,28 @@
++/* Multiple versions of strchrnul.
++   Copyright (C) 2015 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#if defined HAVE_S390_VX_ASM_SUPPORT && !defined NOT_IN_libc
++# include <string.h>
++# include <ifunc-resolve.h>
++
++s390_vx_libc_ifunc (__strchrnul)
++weak_alias (__strchrnul, strchrnul)
++
++#else
++# include <string/strchrnul.c>
++#endif /* !(defined HAVE_S390_VX_ASM_SUPPORT && !defined NOT_IN_libc) */
+diff --git a/sysdeps/s390/multiarch/wcschrnul-c.c b/sysdeps/s390/multiarch/wcschrnul-c.c
+new file mode 100644
+index 0000000..31fa416
+--- /dev/null
++++ b/sysdeps/s390/multiarch/wcschrnul-c.c
+@@ -0,0 +1,25 @@
++/* Default wcschrnul implementation for S/390.
++   Copyright (C) 2015 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#if defined HAVE_S390_VX_ASM_SUPPORT && !defined NOT_IN_libc
++# define WCSCHRNUL  __wcschrnul_c
++
++# include <wchar.h>
++extern __typeof (__wcschrnul) __wcschrnul_c;
++# include <wcsmbs/wcschrnul.c>
++#endif
+diff --git a/sysdeps/s390/multiarch/wcschrnul-vx.S b/sysdeps/s390/multiarch/wcschrnul-vx.S
+new file mode 100644
+index 0000000..a89aee0
+--- /dev/null
++++ b/sysdeps/s390/multiarch/wcschrnul-vx.S
+@@ -0,0 +1,97 @@
++/* Vector optimized 32/64 bit S/390 version of wcschrnul.
++   Copyright (C) 2015 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#if defined HAVE_S390_VX_ASM_SUPPORT && !defined NOT_IN_libc
++
++# include "sysdep.h"
++# include "asm-syntax.h"
++
++	.text
++
++/* wchar_t* wcschrnul (const wchar_t *s, wchar_t c)
++   Returns pointer to first c or to \0 if c not found.
++
++   Register usage:
++   -r1=tmp
++   -r2=s and return pointer
++   -r3=c
++   -r4=tmp
++   -r5=current_len
++   -v16=part of s
++   -v18=vector with c replicated in every byte
++*/
++ENTRY(__wcschrnul_vx)
++	.machine "z13"
++	.machinemode "zarch_nohighgprs"
++
++	vlbb	%v16,0(%r2),6	/* Load s until next 4k-byte boundary.  */
++	lcbb	%r1,0(%r2),6	/* Get bytes to 4k-byte boundary or 16.  */
++
++	tmll	%r2,3		/* Test if s is 4-byte aligned?   */
++	jne	.Lfallback	/* And use common-code variant if not.  */
++
++	lghi	%r5,0		/* current_len = 0.  */
++
++	vlvgf	%v18,%r3,0	/* Generate vector which elements are all c.  */
++	vrepf	%v18,%v18,0
++
++	vfeezfs	%v16,%v16,%v18	/* Find element equal with zero search.  */
++	vlgvb	%r4,%v16,7	/* Load byte index of character or zero.  */
++	clrjl	%r4,%r1,.Lfound /* Return if c/zero is in loaded bytes.  */
++
++	/* Align s to 16 byte.  */
++	risbgn	%r4,%r2,60,128+63,0 /* %r3 = bits 60-63 of %r2 'and' 15.  */
++	lghi	%r5,16		/* current_len = 16.  */
++	slr	%r5,%r4		/* Compute bytes to 16bytes boundary.  */
++
++	/* Find c/zero in 16byte aligned loop */
++.Lloop:
++	vl	%v16,0(%r5,%r2) /* Load s.  */
++	vfeezfs	%v16,%v16,%v18	/* Find element equal with zero search.  */
++	jno	.Lfound		/* Found c/zero (cc=0|1|2).  */
++	vl	%v16,16(%r5,%r2)
++	vfeezfs	%v16,%v16,%v18
++	jno	.Lfound16
++	vl	%v16,32(%r5,%r2)
++	vfeezfs	%v16,%v16,%v18
++	jno	.Lfound32
++	vl	%v16,48(%r5,%r2)
++	vfeezfs	%v16,%v16,%v18
++	jno	.Lfound48
++
++	aghi	%r5,64
++	j	.Lloop		/* No character and no zero -> loop.  */
++
++	/* Found character or zero */
++.Lfound48:
++	aghi	%r5,16
++.Lfound32:
++	aghi	%r5,16
++.Lfound16:
++	aghi	%r5,16
++.Lfound:
++	vlgvb	%r1,%v16,7	/* Load byte index of character.  */
++	algr	%r5,%r1
++	la	%r2,0(%r5,%r2)	/* Return pointer to character.  */
++
++.Lend:
++	br	%r14
++.Lfallback:
++	jg	__wcschrnul_c
++END(__wcschrnul_vx)
++#endif /* HAVE_S390_VX_ASM_SUPPORT && !defined NOT_IN_libc */
+diff --git a/sysdeps/s390/multiarch/wcschrnul.c b/sysdeps/s390/multiarch/wcschrnul.c
+new file mode 100644
+index 0000000..644258b
+--- /dev/null
++++ b/sysdeps/s390/multiarch/wcschrnul.c
+@@ -0,0 +1,28 @@
++/* Multiple versions of wcschrnul.
++   Copyright (C) 2015 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#if defined HAVE_S390_VX_ASM_SUPPORT && !defined NOT_IN_libc
++# include <wchar.h>
++# include <ifunc-resolve.h>
++
++s390_vx_libc_ifunc (__wcschrnul)
++weak_alias (__wcschrnul, wcschrnul)
++
++#else
++# include <wcsmbs/wcschrnul.c>
++#endif /* !(defined HAVE_S390_VX_ASM_SUPPORT && !defined NOT_IN_libc) */
+diff --git a/wcsmbs/Makefile b/wcsmbs/Makefile
+index 611b2c9..de3635d 100644
+--- a/wcsmbs/Makefile
++++ b/wcsmbs/Makefile
+@@ -42,7 +42,7 @@ routines := wcscat wcschr wcscmp wcscpy wcscspn wcsdup wcslen wcsncat \
+ 	    mbrtoc16 c16rtomb
+ 
+ strop-tests :=  wcscmp wcsncmp wmemcmp wcslen wcschr wcsrchr wcscpy wcsnlen \
+-		wcpcpy wcsncpy wcpncpy wcscat wcsncat
++		wcpcpy wcsncpy wcpncpy wcscat wcsncat wcschrnul
+ tests := tst-wcstof wcsmbs-tst1 tst-wcsnlen tst-btowc tst-mbrtowc \
+ 	 tst-wcrtomb tst-wcpncpy tst-mbsrtowcs tst-wchar-h tst-mbrtowc2 \
+ 	 tst-c16c32-1 wcsatcliff $(addprefix test-,$(strop-tests))
+diff --git a/wcsmbs/test-wcschrnul-ifunc.c b/wcsmbs/test-wcschrnul-ifunc.c
+new file mode 100644
+index 0000000..e64a1e4
+--- /dev/null
++++ b/wcsmbs/test-wcschrnul-ifunc.c
+@@ -0,0 +1,20 @@
++/* Test and measure IFUNC implementations of wcschrnul function.
++   Copyright (C) 2015 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#define TEST_IFUNC 1
++#include "test-wcschrnul.c"
+diff --git a/wcsmbs/test-wcschrnul.c b/wcsmbs/test-wcschrnul.c
+new file mode 100644
+index 0000000..baea763
+--- /dev/null
++++ b/wcsmbs/test-wcschrnul.c
+@@ -0,0 +1,20 @@
++/* Test wcschrnul functions.
++   Copyright (C) 2015 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#define WIDE 1
++#include "../string/test-strchrnul.c"
+diff --git a/wcsmbs/wcschrnul.c b/wcsmbs/wcschrnul.c
+index 04db8f1..1e4c44f 100644
+--- a/wcsmbs/wcschrnul.c
++++ b/wcsmbs/wcschrnul.c
+@@ -17,6 +17,9 @@
+ 
+ #include <wchar.h>
+ 
++#ifdef WCSCHRNUL
++# define __wcschrnul WCSCHRNUL
++#endif
+ 
+ /* Find the first occurrence of WC in WCS.  */
+ wchar_t *
+@@ -32,4 +35,6 @@ __wcschrnul (wcs, wc)
+ 
+   return (wchar_t *) wcs;
+ }
++#ifndef WCSCHRNUL
+ weak_alias (__wcschrnul, wcschrnul)
++#endif
+-- 
+2.3.0
+

@@ -1,0 +1,65 @@
+#
+# Posted upstream 2015-06-18:
+# https://www.sourceware.org/ml/libc-alpha/2015-06/msg00629.html
+#
+diff --git glibc-2.17-c758a686/inet/rcmd.c glibc-2.17-c758a686/inet/rcmd.c
+index 98b3735..91623b0 100644
+--- glibc-2.17-c758a686/inet/rcmd.c
++++ glibc-2.17-c758a686/inet/rcmd.c
+@@ -809,29 +809,38 @@ __validuser2_sa(hostf, ra, ralen, luser, ruser, rhost)
+ 	*p = '\0';              /* <nul> terminate username (+host?) */
+ 
+ 	/* buf -> host(?) ; user -> username(?) */
++	if (*buf == '\0')
++	  break;
++	if (*user == '\0')
++	  user = luser;
++
++	/* First check the user part.  This is an optimization, since
++	   one should always check the host first in order to detect
++	   negative host checks (which we check for later).  */
++	ucheck = __icheckuser (user, ruser);
++
++	/* Either we found the user, or we didn't and this is a
++	   negative host check.  We must do the negative host lookup
++	   in order to preserve the semantics of stopping on this line
++	   before processing others.  */
++	if (ucheck != 0 || *buf == '-') {
++
++	    /* Next check host part */
++	    hcheck = __checkhost_sa (ra, ralen, buf, rhost);
++
++	    /* Negative '-host user(?)' match?  */
++	    if (hcheck < 0)
++		break;
+ 
+-	/* First check host part */
+-	hcheck = __checkhost_sa (ra, ralen, buf, rhost);
+-
+-	if (hcheck < 0)
+-	    break;
+-
+-	if (hcheck) {
+-	    /* Then check user part */
+-	    if (! (*user))
+-		user = luser;
+-
+-	    ucheck = __icheckuser (user, ruser);
+-
+-	    /* Positive 'host user' match? */
+-	    if (ucheck > 0) {
++	    /* Positive 'host user' match?  */
++	    if (hcheck > 0 && ucheck > 0) {
+ 		retval = 0;
+ 		break;
+ 	    }
+ 
+-	    /* Negative 'host -user' match? */
+-	    if (ucheck < 0)
+-		break;
++	    /* Negative 'host -user' match?  */
++	    if (hcheck > 0 && ucheck < 0)
++	      break;
+ 
+ 	    /* Neither, go on looking for match */
+ 	}

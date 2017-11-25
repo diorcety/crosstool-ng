@@ -1,0 +1,24 @@
+commit a88dadbed5d7589ac7880efe62ea511844107795
+Author: Wilco <wdijkstr@arm.com>
+Date:   Mon Jun 2 12:44:21 2014 +0100
+
+    [AArch64] Remove ISB after FPCR write.
+
+diff --git a/ports/sysdeps/aarch64/fpu/fpu_control.h b/ports/sysdeps/aarch64/fpu/fpu_control.h
+index 6a265e8..d5a890d 100644
+--- a/ports/sysdeps/aarch64/fpu/fpu_control.h
++++ b/ports/sysdeps/aarch64/fpu/fpu_control.h
+@@ -24,11 +24,8 @@
+ #define _FPU_GETCW(fpcr) \
+   __asm__ __volatile__ ("mrs	%0, fpcr" : "=r" (fpcr))
+ 
+-#define _FPU_SETCW(fpcr)				   \
+-  {							   \
+-    __asm__ __volatile__ ("msr	fpcr, %0" : : "r" (fpcr)); \
+-    __asm__ __volatile__ ("isb");			   \
+-  }
++#define _FPU_SETCW(fpcr) \
++  __asm__ __volatile__ ("msr	fpcr, %0" : : "r" (fpcr))
+ 
+ #define _FPU_GETFPSR(fpsr) \
+   __asm__ __volatile__ ("mrs	%0, fpsr" : "=r" (fpsr))

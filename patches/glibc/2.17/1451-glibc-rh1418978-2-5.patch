@@ -1,0 +1,56 @@
+commit ffaa74cf68a370e232279a9a9b0a02ade287cc99
+Author: Siddhesh Poyarekar <siddhesh@redhat.com>
+Date:   Mon Feb 18 18:17:05 2013 +0530
+
+    Fix build warnings in some test cases
+    
+    Include stdlib.h to get declaration of exit(3)
+
+Index: b/misc/tst-pselect.c
+===================================================================
+--- a/misc/tst-pselect.c
++++ b/misc/tst-pselect.c
+@@ -4,6 +4,7 @@
+ #include <unistd.h>
+ #include <sys/select.h>
+ #include <sys/wait.h>
++#include <stdlib.h>
+ 
+ 
+ static volatile int handler_called;
+Index: b/nptl/sysdeps/pthread/tst-timer.c
+===================================================================
+--- a/nptl/sysdeps/pthread/tst-timer.c
++++ b/nptl/sysdeps/pthread/tst-timer.c
+@@ -22,6 +22,7 @@
+ #include <stdio.h>
+ #include <time.h>
+ #include <unistd.h>
++#include <stdlib.h>
+ 
+ 
+ static void
+Index: b/nptl/tst-barrier4.c
+===================================================================
+--- a/nptl/tst-barrier4.c
++++ b/nptl/tst-barrier4.c
+@@ -20,6 +20,7 @@
+ #include <errno.h>
+ #include <pthread.h>
+ #include <stdio.h>
++#include <stdlib.h>
+ 
+ 
+ static pthread_barrier_t b1;
+Index: b/nptl/tst-robust7.c
+===================================================================
+--- a/nptl/tst-robust7.c
++++ b/nptl/tst-robust7.c
+@@ -20,6 +20,7 @@
+ #include <pthread.h>
+ #include <stdbool.h>
+ #include <stdio.h>
++#include <stdlib.h>
+ 
+ 
+ static pthread_barrier_t b;

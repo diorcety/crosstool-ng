@@ -1,0 +1,24 @@
+commit e6fb95871cd3557e5882a6f969c11bc6a3cbe781
+Author: Florian Weimer <fweimer@redhat.com>
+Date:   Mon Sep 8 13:49:36 2014 +0200
+
+    Turn on -Werror=implicit-function-declaration
+    
+    GCC 4.4, the minimum compiler version, supports this option.  Unlike
+    other warnings, -Wimplicit-function-declaration warnings should be
+    independent of compiler versions, so this change should not cause
+    compiler-specific build failures.
+
+Index: b/Makeconfig
+===================================================================
+--- a/Makeconfig
++++ b/Makeconfig
+@@ -643,7 +643,7 @@ ifeq ($(all-warnings),yes)
+ else
+ +gccwarn := -Wall -Wwrite-strings -Winline
+ endif
+-+gccwarn-c = -Wstrict-prototypes
+++gccwarn-c = -Wstrict-prototypes -Werror=implicit-function-declaration
+ 
+ # We do not depend on the address of constants in different files to be
+ # actually different, so allow the compiler to merge them all.

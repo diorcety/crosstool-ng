@@ -1,0 +1,18 @@
+commit 984c0ea97f649c869130a1ff099098e2b6f70aad
+Author: Tim Lammens <tim.lammens@gmail.com>
+Date:   Thu Sep 11 10:35:54 2014 +0530
+
+    Fix memory leak in libio/wfileops.c do_ftell_wide [BZ #17370]
+
+diff --git a/libio/wfileops.c b/libio/wfileops.c
+index f123add..ebc06e8 100644
+--- a/libio/wfileops.c
++++ b/libio/wfileops.c
+@@ -711,6 +711,7 @@ do_ftell_wide (_IO_FILE *fp)
+ 		return WEOF;
+ 
+ 	      offset += outstop - out;
++	      free (out);
+ 	    }
+ 
+ 	  /* We don't trust _IO_read_end to represent the current file offset

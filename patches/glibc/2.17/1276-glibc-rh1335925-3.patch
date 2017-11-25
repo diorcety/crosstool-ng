@@ -1,0 +1,39 @@
+Backport of this upstream commit, with ports/ readded to the path.
+
+commit b8528e771c0f31ebb8ac2470e2cf7ee9a50693e2
+Author: Szabolcs Nagy <nsz@port70.net>
+Date:   Thu Jul 9 09:53:30 2015 +0100
+
+    [AArch64][BZ 18648] change greg_t definition in ucontext.h
+    
+    This is an ABI breaking change, but
+    
+    	typedef int greg_t;
+    
+    is not a useful definition on aarch64.
+    
+    greg_t is usually used for defining gregset_t which is used
+    in mcontext_t.  The general registers in mcontext_t can only
+    be accessed by target specific code and on aarch64 greg_t
+    is not needed for that so this change is not supposed to break
+    existing code, just fix the definition.
+    
+    	[BZ #18648]
+    	* sysdeps/unix/sysv/linux/aarch64/sys/ucontext.h (greg_t): Change the
+    	definition to elf_greg_t.
+    
+    (Added another BZ entry that was missed in the previous commit).
+
+diff --git a/ports/sysdeps/unix/sysv/linux/aarch64/sys/ucontext.h b/ports/sysdeps/unix/sysv/linux/aarch64/sys/ucontext.h
+index db7a7c1..e7268ce 100644
+--- a/ports/sysdeps/unix/sysv/linux/aarch64/sys/ucontext.h
++++ b/ports/sysdeps/unix/sysv/linux/aarch64/sys/ucontext.h
+@@ -29,7 +29,7 @@
+    included in <signal.h>.  */
+ #include <bits/sigcontext.h>
+ 
+-typedef int greg_t;
++typedef elf_greg_t greg_t;
+ 
+ /* Container for all general registers.  */
+ typedef elf_gregset_t gregset_t;

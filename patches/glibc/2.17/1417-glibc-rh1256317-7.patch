@@ -1,0 +1,546 @@
+commit 016afc75cd45dfaf49c0aa7a9befda77ab933846
+Author: Siddhesh Poyarekar <siddhesh@redhat.com>
+Date:   Thu Nov 20 13:26:25 2014 +0530
+
+    Remove IS_IN_librt
+    
+    Replace with IS_IN (librt).  Generated code unchanged on x86_64
+    
+            * include/mqueue.h: Use IS_IN instead of IS_IN_librt.
+            * nptl/pthreadP.h: Likewise.
+            * sysdeps/unix/sysv/linux/aarch64/sysdep-cancel.h: Likewise.
+            * sysdeps/unix/sysv/linux/alpha/sysdep-cancel.h: Likewise.
+            * sysdeps/unix/sysv/linux/arm/sysdep-cancel.h: Likewise.
+            * sysdeps/unix/sysv/linux/hppa/nptl/sysdep-cancel.h: Likewise.
+            * sysdeps/unix/sysv/linux/i386/sysdep-cancel.h: Likewise.
+            * sysdeps/unix/sysv/linux/ia64/sysdep-cancel.h: Likewise.
+            * sysdeps/unix/sysv/linux/ia64/sysdep.h: Likewise.
+            * sysdeps/unix/sysv/linux/m68k/sysdep-cancel.h: Likewise.
+            * sysdeps/unix/sysv/linux/microblaze/sysdep-cancel.h: Likewise.
+            * sysdeps/unix/sysv/linux/mips/mips64/sysdep-cancel.h: Likewise.
+            * sysdeps/unix/sysv/linux/mips/sysdep-cancel.h: Likewise.
+            * sysdeps/unix/sysv/linux/not-cancel.h: Likewise.
+            * sysdeps/unix/sysv/linux/powerpc/powerpc32/sysdep-cancel.h: Likewise.
+            * sysdeps/unix/sysv/linux/powerpc/powerpc64/sysdep-cancel.h: Likewise.
+            * sysdeps/unix/sysv/linux/s390/s390-32/sysdep-cancel.h: Likewise.
+            * sysdeps/unix/sysv/linux/s390/s390-64/sysdep-cancel.h: Likewise.
+            * sysdeps/unix/sysv/linux/sh/sysdep-cancel.h: Likewise.
+            * sysdeps/unix/sysv/linux/sparc/sparc32/sysdep-cancel.h: Likewise.
+            * sysdeps/unix/sysv/linux/sparc/sparc64/sysdep-cancel.h: Likewise.
+            * sysdeps/unix/sysv/linux/tile/sysdep-cancel.h: Likewise.
+            * sysdeps/unix/sysv/linux/tile/waitpid.S: Likewise.
+            * sysdeps/unix/sysv/linux/x86_64/sysdep-cancel.h: Likewise.
+
+Index: glibc-2.17-c758a686/include/mqueue.h
+===================================================================
+--- glibc-2.17-c758a686.orig/include/mqueue.h
++++ glibc-2.17-c758a686/include/mqueue.h
+@@ -1,6 +1,6 @@
+ #include <rt/mqueue.h>
+ 
+-#ifdef IS_IN_librt
++#if IS_IN (librt)
+ hidden_proto (mq_timedsend)
+ hidden_proto (mq_timedreceive)
+ hidden_proto (mq_setattr)
+Index: glibc-2.17-c758a686/nptl/pthreadP.h
+===================================================================
+--- glibc-2.17-c758a686.orig/nptl/pthreadP.h
++++ glibc-2.17-c758a686/nptl/pthreadP.h
+@@ -289,7 +289,7 @@ __do_cancel (void)
+ # define LIBC_CANCEL_HANDLED() \
+   __asm (".globl " __SYMBOL_PREFIX "__pthread_enable_asynccancel"); \
+   __asm (".globl " __SYMBOL_PREFIX "__pthread_disable_asynccancel")
+-#elif defined IS_IN_librt
++#elif IS_IN (librt)
+ # define LIBC_CANCEL_ASYNC() \
+   __librt_enable_asynccancel ()
+ # define LIBC_CANCEL_RESET(val) \
+Index: glibc-2.17-c758a686/ports/sysdeps/unix/sysv/linux/aarch64/nptl/sysdep-cancel.h
+===================================================================
+--- glibc-2.17-c758a686.orig/ports/sysdeps/unix/sysv/linux/aarch64/nptl/sysdep-cancel.h
++++ glibc-2.17-c758a686/ports/sysdeps/unix/sysv/linux/aarch64/nptl/sysdep-cancel.h
+@@ -22,7 +22,7 @@
+ # include <nptl/pthreadP.h>
+ #endif
+ 
+-#if !defined NOT_IN_libc || defined IS_IN_libpthread || defined IS_IN_librt
++#if !defined NOT_IN_libc || defined IS_IN_libpthread || IS_IN (librt)
+ 
+ # undef PSEUDO
+ # define PSEUDO(name, syscall_name, args)				\
+@@ -89,7 +89,7 @@ ENTRY (name);								\
+ #  define CENABLE	bl __libc_enable_asynccancel
+ #  define CDISABLE	bl __libc_disable_asynccancel
+ #  define __local_multiple_threads __libc_multiple_threads
+-# elif defined IS_IN_librt
++# elif IS_IN (librt)
+ #  define CENABLE	bl __librt_enable_asynccancel
+ #  define CDISABLE	bl __librt_disable_asynccancel
+ # else
+Index: glibc-2.17-c758a686/ports/sysdeps/unix/sysv/linux/arm/nptl/sysdep-cancel.h
+===================================================================
+--- glibc-2.17-c758a686.orig/ports/sysdeps/unix/sysv/linux/arm/nptl/sysdep-cancel.h
++++ glibc-2.17-c758a686/ports/sysdeps/unix/sysv/linux/arm/nptl/sysdep-cancel.h
+@@ -21,7 +21,7 @@
+ # include <nptl/pthreadP.h>
+ #endif
+ 
+-#if !defined NOT_IN_libc || defined IS_IN_libpthread || defined IS_IN_librt
++#if !defined NOT_IN_libc || defined IS_IN_libpthread || IS_IN (librt)
+ 
+ /* NOTE: We do mark syscalls with unwind annotations, for the benefit of
+    cancellation; but they're really only accurate at the point of the
+@@ -194,7 +194,7 @@
+ #  define CENABLE	bl PLTJMP(__libc_enable_asynccancel)
+ #  define CDISABLE	bl PLTJMP(__libc_disable_asynccancel)
+ #  define __local_multiple_threads __libc_multiple_threads
+-# elif defined IS_IN_librt
++# elif IS_IN (librt)
+ #  define CENABLE	bl PLTJMP(__librt_enable_asynccancel)
+ #  define CDISABLE	bl PLTJMP(__librt_disable_asynccancel)
+ # else
+Index: glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/i386/sysdep-cancel.h
+===================================================================
+--- glibc-2.17-c758a686.orig/nptl/sysdeps/unix/sysv/linux/i386/sysdep-cancel.h
++++ glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/i386/sysdep-cancel.h
+@@ -22,7 +22,7 @@
+ # include <nptl/pthreadP.h>
+ #endif
+ 
+-#if !defined NOT_IN_libc || defined IS_IN_libpthread || defined IS_IN_librt
++#if !defined NOT_IN_libc || defined IS_IN_libpthread || IS_IN (librt)
+ 
+ # undef PSEUDO
+ # define PSEUDO(name, syscall_name, args)				      \
+@@ -114,7 +114,7 @@
+ # elif !defined NOT_IN_libc
+ #  define CENABLE	call __libc_enable_asynccancel;
+ #  define CDISABLE	call __libc_disable_asynccancel
+-# elif defined IS_IN_librt
++# elif IS_IN (librt)
+ #  define CENABLE	call __librt_enable_asynccancel;
+ #  define CDISABLE	call __librt_disable_asynccancel
+ # else
+Index: glibc-2.17-c758a686/sysdeps/unix/sysv/linux/not-cancel.h
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/unix/sysv/linux/not-cancel.h
++++ glibc-2.17-c758a686/sysdeps/unix/sysv/linux/not-cancel.h
+@@ -27,7 +27,7 @@
+    INLINE_SYSCALL (open, 2, (const char *) (name), (flags))
+ 
+ /* Uncancelable openat.  */
+-#if !defined NOT_IN_libc || defined IS_IN_libpthread || defined IS_IN_librt
++#if !defined NOT_IN_libc || defined IS_IN_libpthread || IS_IN (librt)
+ extern int __openat_nocancel (int fd, const char *fname, int oflag,
+ 			      mode_t mode) attribute_hidden;
+ extern int __openat64_nocancel (int fd, const char *fname, int oflag,
+Index: glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/powerpc/powerpc32/sysdep-cancel.h
+===================================================================
+--- glibc-2.17-c758a686.orig/nptl/sysdeps/unix/sysv/linux/powerpc/powerpc32/sysdep-cancel.h
++++ glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/powerpc/powerpc32/sysdep-cancel.h
+@@ -23,7 +23,7 @@
+ # include <nptl/pthreadP.h>
+ #endif
+ 
+-#if !defined NOT_IN_libc || defined IS_IN_libpthread || defined IS_IN_librt
++#if !defined NOT_IN_libc || defined IS_IN_libpthread || IS_IN (librt)
+ 
+ # undef PSEUDO
+ # define PSEUDO(name, syscall_name, args)				\
+@@ -87,7 +87,7 @@
+ # elif !defined NOT_IN_libc
+ #  define CENABLE	bl __libc_enable_asynccancel@local
+ #  define CDISABLE	bl __libc_disable_asynccancel@local
+-# elif defined IS_IN_librt
++# elif IS_IN (librt)
+ #  define CENABLE	bl __librt_enable_asynccancel@local
+ #  define CDISABLE	bl __librt_disable_asynccancel@local
+ # else
+Index: glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/powerpc/powerpc64/sysdep-cancel.h
+===================================================================
+--- glibc-2.17-c758a686.orig/nptl/sysdeps/unix/sysv/linux/powerpc/powerpc64/sysdep-cancel.h
++++ glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/powerpc/powerpc64/sysdep-cancel.h
+@@ -23,7 +23,7 @@
+ # include <nptl/pthreadP.h>
+ #endif
+ 
+-#if !defined NOT_IN_libc || defined IS_IN_libpthread || defined IS_IN_librt
++#if !defined NOT_IN_libc || defined IS_IN_libpthread || IS_IN (librt)
+ 
+ # ifdef HAVE_ASM_GLOBAL_DOT_NAME
+ #  define DASHDASHPFX(str) .__##str
+@@ -115,7 +115,7 @@
+ #   define CENABLE	bl JUMPTARGET(__libc_enable_asynccancel); nop
+ #   define CDISABLE	bl JUMPTARGET(__libc_disable_asynccancel); nop
+ #  endif
+-# elif defined IS_IN_librt
++# elif IS_IN (librt)
+ #  ifdef SHARED
+ #   define CENABLE	bl JUMPTARGET(__librt_enable_asynccancel)
+ #   define CDISABLE	bl JUMPTARGET(__librt_disable_asynccancel)
+Index: glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/s390/s390-32/sysdep-cancel.h
+===================================================================
+--- glibc-2.17-c758a686.orig/nptl/sysdeps/unix/sysv/linux/s390/s390-32/sysdep-cancel.h
++++ glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/s390/s390-32/sysdep-cancel.h
+@@ -22,7 +22,7 @@
+ # include <nptl/pthreadP.h>
+ #endif
+ 
+-#if !defined NOT_IN_libc || defined IS_IN_libpthread || defined IS_IN_librt
++#if !defined NOT_IN_libc || defined IS_IN_libpthread || IS_IN (librt)
+ 
+ # undef PSEUDO
+ # define PSEUDO(name, syscall_name, args)				      \
+@@ -81,7 +81,7 @@ L(pseudo_end):
+ # elif !defined NOT_IN_libc
+ #  define CENABLE	__libc_enable_asynccancel
+ #  define CDISABLE	__libc_disable_asynccancel
+-# elif defined IS_IN_librt
++# elif IS_IN (librt)
+ #  define CENABLE	__librt_enable_asynccancel
+ #  define CDISABLE	__librt_disable_asynccancel
+ # else
+Index: glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/s390/s390-64/sysdep-cancel.h
+===================================================================
+--- glibc-2.17-c758a686.orig/nptl/sysdeps/unix/sysv/linux/s390/s390-64/sysdep-cancel.h
++++ glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/s390/s390-64/sysdep-cancel.h
+@@ -22,7 +22,7 @@
+ # include <nptl/pthreadP.h>
+ #endif
+ 
+-#if !defined NOT_IN_libc || defined IS_IN_libpthread || defined IS_IN_librt
++#if !defined NOT_IN_libc || defined IS_IN_libpthread || IS_IN (librt)
+ 
+ # undef PSEUDO
+ # define PSEUDO(name, syscall_name, args)				      \
+@@ -77,7 +77,7 @@ L(pseudo_end):
+ #  define CENABLE	__libc_enable_asynccancel
+ #  define CDISABLE	__libc_disable_asynccancel
+ #  define __local_multiple_threads	__libc_multiple_threads
+-# elif defined IS_IN_librt
++# elif IS_IN (librt)
+ #  define CENABLE	__librt_enable_asynccancel
+ #  define CDISABLE	__librt_disable_asynccancel
+ # else
+Index: glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/x86_64/sysdep-cancel.h
+===================================================================
+--- glibc-2.17-c758a686.orig/nptl/sysdeps/unix/sysv/linux/x86_64/sysdep-cancel.h
++++ glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/x86_64/sysdep-cancel.h
+@@ -22,7 +22,7 @@
+ # include <nptl/pthreadP.h>
+ #endif
+ 
+-#if !defined NOT_IN_libc || defined IS_IN_libpthread || defined IS_IN_librt
++#if !defined NOT_IN_libc || defined IS_IN_libpthread || IS_IN (librt)
+ 
+ /* The code to disable cancellation depends on the fact that the called
+    functions are special.  They don't modify registers other than %rax
+@@ -67,7 +67,7 @@
+ #  define CENABLE	call __libc_enable_asynccancel;
+ #  define CDISABLE	call __libc_disable_asynccancel;
+ #  define __local_multiple_threads __libc_multiple_threads
+-# elif defined IS_IN_librt
++# elif IS_IN (librt)
+ #  define CENABLE	call __librt_enable_asynccancel;
+ #  define CDISABLE	call __librt_disable_asynccancel;
+ # else
+Index: glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/i386/not-cancel.h
+===================================================================
+--- glibc-2.17-c758a686.orig/nptl/sysdeps/unix/sysv/linux/i386/not-cancel.h
++++ glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/i386/not-cancel.h
+@@ -19,7 +19,7 @@
+ 
+ #include <sysdep.h>
+ 
+-#if !defined NOT_IN_libc || defined IS_IN_libpthread || defined IS_IN_librt
++#if !defined NOT_IN_libc || defined IS_IN_libpthread || IS_IN (librt)
+ extern int __open_nocancel (const char *, int, ...) attribute_hidden;
+ extern int __close_nocancel (int) attribute_hidden;
+ extern int __read_nocancel (int, void *, size_t) attribute_hidden;
+Index: glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/sh/sysdep-cancel.h
+===================================================================
+--- glibc-2.17-c758a686.orig/nptl/sysdeps/unix/sysv/linux/sh/sysdep-cancel.h
++++ glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/sh/sysdep-cancel.h
+@@ -21,7 +21,7 @@
+ # include <nptl/pthreadP.h>
+ #endif
+ 
+-#if !defined NOT_IN_libc || defined IS_IN_libpthread || defined IS_IN_librt
++#if !defined NOT_IN_libc || defined IS_IN_libpthread || IS_IN (librt)
+ 
+ # define _IMM12 #-12
+ # define _IMM16 #-16
+@@ -111,7 +111,7 @@
+ # elif !defined NOT_IN_libc
+ #  define __local_enable_asynccancel	__libc_enable_asynccancel
+ #  define __local_disable_asynccancel	__libc_disable_asynccancel
+-# elif defined IS_IN_librt
++# elif IS_IN (librt)
+ #  define __local_enable_asynccancel	__librt_enable_asynccancel
+ #  define __local_disable_asynccancel	__librt_disable_asynccancel
+ # else
+Index: glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/sparc/sparc32/sysdep-cancel.h
+===================================================================
+--- glibc-2.17-c758a686.orig/nptl/sysdeps/unix/sysv/linux/sparc/sparc32/sysdep-cancel.h
++++ glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/sparc/sparc32/sysdep-cancel.h
+@@ -22,7 +22,7 @@
+ # include <nptl/pthreadP.h>
+ #endif
+ 
+-#if !defined NOT_IN_libc || defined IS_IN_libpthread || defined IS_IN_librt
++#if !defined NOT_IN_libc || defined IS_IN_libpthread || IS_IN (librt)
+ 
+ # undef PSEUDO
+ # define PSEUDO(name, syscall_name, args)	\
+@@ -74,7 +74,7 @@ __##syscall_name##_nocancel:			\
+ # elif !defined NOT_IN_libc
+ #  define CENABLE	call __libc_enable_asynccancel
+ #  define CDISABLE	call __libc_disable_asynccancel
+-# elif defined IS_IN_librt
++# elif IS_IN (librt)
+ #  define CENABLE	call __librt_enable_asynccancel
+ #  define CDISABLE	call __librt_disable_asynccancel
+ # else
+Index: glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/sparc/sparc64/sysdep-cancel.h
+===================================================================
+--- glibc-2.17-c758a686.orig/nptl/sysdeps/unix/sysv/linux/sparc/sparc64/sysdep-cancel.h
++++ glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/sparc/sparc64/sysdep-cancel.h
+@@ -22,7 +22,7 @@
+ # include <nptl/pthreadP.h>
+ #endif
+ 
+-#if !defined NOT_IN_libc || defined IS_IN_libpthread || defined IS_IN_librt
++#if !defined NOT_IN_libc || defined IS_IN_libpthread || IS_IN (librt)
+ 
+ # undef PSEUDO
+ # define PSEUDO(name, syscall_name, args)	\
+@@ -72,7 +72,7 @@ __##syscall_name##_nocancel:			\
+ # elif !defined NOT_IN_libc
+ #  define CENABLE	call __libc_enable_asynccancel
+ #  define CDISABLE	call __libc_disable_asynccancel
+-# elif defined IS_IN_librt
++# elif IS_IN (librt)
+ #  define CENABLE	call __librt_enable_asynccancel
+ #  define CDISABLE	call __librt_disable_asynccancel
+ # else
+Index: glibc-2.17-c758a686/ports/sysdeps/unix/sysv/linux/alpha/nptl/sysdep-cancel.h
+===================================================================
+--- glibc-2.17-c758a686.orig/ports/sysdeps/unix/sysv/linux/alpha/nptl/sysdep-cancel.h
++++ glibc-2.17-c758a686/ports/sysdeps/unix/sysv/linux/alpha/nptl/sysdep-cancel.h
+@@ -21,7 +21,7 @@
+ # include <nptl/pthreadP.h>
+ #endif
+ 
+-#if !defined NOT_IN_libc || defined IS_IN_libpthread || defined IS_IN_librt
++#if !defined NOT_IN_libc || defined IS_IN_libpthread || IS_IN (librt)
+ 
+ /* ??? Assumes that nothing comes between PSEUDO and PSEUDO_END
+    besides "ret".  */
+@@ -113,7 +113,7 @@ __LABEL($multi_error)						\
+ #  define __local_enable_asynccancel	__libc_enable_asynccancel
+ #  define __local_disable_asynccancel	__libc_disable_asynccancel
+ #  define __local_multiple_threads	__libc_multiple_threads
+-# elif defined IS_IN_librt
++# elif IS_IN (librt)
+ #  define __local_enable_asynccancel	__librt_enable_asynccancel
+ #  define __local_disable_asynccancel	__librt_disable_asynccancel
+ # else
+Index: glibc-2.17-c758a686/ports/sysdeps/unix/sysv/linux/am33/linuxthreads/sysdep-cancel.h
+===================================================================
+--- glibc-2.17-c758a686.orig/ports/sysdeps/unix/sysv/linux/am33/linuxthreads/sysdep-cancel.h
++++ glibc-2.17-c758a686/ports/sysdeps/unix/sysv/linux/am33/linuxthreads/sysdep-cancel.h
+@@ -23,7 +23,7 @@
+ # include <linuxthreads/internals.h>
+ #endif
+ 
+-#if !defined NOT_IN_libc || defined IS_IN_libpthread || defined IS_IN_librt
++#if !defined NOT_IN_libc || defined IS_IN_libpthread || IS_IN (librt)
+ 
+ # undef PSEUDO
+ # define PSEUDO(name, syscall_name, args)				\
+@@ -82,7 +82,7 @@
+ # ifdef IS_IN_libpthread
+ #  define CENABLE	call __pthread_enable_asynccancel,[],0;
+ #  define CDISABLE	call __pthread_disable_asynccancel,[],0;
+-# elif defined IS_IN_librt
++# elif IS_IN (librt)
+ #  ifdef PIC
+ #   define CENABLE	movm [a2],(sp); \
+ 			1: mov pc,a2; \
+Index: glibc-2.17-c758a686/ports/sysdeps/unix/sysv/linux/hppa/nptl/sysdep-cancel.h
+===================================================================
+--- glibc-2.17-c758a686.orig/ports/sysdeps/unix/sysv/linux/hppa/nptl/sysdep-cancel.h
++++ glibc-2.17-c758a686/ports/sysdeps/unix/sysv/linux/hppa/nptl/sysdep-cancel.h
+@@ -22,7 +22,7 @@
+ # include <nptl/pthreadP.h>
+ #endif
+ 
+-#if !defined NOT_IN_libc || defined IS_IN_libpthread || defined IS_IN_librt
++#if !defined NOT_IN_libc || defined IS_IN_libpthread || IS_IN (librt)
+ 
+ # ifndef NO_ERROR
+ #  define NO_ERROR -0x1000
+@@ -228,7 +228,7 @@ L(pre_end):						ASM_LINE_SEP	\
+ #   define CDISABLE	.import __libc_disable_asynccancel,code ASM_LINE_SEP \
+ 			bl __libc_disable_asynccancel,%r2 ASM_LINE_SEP
+ #  endif
+-# elif defined IS_IN_librt
++# elif IS_IN (librt)
+ #  ifdef PIC
+ #   define CENABLE .import __librt_enable_asynccancel,code ASM_LINE_SEP \
+ 			bl __librt_enable_asynccancel,%r2 ASM_LINE_SEP
+@@ -248,7 +248,7 @@ L(pre_end):						ASM_LINE_SEP	\
+ #  define __local_multiple_threads __pthread_multiple_threads
+ # elif !defined NOT_IN_libc
+ #  define __local_multiple_threads __libc_multiple_threads
+-# elif IS_IN_librt
++# elif IS_IN (librt)
+ #  define __local_multiple_threads __librt_multiple_threads
+ # else
+ #  error Unsupported library
+@@ -271,7 +271,7 @@ L(pre_end):						ASM_LINE_SEP	\
+ # define NO_CANCELLATION 1
+ 
+ #endif
+-/* !defined NOT_IN_libc || defined IS_IN_libpthread || defined IS_IN_librt */
++/* !defined NOT_IN_libc || defined IS_IN_libpthread || IS_IN (librt) */
+ 
+ #ifndef __ASSEMBLER__
+ # define RTLD_SINGLE_THREAD_P \
+Index: glibc-2.17-c758a686/ports/sysdeps/unix/sysv/linux/ia64/nptl/sysdep-cancel.h
+===================================================================
+--- glibc-2.17-c758a686.orig/ports/sysdeps/unix/sysv/linux/ia64/nptl/sysdep-cancel.h
++++ glibc-2.17-c758a686/ports/sysdeps/unix/sysv/linux/ia64/nptl/sysdep-cancel.h
+@@ -22,7 +22,7 @@
+ # include <nptl/pthreadP.h>
+ #endif
+ 
+-#if !defined NOT_IN_libc || defined IS_IN_libpthread || defined IS_IN_librt
++#if !defined NOT_IN_libc || defined IS_IN_libpthread || IS_IN (librt)
+ 
+ # undef PSEUDO
+ 
+@@ -166,7 +166,7 @@ __GC_##name:								      \
+ # elif !defined NOT_IN_libc
+ #  define CENABLE	br.call.sptk.many b0 = __libc_enable_asynccancel
+ #  define CDISABLE	br.call.sptk.many b0 = __libc_disable_asynccancel
+-# elif defined IS_IN_librt
++# elif IS_IN (librt)
+ #  define CENABLE	br.call.sptk.many b0 = __librt_enable_asynccancel
+ #  define CDISABLE	br.call.sptk.many b0 = __librt_disable_asynccancel
+ # else
+Index: glibc-2.17-c758a686/ports/sysdeps/unix/sysv/linux/ia64/sysdep.h
+===================================================================
+--- glibc-2.17-c758a686.orig/ports/sysdeps/unix/sysv/linux/ia64/sysdep.h
++++ glibc-2.17-c758a686/ports/sysdeps/unix/sysv/linux/ia64/sysdep.h
+@@ -62,7 +62,7 @@
+ 
+ #if defined USE_DL_SYSINFO \
+ 	&& (!defined NOT_IN_libc \
+-	    || IS_IN (libpthread) || defined IS_IN_librt)
++	    || IS_IN (libpthread) || IS_IN (librt))
+ # define IA64_USE_NEW_STUB
+ #else
+ # undef IA64_USE_NEW_STUB
+Index: glibc-2.17-c758a686/ports/sysdeps/unix/sysv/linux/m68k/nptl/sysdep-cancel.h
+===================================================================
+--- glibc-2.17-c758a686.orig/ports/sysdeps/unix/sysv/linux/m68k/nptl/sysdep-cancel.h
++++ glibc-2.17-c758a686/ports/sysdeps/unix/sysv/linux/m68k/nptl/sysdep-cancel.h
+@@ -22,7 +22,7 @@
+ # include <nptl/pthreadP.h>
+ #endif
+ 
+-#if !defined NOT_IN_libc || defined IS_IN_libpthread || defined IS_IN_librt
++#if !defined NOT_IN_libc || defined IS_IN_libpthread || IS_IN (librt)
+ 
+ # undef PSEUDO
+ # define PSEUDO(name, syscall_name, args)				      \
+@@ -106,7 +106,7 @@
+ # elif !defined NOT_IN_libc
+ #  define CENABLE	PSEUDO_JMP (__libc_enable_asynccancel)
+ #  define CDISABLE	PSEUDO_JMP (__libc_disable_asynccancel)
+-# elif defined IS_IN_librt
++# elif IS_IN (librt)
+ #  define CENABLE	PSEUDO_JMP (__librt_enable_asynccancel)
+ #  define CDISABLE	PSEUDO_JMP (__librt_disable_asynccancel)
+ # else
+Index: glibc-2.17-c758a686/ports/sysdeps/unix/sysv/linux/mips/mips64/nptl/sysdep-cancel.h
+===================================================================
+--- glibc-2.17-c758a686.orig/ports/sysdeps/unix/sysv/linux/mips/mips64/nptl/sysdep-cancel.h
++++ glibc-2.17-c758a686/ports/sysdeps/unix/sysv/linux/mips/mips64/nptl/sysdep-cancel.h
+@@ -27,7 +27,7 @@
+    happen before any instructions.  So we use cfi_same_value instead of
+    cfi_restore.  */
+ 
+-#if !defined NOT_IN_libc || defined IS_IN_libpthread || defined IS_IN_librt
++#if !defined NOT_IN_libc || defined IS_IN_libpthread || IS_IN (librt)
+ 
+ #ifdef __PIC__
+ # undef PSEUDO
+@@ -149,7 +149,7 @@
+ # ifdef IS_IN_libpthread
+ #  define CENABLE	PTR_LA t9, __pthread_enable_asynccancel; jalr t9
+ #  define CDISABLE	PTR_LA t9, __pthread_disable_asynccancel; jalr t9
+-# elif defined IS_IN_librt
++# elif IS_IN (librt)
+ #  define CENABLE	PTR_LA t9, __librt_enable_asynccancel; jalr t9
+ #  define CDISABLE	PTR_LA t9, __librt_disable_asynccancel; jalr t9
+ # else
+Index: glibc-2.17-c758a686/ports/sysdeps/unix/sysv/linux/mips/nptl/sysdep-cancel.h
+===================================================================
+--- glibc-2.17-c758a686.orig/ports/sysdeps/unix/sysv/linux/mips/nptl/sysdep-cancel.h
++++ glibc-2.17-c758a686/ports/sysdeps/unix/sysv/linux/mips/nptl/sysdep-cancel.h
+@@ -22,7 +22,7 @@
+ # include <nptl/pthreadP.h>
+ #endif
+ 
+-#if !defined NOT_IN_libc || defined IS_IN_libpthread || defined IS_IN_librt
++#if !defined NOT_IN_libc || defined IS_IN_libpthread || IS_IN (librt)
+ 
+ # ifdef __PIC__
+ #  define PSEUDO_CPLOAD .cpload t9;
+@@ -155,7 +155,7 @@
+ # ifdef IS_IN_libpthread
+ #  define CENABLE	PSEUDO_JMP (__pthread_enable_asynccancel)
+ #  define CDISABLE	PSEUDO_JMP (__pthread_disable_asynccancel)
+-# elif defined IS_IN_librt
++# elif IS_IN (librt)
+ #  define CENABLE	PSEUDO_JMP (__librt_enable_asynccancel)
+ #  define CDISABLE	PSEUDO_JMP (__librt_disable_asynccancel)
+ # else
+Index: glibc-2.17-c758a686/ports/sysdeps/unix/sysv/linux/tile/nptl/sysdep-cancel.h
+===================================================================
+--- glibc-2.17-c758a686.orig/ports/sysdeps/unix/sysv/linux/tile/nptl/sysdep-cancel.h
++++ glibc-2.17-c758a686/ports/sysdeps/unix/sysv/linux/tile/nptl/sysdep-cancel.h
+@@ -22,7 +22,7 @@
+ # include <nptl/pthreadP.h>
+ #endif
+ 
+-#if !defined NOT_IN_libc || defined IS_IN_libpthread || defined IS_IN_librt
++#if !defined NOT_IN_libc || defined IS_IN_libpthread || IS_IN (librt)
+ 
+ /* Allow hacking in some extra code if desired. */
+ #ifndef PSEUDO_EXTRA
+@@ -120,7 +120,7 @@
+ # ifdef IS_IN_libpthread
+ #  define CENABLE	jal __pthread_enable_asynccancel
+ #  define CDISABLE	jal __pthread_disable_asynccancel
+-# elif defined IS_IN_librt
++# elif IS_IN (librt)
+ #  define CENABLE	jal __librt_enable_asynccancel
+ #  define CDISABLE	jal __librt_disable_asynccancel
+ # else
+Index: glibc-2.17-c758a686/ports/sysdeps/unix/sysv/linux/tile/nptl/waitpid.S
+===================================================================
+--- glibc-2.17-c758a686.orig/ports/sysdeps/unix/sysv/linux/tile/nptl/waitpid.S
++++ glibc-2.17-c758a686/ports/sysdeps/unix/sysv/linux/tile/nptl/waitpid.S
+@@ -1,7 +1,7 @@
+ /*
+ extern pid_t __waitpid_nocancel (pid_t, int *, int) attribute_hidden;
+ */
+-#if !defined NOT_IN_libc || defined IS_IN_libpthread || defined IS_IN_librt
++#if !defined NOT_IN_libc || defined IS_IN_libpthread || IS_IN (librt)
+ 
+ /* Call __NR_wait4, providing fourth argument (struct rusage *) as NULL. */
+ #define PSEUDO_EXTRA move r3, zero;

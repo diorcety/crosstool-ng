@@ -1,0 +1,861 @@
+commit a109996ef96b065c8374c486e80ee3bf23c69edd
+Author: Siddhesh Poyarekar <siddhesh@redhat.com>
+Date:   Thu Nov 20 21:04:47 2014 +0530
+
+    Remove IS_IN_libm
+    
+    Replace with IS_IN (libm). Generated code unchanged on x86_64.
+    
+            * include/math.h: Use IS_IN instead of IS_IN_libm.
+            * sysdeps/alpha/fpu/s_copysign.c: Likewise.
+            * sysdeps/ieee754/ldbl-128ibm/s_copysignl.c: Likewise.
+            * sysdeps/ieee754/ldbl-128ibm/s_finitel.c: Likewise.
+            * sysdeps/ieee754/ldbl-128ibm/s_fmal.c: Likewise.
+            * sysdeps/ieee754/ldbl-128ibm/s_frexpl.c: Likewise.
+            * sysdeps/ieee754/ldbl-128ibm/s_isinfl.c: Likewise.
+            * sysdeps/ieee754/ldbl-128ibm/s_isnanl.c: Likewise.
+            * sysdeps/ieee754/ldbl-128ibm/s_modfl.c: Likewise.
+            * sysdeps/ieee754/ldbl-128ibm/s_scalbnl.c: Likewise.
+            * sysdeps/ieee754/ldbl-128ibm/s_signbitl.c: Likewise.
+            * sysdeps/ieee754/ldbl-64-128/s_copysignl.c: Likewise.
+            * sysdeps/ieee754/ldbl-64-128/s_finitel.c: Likewise.
+            * sysdeps/ieee754/ldbl-64-128/s_frexpl.c: Likewise.
+            * sysdeps/ieee754/ldbl-64-128/s_isinfl.c: Likewise.
+            * sysdeps/ieee754/ldbl-64-128/s_isnanl.c: Likewise.
+            * sysdeps/ieee754/ldbl-64-128/s_modfl.c: Likewise.
+            * sysdeps/ieee754/ldbl-64-128/s_scalbnl.c: Likewise.
+            * sysdeps/ieee754/ldbl-64-128/s_signbitl.c: Likewise.
+            * sysdeps/ieee754/ldbl-64-128/w_scalblnl.c: Likewise.
+            * sysdeps/ieee754/ldbl-opt/s_copysign.c: Likewise.
+            * sysdeps/ieee754/ldbl-opt/s_finite.c: Likewise.
+            * sysdeps/ieee754/ldbl-opt/s_frexp.c: Likewise.
+            * sysdeps/ieee754/ldbl-opt/s_isinf.c: Likewise.
+            * sysdeps/ieee754/ldbl-opt/s_isnan.c: Likewise.
+            * sysdeps/ieee754/ldbl-opt/s_ldexp.c: Likewise.
+            * sysdeps/ieee754/ldbl-opt/s_ldexpl.c: Likewise.
+            * sysdeps/ieee754/ldbl-opt/s_modf.c: Likewise.
+            * sysdeps/ieee754/ldbl-opt/s_scalbln.c: Likewise.
+            * sysdeps/ieee754/ldbl-opt/s_scalbn.c: Likewise.
+            * sysdeps/powerpc/power5+/fpu/s_modf.c: Likewise.
+            * sysdeps/powerpc/powerpc32/fpu/s_copysign.S: Likewise.
+            * sysdeps/powerpc/powerpc32/fpu/s_copysignl.S: Likewise.
+            * sysdeps/powerpc/powerpc32/fpu/s_isnan.S: Likewise.
+            * sysdeps/powerpc/powerpc32/power4/fpu/multiarch/s_copysign.c: Likewise.
+            * sysdeps/powerpc/powerpc32/power4/fpu/multiarch/s_finite.c: Likewise.
+            * sysdeps/powerpc/powerpc32/power4/fpu/multiarch/s_isinf.c: Likewise.
+            * sysdeps/powerpc/powerpc32/power4/fpu/multiarch/s_isnan.c: Likewise.
+            * sysdeps/powerpc/powerpc32/power4/fpu/multiarch/s_modf.c: Likewise.
+            * sysdeps/powerpc/powerpc32/power5/fpu/s_isnan.S: Likewise.
+            * sysdeps/powerpc/powerpc32/power6/fpu/s_copysign.S: Likewise.
+            * sysdeps/powerpc/powerpc32/power6/fpu/s_isnan.S: Likewise.
+            * sysdeps/powerpc/powerpc32/power7/fpu/s_finite.S: Likewise.
+            * sysdeps/powerpc/powerpc32/power7/fpu/s_isinf.S: Likewise.
+            * sysdeps/powerpc/powerpc32/power7/fpu/s_isnan.S: Likewise.
+            * sysdeps/powerpc/powerpc64/fpu/multiarch/s_copysign.c: Likewise.
+            * sysdeps/powerpc/powerpc64/fpu/multiarch/s_finite.c: Likewise.
+            * sysdeps/powerpc/powerpc64/fpu/multiarch/s_isinf.c: Likewise.
+            * sysdeps/powerpc/powerpc64/fpu/multiarch/s_isnan.c: Likewise.
+            * sysdeps/powerpc/powerpc64/fpu/multiarch/s_modf.c: Likewise.
+            * sysdeps/powerpc/powerpc64/fpu/s_copysign.S: Likewise.
+            * sysdeps/powerpc/powerpc64/fpu/s_copysignl.S: Likewise.
+            * sysdeps/powerpc/powerpc64/fpu/s_isnan.S: Likewise.
+            * sysdeps/powerpc/powerpc64/power5/fpu/s_isnan.S: Likewise.
+            * sysdeps/powerpc/powerpc64/power6/fpu/s_copysign.S: Likewise.
+            * sysdeps/powerpc/powerpc64/power6/fpu/s_isnan.S: Likewise.
+            * sysdeps/powerpc/powerpc64/power6x/fpu/s_isnan.S: Likewise.
+            * sysdeps/powerpc/powerpc64/power7/fpu/s_finite.S: Likewise.
+            * sysdeps/powerpc/powerpc64/power7/fpu/s_isinf.S: Likewise.
+            * sysdeps/powerpc/powerpc64/power7/fpu/s_isnan.S: Likewise.
+            * sysdeps/powerpc/powerpc64/power8/fpu/s_finite.S: Likewise.
+            * sysdeps/powerpc/powerpc64/power8/fpu/s_isinf.S: Likewise.
+            * sysdeps/powerpc/powerpc64/power8/fpu/s_isnan.S: Likewise.
+            * sysdeps/sparc/sparc32/fpu/s_signbitl.S: Likewise.
+            * sysdeps/sparc/sparc32/sparcv9/fpu/s_isnan.S: Likewise.
+            * sysdeps/unix/sysv/linux/alpha/fraiseexcpt.S: Likewise.
+
+Index: glibc-2.17-c758a686/include/math.h
+===================================================================
+--- glibc-2.17-c758a686.orig/include/math.h
++++ glibc-2.17-c758a686/include/math.h
+@@ -6,7 +6,7 @@
+ /* Now define the internal interfaces.  */
+ extern int __matherr (struct exception *__exc);
+ 
+-# if !defined NOT_IN_libc || defined IS_IN_libm
++# if !defined NOT_IN_libc || IS_IN (libm)
+ hidden_proto (__finite)
+ hidden_proto (__isinf)
+ hidden_proto (__isnan)
+Index: glibc-2.17-c758a686/sysdeps/ieee754/ldbl-128ibm/s_copysignl.c
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/ieee754/ldbl-128ibm/s_copysignl.c
++++ glibc-2.17-c758a686/sysdeps/ieee754/ldbl-128ibm/s_copysignl.c
+@@ -34,7 +34,7 @@ long double __copysignl(long double x, l
+   return x;
+ }
+ 
+-#ifdef IS_IN_libm
++#if IS_IN (libm)
+ long_double_symbol (libm, __copysignl, copysignl);
+ #else
+ long_double_symbol (libc, __copysignl, copysignl);
+Index: glibc-2.17-c758a686/sysdeps/ieee754/ldbl-128ibm/s_finitel.c
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/ieee754/ldbl-128ibm/s_finitel.c
++++ glibc-2.17-c758a686/sysdeps/ieee754/ldbl-128ibm/s_finitel.c
+@@ -40,7 +40,7 @@ ___finitel (long double x)
+ }
+ hidden_ver (___finitel, __finitel)
+ weak_alias (___finitel, ____finitel)
+-#ifdef IS_IN_libm
++#if IS_IN (libm)
+ long_double_symbol (libm, ____finitel, finitel);
+ long_double_symbol (libm, ___finitel, __finitel);
+ #else
+Index: glibc-2.17-c758a686/sysdeps/ieee754/ldbl-128ibm/s_fmal.c
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/ieee754/ldbl-128ibm/s_fmal.c
++++ glibc-2.17-c758a686/sysdeps/ieee754/ldbl-128ibm/s_fmal.c
+@@ -37,7 +37,7 @@ __fmal (long double x, long double y, lo
+ 
+        return (x * y) + z;
+ }
+-#ifdef IS_IN_libm
++#if IS_IN (libm)
+ long_double_symbol (libm, __fmal, fmal);
+ #else
+ long_double_symbol (libc, __fmal, fmal);
+Index: glibc-2.17-c758a686/sysdeps/ieee754/ldbl-128ibm/s_frexpl.c
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/ieee754/ldbl-128ibm/s_frexpl.c
++++ glibc-2.17-c758a686/sysdeps/ieee754/ldbl-128ibm/s_frexpl.c
+@@ -141,7 +141,7 @@ long double __frexpl(long double x, int
+   *eptr = expon;
+   return x;
+ }
+-#ifdef IS_IN_libm
++#if IS_IN (libm)
+ long_double_symbol (libm, __frexpl, frexpl);
+ #else
+ long_double_symbol (libc, __frexpl, frexpl);
+Index: glibc-2.17-c758a686/sysdeps/ieee754/ldbl-128ibm/s_isinfl.c
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/ieee754/ldbl-128ibm/s_isinfl.c
++++ glibc-2.17-c758a686/sysdeps/ieee754/ldbl-128ibm/s_isinfl.c
+@@ -33,7 +33,7 @@ ___isinfl (long double x)
+   return ~mask & (hx >> 62);
+ }
+ hidden_ver (___isinfl, __isinfl)
+-#ifndef IS_IN_libm
++#if !IS_IN (libm)
+ weak_alias (___isinfl, ____isinfl)
+ long_double_symbol (libc, ___isinfl, isinfl);
+ long_double_symbol (libc, ____isinfl, __isinfl);
+Index: glibc-2.17-c758a686/sysdeps/ieee754/ldbl-128ibm/s_isnanl.c
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/ieee754/ldbl-128ibm/s_isnanl.c
++++ glibc-2.17-c758a686/sysdeps/ieee754/ldbl-128ibm/s_isnanl.c
+@@ -39,7 +39,7 @@ ___isnanl (long double x)
+   return (int) (hx >> 63);
+ }
+ hidden_ver (___isnanl, __isnanl)
+-#ifndef IS_IN_libm
++#if !IS_IN (libm)
+ weak_alias (___isnanl, ____isnanl)
+ long_double_symbol (libc, ___isnanl, isnanl);
+ long_double_symbol (libc, ____isnanl, __isnanl);
+Index: glibc-2.17-c758a686/sysdeps/ieee754/ldbl-128ibm/s_modfl.c
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/ieee754/ldbl-128ibm/s_modfl.c
++++ glibc-2.17-c758a686/sysdeps/ieee754/ldbl-128ibm/s_modfl.c
+@@ -89,7 +89,7 @@ long double __modfl(long double x, long
+ 	    }
+ 	}
+ }
+-#ifdef IS_IN_libm
++#if IS_IN (libm)
+ long_double_symbol (libm, __modfl, modfl);
+ #else
+ long_double_symbol (libc, __modfl, modfl);
+Index: glibc-2.17-c758a686/sysdeps/ieee754/ldbl-128ibm/s_scalbnl.c
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/ieee754/ldbl-128ibm/s_scalbnl.c
++++ glibc-2.17-c758a686/sysdeps/ieee754/ldbl-128ibm/s_scalbnl.c
+@@ -102,7 +102,7 @@ long double __scalbnl (long double x, in
+ 	x = ldbl_pack (xhi, xlo);
+ 	return x*twolm54;
+ }
+-#ifdef IS_IN_libm
++#if IS_IN (libm)
+ long_double_symbol (libm, __scalbnl, scalbnl);
+ #else
+ long_double_symbol (libc, __scalbnl, scalbnl);
+Index: glibc-2.17-c758a686/sysdeps/ieee754/ldbl-128ibm/s_signbitl.c
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/ieee754/ldbl-128ibm/s_signbitl.c
++++ glibc-2.17-c758a686/sysdeps/ieee754/ldbl-128ibm/s_signbitl.c
+@@ -31,7 +31,7 @@ ___signbitl (long double x)
+   EXTRACT_WORDS64 (e, xhi);
+   return e < 0;
+ }
+-#ifdef IS_IN_libm
++#if IS_IN (libm)
+ long_double_symbol (libm, ___signbitl, __signbitl);
+ #else
+ long_double_symbol (libc, ___signbitl, __signbitl);
+Index: glibc-2.17-c758a686/sysdeps/ieee754/ldbl-64-128/s_copysignl.c
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/ieee754/ldbl-64-128/s_copysignl.c
++++ glibc-2.17-c758a686/sysdeps/ieee754/ldbl-64-128/s_copysignl.c
+@@ -2,7 +2,7 @@
+ #undef weak_alias
+ #define weak_alias(n,a)
+ #include <sysdeps/ieee754/ldbl-128/s_copysignl.c>
+-#ifdef IS_IN_libm
++#if IS_IN (libm)
+ long_double_symbol (libm, __copysignl, copysignl);
+ #else
+ long_double_symbol (libc, __copysignl, copysignl);
+Index: glibc-2.17-c758a686/sysdeps/ieee754/ldbl-64-128/s_finitel.c
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/ieee754/ldbl-64-128/s_finitel.c
++++ glibc-2.17-c758a686/sysdeps/ieee754/ldbl-64-128/s_finitel.c
+@@ -8,7 +8,7 @@
+ #undef __finitel
+ hidden_ver (___finitel, __finitel)
+ _weak_alias (___finitel, ____finitel)
+-#ifdef IS_IN_libm
++#if IS_IN (libm)
+ long_double_symbol (libm, ____finitel, finitel);
+ long_double_symbol (libm, ___finitel, __finitel);
+ #else
+Index: glibc-2.17-c758a686/sysdeps/ieee754/ldbl-64-128/s_frexpl.c
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/ieee754/ldbl-64-128/s_frexpl.c
++++ glibc-2.17-c758a686/sysdeps/ieee754/ldbl-64-128/s_frexpl.c
+@@ -2,7 +2,7 @@
+ #undef weak_alias
+ #define weak_alias(n,a)
+ #include <sysdeps/ieee754/ldbl-128/s_frexpl.c>
+-#ifdef IS_IN_libm
++#if IS_IN (libm)
+ long_double_symbol (libm, __frexpl, frexpl);
+ #else
+ long_double_symbol (libc, __frexpl, frexpl);
+Index: glibc-2.17-c758a686/sysdeps/ieee754/ldbl-64-128/s_isinfl.c
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/ieee754/ldbl-64-128/s_isinfl.c
++++ glibc-2.17-c758a686/sysdeps/ieee754/ldbl-64-128/s_isinfl.c
+@@ -1,5 +1,5 @@
+ #include <math_ldbl_opt.h>
+-#ifndef IS_IN_libm
++#if !IS_IN (libm)
+ # undef weak_alias
+ # define weak_alias(n,a)
+ # undef hidden_def
+@@ -7,7 +7,7 @@
+ # define __isinfl(arg) ___isinfl(arg)
+ #endif
+ #include <sysdeps/ieee754/ldbl-128/s_isinfl.c>
+-#ifndef IS_IN_libm
++#if !IS_IN (libm)
+ # undef __isinfl
+ hidden_ver (___isinfl, __isinfl)
+ _weak_alias (___isinfl, ____isinfl)
+Index: glibc-2.17-c758a686/sysdeps/ieee754/ldbl-64-128/s_isnanl.c
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/ieee754/ldbl-64-128/s_isnanl.c
++++ glibc-2.17-c758a686/sysdeps/ieee754/ldbl-64-128/s_isnanl.c
+@@ -1,5 +1,5 @@
+ #include <math_ldbl_opt.h>
+-#ifndef IS_IN_libm
++#if !IS_IN (libm)
+ # undef weak_alias
+ # define weak_alias(n,a)
+ # undef hidden_def
+@@ -7,7 +7,7 @@
+ # define __isnanl(arg) ___isnanl(arg)
+ #endif
+ #include <sysdeps/ieee754/ldbl-128/s_isnanl.c>
+-#ifndef IS_IN_libm
++#if !IS_IN (libm)
+ # undef __isnanl
+ hidden_ver (___isnanl, __isnanl)
+ _weak_alias (___isnanl, ____isnanl)
+Index: glibc-2.17-c758a686/sysdeps/ieee754/ldbl-64-128/s_modfl.c
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/ieee754/ldbl-64-128/s_modfl.c
++++ glibc-2.17-c758a686/sysdeps/ieee754/ldbl-64-128/s_modfl.c
+@@ -2,7 +2,7 @@
+ #undef weak_alias
+ #define weak_alias(n,a)
+ #include <sysdeps/ieee754/ldbl-128/s_modfl.c>
+-#ifdef IS_IN_libm
++#if IS_IN (libm)
+ long_double_symbol (libm, __modfl, modfl);
+ #else
+ long_double_symbol (libc, __modfl, modfl);
+Index: glibc-2.17-c758a686/sysdeps/ieee754/ldbl-64-128/s_scalbnl.c
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/ieee754/ldbl-64-128/s_scalbnl.c
++++ glibc-2.17-c758a686/sysdeps/ieee754/ldbl-64-128/s_scalbnl.c
+@@ -2,7 +2,7 @@
+ #undef weak_alias
+ #define weak_alias(n,a)
+ #include <sysdeps/ieee754/ldbl-128/s_scalbnl.c>
+-#ifdef IS_IN_libm
++#if IS_IN (libm)
+ long_double_symbol (libm, __scalbnl, scalbnl);
+ #else
+ long_double_symbol (libc, __scalbnl, scalbnl);
+Index: glibc-2.17-c758a686/sysdeps/ieee754/ldbl-64-128/s_signbitl.c
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/ieee754/ldbl-64-128/s_signbitl.c
++++ glibc-2.17-c758a686/sysdeps/ieee754/ldbl-64-128/s_signbitl.c
+@@ -4,7 +4,7 @@
+ #define __signbitl(arg) ___signbitl(arg)
+ #include <sysdeps/ieee754/ldbl-128/s_signbitl.c>
+ #undef __signbitl
+-#ifdef IS_IN_libm
++#if IS_IN (libm)
+ long_double_symbol (libm, ___signbitl, __signbitl);
+ #else
+ long_double_symbol (libc, ___signbitl, __signbitl);
+Index: glibc-2.17-c758a686/sysdeps/ieee754/ldbl-opt/s_copysign.c
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/ieee754/ldbl-opt/s_copysign.c
++++ glibc-2.17-c758a686/sysdeps/ieee754/ldbl-opt/s_copysign.c
+@@ -1,6 +1,6 @@
+ #include <math_ldbl_opt.h>
+ #include <sysdeps/ieee754/dbl-64/s_copysign.c>
+-#ifdef IS_IN_libm
++#if IS_IN (libm)
+ # if LONG_DOUBLE_COMPAT(libm, GLIBC_2_0)
+ compat_symbol (libm, __copysign, copysignl, GLIBC_2_0);
+ # endif
+Index: glibc-2.17-c758a686/sysdeps/ieee754/ldbl-opt/s_finite.c
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/ieee754/ldbl-opt/s_finite.c
++++ glibc-2.17-c758a686/sysdeps/ieee754/ldbl-opt/s_finite.c
+@@ -1,7 +1,7 @@
+ #include <math_ldbl_opt.h>
+ #include <sysdeps/ieee754/dbl-64/s_finite.c>
+ weak_alias (__finite, ___finite)
+-#ifdef IS_IN_libm
++#if IS_IN (libm)
+ # if LONG_DOUBLE_COMPAT(libm, GLIBC_2_1)
+ compat_symbol (libm, __finite, __finitel, GLIBC_2_1);
+ # endif
+Index: glibc-2.17-c758a686/sysdeps/ieee754/ldbl-opt/s_frexp.c
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/ieee754/ldbl-opt/s_frexp.c
++++ glibc-2.17-c758a686/sysdeps/ieee754/ldbl-opt/s_frexp.c
+@@ -1,6 +1,6 @@
+ #include <math_ldbl_opt.h>
+ #include <sysdeps/ieee754/dbl-64/s_frexp.c>
+-#ifdef IS_IN_libm
++#if IS_IN (libm)
+ # if LONG_DOUBLE_COMPAT(libm, GLIBC_2_0)
+ compat_symbol (libm, __frexp, frexpl, GLIBC_2_0);
+ # endif
+Index: glibc-2.17-c758a686/sysdeps/ieee754/ldbl-opt/s_isinf.c
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/ieee754/ldbl-opt/s_isinf.c
++++ glibc-2.17-c758a686/sysdeps/ieee754/ldbl-opt/s_isinf.c
+@@ -1,6 +1,6 @@
+ #include <math_ldbl_opt.h>
+ #include <sysdeps/ieee754/dbl-64/s_isinf.c>
+-#ifndef IS_IN_libm
++#if !IS_IN (libm)
+ # if LONG_DOUBLE_COMPAT(libc, GLIBC_2_0)
+ compat_symbol (libc, __isinf, __isinfl, GLIBC_2_0);
+ compat_symbol (libc, isinf, isinfl, GLIBC_2_0);
+Index: glibc-2.17-c758a686/sysdeps/ieee754/ldbl-opt/s_isnan.c
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/ieee754/ldbl-opt/s_isnan.c
++++ glibc-2.17-c758a686/sysdeps/ieee754/ldbl-opt/s_isnan.c
+@@ -1,6 +1,6 @@
+ #include <math_ldbl_opt.h>
+ #include <sysdeps/ieee754/dbl-64/s_isnan.c>
+-#ifndef IS_IN_libm
++#if !IS_IN (libm)
+ # if LONG_DOUBLE_COMPAT(libc, GLIBC_2_0)
+ compat_symbol (libc, __isnan, __isnanl, GLIBC_2_0);
+ compat_symbol (libc, isnan, isnanl, GLIBC_2_0);
+Index: glibc-2.17-c758a686/sysdeps/ieee754/ldbl-opt/s_ldexp.c
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/ieee754/ldbl-opt/s_ldexp.c
++++ glibc-2.17-c758a686/sysdeps/ieee754/ldbl-opt/s_ldexp.c
+@@ -1,6 +1,6 @@
+ #include <math_ldbl_opt.h>
+ #include <math/s_ldexp.c>
+-#ifdef IS_IN_libm
++#if IS_IN (libm)
+ # if LONG_DOUBLE_COMPAT(libm, GLIBC_2_0)
+ compat_symbol (libm, __ldexp, ldexpl, GLIBC_2_0);
+ # endif
+Index: glibc-2.17-c758a686/sysdeps/ieee754/ldbl-opt/s_ldexpl.c
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/ieee754/ldbl-opt/s_ldexpl.c
++++ glibc-2.17-c758a686/sysdeps/ieee754/ldbl-opt/s_ldexpl.c
+@@ -2,7 +2,7 @@
+ #undef weak_alias
+ #define weak_alias(n,a)
+ #include <math/s_ldexpl.c>
+-#ifdef IS_IN_libm
++#if IS_IN (libm)
+ long_double_symbol (libm, __ldexpl, ldexpl);
+ #else
+ long_double_symbol (libc, __ldexpl, ldexpl);
+Index: glibc-2.17-c758a686/sysdeps/ieee754/ldbl-opt/s_modf.c
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/ieee754/ldbl-opt/s_modf.c
++++ glibc-2.17-c758a686/sysdeps/ieee754/ldbl-opt/s_modf.c
+@@ -1,6 +1,6 @@
+ #include <math_ldbl_opt.h>
+ #include <sysdeps/ieee754/dbl-64/s_modf.c>
+-#ifdef IS_IN_libm
++#if IS_IN (libm)
+ # if LONG_DOUBLE_COMPAT(libm, GLIBC_2_0)
+ compat_symbol (libm, __modf, modfl, GLIBC_2_0);
+ # endif
+Index: glibc-2.17-c758a686/sysdeps/ieee754/ldbl-opt/s_scalbln.c
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/ieee754/ldbl-opt/s_scalbln.c
++++ glibc-2.17-c758a686/sysdeps/ieee754/ldbl-opt/s_scalbln.c
+@@ -1,6 +1,6 @@
+ #include <math_ldbl_opt.h>
+ #include <sysdeps/ieee754/dbl-64/s_scalbln.c>
+-#ifdef IS_IN_libm
++#if IS_IN (libm)
+ #if LONG_DOUBLE_COMPAT(libm, GLIBC_2_1)
+ compat_symbol (libm, __scalbln, scalblnl, GLIBC_2_1);
+ #endif
+Index: glibc-2.17-c758a686/sysdeps/ieee754/ldbl-opt/s_scalbn.c
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/ieee754/ldbl-opt/s_scalbn.c
++++ glibc-2.17-c758a686/sysdeps/ieee754/ldbl-opt/s_scalbn.c
+@@ -1,6 +1,6 @@
+ #include <math_ldbl_opt.h>
+ #include <sysdeps/ieee754/dbl-64/s_scalbn.c>
+-#ifdef IS_IN_libm
++#if IS_IN (libm)
+ # if LONG_DOUBLE_COMPAT(libm, GLIBC_2_0)
+ compat_symbol (libm, __scalbn, scalbnl, GLIBC_2_0);
+ # endif
+Index: glibc-2.17-c758a686/sysdeps/powerpc/power5+/fpu/s_modf.c
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/powerpc/power5+/fpu/s_modf.c
++++ glibc-2.17-c758a686/sysdeps/powerpc/power5+/fpu/s_modf.c
+@@ -49,7 +49,7 @@ weak_alias (__modf, modf)
+ strong_alias (__modf, __modfl)
+ weak_alias (__modf, modfl)
+ #endif
+-#ifdef IS_IN_libm
++#if IS_IN (libm)
+ # if LONG_DOUBLE_COMPAT(libm, GLIBC_2_0)
+ compat_symbol (libm, __modf, modfl, GLIBC_2_0);
+ # endif
+Index: glibc-2.17-c758a686/sysdeps/powerpc/powerpc32/fpu/s_copysign.S
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/powerpc/powerpc32/fpu/s_copysign.S
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc32/fpu/s_copysign.S
+@@ -50,7 +50,7 @@ strong_alias(__copysign,__copysignf)
+ weak_alias (__copysign,copysignl)
+ strong_alias(__copysign,__copysignl)
+ #endif
+-#ifdef IS_IN_libm
++#if IS_IN (libm)
+ # if LONG_DOUBLE_COMPAT(libm, GLIBC_2_0)
+ compat_symbol (libm, __copysign, copysignl, GLIBC_2_0)
+ # endif
+Index: glibc-2.17-c758a686/sysdeps/powerpc/powerpc32/fpu/s_copysignl.S
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/powerpc/powerpc32/fpu/s_copysignl.S
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc32/fpu/s_copysignl.S
+@@ -42,7 +42,7 @@ L(0):	bgelr	cr6
+ 	blr
+ END (__copysignl)
+ 
+-#ifdef IS_IN_libm
++#if IS_IN (libm)
+ long_double_symbol (libm, __copysignl, copysignl)
+ #else
+ long_double_symbol (libc, __copysignl, copysignl)
+Index: glibc-2.17-c758a686/sysdeps/powerpc/powerpc32/fpu/s_isnan.S
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/powerpc/powerpc32/fpu/s_isnan.S
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc32/fpu/s_isnan.S
+@@ -48,7 +48,7 @@ strong_alias (__isnan, __isnanl)
+ weak_alias (__isnan, isnanl)
+ #endif
+ 
+-#ifndef IS_IN_libm
++#if !IS_IN (libm)
+ # if LONG_DOUBLE_COMPAT(libc, GLIBC_2_0)
+ compat_symbol (libc, __isnan, __isnanl, GLIBC_2_0);
+ compat_symbol (libc, isnan, isnanl, GLIBC_2_0);
+Index: glibc-2.17-c758a686/sysdeps/powerpc/powerpc32/power5/fpu/s_isnan.S
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/powerpc/powerpc32/power5/fpu/s_isnan.S
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc32/power5/fpu/s_isnan.S
+@@ -52,7 +52,7 @@ strong_alias (__isnan, __isnanl)
+ weak_alias (__isnan, isnanl)
+ #endif
+ 
+-#ifndef IS_IN_libm
++#if !IS_IN (libm)
+ # if LONG_DOUBLE_COMPAT(libc, GLIBC_2_0)
+ compat_symbol (libc, __isnan, __isnanl, GLIBC_2_0);
+ compat_symbol (libc, isnan, isnanl, GLIBC_2_0);
+Index: glibc-2.17-c758a686/sysdeps/powerpc/powerpc32/power6/fpu/s_copysign.S
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/powerpc/powerpc32/power6/fpu/s_copysign.S
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc32/power6/fpu/s_copysign.S
+@@ -47,7 +47,7 @@ strong_alias (__copysign, __copysignl)
+ weak_alias (__copysign, copysignl)
+ #endif
+ 
+-#ifdef IS_IN_libm
++#if IS_IN (libm)
+ # if LONG_DOUBLE_COMPAT (libm, GLIBC_2_0)
+ compat_symbol (libm, copysign, copysignl, GLIBC_2_0)
+ # endif
+Index: glibc-2.17-c758a686/sysdeps/powerpc/powerpc32/power6/fpu/s_isnan.S
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/powerpc/powerpc32/power6/fpu/s_isnan.S
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc32/power6/fpu/s_isnan.S
+@@ -52,7 +52,7 @@ strong_alias (__isnan, __isnanl)
+ weak_alias (__isnan, isnanl)
+ #endif
+ 
+-#ifndef IS_IN_libm
++#if !IS_IN (libm)
+ # if LONG_DOUBLE_COMPAT(libc, GLIBC_2_0)
+ compat_symbol (libc, __isnan, __isnanl, GLIBC_2_0);
+ compat_symbol (libc, isnan, isnanl, GLIBC_2_0);
+Index: glibc-2.17-c758a686/sysdeps/powerpc/powerpc32/power7/fpu/s_finite.S
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/powerpc/powerpc32/power7/fpu/s_finite.S
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc32/power7/fpu/s_finite.S
+@@ -78,7 +78,7 @@ strong_alias (__finite, __finitel)
+ weak_alias (__finite, finitel)
+ #endif
+ 
+-#ifdef IS_IN_libm
++#if IS_IN (libm)
+ # if LONG_DOUBLE_COMPAT (libm, GLIBC_2_0)
+ compat_symbol (libm, finite, finitel, GLIBC_2_0)
+ # endif
+Index: glibc-2.17-c758a686/sysdeps/powerpc/powerpc32/power7/fpu/s_isinf.S
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/powerpc/powerpc32/power7/fpu/s_isinf.S
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc32/power7/fpu/s_isinf.S
+@@ -77,7 +77,7 @@ strong_alias (__isinf, __isinfl)
+ weak_alias (__isinf, isinfl)
+ #endif
+ 
+-#ifndef IS_IN_libm
++#if !IS_IN (libm)
+ # if LONG_DOUBLE_COMPAT(libc, GLIBC_2_0)
+ compat_symbol (libc, __isinf, __isinfl, GLIBC_2_0);
+ compat_symbol (libc, isinf, isinfl, GLIBC_2_0);
+Index: glibc-2.17-c758a686/sysdeps/powerpc/powerpc32/power7/fpu/s_isnan.S
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/powerpc/powerpc32/power7/fpu/s_isnan.S
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc32/power7/fpu/s_isnan.S
+@@ -82,7 +82,7 @@ strong_alias (__isnan, __isnanl)
+ weak_alias (__isnan, isnanl)
+ #endif
+ 
+-#ifndef IS_IN_libm
++#if !IS_IN (libm)
+ # if LONG_DOUBLE_COMPAT(libc, GLIBC_2_0)
+ compat_symbol (libc, __isnan, __isnanl, GLIBC_2_0);
+ compat_symbol (libc, isnan, isnanl, GLIBC_2_0);
+Index: glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_copysign.c
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/powerpc/powerpc64/fpu/multiarch/s_copysign.c
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_copysign.c
+@@ -42,7 +42,7 @@ weak_alias (__copysign, copysign)
+ weak_alias (__copysign,copysignl)
+ strong_alias(__copysign,__copysignl)
+ #endif
+-#ifdef IS_IN_libm
++#if IS_IN (libm)
+ # if LONG_DOUBLE_COMPAT(libm, GLIBC_2_0)
+ compat_symbol (libm, __copysign, copysignl, GLIBC_2_0);
+ # endif
+Index: glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_finite.c
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/powerpc/powerpc64/fpu/multiarch/s_finite.c
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_finite.c
+@@ -39,7 +39,7 @@ strong_alias (__finite, __finitel)
+ weak_alias (__finite, finitel)
+ #endif
+ 
+-#ifdef IS_IN_libm
++#if IS_IN (libm)
+ # if LONG_DOUBLE_COMPAT (libm, GLIBC_2_0)
+ compat_symbol (libm, finite, finitel, GLIBC_2_0);
+ # endif
+Index: glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_isinf.c
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/powerpc/powerpc64/fpu/multiarch/s_isinf.c
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_isinf.c
+@@ -39,7 +39,7 @@ strong_alias (__isinf, __isinfl)
+ weak_alias (__isinf, isinfl)
+ #endif
+ 
+-#ifndef IS_IN_libm
++#if !IS_IN (libm)
+ # if LONG_DOUBLE_COMPAT (libc, GLIBC_2_0)
+ compat_symbol (libc, __isinf, __isinfl, GLIBC_2_0);
+ compat_symbol (libc, isinf, isinfl, GLIBC_2_0);
+Index: glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_isnan.c
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/powerpc/powerpc64/fpu/multiarch/s_isnan.c
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_isnan.c
+@@ -48,7 +48,7 @@ strong_alias (__isnan, __isnanl)
+ weak_alias (__isnan, isnanl)
+ #endif
+ 
+-#ifndef IS_IN_libm
++#if !IS_IN (libm)
+ # if LONG_DOUBLE_COMPAT(libc, GLIBC_2_0)
+ compat_symbol (libc, __isnan, __isnanl, GLIBC_2_0);
+ compat_symbol (libc, isnan, isnanl, GLIBC_2_0);
+Index: glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_modf.c
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/powerpc/powerpc64/fpu/multiarch/s_modf.c
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_modf.c
+@@ -35,7 +35,7 @@ weak_alias (__modf, modf)
+ strong_alias (__modf, __modfl)
+ weak_alias (__modf, modfl)
+ #endif
+-#ifdef IS_IN_libm
++#if IS_IN (libm)
+ # if LONG_DOUBLE_COMPAT(libm, GLIBC_2_0)
+ compat_symbol (libm, __modf, modfl, GLIBC_2_0);
+ # endif
+Index: glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/s_copysign.S
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/powerpc/powerpc64/fpu/s_copysign.S
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/s_copysign.S
+@@ -50,7 +50,7 @@ strong_alias(__copysign,__copysignf)
+ weak_alias (__copysign,copysignl)
+ strong_alias(__copysign,__copysignl)
+ #endif
+-#ifdef IS_IN_libm
++#if IS_IN (libm)
+ # if LONG_DOUBLE_COMPAT(libm, GLIBC_2_0)
+ compat_symbol (libm, __copysign, copysignl, GLIBC_2_0)
+ # endif
+Index: glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/s_copysignl.S
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/powerpc/powerpc64/fpu/s_copysignl.S
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/s_copysignl.S
+@@ -43,7 +43,7 @@ L(0):
+ 	blr
+ END (__copysignl)
+ 
+-#ifdef IS_IN_libm
++#if IS_IN (libm)
+ long_double_symbol (libm, __copysignl, copysignl)
+ #else
+ long_double_symbol (libc, __copysignl, copysignl)
+Index: glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/s_isnan.S
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/powerpc/powerpc64/fpu/s_isnan.S
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/s_isnan.S
+@@ -47,7 +47,7 @@ strong_alias (__isnan, __isnanl)
+ weak_alias (__isnan, isnanl)
+ #endif
+ 
+-#ifndef IS_IN_libm
++#if !IS_IN (libm)
+ # if LONG_DOUBLE_COMPAT(libc, GLIBC_2_0)
+ compat_symbol (libc, __isnan, __isnanl, GLIBC_2_0);
+ compat_symbol (libc, isnan, isnanl, GLIBC_2_0);
+Index: glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/power5/fpu/s_isnan.S
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/powerpc/powerpc64/power5/fpu/s_isnan.S
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/power5/fpu/s_isnan.S
+@@ -51,7 +51,7 @@ strong_alias (__isnan, __isnanl)
+ weak_alias (__isnan, isnanl)
+ #endif
+ 
+-#ifndef IS_IN_libm
++#if !IS_IN (libm)
+ # if LONG_DOUBLE_COMPAT(libc, GLIBC_2_0)
+ compat_symbol (libc, __isnan, __isnanl, GLIBC_2_0);
+ compat_symbol (libc, isnan, isnanl, GLIBC_2_0);
+Index: glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/power6/fpu/s_copysign.S
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/powerpc/powerpc64/power6/fpu/s_copysign.S
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/power6/fpu/s_copysign.S
+@@ -47,7 +47,7 @@ strong_alias (__copysign, __copysignl)
+ weak_alias (__copysign, copysignl)
+ #endif
+ 
+-#ifdef IS_IN_libm
++#if IS_IN (libm)
+ # if LONG_DOUBLE_COMPAT (libm, GLIBC_2_0)
+ compat_symbol (libm, copysign, copysignl, GLIBC_2_0)
+ # endif
+Index: glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/power6/fpu/s_isnan.S
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/powerpc/powerpc64/power6/fpu/s_isnan.S
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/power6/fpu/s_isnan.S
+@@ -50,7 +50,7 @@ strong_alias (__isnan, __isnanl)
+ weak_alias (__isnan, isnanl)
+ #endif
+ 
+-#ifndef IS_IN_libm
++#if !IS_IN (libm)
+ # if LONG_DOUBLE_COMPAT(libc, GLIBC_2_0)
+ compat_symbol (libc, __isnan, __isnanl, GLIBC_2_0);
+ compat_symbol (libc, isnan, isnanl, GLIBC_2_0);
+Index: glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/power6x/fpu/s_isnan.S
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/powerpc/powerpc64/power6x/fpu/s_isnan.S
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/power6x/fpu/s_isnan.S
+@@ -49,7 +49,7 @@ strong_alias (__isnan, __isnanl)
+ weak_alias (__isnan, isnanl)
+ #endif
+ 
+-#ifndef IS_IN_libm
++#if !IS_IN (libm)
+ # if LONG_DOUBLE_COMPAT(libc, GLIBC_2_0)
+ compat_symbol (libc, __isnan, __isnanl, GLIBC_2_0);
+ compat_symbol (libc, isnan, isnanl, GLIBC_2_0);
+Index: glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/power7/fpu/s_finite.S
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/powerpc/powerpc64/power7/fpu/s_finite.S
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/power7/fpu/s_finite.S
+@@ -57,7 +57,7 @@ strong_alias (__finite, __finitef)
+ hidden_def (__finitef)
+ weak_alias (__finitef, finitef)
+ 
+-#ifdef IS_IN_libm
++#if IS_IN (libm)
+ # if LONG_DOUBLE_COMPAT (libm, GLIBC_2_0)
+ compat_symbol (libm, __finite, __finitel, GLIBC_2_0)
+ compat_symbol (libm, finite, finitel, GLIBC_2_0)
+Index: glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/power7/fpu/s_isinf.S
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/powerpc/powerpc64/power7/fpu/s_isinf.S
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/power7/fpu/s_isinf.S
+@@ -61,7 +61,7 @@ strong_alias (__isinf, __isinfl)
+ weak_alias (__isinf, isinfl)
+ #endif
+ 
+-#ifndef IS_IN_libm
++#if !IS_IN (libm)
+ # if LONG_DOUBLE_COMPAT(libc, GLIBC_2_0)
+ compat_symbol (libc, __isinf, __isinfl, GLIBC_2_0);
+ compat_symbol (libc, isinf, isinfl, GLIBC_2_0);
+Index: glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/power7/fpu/s_isnan.S
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/powerpc/powerpc64/power7/fpu/s_isnan.S
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/power7/fpu/s_isnan.S
+@@ -60,7 +60,7 @@ strong_alias (__isnan, __isnanl)
+ weak_alias (__isnan, isnanl)
+ #endif
+ 
+-#ifndef IS_IN_libm
++#if !IS_IN (libm)
+ # if LONG_DOUBLE_COMPAT(libc, GLIBC_2_0)
+ compat_symbol (libc, __isnan, __isnanl, GLIBC_2_0);
+ compat_symbol (libc, isnan, isnanl, GLIBC_2_0);
+Index: glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/power8/fpu/s_finite.S
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/powerpc/powerpc64/power8/fpu/s_finite.S
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/power8/fpu/s_finite.S
+@@ -43,7 +43,7 @@ strong_alias (__finite, __finitef)
+ hidden_def (__finitef)
+ weak_alias (__finitef, finitef)
+ 
+-#ifdef IS_IN_libm
++#if IS_IN (libm)
+ # if LONG_DOUBLE_COMPAT (libm, GLIBC_2_0)
+ compat_symbol (libm, __finite, __finitel, GLIBC_2_0)
+ compat_symbol (libm, finite, finitel, GLIBC_2_0)
+Index: glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/power8/fpu/s_isinf.S
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/powerpc/powerpc64/power8/fpu/s_isinf.S
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/power8/fpu/s_isinf.S
+@@ -53,7 +53,7 @@ strong_alias (__isinf, __isinfl)
+ weak_alias (__isinf, isinfl)
+ #endif
+ 
+-#ifndef IS_IN_libm
++#if !IS_IN (libm)
+ # if LONG_DOUBLE_COMPAT(libc, GLIBC_2_0)
+ compat_symbol (libc, __isinf, __isinfl, GLIBC_2_0);
+ compat_symbol (libc, isinf, isinfl, GLIBC_2_0);
+Index: glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/power8/fpu/s_isnan.S
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/powerpc/powerpc64/power8/fpu/s_isnan.S
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/power8/fpu/s_isnan.S
+@@ -45,7 +45,7 @@ strong_alias (__isnan, __isnanl)
+ weak_alias (__isnan, isnanl)
+ #endif
+ 
+-#ifndef IS_IN_libm
++#if !IS_IN (libm)
+ # if LONG_DOUBLE_COMPAT(libc, GLIBC_2_0)
+ compat_symbol (libc, __isnan, __isnanl, GLIBC_2_0);
+ compat_symbol (libc, isnan, isnanl, GLIBC_2_0);
+Index: glibc-2.17-c758a686/ports/sysdeps/alpha/fpu/s_copysign.c
+===================================================================
+--- glibc-2.17-c758a686.orig/ports/sysdeps/alpha/fpu/s_copysign.c
++++ glibc-2.17-c758a686/ports/sysdeps/alpha/fpu/s_copysign.c
+@@ -30,7 +30,7 @@ weak_alias (__copysign, copysign)
+ strong_alias (__copysign, __copysignl)
+ weak_alias (__copysign, copysignl)
+ #endif
+-#ifdef IS_IN_libm
++#if IS_IN (libm)
+ # if LONG_DOUBLE_COMPAT(libm, GLIBC_2_0)
+ compat_symbol (libm, __copysign, copysignl, GLIBC_2_0);
+ # endif
+Index: glibc-2.17-c758a686/sysdeps/ieee754/ldbl-64-128/s_scalblnl.c
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/ieee754/ldbl-64-128/s_scalblnl.c
++++ glibc-2.17-c758a686/sysdeps/ieee754/ldbl-64-128/s_scalblnl.c
+@@ -2,7 +2,7 @@
+ #undef weak_alias
+ #define weak_alias(n,a)
+ #include <sysdeps/ieee754/ldbl-128/s_scalblnl.c>
+-#ifdef IS_IN_libm
++#if IS_IN (libm)
+ long_double_symbol (libm, __scalblnl, scalblnl);
+ #else
+ long_double_symbol (libc, __scalblnl, scalblnl);
+Index: glibc-2.17-c758a686/sysdeps/sparc/sparc32/fpu/s_signbitl.S
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/sparc/sparc32/fpu/s_signbitl.S
++++ glibc-2.17-c758a686/sysdeps/sparc/sparc32/fpu/s_signbitl.S
+@@ -25,7 +25,7 @@ ENTRY (___signbitl)
+ 	 srl	%o1, 31, %o0
+ END (___signbitl)
+ 
+-#ifdef IS_IN_libm
++#if IS_IN (libm)
+ long_double_symbol (libm, ___signbitl, __signbitl);
+ #else
+ long_double_symbol (libc, ___signbitl, __signbitl);
+Index: glibc-2.17-c758a686/sysdeps/sparc/sparc32/sparcv9/fpu/s_isnan.S
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/sparc/sparc32/sparcv9/fpu/s_isnan.S
++++ glibc-2.17-c758a686/sysdeps/sparc/sparc32/sparcv9/fpu/s_isnan.S
+@@ -32,7 +32,7 @@ END (__isnan)
+ hidden_def (__isnan)
+ weak_alias (__isnan, isnan)
+ 
+-#ifndef IS_IN_libm
++#if !IS_IN (libm)
+ # if LONG_DOUBLE_COMPAT(libc, GLIBC_2_0)
+ compat_symbol (libc, __isnan, __isnanl, GLIBC_2_0);
+ compat_symbol (libc, isnan, isnanl, GLIBC_2_0);

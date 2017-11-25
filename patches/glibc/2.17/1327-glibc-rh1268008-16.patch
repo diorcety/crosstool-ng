@@ -1,0 +1,1101 @@
+From 43b14a5489db870aeeda0766bde25e29747f6864 Mon Sep 17 00:00:00 2001
+From: Stefan Liebler <stli@linux.vnet.ibm.com>
+Date: Thu, 8 Oct 2015 11:13:14 +0200
+Subject: [PATCH 16/30] S390: Optimize strcat and wcscat.
+
+upstream-commit-id: d626a24f235dbd4c446b241211a9a264a1eedb9e
+https://www.sourceware.org/ml/libc-alpha/2015-07/msg00155.html
+
+This patch provides optimized versions of strcat and wcscat with the z13
+vector instructions.
+
+ChangeLog:
+
+	* sysdeps/s390/multiarch/strcat-c.c: New File.
+	* sysdeps/s390/multiarch/strcat-vx.S: Likewise.
+	* sysdeps/s390/multiarch/strcat.c: Likewise.
+	* sysdeps/s390/multiarch/wcscat-c.c: Likewise.
+	* sysdeps/s390/multiarch/wcscat-vx.S: Likewise.
+	* sysdeps/s390/multiarch/wcscat.c: Likewise.
+	* sysdeps/s390/multiarch/Makefile (sysdep_routines): Add strcat and
+	wcscat functions.
+	* sysdeps/s390/multiarch/ifunc-impl-list.c
+	(__libc_ifunc_impl_list): Add ifunc test for strcat, wcscat.
+	* string/strcat.c (STRCAT): Define and use macro.
+	* wcsmbs/wcscat.c: Use WCSCAT if defined.
+	* string/test-strcat.c: Add wcscat support.
+	* wcsmbs/test-wcscat.c: New File.
+	* wcsmbs/Makefile (strop-tests): Add wcscat.
+	* benchtests/bench-strcat.c: Add wcscat support.
+	* benchtests/bench-wcscat.c: New File.
+	* benchtests/Makefile (wcsmbs-bench): Add wcscat.
+---
+ benchtests/Makefile                      |   2 +-
+ benchtests/bench-strcat.c                |  90 ++++++++++------
+ benchtests/bench-wcscat.c                |  20 ++++
+ string/strcat.c                          |   8 +-
+ string/test-strcat.c                     | 124 ++++++++++++++--------
+ sysdeps/s390/multiarch/Makefile          |   6 +-
+ sysdeps/s390/multiarch/ifunc-impl-list.c |   3 +
+ sysdeps/s390/multiarch/strcat-c.c        |  28 +++++
+ sysdeps/s390/multiarch/strcat-vx.S       | 161 ++++++++++++++++++++++++++++
+ sysdeps/s390/multiarch/strcat.c          |  27 +++++
+ sysdeps/s390/multiarch/wcscat-c.c        |  25 +++++
+ sysdeps/s390/multiarch/wcscat-vx.S       | 175 +++++++++++++++++++++++++++++++
+ sysdeps/s390/multiarch/wcscat.c          |  28 +++++
+ wcsmbs/Makefile                          |   2 +-
+ wcsmbs/test-wcscat-ifunc.c               |  20 ++++
+ wcsmbs/test-wcscat.c                     |  20 ++++
+ wcsmbs/wcscat.c                          |   5 +
+ 17 files changed, 660 insertions(+), 84 deletions(-)
+ create mode 100644 benchtests/bench-wcscat.c
+ create mode 100644 sysdeps/s390/multiarch/strcat-c.c
+ create mode 100644 sysdeps/s390/multiarch/strcat-vx.S
+ create mode 100644 sysdeps/s390/multiarch/strcat.c
+ create mode 100644 sysdeps/s390/multiarch/wcscat-c.c
+ create mode 100644 sysdeps/s390/multiarch/wcscat-vx.S
+ create mode 100644 sysdeps/s390/multiarch/wcscat.c
+ create mode 100644 wcsmbs/test-wcscat-ifunc.c
+ create mode 100644 wcsmbs/test-wcscat.c
+
+diff --git a/benchtests/Makefile b/benchtests/Makefile
+index dfab95f..91db23c 100644
+--- a/benchtests/Makefile
++++ b/benchtests/Makefile
+@@ -38,7 +38,7 @@ string-bench := bcopy bzero memccpy memchr memcmp memcpy memmem memmove \
+ 		strcat strchr strchrnul strcmp strcpy strcspn strlen \
+ 		strncasecmp strncat strncmp strncpy strnlen strpbrk strrchr \
+ 		strspn strstr strcpy_chk stpcpy_chk memrchr strsep strtok
+-wcsmbs-bench := wcslen wcsnlen wcscpy wcpcpy wcsncpy wcpncpy
++wcsmbs-bench := wcslen wcsnlen wcscpy wcpcpy wcsncpy wcpncpy wcscat
+ string-bench-all := $(string-bench) ${wcsmbs-bench}
+ 
+ stdlib-bench := strtod
+diff --git a/benchtests/bench-strcat.c b/benchtests/bench-strcat.c
+index 6602009..1abf6d3 100644
+--- a/benchtests/bench-strcat.c
++++ b/benchtests/bench-strcat.c
+@@ -1,5 +1,5 @@
+ /* Measure strcat functions.
+-   Copyright (C) 2013 Free Software Foundation, Inc.
++   Copyright (C) 2013-2015 Free Software Foundation, Inc.
+    This file is part of the GNU C Library.
+ 
+    The GNU C Library is free software; you can redistribute it and/or
+@@ -17,19 +17,45 @@
+    <http://www.gnu.org/licenses/>.  */
+ 
+ #define TEST_MAIN
+-#define TEST_NAME "strcat"
++#ifndef WIDE
++# define TEST_NAME "strcat"
++#else
++# define TEST_NAME "wcscat"
++#endif /* WIDE */
+ #include "bench-string.h"
+ 
+-typedef char *(*proto_t) (char *, const char *);
+-char *simple_strcat (char *, const char *);
+-
+-IMPL (simple_strcat, 0)
+-IMPL (strcat, 1)
+-
+-char *
+-simple_strcat (char *dst, const char *src)
++#ifndef WIDE
++# define STRCAT strcat
++# define CHAR char
++# define sfmt "s"
++# define SIMPLE_STRCAT simple_strcat
++# define STRLEN strlen
++# define STRCMP strcmp
++# define BIG_CHAR CHAR_MAX
++# define SMALL_CHAR 127
++#else
++# include <wchar.h>
++# define STRCAT wcscat
++# define CHAR wchar_t
++# define sfmt "ls"
++# define SIMPLE_STRCAT simple_wcscat
++# define STRLEN wcslen
++# define STRCMP wcscmp
++# define BIG_CHAR WCHAR_MAX
++# define SMALL_CHAR 1273
++#endif /* WIDE */
++
++
++typedef CHAR *(*proto_t) (CHAR *, const CHAR *);
++CHAR *SIMPLE_STRCAT (CHAR *, const CHAR *);
++
++IMPL (SIMPLE_STRCAT, 0)
++IMPL (STRCAT, 1)
++
++CHAR *
++SIMPLE_STRCAT (CHAR *dst, const CHAR *src)
+ {
+-  char *ret = dst;
++  CHAR *ret = dst;
+   while (*dst++ != '\0');
+   --dst;
+   while ((*dst++ = *src++) != '\0');
+@@ -37,9 +63,9 @@ simple_strcat (char *dst, const char *src)
+ }
+ 
+ static void
+-do_one_test (impl_t *impl, char *dst, const char *src)
++do_one_test (impl_t *impl, CHAR *dst, const CHAR *src)
+ {
+-  size_t k = strlen (dst), i, iters = INNER_LOOP_ITERS;
++  size_t k = STRLEN (dst), i, iters = INNER_LOOP_ITERS;
+   timing_t start, stop, cur;
+ 
+   if (CALL (impl, dst, src) != dst)
+@@ -50,9 +76,9 @@ do_one_test (impl_t *impl, char *dst, const char *src)
+       return;
+     }
+ 
+-  if (strcmp (dst + k, src) != 0)
++  if (STRCMP (dst + k, src) != 0)
+     {
+-      error (0, 0, "Wrong result in function %s dst \"%s\" src \"%s\"",
++      error (0, 0, "Wrong result in function %s dst \"%" sfmt "\" src \"%" sfmt "\"",
+ 	     impl->name, dst, src);
+       ret = 1;
+       return;
+@@ -75,18 +101,18 @@ static void
+ do_test (size_t align1, size_t align2, size_t len1, size_t len2, int max_char)
+ {
+   size_t i;
+-  char *s1, *s2;
++  CHAR *s1, *s2;
+ 
+   align1 &= 7;
+-  if (align1 + len1 >= page_size)
++  if ((align1 + len1) * sizeof (CHAR) >= page_size)
+     return;
+ 
+   align2 &= 7;
+-  if (align2 + len1 + len2 >= page_size)
++  if ((align2 + len1 + len2) * sizeof (CHAR) >= page_size)
+     return;
+ 
+-  s1 = (char *) (buf1 + align1);
+-  s2 = (char *) (buf2 + align2);
++  s1 = (CHAR *) (buf1) + align1;
++  s2 = (CHAR *) (buf2) + align2;
+ 
+   for (i = 0; i < len1; ++i)
+     s1[i] = 32 + 23 * i % (max_char - 32);
+@@ -120,26 +146,26 @@ test_main (void)
+ 
+   for (i = 0; i < 16; ++i)
+     {
+-      do_test (0, 0, i, i, 127);
+-      do_test (0, 0, i, i, 255);
+-      do_test (0, i, i, i, 127);
+-      do_test (i, 0, i, i, 255);
++      do_test (0, 0, i, i, SMALL_CHAR);
++      do_test (0, 0, i, i, BIG_CHAR);
++      do_test (0, i, i, i, SMALL_CHAR);
++      do_test (i, 0, i, i, BIG_CHAR);
+     }
+ 
+   for (i = 1; i < 8; ++i)
+     {
+-      do_test (0, 0, 8 << i, 8 << i, 127);
+-      do_test (8 - i, 2 * i, 8 << i, 8 << i, 127);
+-      do_test (0, 0, 8 << i, 2 << i, 127);
+-      do_test (8 - i, 2 * i, 8 << i, 2 << i, 127);
++      do_test (0, 0, 8 << i, 8 << i, SMALL_CHAR);
++      do_test (8 - i, 2 * i, 8 << i, 8 << i, SMALL_CHAR);
++      do_test (0, 0, 8 << i, 2 << i, SMALL_CHAR);
++      do_test (8 - i, 2 * i, 8 << i, 2 << i, SMALL_CHAR);
+     }
+ 
+   for (i = 1; i < 8; ++i)
+     {
+-      do_test (i, 2 * i, 8 << i, 1, 127);
+-      do_test (2 * i, i, 8 << i, 1, 255);
+-      do_test (i, i, 8 << i, 10, 127);
+-      do_test (i, i, 8 << i, 10, 255);
++      do_test (i, 2 * i, 8 << i, 1, SMALL_CHAR);
++      do_test (2 * i, i, 8 << i, 1, BIG_CHAR);
++      do_test (i, i, 8 << i, 10, SMALL_CHAR);
++      do_test (i, i, 8 << i, 10, BIG_CHAR);
+     }
+ 
+   return ret;
+diff --git a/benchtests/bench-wcscat.c b/benchtests/bench-wcscat.c
+new file mode 100644
+index 0000000..cd0dbc0
+--- /dev/null
++++ b/benchtests/bench-wcscat.c
+@@ -0,0 +1,20 @@
++/* Measure wcscat functions.
++   Copyright (C) 2015 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#define WIDE 1
++#include "bench-strcat.c"
+diff --git a/string/strcat.c b/string/strcat.c
+index f9e4bc6..017bb41 100644
+--- a/string/strcat.c
++++ b/string/strcat.c
+@@ -20,11 +20,13 @@
+ 
+ #undef strcat
+ 
++#ifndef STRCAT
++# define STRCAT strcat
++#endif
++
+ /* Append SRC on the end of DEST.  */
+ char *
+-strcat (dest, src)
+-     char *dest;
+-     const char *src;
++STRCAT (char *dest, const char *src)
+ {
+   char *s1 = dest;
+   const char *s2 = src;
+diff --git a/string/test-strcat.c b/string/test-strcat.c
+index 2dc189a..a822733 100644
+--- a/string/test-strcat.c
++++ b/string/test-strcat.c
+@@ -18,19 +18,52 @@
+    <http://www.gnu.org/licenses/>.  */
+ 
+ #define TEST_MAIN
+-#define TEST_NAME "strcat"
++#ifndef WIDE
++# define TEST_NAME "strcat"
++#else
++# define TEST_NAME "wcscat"
++#endif /* WIDE */
+ #include "test-string.h"
+ 
+-typedef char *(*proto_t) (char *, const char *);
+-char *simple_strcat (char *, const char *);
++#ifndef WIDE
++# define STRCAT strcat
++# define CHAR char
++# define UCHAR unsigned char
++# define sfmt "s"
++# define SIMPLE_STRCAT simple_strcat
++# define STRLEN strlen
++# define STRCMP strcmp
++# define MEMSET memset
++# define MEMCPY memcpy
++# define MEMCMP memcmp
++# define BIG_CHAR CHAR_MAX
++# define SMALL_CHAR 127
++#else
++# include <wchar.h>
++# define STRCAT wcscat
++# define CHAR wchar_t
++# define UCHAR wchar_t
++# define sfmt "ls"
++# define SIMPLE_STRCAT simple_wcscat
++# define STRLEN wcslen
++# define STRCMP wcscmp
++# define MEMSET wmemset
++# define MEMCPY wmemcpy
++# define MEMCMP wmemcmp
++# define BIG_CHAR WCHAR_MAX
++# define SMALL_CHAR 1273
++#endif /* WIDE */
+ 
+-IMPL (simple_strcat, 0)
+-IMPL (strcat, 1)
++typedef CHAR *(*proto_t) (CHAR *, const CHAR *);
++CHAR *SIMPLE_STRCAT (CHAR *, const CHAR *);
+ 
+-char *
+-simple_strcat (char *dst, const char *src)
++IMPL (SIMPLE_STRCAT, 0)
++IMPL (STRCAT, 1)
++
++CHAR *
++SIMPLE_STRCAT (CHAR *dst, const CHAR *src)
+ {
+-  char *ret = dst;
++  CHAR *ret = dst;
+   while (*dst++ != '\0');
+   --dst;
+   while ((*dst++ = *src++) != '\0');
+@@ -38,9 +71,9 @@ simple_strcat (char *dst, const char *src)
+ }
+ 
+ static void
+-do_one_test (impl_t *impl, char *dst, const char *src)
++do_one_test (impl_t *impl, CHAR *dst, const char *src)
+ {
+-  size_t k = strlen (dst);
++  size_t k = STRLEN (dst);
+   if (CALL (impl, dst, src) != dst)
+     {
+       error (0, 0, "Wrong result in function %s %p %p", impl->name,
+@@ -49,9 +82,9 @@ do_one_test (impl_t *impl, char *dst, const char *src)
+       return;
+     }
+ 
+-  if (strcmp (dst + k, src) != 0)
++  if (STRCMP (dst + k, src) != 0)
+     {
+-      error (0, 0, "Wrong result in function %s dst \"%s\" src \"%s\"",
++      error (0, 0, "Wrong result in function %s dst \"%" sfmt "\" src \"%" sfmt "\"",
+ 	     impl->name, dst, src);
+       ret = 1;
+       return;
+@@ -62,18 +95,18 @@ static void
+ do_test (size_t align1, size_t align2, size_t len1, size_t len2, int max_char)
+ {
+   size_t i;
+-  char *s1, *s2;
++  CHAR *s1, *s2;
+ 
+   align1 &= 7;
+-  if (align1 + len1 >= page_size)
++  if ((align1 + len1) * sizeof (CHAR) >= page_size)
+     return;
+ 
+   align2 &= 7;
+-  if (align2 + len1 + len2 >= page_size)
++  if ((align2 + len1 + len2) * sizeof (CHAR) >= page_size)
+     return;
+ 
+-  s1 = (char *) (buf1 + align1);
+-  s2 = (char *) (buf2 + align2);
++  s1 = (CHAR *) (buf1) + align1;
++  s2 = (CHAR *) (buf2) + align2;
+ 
+   for (i = 0; i < len1; ++i)
+     s1[i] = 32 + 23 * i % (max_char - 32);
+@@ -93,9 +126,10 @@ static void
+ do_random_tests (void)
+ {
+   size_t i, j, n, align1, align2, len1, len2;
+-  unsigned char *p1 = buf1 + page_size - 512;
+-  unsigned char *p2 = buf2 + page_size - 512;
+-  unsigned char *res;
++  UCHAR *p1 = (UCHAR *) (buf1 + page_size) - 512;
++  UCHAR *p2 = (UCHAR *) (buf2 + page_size) - 512;
++  UCHAR *p3 = (UCHAR *) buf1;
++  UCHAR *res;
+ 
+   for (n = 0; n < ITERATIONS; n++)
+     {
+@@ -132,26 +166,26 @@ do_random_tests (void)
+ 	    p1[i] = 0;
+ 	  else
+ 	    {
+-	      p1[i] = random () & 255;
++	      p1[i] = random () & BIG_CHAR;
+ 	      if (i >= align1 && i < len1 + align1 && !p1[i])
+-		p1[i] = (random () & 127) + 3;
++		p1[i] = (random () & SMALL_CHAR) + 3;
+ 	    }
+ 	}
+       for (i = 0; i < len2; i++)
+ 	{
+-	  buf1[i] = random () & 255;
+-	  if (!buf1[i])
+-	    buf1[i] = (random () & 127) + 3;
++	  p3[i] = random () & BIG_CHAR;
++	  if (!p3[i])
++	    p3[i] = (random () & SMALL_CHAR) + 3;
+ 	}
+-      buf1[len2] = 0;
++      p3[len2] = 0;
+ 
+       FOR_EACH_IMPL (impl, 1)
+ 	{
+-	  memset (p2 - 64, '\1', align2 + 64);
+-	  memset (p2 + align2 + len2 + 1, '\1', 512 - align2 - len2 - 1);
+-	  memcpy (p2 + align2, buf1, len2 + 1);
+-	  res = (unsigned char *) CALL (impl, (char *) (p2 + align2),
+-					(char *) (p1 + align1));
++	  MEMSET (p2 - 64, '\1', align2 + 64);
++	  MEMSET (p2 + align2 + len2 + 1, '\1', 512 - align2 - len2 - 1);
++	  MEMCPY (p2 + align2, p3, len2 + 1);
++	  res = (UCHAR *) CALL (impl, (CHAR *) (p2 + align2),
++				(CHAR *) (p1 + align1));
+ 	  if (res != p2 + align2)
+ 	    {
+ 	      error (0, 0, "Iteration %zd - wrong result in function %s (%zd, %zd, %zd %zd) %p != %p",
+@@ -169,7 +203,7 @@ do_random_tests (void)
+ 		  break;
+ 		}
+ 	    }
+-	  if (memcmp (p2 + align2, buf1, len2))
++	  if (MEMCMP (p2 + align2, p3, len2))
+ 	    {
+ 	      error (0, 0, "Iteration %zd - garbage in string before, %s (%zd, %zd, %zd, %zd)",
+ 		     n, impl->name, align1, align2, len1, len2);
+@@ -185,7 +219,7 @@ do_random_tests (void)
+ 		  break;
+ 		}
+ 	    }
+-	  if (memcmp (p1 + align1, p2 + align2 + len2, len1 + 1))
++	  if (MEMCMP (p1 + align1, p2 + align2 + len2, len1 + 1))
+ 	    {
+ 	      error (0, 0, "Iteration %zd - different strings, %s (%zd, %zd, %zd, %zd)",
+ 		     n, impl->name, align1, align2, len1, len2);
+@@ -209,26 +243,26 @@ test_main (void)
+ 
+   for (i = 0; i < 16; ++i)
+     {
+-      do_test (0, 0, i, i, 127);
+-      do_test (0, 0, i, i, 255);
+-      do_test (0, i, i, i, 127);
+-      do_test (i, 0, i, i, 255);
++      do_test (0, 0, i, i, SMALL_CHAR);
++      do_test (0, 0, i, i, BIG_CHAR);
++      do_test (0, i, i, i, SMALL_CHAR);
++      do_test (i, 0, i, i, BIG_CHAR);
+     }
+ 
+   for (i = 1; i < 8; ++i)
+     {
+-      do_test (0, 0, 8 << i, 8 << i, 127);
+-      do_test (8 - i, 2 * i, 8 << i, 8 << i, 127);
+-      do_test (0, 0, 8 << i, 2 << i, 127);
+-      do_test (8 - i, 2 * i, 8 << i, 2 << i, 127);
++      do_test (0, 0, 8 << i, 8 << i, SMALL_CHAR);
++      do_test (8 - i, 2 * i, 8 << i, 8 << i, SMALL_CHAR);
++      do_test (0, 0, 8 << i, 2 << i, SMALL_CHAR);
++      do_test (8 - i, 2 * i, 8 << i, 2 << i, SMALL_CHAR);
+     }
+ 
+   for (i = 1; i < 8; ++i)
+     {
+-      do_test (i, 2 * i, 8 << i, 1, 127);
+-      do_test (2 * i, i, 8 << i, 1, 255);
+-      do_test (i, i, 8 << i, 10, 127);
+-      do_test (i, i, 8 << i, 10, 255);
++      do_test (i, 2 * i, 8 << i, 1, SMALL_CHAR);
++      do_test (2 * i, i, 8 << i, 1, BIG_CHAR);
++      do_test (i, i, 8 << i, 10, SMALL_CHAR);
++      do_test (i, i, 8 << i, 10, BIG_CHAR);
+     }
+ 
+   do_random_tests ();
+diff --git a/sysdeps/s390/multiarch/Makefile b/sysdeps/s390/multiarch/Makefile
+index 98b588f..6283999 100644
+--- a/sysdeps/s390/multiarch/Makefile
++++ b/sysdeps/s390/multiarch/Makefile
+@@ -4,7 +4,8 @@ sysdep_routines += strlen strlen-vx strlen-c \
+ 		   strcpy strcpy-vx \
+ 		   stpcpy stpcpy-vx stpcpy-c \
+ 		   strncpy strncpy-vx \
+-		   stpncpy stpncpy-vx stpncpy-c
++		   stpncpy stpncpy-vx stpncpy-c \
++		   strcat strcat-vx strcat-c
+ endif
+ 
+ ifeq ($(subdir),wcsmbs)
+@@ -13,5 +14,6 @@ sysdep_routines += wcslen wcslen-vx wcslen-c \
+ 		   wcscpy wcscpy-vx wcscpy-c \
+ 		   wcpcpy wcpcpy-vx wcpcpy-c \
+ 		   wcsncpy wcsncpy-vx wcsncpy-c \
+-		   wcpncpy wcpncpy-vx wcpncpy-c
++		   wcpncpy wcpncpy-vx wcpncpy-c \
++		   wcscat wcscat-vx wcscat-c
+ endif
+diff --git a/sysdeps/s390/multiarch/ifunc-impl-list.c b/sysdeps/s390/multiarch/ifunc-impl-list.c
+index ca69983..ccf4dea 100644
+--- a/sysdeps/s390/multiarch/ifunc-impl-list.c
++++ b/sysdeps/s390/multiarch/ifunc-impl-list.c
+@@ -97,6 +97,9 @@ __libc_ifunc_impl_list (const char *name, struct libc_ifunc_impl *array,
+   IFUNC_VX_IMPL (stpncpy);
+   IFUNC_VX_IMPL (wcpncpy);
+ 
++  IFUNC_VX_IMPL (strcat);
++  IFUNC_VX_IMPL (wcscat);
++
+ #endif /* HAVE_S390_VX_ASM_SUPPORT */
+ 
+   return i;
+diff --git a/sysdeps/s390/multiarch/strcat-c.c b/sysdeps/s390/multiarch/strcat-c.c
+new file mode 100644
+index 0000000..da4fad8
+--- /dev/null
++++ b/sysdeps/s390/multiarch/strcat-c.c
+@@ -0,0 +1,28 @@
++/* Default strcat implementation for S/390.
++   Copyright (C) 2015 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#if defined HAVE_S390_VX_ASM_SUPPORT && !defined NOT_IN_libc
++# define STRCAT  __strcat_c
++# ifdef SHARED
++#  undef libc_hidden_builtin_def
++#  define libc_hidden_builtin_def(name)				\
++     __hidden_ver1 (__strcat_c, __GI_strcat, __strcat_c);
++# endif /* SHARED */
++
++# include <string/strcat.c>
++#endif /* HAVE_S390_VX_ASM_SUPPORT && !defined NOT_IN_libc */
+diff --git a/sysdeps/s390/multiarch/strcat-vx.S b/sysdeps/s390/multiarch/strcat-vx.S
+new file mode 100644
+index 0000000..3915097
+--- /dev/null
++++ b/sysdeps/s390/multiarch/strcat-vx.S
+@@ -0,0 +1,161 @@
++/* Vector optimized 32/64 bit S/390 version of strcat.
++   Copyright (C) 2015 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#if defined HAVE_S390_VX_ASM_SUPPORT && !defined NOT_IN_libc
++
++# include "sysdep.h"
++# include "asm-syntax.h"
++
++	.text
++
++/* char * strcat (const char *dest, const char *src)
++   Concatenate two strings.
++
++   Register usage:
++   -r0=saved dest pointer for return
++   -r1=tmp
++   -r2=dest
++   -r3=src
++   -r4=tmp
++   -r5=current_len
++   -v16=part of src
++   -v17=index of zero
++   -v18=part of src
++*/
++ENTRY(__strcat_vx)
++	.machine "z13"
++	.machinemode "zarch_nohighgprs"
++
++	lgr	%r0,%r2		/* Save destination pointer for return.  */
++
++	/* STRLEN
++	   r1 = loaded bytes (tmp)
++	   r4 = zero byte index (tmp)
++	   r2 = dst
++	*/
++	vlbb	%v16,0(%r2),6	/* Load s until next 4k-byte boundary.  */
++	lcbb	%r1,0(%r2),6	/* Get bytes to 4k-byte boundary or 16.  */
++
++	vfenezb	%v16,%v16,%v16	/* Find element not equal with zero search.  */
++	vlgvb	%r5,%v16,7	/* Load zero index or 16 if not found.  */
++	clrjl	%r5,%r1,.Llen_end /* Found zero within loaded bytes, end.  */
++
++	/* Align s to 16 byte.  */
++	risbgn	%r1,%r2,60,128+63,0 /* %r3 = bits 60-63 of %r2 'and' 15.  */
++	lghi	%r5,16		/* current_len = 16.  */
++	slr	%r5,%r1		/* Compute bytes to 16bytes boundary.  */
++
++	/* Find zero in 16byte aligned loop.  */
++.Llen_loop:
++	vl	%v16,0(%r5,%r2)	/* Load s.  */
++	vfenezbs %v16,%v16,%v16	/* Find element not equal with zero search.  */
++	je	.Llen_found	/* Jump away if zero was found.  */
++	vl	%v16,16(%r5,%r2)
++	vfenezbs %v16,%v16,%v16
++	je	.Llen_found16
++	vl	%v16,32(%r5,%r2)
++	vfenezbs %v16,%v16,%v16
++	je	.Llen_found32
++	vl	%v16,48(%r5,%r2)
++	vfenezbs %v16,%v16,%v16
++	je	.Llen_found48
++
++	aghi	%r5,64
++	j	.Llen_loop	/* No zero -> loop.  */
++
++.Llen_found48:
++	aghi	%r5,16
++.Llen_found32:
++	aghi	%r5,16
++.Llen_found16:
++	aghi	%r5,16
++.Llen_found:
++	vlgvb	%r4,%v16,7	/* Load byte index of zero.  */
++	algr	%r5,%r4
++
++.Llen_end:
++	/* STRCPY
++	   %r1 = loaded bytes (tmp)
++	   %r4 = zero byte index (tmp)
++	   %r3 = curr src pointer
++	   %r2 = curr dst pointer
++	 */
++	la	%r2,0(%r5,%r2)	/* strcpy at end of dst-string.   */
++
++	vlbb	%v16,0(%r3),6	/* Load s until next 4k-byte boundary.  */
++	lcbb	%r1,0(%r3),6	/* Get bytes to 4k-byte boundary or 16.  */
++
++	vfenezb	%v17,%v16,%v16	/* Find element not equal with zero search.  */
++	vlgvb	%r5,%v17,7	/* Load zero index or 16 if not found.  */
++	clrjl	%r5,%r1,.Lcpy_found_align /* If found zero within loaded bytes,
++					     copy bytes before and return.  */
++
++	/* Align s to 16 byte.  */
++	risbgn	%r4,%r3,60,128+63,0 /* %r3 = bits 60-63 of %r2 'and' 15.  */
++	lghi	%r5,15		/* current_len = 15.  */
++	slr	%r5,%r4		/* Compute highest index to 16byte boundary.  */
++
++	vstl	%v16,%r5,0(%r2)	/* Copy loaded characters - no zero.  */
++	ahi	%r5,1		/* Start loop at next character.  */
++
++	/* Find zero in 16byte aligned loop.  */
++.Lcpy_loop:
++	vl	%v16,0(%r5,%r3)	/* Load s.  */
++	vfenezbs %v17,%v16,%v16	/* Find element not equal with zero search.  */
++	je	.Lcpy_found_v16_0 /* Jump away if zero was found.  */
++	vl	%v18,16(%r5,%r3)/* Load next part of s.  */
++	vst	%v16,0(%r5,%r2)	/* Store previous part without zero to dst.  */
++	vfenezbs %v17,%v18,%v18
++	je	.Lcpy_found_v18_16
++	vl	%v16,32(%r5,%r3)
++	vst	%v18,16(%r5,%r2)
++	vfenezbs %v17,%v16,%v16
++	je	.Lcpy_found_v16_32
++	vl	%v18,48(%r5,%r3)
++	vst	%v16,32(%r5,%r2)
++	vfenezbs %v17,%v18,%v18
++	je	.Lcpy_found_v18_48
++	vst	%v18,48(%r5,%r2)
++
++	aghi	%r5,64
++	j	.Lcpy_loop	/* No zero -> loop.  */
++
++.Lcpy_found_v16_32:
++	aghi	%r5,32
++.Lcpy_found_v16_0:
++	la	%r4,0(%r5,%r2)
++	vlgvb	%r1,%v17,7	/* Load byte index of zero.  */
++	vstl	%v16,%r1,0(%r4)	/* Copy characters including zero.  */
++	lgr	%r2,%r0		/* Load saved dest-ptr.  */
++	br	%r14
++
++.Lcpy_found_v18_48:
++	aghi	%r5,32
++.Lcpy_found_v18_16:
++	la	%r4,16(%r5,%r2)
++	vlgvb	%r1,%v17,7	/* Load byte index of zero.  */
++	vstl	%v18,%r1,0(%r4)	/* Copy characters including zero.  */
++	lgr	%r2,%r0		/* Load saved dest-ptr.  */
++	br	%r14
++
++.Lcpy_found_align:
++	vstl	%v16,%r5,0(%r2)	/* Copy characters including zero.  */
++	lgr	%r2,%r0		/* Load saved dest-ptr.  */
++	br	%r14
++END(__strcat_vx)
++#endif /* HAVE_S390_VX_ASM_SUPPORT && !defined NOT_IN_libc */
+diff --git a/sysdeps/s390/multiarch/strcat.c b/sysdeps/s390/multiarch/strcat.c
+new file mode 100644
+index 0000000..8b5c47e
+--- /dev/null
++++ b/sysdeps/s390/multiarch/strcat.c
+@@ -0,0 +1,27 @@
++/* Multiple versions of strcat.
++   Copyright (C) 2015 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#if defined HAVE_S390_VX_ASM_SUPPORT && !defined NOT_IN_libc
++# include <string.h>
++# include <ifunc-resolve.h>
++
++s390_vx_libc_ifunc2 (__strcat, strcat)
++
++#else
++# include <string/strcat.c>
++#endif /* !(defined HAVE_S390_VX_ASM_SUPPORT && !defined NOT_IN_libc) */
+diff --git a/sysdeps/s390/multiarch/wcscat-c.c b/sysdeps/s390/multiarch/wcscat-c.c
+new file mode 100644
+index 0000000..49fb64b
+--- /dev/null
++++ b/sysdeps/s390/multiarch/wcscat-c.c
+@@ -0,0 +1,25 @@
++/* Default wcscat implementation for S/390.
++   Copyright (C) 2015 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#if defined HAVE_S390_VX_ASM_SUPPORT && !defined NOT_IN_libc
++# define WCSCAT  __wcscat_c
++
++# include <wchar.h>
++extern __typeof (__wcscat) __wcscat_c;
++# include <wcsmbs/wcscat.c>
++#endif
+diff --git a/sysdeps/s390/multiarch/wcscat-vx.S b/sysdeps/s390/multiarch/wcscat-vx.S
+new file mode 100644
+index 0000000..7ee185f
+--- /dev/null
++++ b/sysdeps/s390/multiarch/wcscat-vx.S
+@@ -0,0 +1,175 @@
++/* Vector optimized 32/64 bit S/390 version of wcscat.
++   Copyright (C) 2015 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#if defined HAVE_S390_VX_ASM_SUPPORT && !defined NOT_IN_libc
++
++# include "sysdep.h"
++# include "asm-syntax.h"
++
++	.text
++
++/* wchar_t * wcscat (wchar_t *dest, const wchar_t *src)
++   Concatenate two strings.
++
++   Register usage:
++   -r0=saved dest pointer for return
++   -r1=tmp
++   -r2=dest
++   -r3=src
++   -r4=tmp
++   -r5=current_len
++   -v16=part of src
++   -v17=index of zero
++   -v18=part of src
++*/
++ENTRY(__wcscat_vx)
++	.machine "z13"
++	.machinemode "zarch_nohighgprs"
++
++	vlbb	%v16,0(%r2),6	/* Load s until next 4k-byte boundary.  */
++	lcbb	%r1,0(%r2),6	/* Get bytes to 4k-byte boundary or 16.  */
++
++	/* __wcslen_c can handle non 4byte aligned pointers,
++	   but __wcscpy_c not. Thus if either src or dest is
++	   not 4byte aligned, use __wcscat_c.  */
++	tmll	%r2,3		/* Test if s is 4-byte aligned?   */
++	jne	.Lfallback	/* And use common-code variant if not.  */
++	tmll	%r3,3		/* Test if src is 4-byte aligned?   */
++	jne	.Lfallback	/* And use common-code variant if not.  */
++
++	lgr	%r0,%r2		/* Save destination pointer for return.  */
++
++	/* WCSLEN
++	   r1 = loaded bytes (tmp)
++	   r4 = zero byte index (tmp)
++	   r2 = dst
++	*/
++
++	vfenezf	%v16,%v16,%v16	/* Find element not equal with zero search.  */
++	vlgvb	%r5,%v16,7	/* Load zero index or 16 if not found.  */
++	clrjl	%r5,%r1,.Llen_end /* Found zero within loaded bytes, end.  */
++
++	/* Align s to 16 byte.  */
++	risbgn	%r1,%r2,60,128+63,0 /* %r3 = bits 60-63 of %r2 'and' 15.  */
++	lghi	%r5,16		/* current_len = 16.  */
++	slr	%r5,%r1		/* Compute bytes to 16bytes boundary.  */
++
++	/* Find zero in 16byte aligned loop.  */
++.Llen_loop:
++	vl	%v16,0(%r5,%r2)	/* Load s.  */
++	vfenezfs %v16,%v16,%v16	/* Find element not equal with zero search.  */
++	je	.Llen_found	/* Jump away if zero was found.  */
++	vl	%v16,16(%r5,%r2)
++	vfenezfs %v16,%v16,%v16
++	je	.Llen_found16
++	vl	%v16,32(%r5,%r2)
++	vfenezfs %v16,%v16,%v16
++	je	.Llen_found32
++	vl	%v16,48(%r5,%r2)
++	vfenezfs %v16,%v16,%v16
++	je	.Llen_found48
++
++	aghi	%r5,64
++	j	.Llen_loop	/* No zero -> loop.  */
++
++.Llen_found48:
++	aghi	%r5,16
++.Llen_found32:
++	aghi	%r5,16
++.Llen_found16:
++	aghi	%r5,16
++.Llen_found:
++	vlgvb	%r4,%v16,7	/* Load byte index of zero.  */
++	algr	%r5,%r4
++
++.Llen_end:
++	/* WCSCPY
++	   %r1 = loaded bytes (tmp)
++	   %r4 = zero byte index (tmp)
++	   %r3 = curr src pointer
++	   %r2 = curr dst pointer
++	 */
++	la	%r2,0(%r5,%r2)	/* strcpy at end of dst-string.   */
++
++	vlbb	%v16,0(%r3),6	/* Load s until next 4k-byte boundary.  */
++	lcbb	%r1,0(%r3),6	/* Get bytes to 4k-byte boundary or 16.  */
++
++	vfenezf	%v17,%v16,%v16	/* Find element not equal with zero search.  */
++	vlgvb	%r5,%v17,7	/* Load zero index or 16 if not found.  */
++	clrjl	%r5,%r1,.Lcpy_found_align /* If found zero within loaded bytes,
++					     copy bytes before and return.  */
++
++	/* Align s to 16 byte.  */
++	risbgn	%r4,%r3,60,128+63,0 /* %r3 = bits 60-63 of %r2 'and' 15.  */
++	lghi	%r5,15		/* current_len = 15.  */
++	slr	%r5,%r4		/* Compute highest index to 16byte boundary.  */
++
++	vstl	%v16,%r5,0(%r2)	/* Copy loaded characters - no zero.  */
++	ahi	%r5,1		/* Start loop at next character.  */
++
++	/* Find zero in 16byte aligned loop.  */
++.Lcpy_loop:
++	vl	%v16,0(%r5,%r3)	/* Load s.  */
++	vfenezfs %v17,%v16,%v16	/* Find element not equal with zero search.  */
++	je	.Lcpy_found_v16_0 /* Jump away if zero was found.  */
++	vl	%v18,16(%r5,%r3) /* Load next part of s.  */
++	vst	%v16,0(%r5,%r2)	/* Save previous part without zero to dst.  */
++	vfenezfs %v17,%v18,%v18
++	je	.Lcpy_found_v18_16
++	vl	%v16,32(%r5,%r3)
++	vst	%v18,16(%r5,%r2)
++	vfenezfs %v17,%v16,%v16
++	je	.Lcpy_found_v16_32
++	vl	%v18,48(%r5,%r3)
++	vst	%v16,32(%r5,%r2)
++	vfenezfs %v17,%v18,%v18
++	je	.Lcpy_found_v18_48
++	vst	%v18,48(%r5,%r2)
++
++	aghi	%r5,64
++	j	.Lcpy_loop	/* No zero -> loop.  */
++
++.Lcpy_found_v16_32:
++	aghi	%r5,32
++.Lcpy_found_v16_0:
++	la	%r4,0(%r5,%r2)
++	vlgvb	%r1,%v17,7	/* Load byte index of zero.  */
++	aghi	%r1,3		/* Also copy remaining bytes of zero.  */
++	vstl	%v16,%r1,0(%r4)	/* Copy characters including zero.  */
++	lgr	%r2,%r0		/* Load saved dest-ptr.  */
++	br	%r14
++
++.Lcpy_found_v18_48:
++	aghi	%r5,32
++.Lcpy_found_v18_16:
++	la	%r4,16(%r5,%r2)
++	vlgvb	%r1,%v17,7	/* Load byte index of zero.  */
++	aghi	%r1,3		/* Also copy remaining bytes of zero.  */
++	vstl	%v18,%r1,0(%r4)	/* Copy characters including zero.  */
++	lgr	%r2,%r0		/* Load saved dest-ptr.  */
++	br	%r14
++
++.Lcpy_found_align:
++	aghi	%r5,3		/* Also copy remaining bytes of found zero.  */
++	vstl	%v16,%r5,0(%r2)	/* Copy characters including zero.  */
++	lgr	%r2,%r0		/* Load saved dest-ptr.  */
++	br	%r14
++.Lfallback:
++	jg	__wcscat_c
++END(__wcscat_vx)
++#endif /* HAVE_S390_VX_ASM_SUPPORT && !defined NOT_IN_libc */
+diff --git a/sysdeps/s390/multiarch/wcscat.c b/sysdeps/s390/multiarch/wcscat.c
+new file mode 100644
+index 0000000..c6fdaa7
+--- /dev/null
++++ b/sysdeps/s390/multiarch/wcscat.c
+@@ -0,0 +1,28 @@
++/* Multiple versions of wcscat.
++   Copyright (C) 2015 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#if defined HAVE_S390_VX_ASM_SUPPORT && !defined NOT_IN_libc
++# include <wchar.h>
++# include <ifunc-resolve.h>
++
++s390_vx_libc_ifunc (__wcscat)
++weak_alias (__wcscat, wcscat)
++
++#else
++# include <wcsmbs/wcscat.c>
++#endif /* !(defined HAVE_S390_VX_ASM_SUPPORT && !defined NOT_IN_libc) */
+diff --git a/wcsmbs/Makefile b/wcsmbs/Makefile
+index 89b5b3b..9bfc78c 100644
+--- a/wcsmbs/Makefile
++++ b/wcsmbs/Makefile
+@@ -42,7 +42,7 @@ routines := wcscat wcschr wcscmp wcscpy wcscspn wcsdup wcslen wcsncat \
+ 	    mbrtoc16 c16rtomb
+ 
+ strop-tests :=  wcscmp wmemcmp wcslen wcschr wcsrchr wcscpy wcsnlen \
+-		wcpcpy wcsncpy wcpncpy
++		wcpcpy wcsncpy wcpncpy wcscat
+ tests := tst-wcstof wcsmbs-tst1 tst-wcsnlen tst-btowc tst-mbrtowc \
+ 	 tst-wcrtomb tst-wcpncpy tst-mbsrtowcs tst-wchar-h tst-mbrtowc2 \
+ 	 tst-c16c32-1 wcsatcliff $(addprefix test-,$(strop-tests))
+diff --git a/wcsmbs/test-wcscat-ifunc.c b/wcsmbs/test-wcscat-ifunc.c
+new file mode 100644
+index 0000000..53305c6
+--- /dev/null
++++ b/wcsmbs/test-wcscat-ifunc.c
+@@ -0,0 +1,20 @@
++/* Test and measure IFUNC implementations of wcscat function.
++   Copyright (C) 2015 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#define TEST_IFUNC 1
++#include "test-wcscat.c"
+diff --git a/wcsmbs/test-wcscat.c b/wcsmbs/test-wcscat.c
+new file mode 100644
+index 0000000..9bab33b
+--- /dev/null
++++ b/wcsmbs/test-wcscat.c
+@@ -0,0 +1,20 @@
++/* Test wcscat functions.
++   Copyright (C) 2015 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#define WIDE 1
++#include "../string/test-strcat.c"
+diff --git a/wcsmbs/wcscat.c b/wcsmbs/wcscat.c
+index 0d34d76..4eb2d93 100644
+--- a/wcsmbs/wcscat.c
++++ b/wcsmbs/wcscat.c
+@@ -18,6 +18,9 @@
+ 
+ #include <wchar.h>
+ 
++#ifdef WCSCAT
++# define __wcscat WCSCAT
++#endif
+ 
+ /* Append SRC on the end of DEST.  */
+ wchar_t *
+@@ -47,4 +50,6 @@ __wcscat (dest, src)
+ 
+   return dest;
+ }
++#ifndef WCSCAT
+ weak_alias (__wcscat, wcscat)
++#endif
+-- 
+2.3.0
+

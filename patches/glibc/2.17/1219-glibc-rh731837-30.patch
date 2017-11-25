@@ -1,0 +1,179 @@
+From b303432f970be8b430f7155fd40adcffb65390ef Mon Sep 17 00:00:00 2001
+From: Rajalakshmi Srinivasaraghavan <raji@linux.vnet.ibm.com>
+Date: Wed, 30 Jul 2014 11:31:40 -0500
+Subject: [PATCH] PowerPC: multiarch llrint/lrint for PowerPC64
+
+commit 5ccd5fc893ca027703d2d9747092ee25729223d9
+Author: Adhemerval Zanella <azanella@linux.vnet.ibm.com>
+Date:   Fri Dec 13 15:33:54 2013 -0500
+---
+ sysdeps/powerpc/powerpc64/fpu/multiarch/Makefile   |  3 +-
+ .../powerpc64/fpu/multiarch/s_llrint-power6x.S     | 31 ++++++++++++
+ .../powerpc64/fpu/multiarch/s_llrint-ppc64.S       | 31 ++++++++++++
+ sysdeps/powerpc/powerpc64/fpu/multiarch/s_llrint.c | 57 ++++++++++++++++++++++
+ sysdeps/powerpc/powerpc64/fpu/multiarch/s_lrint.c  |  1 +
+ 5 files changed, 122 insertions(+), 1 deletion(-)
+ create mode 100644 sysdeps/powerpc/powerpc64/fpu/multiarch/s_llrint-power6x.S
+ create mode 100644 sysdeps/powerpc/powerpc64/fpu/multiarch/s_llrint-ppc64.S
+ create mode 100644 sysdeps/powerpc/powerpc64/fpu/multiarch/s_llrint.c
+ create mode 100644 sysdeps/powerpc/powerpc64/fpu/multiarch/s_lrint.c
+
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/Makefile glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/Makefile
+index 3af4ac3..10d0ac9 100644
+--- glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/Makefile
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/Makefile
+@@ -11,5 +11,6 @@ libm-sysdep_routines += s_isnan-power7 s_isnan-power6x s_isnan-power6 \
+                        s_floorf-ppc64 s_round-power5+ s_round-ppc64 \
+                        s_roundf-power5+ s_roundf-ppc64 s_trunc-power5+ \
+                        s_trunc-ppc64 s_truncf-power5+ s_truncf-ppc64 \
+-                       s_copysign-power6 s_copysign-ppc64
++                       s_copysign-power6 s_copysign-ppc64 s_llrint-power6x \
++                       s_llrint-ppc64
+ endif
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_llrint-power6x.S glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_llrint-power6x.S
+new file mode 100644
+index 0000000..8cd39c6
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_llrint-power6x.S
+@@ -0,0 +1,31 @@
++/* Round double to long int.  PowerPC64/POWER6X default version.
++   Copyright (C) 2013-2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <sysdep.h>
++#include <math_ldbl_opt.h>
++
++#undef weak_alias
++#define weak_alias(a,b)
++#undef strong_alias
++#define strong_alias(a,b)
++#undef compat_symbol
++#define compat_symbol(a,b,c,d)
++
++#define __llrint __llrint_power6x
++
++#include <sysdeps/powerpc/powerpc64/power6x/fpu/s_llrint.S>
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_llrint-ppc64.S glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_llrint-ppc64.S
+new file mode 100644
+index 0000000..754d28f
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_llrint-ppc64.S
+@@ -0,0 +1,31 @@
++/* Round double to long int.  PowerPC32 default version.
++   Copyright (C) 2013-2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <sysdep.h>
++#include <math_ldbl_opt.h>
++
++#undef weak_alias
++#define weak_alias(a,b)
++#undef strong_alias
++#define strong_alias(a,b)
++#undef compat_symbol
++#define compat_symbol(a,b,c,d)
++
++#define __llrint __llrint_ppc64
++
++#include <sysdeps/powerpc/powerpc64/fpu/s_llrint.S>
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_llrint.c glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_llrint.c
+new file mode 100644
+index 0000000..5818b53
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_llrint.c
+@@ -0,0 +1,57 @@
++/* Multiple versions of llrint.
++   Copyright (C) 2013-2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++/* Redefine lrint/__lrint so that the compiler won't complain about the type
++   mismatch with the IFUNC selector in strong_alias below.  */
++#define lrint __hidden_lrint
++#define __lrint __hidden___lrint
++
++#include <math.h>
++#include <math_ldbl_opt.h>
++#undef lrint
++#undef __lrint
++#include <shlib-compat.h>
++#include "init-arch.h"
++
++extern __typeof (__llrint) __llrint_ppc64 attribute_hidden;
++extern __typeof (__llrint) __llrint_power6x attribute_hidden;
++
++libc_ifunc (__llrint,
++	    (hwcap & PPC_FEATURE_POWER6_EXT)
++	    ? __llrint_power6x
++            : __llrint_ppc64);
++
++weak_alias (__llrint, llrint)
++#ifdef NO_LONG_DOUBLE
++strong_alias (__llrint, __llrintl)
++weak_alias (__llrint, llrintl)
++#endif
++#if LONG_DOUBLE_COMPAT(libm, GLIBC_2_1)
++compat_symbol (libm, __llrint, llrintl, GLIBC_2_1);
++#endif
++
++/* long has the same width as long long on PowerPC64.  */
++strong_alias (__llrint, __lrint)
++weak_alias (__lrint, lrint)
++#ifdef NO_LONG_DOUBLE
++strong_alias (__lrint, __lrintl)
++weak_alias (__lrint, lrintl)
++#endif
++#if LONG_DOUBLE_COMPAT(libm, GLIBC_2_1)
++compat_symbol (libm, __lrint, lrintl, GLIBC_2_1);
++#endif
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_lrint.c glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_lrint.c
+new file mode 100644
+index 0000000..d092862
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_lrint.c
+@@ -0,0 +1 @@
++ /* __lrint is in s_llrint.c  */
+-- 
+1.8.3.1
+

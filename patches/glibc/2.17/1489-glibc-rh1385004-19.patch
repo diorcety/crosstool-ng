@@ -1,0 +1,59 @@
+From 2fd1041a8d9684978546886d58fdf8add8c8d9f7 Mon Sep 17 00:00:00 2001
+From: Rajalakshmi Srinivasaraghavan <raji@linux.vnet.ibm.com>
+Date: Tue, 5 Jul 2016 21:20:41 +0530
+Subject: [PATCH] powerpc: Fix return code of strcasecmp for unaligned inputs
+
+If the input values are unaligned and if there are null characters in the
+memory before the starting address of the input values, strcasecmp
+gives incorrect return code. Fixed it by adding mask the bits that
+are not part of the string.
+
+(cherry picked from commit 30e4cc5413f72c2c728a544389da0c48500d9904)
+---
+ ChangeLog                                     |  6 ++++++
+ sysdeps/powerpc/powerpc64/power8/strcasecmp.S | 17 ++++++++++++++---
+ 2 files changed, 20 insertions(+), 3 deletions(-)
+
+diff --git a/ChangeLog b/ChangeLog
+index 9385bd0..af5f694 100644
+diff --git a/sysdeps/powerpc/powerpc64/power8/strcasecmp.S b/sysdeps/powerpc/powerpc64/power8/strcasecmp.S
+index 63f6217..c83dc52 100644
+--- a/sysdeps/powerpc/powerpc64/power8/strcasecmp.S
++++ b/sysdeps/powerpc/powerpc64/power8/strcasecmp.S
+@@ -40,11 +40,20 @@
+ 	vsel	v5, v7, v5, v8; \
+ 	vcmpequb.	v7, v5, v4;
+ 
+-/* Get 16 bytes for unaligned case.  */
++/*
++ * Get 16 bytes for unaligned case.
++ * reg1: Vector to hold next 16 bytes.
++ * reg2: Address to read from.
++ * reg3: Permute control vector.
++ * v8: Tmp vector used to mask unwanted bytes.
++ * v9: Tmp vector,0 when null is found on first 16 bytes
++ */
+ #ifdef __LITTLE_ENDIAN__
+ #define GET16BYTES(reg1, reg2, reg3) \
+ 	lvx	reg1, 0, reg2; \
+-	vcmpequb.	v8, v0, reg1; \
++	vspltisb	v8, -1; \
++	vperm	v8, v8, reg1, reg3; \
++	vcmpequb.	v8, v0, v8; \
+ 	beq	cr6, 1f; \
+ 	vspltisb	v9, 0; \
+ 	b	2f; \
+@@ -57,7 +66,9 @@
+ #else
+ #define GET16BYTES(reg1, reg2, reg3) \
+ 	lvx	reg1, 0, reg2; \
+-	vcmpequb.	v8, v0, reg1; \
++	vspltisb	 v8, -1; \
++	vperm	v8, reg1, v8,  reg3; \
++	vcmpequb.	v8, v0, v8; \
+ 	beq	cr6, 1f; \
+ 	vspltisb	v9, 0; \
+ 	b	2f; \
+-- 
+2.1.0
+

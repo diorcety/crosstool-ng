@@ -1,0 +1,54 @@
+commit 318c7a5846bbfaab567c92b37941000dfc0c00c0
+Author: Siddhesh Poyarekar <siddhesh@redhat.com>
+Date:   Thu Aug 21 10:27:13 2014 +0530
+
+    Remove redundant CPPFLAGS for some programs
+    
+    These programs get the NOT_IN_libc twice, once through the 'other'
+    target and another explicitly.  Remove the explicitly added CPFLAG.
+    
+    	* catgets/Makefile (CPPFLAGS-gencat): Remove.
+    	* iconv/Makefile (CPPFLAGS-iconv_prog): Likewise.
+    	(CPPFLAGS-iconvconfig): Likewise.
+    	* timezone/Makefile (CPPFLAGS-zic): Likewise.
+
+Index: glibc-2.17-c758a686/catgets/Makefile
+===================================================================
+--- glibc-2.17-c758a686.orig/catgets/Makefile
++++ glibc-2.17-c758a686/catgets/Makefile
+@@ -42,8 +42,6 @@ $(objpfx)gencat: $(gencat-modules:%=$(ob
+ catgets-CPPFLAGS := -DNLSPATH='"$(msgcatdir)/%L/%N:$(msgcatdir)/%L/LC_MESSAGES/%N:$(msgcatdir)/%l/%N:$(msgcatdir)/%l/LC_MESSAGES/%N:"' \
+ 	    -DHAVE_CONFIG_H
+ 
+-CPPFLAGS-gencat = -DNOT_IN_libc
+-
+ generated = de.msg test1.cat test1.h test2.cat test2.h sample.SJIS.cat \
+ 	    test-gencat.h
+ generated-dirs = de
+Index: glibc-2.17-c758a686/iconv/Makefile
+===================================================================
+--- glibc-2.17-c758a686.orig/iconv/Makefile
++++ glibc-2.17-c758a686/iconv/Makefile
+@@ -53,9 +53,7 @@ CFLAGS-gconv_cache.c += -DGCONV_DIR='"$(
+ CFLAGS-gconv_conf.c = -DGCONV_PATH='"$(gconvdir)"'
+ CFLAGS-iconvconfig.c = -DGCONV_PATH='"$(gconvdir)"' -DGCONV_DIR='"$(gconvdir)"'
+ 
+-CPPFLAGS-iconv_prog = -DNOT_IN_libc
+ CPPFLAGS-iconv_charmap = -DNOT_IN_libc
+-CPPFLAGS-iconvconfig = -DNOT_IN_libc
+ CPPFLAGS-linereader = -DNOT_IN_libc
+ CPPFLAGS-strtab = -DNOT_IN_libc
+ CPPFLAGS-charmap = -DNOT_IN_libc
+Index: glibc-2.17-c758a686/timezone/Makefile
+===================================================================
+--- glibc-2.17-c758a686.orig/timezone/Makefile
++++ glibc-2.17-c758a686/timezone/Makefile
+@@ -42,8 +42,6 @@ all: # Make this the default target; it
+ 
+ include ../Makeconfig	# Get objpfx defined so we can use it below.
+ 
+-CPPFLAGS-zic = -DNOT_IN_libc
+-
+ ifeq ($(have-ksh),yes)
+ install-bin-script = tzselect
+ generated += tzselect

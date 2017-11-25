@@ -1,0 +1,44 @@
+From 2f308f69b40f960729d4358afb1b1effb218b6cb Mon Sep 17 00:00:00 2001
+From: Carlos Eduardo Seo <cseo@linux.vnet.ibm.com>
+Date: Tue, 5 Jan 2016 15:13:18 -0200
+Subject: [PATCH] powerpc: Add hwcap2 bits for POWER9.
+
+Added hwcap2 bit masks for Power ISA 3.0 and VSX IEEE binary float 128-bit
+features.
+
+(cherry picked from commit d2de9ef7ad35341fd6f098f7e84a1128f2027d0c)
+---
+ ChangeLog                     | 7 +++++++
+ sysdeps/powerpc/bits/hwcap.h  | 3 +++
+ sysdeps/powerpc/dl-procinfo.c | 2 +-
+ 3 files changed, 11 insertions(+), 1 deletion(-)
+
+diff --git a/ChangeLog b/ChangeLog
+index cecd77c..565da33 100644
+diff --git a/sysdeps/powerpc/bits/hwcap.h b/sysdeps/powerpc/bits/hwcap.h
+index 12554ca..55b37a4 100644
+--- a/sysdeps/powerpc/bits/hwcap.h
++++ b/sysdeps/powerpc/bits/hwcap.h
+@@ -66,3 +66,6 @@
+ 						    instruction.  */
+ #define PPC_FEATURE2_HTM_NOSC	   0x01000000 /* Kernel aborts transaction
+ 						 when a syscall is made.  */
++#define PPC_FEATURE2_ARCH_3_00	   0x00800000 /* ISA 3.0 */
++#define PPC_FEATURE2_HAS_IEEE128   0x00400000 /* VSX IEEE Binary Float
++						 128-bit */
+diff --git a/sysdeps/powerpc/dl-procinfo.c b/sysdeps/powerpc/dl-procinfo.c
+index a8df5b8..1bbeb89 100644
+--- a/sysdeps/powerpc/dl-procinfo.c
++++ b/sysdeps/powerpc/dl-procinfo.c
+@@ -61,7 +61,7 @@ PROCINFO_CLASS const char _dl_powerpc_cap_flags[60][10]
+     "", "", "", "",
+     "", "", "", "",
+     "", "", "", "",
+-    "", "", "", "",
++    "", "", "ieee128", "arch_3_00",
+     "htm-nosc", "vcrypto", "tar", "isel",
+     "ebb", "dscr", "htm", "arch_2_07",
+   }
+-- 
+2.1.0
+

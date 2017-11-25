@@ -1,0 +1,1076 @@
+From 8d960764b1afa3b64c3c388665499935a38b194e Mon Sep 17 00:00:00 2001
+From: Rajalakshmi Srinivasaraghavan <raji@linux.vnet.ibm.com>
+Date: Wed, 30 Jul 2014 08:12:17 -0500
+Subject: [PATCH] PowerPC: multiarch wordcopy for PowerPC64
+
+commit e28bcd427b21b6c74021ca65736dd66474b09013
+Author: Adhemerval Zanella <azanella@linux.vnet.ibm.com>
+Date:   Fri Dec 13 14:54:08 2013 -0500
+
+Added the following files apart from original commit.
+sysdeps/powerpc/powerpc32/power4/multiarch/wordcopy-power6.c
+sysdeps/powerpc/powerpc32/power4/multiarch/wordcopy-power7.c
+sysdeps/powerpc/powerpc32/power4/multiarch/wordcopy-ppc32.c
+sysdeps/powerpc/power4/wordcopy.c
+sysdeps/powerpc/power6/wordcopy.c
+Removed the following files apart from original commit.
+sysdeps/powerpc/power4/wordcopy.c
+sysdeps/powerpc/powerpc64/power6/wordcopy.c
+---
+ string/wordcopy.c                                  |  38 ++--
+ sysdeps/powerpc/power4/wordcopy.c                  | 212 ++++++++++++++++++++
+ sysdeps/powerpc/power6/wordcopy.c                  | 221 +++++++++++++++++++++
+ .../powerpc32/power4/multiarch/wordcopy-power6.c   |  23 +++
+ .../powerpc32/power4/multiarch/wordcopy-power7.c   |  23 +++
+ .../powerpc32/power4/multiarch/wordcopy-ppc32.c    |  23 +++
+ sysdeps/powerpc/powerpc64/multiarch/Makefile       |   5 +-
+ .../powerpc/powerpc64/multiarch/wordcopy-power6.c  |  19 ++
+ .../powerpc/powerpc64/multiarch/wordcopy-power7.c  |  19 ++
+ .../powerpc/powerpc64/multiarch/wordcopy-ppc64.c   |  18 ++
+ sysdeps/powerpc/powerpc64/multiarch/wordcopy.c     |  86 ++++++++
+ sysdeps/powerpc/powerpc64/power4/wordcopy.c        |   1 -
+ sysdeps/powerpc/powerpc64/power6/wordcopy.c        | 217 --------------------
+ 13 files changed, 669 insertions(+), 236 deletions(-)
+ create mode 100644 sysdeps/powerpc/power4/wordcopy.c
+ create mode 100644 sysdeps/powerpc/power6/wordcopy.c
+ create mode 100644 sysdeps/powerpc/powerpc32/power4/multiarch/wordcopy-power6.c
+ create mode 100644 sysdeps/powerpc/powerpc32/power4/multiarch/wordcopy-power7.c
+ create mode 100644 sysdeps/powerpc/powerpc32/power4/multiarch/wordcopy-ppc32.c
+ create mode 100644 sysdeps/powerpc/powerpc64/multiarch/wordcopy-power6.c
+ create mode 100644 sysdeps/powerpc/powerpc64/multiarch/wordcopy-power7.c
+ create mode 100644 sysdeps/powerpc/powerpc64/multiarch/wordcopy-ppc64.c
+ create mode 100644 sysdeps/powerpc/powerpc64/multiarch/wordcopy.c
+ delete mode 100644 sysdeps/powerpc/powerpc64/power4/wordcopy.c
+ delete mode 100644 sysdeps/powerpc/powerpc64/power6/wordcopy.c
+
+diff --git glibc-2.17-c758a686/string/wordcopy.c glibc-2.17-c758a686/string/wordcopy.c
+index b171f27..ff4cce4 100644
+--- glibc-2.17-c758a686/string/wordcopy.c
++++ glibc-2.17-c758a686/string/wordcopy.c
+@@ -1,5 +1,5 @@
+ /* _memcopy.c -- subroutines for memory copy functions.
+-   Copyright (C) 1991, 1996 Free Software Foundation, Inc.
++   Copyright (C) 1991-2014 Free Software Foundation, Inc.
+    This file is part of the GNU C Library.
+    Contributed by Torbjorn Granlund (tege@sics.se).
+ 
+@@ -26,11 +26,12 @@
+    block beginning at DSTP with LEN `op_t' words (not LEN bytes!).
+    Both SRCP and DSTP should be aligned for memory operations on `op_t's.  */
+ 
++#ifndef WORDCOPY_FWD_ALIGNED
++# define WORDCOPY_FWD_ALIGNED _wordcopy_fwd_aligned
++#endif
++
+ void
+-_wordcopy_fwd_aligned (dstp, srcp, len)
+-     long int dstp;
+-     long int srcp;
+-     size_t len;
++WORDCOPY_FWD_ALIGNED (long int dstp, long int srcp, size_t len)
+ {
+   op_t a0, a1;
+ 
+@@ -134,11 +135,12 @@ _wordcopy_fwd_aligned (dstp, srcp, len)
+    DSTP should be aligned for memory operations on `op_t's, but SRCP must
+    *not* be aligned.  */
+ 
++#ifndef WORDCOPY_FWD_DEST_ALIGNED
++# define WORDCOPY_FWD_DEST_ALIGNED _wordcopy_fwd_dest_aligned
++#endif
++
+ void
+-_wordcopy_fwd_dest_aligned (dstp, srcp, len)
+-     long int dstp;
+-     long int srcp;
+-     size_t len;
++WORDCOPY_FWD_DEST_ALIGNED (long int dstp, long int srcp, size_t len)
+ {
+   op_t a0, a1, a2, a3;
+   int sh_1, sh_2;
+@@ -221,11 +223,12 @@ _wordcopy_fwd_dest_aligned (dstp, srcp, len)
+    (not LEN bytes!).  Both SRCP and DSTP should be aligned for memory
+    operations on `op_t's.  */
+ 
++#ifndef WORDCOPY_BWD_ALIGNED
++# define WORDCOPY_BWD_ALIGNED _wordcopy_bwd_aligned
++#endif
++
+ void
+-_wordcopy_bwd_aligned (dstp, srcp, len)
+-     long int dstp;
+-     long int srcp;
+-     size_t len;
++WORDCOPY_BWD_ALIGNED (long int dstp, long int srcp, size_t len)
+ {
+   op_t a0, a1;
+ 
+@@ -329,11 +332,12 @@ _wordcopy_bwd_aligned (dstp, srcp, len)
+    words (not LEN bytes!).  DSTP should be aligned for memory
+    operations on `op_t', but SRCP must *not* be aligned.  */
+ 
++#ifndef WORDCOPY_BWD_DEST_ALIGNED
++# define WORDCOPY_BWD_DEST_ALIGNED _wordcopy_bwd_dest_aligned
++#endif
++
+ void
+-_wordcopy_bwd_dest_aligned (dstp, srcp, len)
+-     long int dstp;
+-     long int srcp;
+-     size_t len;
++WORDCOPY_BWD_DEST_ALIGNED (long int dstp, long int srcp, size_t len)
+ {
+   op_t a0, a1, a2, a3;
+   int sh_1, sh_2;
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/power4/wordcopy.c glibc-2.17-c758a686/sysdeps/powerpc/power4/wordcopy.c
+new file mode 100644
+index 0000000..263b444
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/power4/wordcopy.c
+@@ -0,0 +1,212 @@
++/* _memcopy.c -- subroutines for memory copy functions.
++   Copyright (C) 1991-2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++   Contributed by Torbjorn Granlund (tege@sics.se).
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++/* BE VERY CAREFUL IF YOU CHANGE THIS CODE...!  */
++
++#include <stddef.h>
++#include <memcopy.h>
++
++/* _wordcopy_fwd_aligned -- Copy block beginning at SRCP to
++   block beginning at DSTP with LEN `op_t' words (not LEN bytes!).
++   Both SRCP and DSTP should be aligned for memory operations on `op_t's.  */
++
++#ifndef WORDCOPY_FWD_ALIGNED
++# define WORDCOPY_FWD_ALIGNED _wordcopy_fwd_aligned
++#endif
++
++void
++WORDCOPY_FWD_ALIGNED (long int dstp, long int srcp, size_t len)
++{
++  op_t a0, a1;
++
++  if (len & 1)
++  {
++    ((op_t *) dstp)[0] = ((op_t *) srcp)[0];
++
++    if (len == 1)
++      return;
++    srcp += OPSIZ;
++    dstp += OPSIZ;
++    len -= 1;
++  }
++
++  do
++    {
++      a0 = ((op_t *) srcp)[0];
++      a1 = ((op_t *) srcp)[1];
++      ((op_t *) dstp)[0] = a0;
++      ((op_t *) dstp)[1] = a1;
++
++      srcp += 2 * OPSIZ;
++      dstp += 2 * OPSIZ;
++      len -= 2;
++    }
++  while (len != 0);
++}
++
++/* _wordcopy_fwd_dest_aligned -- Copy block beginning at SRCP to
++   block beginning at DSTP with LEN `op_t' words (not LEN bytes!).
++   DSTP should be aligned for memory operations on `op_t's, but SRCP must
++   *not* be aligned.  */
++
++#ifndef WORDCOPY_FWD_DEST_ALIGNED
++# define WORDCOPY_FWD_DEST_ALIGNED _wordcopy_fwd_dest_aligned
++#endif
++
++void
++WORDCOPY_FWD_DEST_ALIGNED (long int dstp, long int srcp, size_t len)
++{
++  op_t a0, a1, a2;
++  int sh_1, sh_2;
++
++  /* Calculate how to shift a word read at the memory operation
++     aligned srcp to make it aligned for copy.  */
++
++  sh_1 = 8 * (srcp % OPSIZ);
++  sh_2 = 8 * OPSIZ - sh_1;
++
++  /* Make SRCP aligned by rounding it down to the beginning of the `op_t'
++     it points in the middle of.  */
++  srcp &= -OPSIZ;
++  a0 = ((op_t *) srcp)[0];
++
++  if (len & 1)
++  {
++    a1 = ((op_t *) srcp)[1];
++    ((op_t *) dstp)[0] = MERGE (a0, sh_1, a1, sh_2);
++
++    if (len == 1)
++      return;
++
++    a0 = a1;
++    srcp += OPSIZ;
++    dstp += OPSIZ;
++    len -= 1;
++  }
++
++  do
++    {
++      a1 = ((op_t *) srcp)[1];
++      a2 = ((op_t *) srcp)[2];
++      ((op_t *) dstp)[0] = MERGE (a0, sh_1, a1, sh_2);
++      ((op_t *) dstp)[1] = MERGE (a1, sh_1, a2, sh_2);
++      a0 = a2;
++
++      srcp += 2 * OPSIZ;
++      dstp += 2 * OPSIZ;
++      len -= 2;
++    }
++  while (len != 0);
++}
++
++/* _wordcopy_bwd_aligned -- Copy block finishing right before
++   SRCP to block finishing right before DSTP with LEN `op_t' words
++   (not LEN bytes!).  Both SRCP and DSTP should be aligned for memory
++   operations on `op_t's.  */
++
++#ifndef WORDCOPY_BWD_ALIGNED
++# define WORDCOPY_BWD_ALIGNED _wordcopy_bwd_aligned
++#endif
++
++void
++WORDCOPY_BWD_ALIGNED (long int dstp, long int srcp, size_t len)
++{
++  op_t a0, a1;
++
++  if (len & 1)
++  {
++    srcp -= OPSIZ;
++    dstp -= OPSIZ;
++    ((op_t *) dstp)[0] = ((op_t *) srcp)[0];
++
++    if (len == 1)
++      return;
++    len -= 1;
++  }
++
++  do
++    {
++      srcp -= 2 * OPSIZ;
++      dstp -= 2 * OPSIZ;
++
++      a1 = ((op_t *) srcp)[1];
++      a0 = ((op_t *) srcp)[0];
++      ((op_t *) dstp)[1] = a1;
++      ((op_t *) dstp)[0] = a0;
++
++      len -= 2;
++    }
++  while (len != 0);
++}
++
++/* _wordcopy_bwd_dest_aligned -- Copy block finishing right
++   before SRCP to block finishing right before DSTP with LEN `op_t'
++   words (not LEN bytes!).  DSTP should be aligned for memory
++   operations on `op_t', but SRCP must *not* be aligned.  */
++
++#ifndef WORDCOPY_BWD_DEST_ALIGNED
++# define WORDCOPY_BWD_DEST_ALIGNED _wordcopy_bwd_dest_aligned
++#endif
++
++void
++WORDCOPY_BWD_DEST_ALIGNED (long int dstp, long int srcp, size_t len)
++{
++  op_t a0, a1, a2;
++  int sh_1, sh_2;
++
++  /* Calculate how to shift a word read at the memory operation
++     aligned srcp to make it aligned for copy.  */
++
++  sh_1 = 8 * (srcp % OPSIZ);
++  sh_2 = 8 * OPSIZ - sh_1;
++
++  /* Make srcp aligned by rounding it down to the beginning of the op_t
++     it points in the middle of.  */
++  srcp &= -OPSIZ;
++  a2 = ((op_t *) srcp)[0];
++
++  if (len & 1)
++  {
++    srcp -= OPSIZ;
++    dstp -= OPSIZ;
++    a1 = ((op_t *) srcp)[0];
++    ((op_t *) dstp)[0] = MERGE (a1, sh_1, a2, sh_2);
++
++    if (len == 1)
++      return;
++
++    a2 = a1;
++    len -= 1;
++  }
++
++  do
++    {
++      srcp -= 2 * OPSIZ;
++      dstp -= 2 * OPSIZ;
++
++      a1 = ((op_t *) srcp)[1];
++      a0 = ((op_t *) srcp)[0];
++      ((op_t *) dstp)[1] = MERGE (a1, sh_1, a2, sh_2);
++      ((op_t *) dstp)[0] = MERGE (a0, sh_1, a1, sh_2);
++      a2 = a0;
++
++      len -= 2;
++    }
++  while (len != 0);
++}
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/power6/wordcopy.c glibc-2.17-c758a686/sysdeps/powerpc/power6/wordcopy.c
+new file mode 100644
+index 0000000..c32e6dd
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/power6/wordcopy.c
+@@ -0,0 +1,221 @@
++/* _memcopy.c -- subroutines for memory copy functions.
++   Copyright (C) 1991-2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++   Contributed by Torbjorn Granlund (tege@sics.se).
++   Updated for POWER6 by Steven Munroe (sjmunroe@us.ibm.com).
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++/* BE VERY CAREFUL IF YOU CHANGE THIS CODE...!  */
++
++#include <stddef.h>
++#include <memcopy.h>
++
++/* _wordcopy_fwd_aligned -- Copy block beginning at SRCP to
++   block beginning at DSTP with LEN `op_t' words (not LEN bytes!).
++   Both SRCP and DSTP should be aligned for memory operations on `op_t's.  */
++
++#ifndef WORDCOPY_FWD_ALIGNED
++# define WORDCOPY_FWD_ALIGNED _wordcopy_fwd_aligned
++#endif
++
++void
++WORDCOPY_FWD_ALIGNED (long int dstp, long int srcp, size_t len)
++{
++  op_t a0, a1;
++
++  if (len & 1)
++  {
++    ((op_t *) dstp)[0] = ((op_t *) srcp)[0];
++
++    if (len == 1)
++      return;
++    srcp += OPSIZ;
++    dstp += OPSIZ;
++    len -= 1;
++  }
++
++  do
++    {
++      a0 = ((op_t *) srcp)[0];
++      a1 = ((op_t *) srcp)[1];
++      ((op_t *) dstp)[0] = a0;
++      ((op_t *) dstp)[1] = a1;
++
++      srcp += 2 * OPSIZ;
++      dstp += 2 * OPSIZ;
++      len -= 2;
++    }
++  while (len != 0);
++}
++
++/* _wordcopy_fwd_dest_aligned -- Copy block beginning at SRCP to
++   block beginning at DSTP with LEN `op_t' words (not LEN bytes!).
++   DSTP should be aligned for memory operations on `op_t's, but SRCP must
++   *not* be aligned.  */
++
++#define fwd_align_merge(align)                                         \
++  do                                                                   \
++    {                                                                  \
++      a1 = ((op_t *) srcp)[1];                                         \
++      a2 = ((op_t *) srcp)[2];                                         \
++      ((op_t *) dstp)[0] = MERGE (a0, align*8, a1, (__WORDSIZE-align*8)); \
++      ((op_t *) dstp)[1] = MERGE (a1, align*8, a2, (__WORDSIZE-align*8)); \
++      a0 = a2;                                                         \
++      srcp += 2 * OPSIZ;                                               \
++      dstp += 2 * OPSIZ;                                               \
++      len -= 2;                                                                \
++    }                                                                  \
++  while (len != 0)
++
++#ifndef WORDCOPY_FWD_DEST_ALIGNED
++# define WORDCOPY_FWD_DEST_ALIGNED _wordcopy_fwd_dest_aligned
++#endif
++
++void
++WORDCOPY_FWD_DEST_ALIGNED (long int dstp, long int srcp, size_t len)
++{
++  op_t a0, a1, a2;
++  int sh_1, sh_2;
++  int align;
++
++  /* Calculate how to shift a word read at the memory operation
++     aligned srcp to make it aligned for copy.  */
++
++  align = srcp % OPSIZ;
++  sh_1 = 8 * (srcp % OPSIZ);
++  sh_2 = 8 * OPSIZ - sh_1;
++
++  /* Make SRCP aligned by rounding it down to the beginning of the `op_t'
++     it points in the middle of.  */
++  srcp &= -OPSIZ;
++  a0 = ((op_t *) srcp)[0];
++
++  if (len & 1)
++  {
++    a1 = ((op_t *) srcp)[1];
++    ((op_t *) dstp)[0] = MERGE (a0, sh_1, a1, sh_2);
++
++    if (len == 1)
++      return;
++
++    a0 = a1;
++    srcp += OPSIZ;
++    dstp += OPSIZ;
++    len -= 1;
++  }
++
++  fwd_align_merge (align);
++
++}
++
++/* _wordcopy_bwd_aligned -- Copy block finishing right before
++   SRCP to block finishing right before DSTP with LEN `op_t' words
++   (not LEN bytes!).  Both SRCP and DSTP should be aligned for memory
++   operations on `op_t's.  */
++
++#ifndef WORDCOPY_BWD_ALIGNED
++# define WORDCOPY_BWD_ALIGNED _wordcopy_bwd_aligned
++#endif
++
++void
++WORDCOPY_BWD_ALIGNED (long int dstp, long int srcp, size_t len)
++{
++  op_t a0, a1;
++
++  if (len & 1)
++  {
++    srcp -= OPSIZ;
++    dstp -= OPSIZ;
++    ((op_t *) dstp)[0] = ((op_t *) srcp)[0];
++
++    if (len == 1)
++      return;
++    len -= 1;
++  }
++
++  do
++    {
++      srcp -= 2 * OPSIZ;
++      dstp -= 2 * OPSIZ;
++
++      a1 = ((op_t *) srcp)[1];
++      a0 = ((op_t *) srcp)[0];
++      ((op_t *) dstp)[1] = a1;
++      ((op_t *) dstp)[0] = a0;
++
++      len -= 2;
++    }
++  while (len != 0);
++}
++
++#define bwd_align_merge(align)                                         \
++  do                                                                   \
++    {                                                                  \
++      srcp -= 2 * OPSIZ;                                               \
++      dstp -= 2 * OPSIZ;                                               \
++      a1 = ((op_t *) srcp)[1];                                         \
++      a0 = ((op_t *) srcp)[0];                                         \
++      ((op_t *) dstp)[1] = MERGE (a1, align*8, a2, (__WORDSIZE-align*8)); \
++      ((op_t *) dstp)[0] = MERGE (a0, align*8, a1, (__WORDSIZE-align*8)); \
++      a2 = a0;                                                         \
++      len -= 2;                                                                \
++    }                                                                  \
++  while (len != 0)
++
++/* _wordcopy_bwd_dest_aligned -- Copy block finishing right
++   before SRCP to block finishing right before DSTP with LEN `op_t'
++   words (not LEN bytes!).  DSTP should be aligned for memory
++   operations on `op_t', but SRCP must *not* be aligned.  */
++
++#ifndef WORDCOPY_BWD_DEST_ALIGNED
++# define WORDCOPY_BWD_DEST_ALIGNED _wordcopy_bwd_dest_aligned
++#endif
++
++void
++WORDCOPY_BWD_DEST_ALIGNED (long int dstp, long int srcp, size_t len)
++{
++  op_t a0, a1, a2;
++  int sh_1, sh_2;
++  int align;
++
++  /* Calculate how to shift a word read at the memory operation
++     aligned srcp to make it aligned for copy.  */
++
++  align = srcp % OPSIZ;
++  sh_1 = 8 * (srcp % OPSIZ);
++  sh_2 = 8 * OPSIZ - sh_1;
++
++  /* Make srcp aligned by rounding it down to the beginning of the op_t
++     it points in the middle of.  */
++  srcp &= -OPSIZ;
++  a2 = ((op_t *) srcp)[0];
++
++  if (len & 1)
++  {
++    srcp -= OPSIZ;
++    dstp -= OPSIZ;
++    a1 = ((op_t *) srcp)[0];
++    ((op_t *) dstp)[0] = MERGE (a1, sh_1, a2, sh_2);
++
++    if (len == 1)
++      return;
++
++    a2 = a1;
++    len -= 1;
++  }
++
++  bwd_align_merge (align);
++}
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc32/power4/multiarch/wordcopy-power6.c glibc-2.17-c758a686/sysdeps/powerpc/powerpc32/power4/multiarch/wordcopy-power6.c
+new file mode 100644
+index 0000000..c5c6eb7
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc32/power4/multiarch/wordcopy-power6.c
+@@ -0,0 +1,23 @@
++/* Copyright (C) 2013-2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#define WORDCOPY_FWD_ALIGNED      _wordcopy_fwd_aligned_power6
++#define WORDCOPY_FWD_DEST_ALIGNED _wordcopy_fwd_dest_aligned_power6
++#define WORDCOPY_BWD_ALIGNED      _wordcopy_bwd_aligned_power6
++#define WORDCOPY_BWD_DEST_ALIGNED _wordcopy_bwd_dest_aligned_power6
++
++#include <sysdeps/powerpc/power6/wordcopy.c>
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc32/power4/multiarch/wordcopy-power7.c glibc-2.17-c758a686/sysdeps/powerpc/powerpc32/power4/multiarch/wordcopy-power7.c
+new file mode 100644
+index 0000000..841d1a2
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc32/power4/multiarch/wordcopy-power7.c
+@@ -0,0 +1,23 @@
++/* Copyright (C) 2013-2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#define WORDCOPY_FWD_ALIGNED      _wordcopy_fwd_aligned_power7
++#define WORDCOPY_FWD_DEST_ALIGNED _wordcopy_fwd_dest_aligned_power7
++#define WORDCOPY_BWD_ALIGNED      _wordcopy_bwd_aligned_power7
++#define WORDCOPY_BWD_DEST_ALIGNED _wordcopy_bwd_dest_aligned_power7
++
++#include <sysdeps/powerpc/power6/wordcopy.c>
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc32/power4/multiarch/wordcopy-ppc32.c glibc-2.17-c758a686/sysdeps/powerpc/powerpc32/power4/multiarch/wordcopy-ppc32.c
+new file mode 100644
+index 0000000..ccd24ad
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc32/power4/multiarch/wordcopy-ppc32.c
+@@ -0,0 +1,23 @@
++/* Copyright (C) 2013-2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#define WORDCOPY_FWD_ALIGNED      _wordcopy_fwd_aligned_ppc
++#define WORDCOPY_FWD_DEST_ALIGNED _wordcopy_fwd_dest_aligned_ppc
++#define WORDCOPY_BWD_ALIGNED      _wordcopy_bwd_aligned_ppc
++#define WORDCOPY_BWD_DEST_ALIGNED _wordcopy_bwd_dest_aligned_ppc
++
++#include <sysdeps/powerpc/power4/wordcopy.c>
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/Makefile glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/Makefile
+index 7113212..8dceb09 100644
+--- glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/Makefile
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/Makefile
+@@ -11,7 +11,8 @@ sysdep_routines += memcpy-power7 memcpy-a2 memcpy-power6 memcpy-cell \
+                   strncmp-power4 strncmp-ppc64 strchr-power7 strchr-ppc64 \
+                   strchrnul-power7 strchrnul-ppc64 wcschr-power7 \
+                   wcschr-power6 wcschr-ppc64 wcsrchr-power7 wcsrchr-power6 \
+-                  wcsrchr-ppc64 wcscpy-power7 wcscpy-power6 wcscpy-ppc64
++                  wcsrchr-ppc64 wcscpy-power7 wcscpy-power6 wcscpy-ppc64 \
++                  wordcopy-power7 wordcopy-power6 wordcopy-ppc64
+ 
+ CFLAGS-strncase-power7.c += -mcpu=power7 -funroll-loops
+ CFLAGS-strncase_l-power7.c += -mcpu=power7 -funroll-loops
+@@ -21,4 +22,6 @@ CFLAGS-wcsrchr-power7.c += -mcpu=power7
+ CFLAGS-wcsrchr-power6.c += -mcpu=power6
+ CFLAGS-wcscpy-power7.c += -mcpu=power7
+ CFLAGS-wcscpy-power6.c += -mcpu=power6
++CFLAGS-wordcopy-power7.c += -mcpu=power7
++CFLAGS-wordcopy-power6.c += -mcpu=power6
+ endif
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/wordcopy-power6.c glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/wordcopy-power6.c
+new file mode 100644
+index 0000000..2a65b52
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/wordcopy-power6.c
+@@ -0,0 +1,19 @@
++/* wordcopy routines for powerpc64/power6.
++   Copyright (C) 2013-2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; see the file COPYING.LIB.  If
++   not, see <http://www.gnu.org/licenses/>.  */
++
++#include <sysdeps/powerpc/powerpc32/power4/multiarch/wordcopy-power6.c>
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/wordcopy-power7.c glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/wordcopy-power7.c
+new file mode 100644
+index 0000000..e804f88
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/wordcopy-power7.c
+@@ -0,0 +1,19 @@
++/* wordcopy routines for powerpc64/power7.
++   Copyright (C) 2013-2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; see the file COPYING.LIB.  If
++   not, see <http://www.gnu.org/licenses/>.  */
++
++#include <sysdeps/powerpc/powerpc32/power4/multiarch/wordcopy-power7.c>
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/wordcopy-ppc64.c glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/wordcopy-ppc64.c
+new file mode 100644
+index 0000000..0584277
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/wordcopy-ppc64.c
+@@ -0,0 +1,18 @@
++/* Copyright (C) 2013-2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <sysdeps/powerpc/powerpc32/power4/multiarch/wordcopy-ppc32.c>
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/wordcopy.c glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/wordcopy.c
+new file mode 100644
+index 0000000..889be25
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/wordcopy.c
+@@ -0,0 +1,86 @@
++/* Multiple versions of wordcopy functions.
++   Copyright (C) 2013-2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#ifndef NOT_IN_libc
++# include <stddef.h>
++# include <memcopy.h>
++# include <shlib-compat.h>
++# include "init-arch.h"
++
++extern __typeof (_wordcopy_fwd_aligned) _wordcopy_fwd_aligned_ppc
++attribute_hidden;
++extern __typeof (_wordcopy_fwd_aligned) _wordcopy_fwd_aligned_power6
++attribute_hidden;
++extern __typeof (_wordcopy_fwd_aligned) _wordcopy_fwd_aligned_power7
++attribute_hidden;
++
++libc_ifunc (_wordcopy_fwd_aligned,
++            (hwcap & PPC_FEATURE_HAS_VSX)
++            ? _wordcopy_fwd_aligned_power7 :
++	      (hwcap & PPC_FEATURE_ARCH_2_05)
++              ? _wordcopy_fwd_aligned_power6
++            : _wordcopy_fwd_aligned_ppc);
++
++
++extern __typeof (_wordcopy_fwd_dest_aligned) _wordcopy_fwd_dest_aligned_ppc
++attribute_hidden;
++extern __typeof (_wordcopy_fwd_dest_aligned) _wordcopy_fwd_dest_aligned_power6
++attribute_hidden;
++extern __typeof (_wordcopy_fwd_dest_aligned) _wordcopy_fwd_dest_aligned_power7
++attribute_hidden;
++
++libc_ifunc (_wordcopy_fwd_dest_aligned,
++            (hwcap & PPC_FEATURE_HAS_VSX)
++            ? _wordcopy_fwd_dest_aligned_power7 :
++	      (hwcap & PPC_FEATURE_ARCH_2_05)
++              ? _wordcopy_fwd_dest_aligned_power6
++            : _wordcopy_fwd_dest_aligned_ppc);
++
++
++extern __typeof (_wordcopy_bwd_aligned) _wordcopy_bwd_aligned_ppc
++attribute_hidden;
++extern __typeof (_wordcopy_bwd_aligned) _wordcopy_bwd_aligned_power6
++attribute_hidden;
++extern __typeof (_wordcopy_bwd_aligned) _wordcopy_bwd_aligned_power7
++attribute_hidden;
++
++libc_ifunc (_wordcopy_bwd_aligned,
++            (hwcap & PPC_FEATURE_HAS_VSX)
++            ? _wordcopy_bwd_aligned_power7 :
++	      (hwcap & PPC_FEATURE_ARCH_2_05)
++              ? _wordcopy_bwd_aligned_power6
++            : _wordcopy_bwd_aligned_ppc);
++
++
++extern __typeof (_wordcopy_bwd_dest_aligned) _wordcopy_bwd_dest_aligned_ppc
++attribute_hidden;
++extern __typeof (_wordcopy_bwd_dest_aligned) _wordcopy_bwd_dest_aligned_power6
++attribute_hidden;
++extern __typeof (_wordcopy_bwd_dest_aligned) _wordcopy_bwd_dest_aligned_power7
++attribute_hidden;
++
++libc_ifunc (_wordcopy_bwd_dest_aligned,
++            (hwcap & PPC_FEATURE_HAS_VSX)
++            ? _wordcopy_bwd_dest_aligned_power7 :
++	      (hwcap & PPC_FEATURE_ARCH_2_05)
++              ? _wordcopy_bwd_dest_aligned_power6
++            : _wordcopy_bwd_dest_aligned_ppc);
++
++#else
++#include <sysdeps/powerpc/power4/wordcopy.c>
++#endif
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/power4/wordcopy.c glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/power4/wordcopy.c
+deleted file mode 100644
+index f427b48..0000000
+--- glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/power4/wordcopy.c
++++ /dev/null
+@@ -1 +0,0 @@
+-#include "../../powerpc32/power4/wordcopy.c"
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/power6/wordcopy.c glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/power6/wordcopy.c
+deleted file mode 100644
+index 4c72404..0000000
+--- glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/power6/wordcopy.c
++++ /dev/null
+@@ -1,217 +0,0 @@
+-/* _memcopy.c -- subroutines for memory copy functions.
+-   Copyright (C) 1991-2012 Free Software Foundation, Inc.
+-   This file is part of the GNU C Library.
+-   Contributed by Torbjorn Granlund (tege@sics.se).
+-
+-   The GNU C Library is free software; you can redistribute it and/or
+-   modify it under the terms of the GNU Lesser General Public
+-   License as published by the Free Software Foundation; either
+-   version 2.1 of the License, or (at your option) any later version.
+-
+-   The GNU C Library is distributed in the hope that it will be useful,
+-   but WITHOUT ANY WARRANTY; without even the implied warranty of
+-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+-   Lesser General Public License for more details.
+-
+-   You should have received a copy of the GNU Lesser General Public
+-   License along with the GNU C Library; if not, see
+-   <http://www.gnu.org/licenses/>.  */
+-
+-/* BE VERY CAREFUL IF YOU CHANGE THIS CODE...!  */
+-
+-#include <stddef.h>
+-#include <memcopy.h>
+-
+-/* _wordcopy_fwd_aligned -- Copy block beginning at SRCP to
+-   block beginning at DSTP with LEN `op_t' words (not LEN bytes!).
+-   Both SRCP and DSTP should be aligned for memory operations on `op_t's.  */
+-
+-void
+-_wordcopy_fwd_aligned (dstp, srcp, len)
+-     long int dstp;
+-     long int srcp;
+-     size_t len;
+-{
+-  op_t a0, a1;
+-
+-  if (len & 1)
+-  {
+-    ((op_t *) dstp)[0] = ((op_t *) srcp)[0];
+-    
+-    if (len == 1)
+-      return;
+-    srcp += OPSIZ;
+-    dstp += OPSIZ;
+-    len -= 1;
+-  }
+-
+-  do
+-    {
+-      a0 = ((op_t *) srcp)[0];
+-      a1 = ((op_t *) srcp)[1];
+-      ((op_t *) dstp)[0] = a0;
+-      ((op_t *) dstp)[1] = a1;
+-
+-      srcp += 2 * OPSIZ;
+-      dstp += 2 * OPSIZ;
+-      len -= 2;
+-    }
+-  while (len != 0);
+-}
+-
+-#define fwd_align_merge(align)                                         \
+-  do                                                                   \
+-    {                                                                  \
+-      a1 = ((op_t *) srcp)[1];                                         \
+-      a2 = ((op_t *) srcp)[2];                                         \
+-      ((op_t *) dstp)[0] = MERGE (a0, align*8, a1, (64-align*8));      \
+-      ((op_t *) dstp)[1] = MERGE (a1, align*8, a2, (64-align*8));      \
+-      a0 = a2;                                                         \
+-      srcp += 2 * OPSIZ;                                               \
+-      dstp += 2 * OPSIZ;                                               \
+-      len -= 2;                                                                \
+-    }                                                                  \
+-  while (len != 0)
+-
+-
+-/* _wordcopy_fwd_dest_aligned -- Copy block beginning at SRCP to
+-   block beginning at DSTP with LEN `op_t' words (not LEN bytes!).
+-   DSTP should be aligned for memory operations on `op_t's, but SRCP must
+-   *not* be aligned.  */
+-
+-void
+-_wordcopy_fwd_dest_aligned (dstp, srcp, len)
+-     long int dstp;
+-     long int srcp;
+-     size_t len;
+-{
+-  op_t a0, a1, a2;
+-  int sh_1, sh_2;
+-  int align;
+-
+-  /* Calculate how to shift a word read at the memory operation
+-     aligned srcp to make it aligned for copy.  */
+-
+-  align = srcp % OPSIZ;
+-  sh_1 = 8 * (srcp % OPSIZ);
+-  sh_2 = 8 * OPSIZ - sh_1;
+-
+-  /* Make SRCP aligned by rounding it down to the beginning of the `op_t'
+-     it points in the middle of.  */
+-  srcp &= -OPSIZ;
+-  a0 = ((op_t *) srcp)[0];
+-
+-  if (len & 1)
+-  {
+-    a1 = ((op_t *) srcp)[1];
+-    ((op_t *) dstp)[0] = MERGE (a0, sh_1, a1, sh_2);
+-    
+-    if (len == 1)
+-      return;
+-    
+-    a0 = a1;
+-    srcp += OPSIZ;
+-    dstp += OPSIZ;
+-    len -= 1;
+-  }
+-
+-  fwd_align_merge (align);
+-
+-}
+-
+-/* _wordcopy_bwd_aligned -- Copy block finishing right before
+-   SRCP to block finishing right before DSTP with LEN `op_t' words
+-   (not LEN bytes!).  Both SRCP and DSTP should be aligned for memory
+-   operations on `op_t's.  */
+-
+-void
+-_wordcopy_bwd_aligned (dstp, srcp, len)
+-     long int dstp;
+-     long int srcp;
+-     size_t len;
+-{
+-  op_t a0, a1;
+-
+-  if (len & 1)
+-  {
+-    srcp -= OPSIZ;
+-    dstp -= OPSIZ;
+-    ((op_t *) dstp)[0] = ((op_t *) srcp)[0];
+-    
+-    if (len == 1)
+-      return;
+-    len -= 1;
+-  }
+-
+-  do
+-    {
+-      srcp -= 2 * OPSIZ;
+-      dstp -= 2 * OPSIZ;
+-
+-      a1 = ((op_t *) srcp)[1];
+-      a0 = ((op_t *) srcp)[0];
+-      ((op_t *) dstp)[1] = a1;
+-      ((op_t *) dstp)[0] = a0;
+-
+-      len -= 2;
+-    }
+-  while (len != 0);
+-}
+-
+-#define bwd_align_merge(align)                                         \
+-  do                                                                   \
+-    {                                                                  \
+-      srcp -= 2 * OPSIZ;                                               \
+-      dstp -= 2 * OPSIZ;                                               \
+-      a1 = ((op_t *) srcp)[1];                                         \
+-      a0 = ((op_t *) srcp)[0];                                         \
+-      ((op_t *) dstp)[1] = MERGE (a1, align*8, a2, (64-align*8));      \
+-      ((op_t *) dstp)[0] = MERGE (a0, align*8, a1, (64-align*8));      \
+-      a2 = a0;                                                         \
+-      len -= 2;                                                                \
+-    }                                                                  \
+-  while (len != 0)
+-
+-/* _wordcopy_bwd_dest_aligned -- Copy block finishing right
+-   before SRCP to block finishing right before DSTP with LEN `op_t'
+-   words (not LEN bytes!).  DSTP should be aligned for memory
+-   operations on `op_t', but SRCP must *not* be aligned.  */
+-
+-void
+-_wordcopy_bwd_dest_aligned (dstp, srcp, len)
+-     long int dstp;
+-     long int srcp;
+-     size_t len;
+-{
+-  op_t a0, a1, a2;
+-  int sh_1, sh_2;
+-  int align;
+-
+-  /* Calculate how to shift a word read at the memory operation
+-     aligned srcp to make it aligned for copy.  */
+-
+-  align = srcp % OPSIZ;
+-  sh_1 = 8 * (srcp % OPSIZ);
+-  sh_2 = 8 * OPSIZ - sh_1;
+-
+-  /* Make srcp aligned by rounding it down to the beginning of the op_t
+-     it points in the middle of.  */
+-  srcp &= -OPSIZ;
+-  a2 = ((op_t *) srcp)[0];
+-
+-  if (len & 1)
+-  {
+-    srcp -= OPSIZ;
+-    dstp -= OPSIZ;
+-    a1 = ((op_t *) srcp)[0];
+-    ((op_t *) dstp)[0] = MERGE (a1, sh_1, a2, sh_2);
+-
+-    if (len == 1)
+-      return;
+-
+-    a2 = a1;
+-    len -= 1;
+-  }
+-
+-  bwd_align_merge (align);
+-}
+-- 
+1.8.3.1
+

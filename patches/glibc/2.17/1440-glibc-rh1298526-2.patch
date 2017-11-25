@@ -1,0 +1,25 @@
+commit 214a44f3949624623bd9f5ced82a47915259324e
+Author: Andrew Senkevich <andrew.senkevich@intel.com>
+Date:   Sat Jan 16 14:42:26 2016 +0300
+
+    Fixed typos in __memcpy_chk.
+
+        * sysdeps/x86_64/multiarch/memcpy_chk.S: Fixed typos.
+
+Index: glibc-2.17-c758a686/sysdeps/x86_64/multiarch/memcpy_chk.S
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/x86_64/multiarch/memcpy_chk.S
++++ glibc-2.17-c758a686/sysdeps/x86_64/multiarch/memcpy_chk.S
+@@ -33,9 +33,9 @@ ENTRY(__memcpy_chk)
+ #ifdef HAVE_AVX512_ASM_SUPPORT
+ 	HAS_ARCH_FEATURE (AVX512F_Usable)
+ 	jz      1f
+-#	HAS_ARCH_FEATURE (Prefer_No_VZEROUPPER)
+-#	jz      1f
+-	leaq    __memcpy_avx512_no_vzeroupper(%rip), %rax
++	HAS_ARCH_FEATURE (Prefer_No_VZEROUPPER)
++	jz      1f
++	leaq    __memcpy_chk_avx512_no_vzeroupper(%rip), %rax
+ 	ret
+ #endif
+ 1:	leaq	__memcpy_chk_sse2(%rip), %rax

@@ -1,0 +1,36 @@
+commit a6033052d08027f745867e5e346852da1959226c
+Author: Florian Weimer <fweimer@redhat.com>
+Date:   Tue Mar 29 11:27:32 2016 +0200
+
+    nss_db: Propagate ERANGE error if parse_line fails [BZ #19837]
+    
+    Reproducer (needs to run as root):
+    
+    perl -e \
+      'print "large:x:999:" . join(",", map {"user$_"} (1 .. 135))."\n"' \
+      >> /etc/group
+    cd /var/db
+    make
+    getent -s db group
+    
+    After the fix, the last command should list the "large" group.
+    
+    The magic number 135 has been chosen so that the line is shorter than
+    1024 bytes, but the pointers required to encode the member array will
+    cross the threshold, triggering the bug.
+
+Index: b/nss/nss_db/db-XXX.c
+===================================================================
+--- a/nss/nss_db/db-XXX.c
++++ b/nss/nss_db/db-XXX.c
+@@ -284,8 +284,8 @@ CONCAT(_nss_db_get,ENTNAME_r) (struct ST
+ 	    }
+ 	  if (err < 0)
+ 	    {
+-	      H_ERRNO_SET (HOST_NOT_FOUND);
+-	      status = NSS_STATUS_NOTFOUND;
++	      H_ERRNO_SET (NETDB_INTERNAL);
++	      status = NSS_STATUS_TRYAGAIN;
+ 	      break;
+ 	    }
+ 

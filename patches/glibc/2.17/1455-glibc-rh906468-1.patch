@@ -1,0 +1,542 @@
+Backport of these upstream commits:
+
+commit 29d794863cd6e03115d3670707cc873a9965ba92
+Author: Florian Weimer <fweimer@redhat.com>
+Date:   Thu Apr 14 09:17:02 2016 +0200
+
+    malloc: Run fork handler as late as possible [BZ #19431]
+    
+    Previously, a thread M invoking fork would acquire locks in this order:
+    
+      (M1) malloc arena locks (in the registered fork handler)
+      (M2) libio list lock
+    
+    A thread F invoking flush (NULL) would acquire locks in this order:
+    
+      (F1) libio list lock
+      (F2) individual _IO_FILE locks
+    
+    A thread G running getdelim would use this order:
+    
+      (G1) _IO_FILE lock
+      (G2) malloc arena lock
+    
+    After executing (M1), (F1), (G1), none of the threads can make progress.
+    
+    This commit changes the fork lock order to:
+    
+      (M'1) libio list lock
+      (M'2) malloc arena locks
+    
+    It explicitly encodes the lock order in the implementations of fork,
+    and does not rely on the registration order, thus avoiding the deadlock.
+
+commit 186fe877f3df0b84d57dfbf0386f6332c6aa69bc
+Author: Florian Weimer <fweimer@redhat.com>
+Date:   Thu Apr 14 12:53:03 2016 +0200
+
+    malloc: Add missing internal_function attributes on function definitions
+    
+    Fixes build on i386 after commit 29d794863cd6e03115d3670707cc873a9965ba92.
+
+Index: b/malloc/Makefile
+===================================================================
+--- a/malloc/Makefile
++++ b/malloc/Makefile
+@@ -28,7 +28,7 @@ tests := mallocbug tst-malloc tst-valloc
+ 	 tst-mallocstate tst-mcheck tst-mallocfork tst-trim1 \
+ 	 tst-malloc-usable \
+ 	 tst-malloc-backtrace tst-malloc-thread-exit \
+-	 tst-malloc-thread-fail
++	 tst-malloc-thread-fail tst-malloc-fork-deadlock
+ test-srcs = tst-mtrace
+ 
+ routines = malloc morecore mcheck mtrace obstack
+@@ -49,6 +49,7 @@ $(objpfx)tst-malloc-thread-fail: $(commo
+ 			       $(common-objpfx)nptl/libpthread_nonshared.a
+ $(objpfx)tst-malloc-thread-exit: $(common-objpfx)nptl/libpthread.so \
+ 			       $(common-objpfx)nptl/libpthread_nonshared.a
++$(objpfx)tst-malloc-fork-deadlock: $(shared-thread-library)
+ 
+ # These should be removed by `make clean'.
+ extra-objs = mcheck-init.o libmcheck.a
+Index: b/malloc/arena.c
+===================================================================
+--- a/malloc/arena.c
++++ b/malloc/arena.c
+@@ -162,10 +162,6 @@ static void           (*save_free_hook)
+ 					 const __malloc_ptr_t);
+ static void*        save_arena;
+ 
+-#ifdef ATFORK_MEM
+-ATFORK_MEM;
+-#endif
+-
+ /* Magic value for the thread-specific arena pointer when
+    malloc_atfork() is in use.  */
+ 
+@@ -228,14 +224,15 @@ free_atfork(void* mem, const void *calle
+ /* Counter for number of times the list is locked by the same thread.  */
+ static unsigned int atfork_recursive_cntr;
+ 
+-/* The following two functions are registered via thread_atfork() to
+-   make sure that the mutexes remain in a consistent state in the
+-   fork()ed version of a thread.  Also adapt the malloc and free hooks
+-   temporarily, because the `atfork' handler mechanism may use
+-   malloc/free internally (e.g. in LinuxThreads). */
++/* The following three functions are called around fork from a
++   multi-threaded process.  We do not use the general fork handler
++   mechanism to make sure that our handlers are the last ones being
++   called, so that other fork handlers can use the malloc
++   subsystem.  */
+ 
+-static void
+-ptmalloc_lock_all (void)
++void
++internal_function
++__malloc_fork_lock_parent (void)
+ {
+   mstate ar_ptr;
+ 
+@@ -243,7 +240,7 @@ ptmalloc_lock_all (void)
+     return;
+ 
+   /* We do not acquire free_list_lock here because we completely
+-     reconstruct free_list in ptmalloc_unlock_all2.  */
++     reconstruct free_list in __malloc_fork_unlock_child.  */
+ 
+   if (mutex_trylock(&list_lock))
+     {
+@@ -268,7 +265,7 @@ ptmalloc_lock_all (void)
+   __free_hook = free_atfork;
+   /* Only the current thread may perform malloc/free calls now.
+      save_arena will be reattached to the current thread, in
+-     ptmalloc_lock_all, so save_arena->attached_threads is not
++     __malloc_fork_lock_parent, so save_arena->attached_threads is not
+      updated.  */
+   tsd_getspecific(arena_key, save_arena);
+   tsd_setspecific(arena_key, ATFORK_ARENA_PTR);
+@@ -276,8 +273,9 @@ ptmalloc_lock_all (void)
+   ++atfork_recursive_cntr;
+ }
+ 
+-static void
+-ptmalloc_unlock_all (void)
++void
++internal_function
++__malloc_fork_unlock_parent (void)
+ {
+   mstate ar_ptr;
+ 
+@@ -286,8 +284,8 @@ ptmalloc_unlock_all (void)
+   if (--atfork_recursive_cntr != 0)
+     return;
+   /* Replace ATFORK_ARENA_PTR with save_arena.
+-     save_arena->attached_threads was not changed in ptmalloc_lock_all
+-     and is still correct.  */
++     save_arena->attached_threads was not changed in
++     __malloc_fork_lock_parent and is still correct.  */
+   tsd_setspecific(arena_key, save_arena);
+   __malloc_hook = save_malloc_hook;
+   __free_hook = save_free_hook;
+@@ -299,15 +297,9 @@ ptmalloc_unlock_all (void)
+   (void)mutex_unlock(&list_lock);
+ }
+ 
+-# ifdef __linux__
+-
+-/* In NPTL, unlocking a mutex in the child process after a
+-   fork() is currently unsafe, whereas re-initializing it is safe and
+-   does not leak resources.  Therefore, a special atfork handler is
+-   installed for the child. */
+-
+-static void
+-ptmalloc_unlock_all2 (void)
++void
++internal_function
++__malloc_fork_unlock_child (void)
+ {
+   mstate ar_ptr;
+ 
+@@ -338,12 +330,6 @@ ptmalloc_unlock_all2 (void)
+   atfork_recursive_cntr = 0;
+ }
+ 
+-# else
+-
+-#  define ptmalloc_unlock_all2 ptmalloc_unlock_all
+-
+-# endif
+-
+ #endif  /* !NO_THREADS */
+ 
+ /* Initialization routine. */
+@@ -413,7 +399,6 @@ ptmalloc_init (void)
+ 
+   tsd_key_create(&arena_key, NULL);
+   tsd_setspecific(arena_key, (void *)&main_arena);
+-  thread_atfork(ptmalloc_lock_all, ptmalloc_unlock_all, ptmalloc_unlock_all2);
+   const char *s = NULL;
+   if (__builtin_expect (_environ != NULL, 1))
+     {
+@@ -487,12 +472,6 @@ ptmalloc_init (void)
+   __malloc_initialized = 1;
+ }
+ 
+-/* There are platforms (e.g. Hurd) with a link-time hook mechanism. */
+-#ifdef thread_atfork_static
+-thread_atfork_static(ptmalloc_lock_all, ptmalloc_unlock_all, \
+-		     ptmalloc_unlock_all2)
+-#endif
+-
+ 
+ 
+ /* Managing heaps and arenas (for concurrent threads) */
+@@ -827,7 +806,8 @@ _int_new_arena(size_t size)
+      limit is reached).  At this point, some arena has to be attached
+      to two threads.  We could acquire the arena lock before list_lock
+      to make it less likely that reused_arena picks this new arena,
+-     but this could result in a deadlock with ptmalloc_lock_all.  */
++     but this could result in a deadlock with
++     __malloc_fork_lock_parent.  */
+ 
+   (void) mutex_lock (&a->mutex);
+ 
+Index: b/malloc/malloc-internal.h
+===================================================================
+--- /dev/null
++++ b/malloc/malloc-internal.h
+@@ -0,0 +1,32 @@
++/* Internal declarations for malloc, for use within libc.
++   Copyright (C) 2016 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public License as
++   published by the Free Software Foundation; either version 2.1 of the
++   License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; see the file COPYING.LIB.  If
++   not, see <http://www.gnu.org/licenses/>.  */
++
++#ifndef _MALLOC_PRIVATE_H
++#define _MALLOC_PRIVATE_H
++
++/* Called in the parent process before a fork.  */
++void __malloc_fork_lock_parent (void) internal_function attribute_hidden;
++
++/* Called in the parent process after a fork.  */
++void __malloc_fork_unlock_parent (void) internal_function attribute_hidden;
++
++/* Called in the child process after a fork.  */
++void __malloc_fork_unlock_child (void) internal_function attribute_hidden;
++
++
++#endif /* _MALLOC_PRIVATE_H */
+Index: b/malloc/malloc.c
+===================================================================
+--- a/malloc/malloc.c
++++ b/malloc/malloc.c
+@@ -291,6 +291,7 @@ __malloc_assert (const char *assertion,
+ }
+ #endif
+ 
++#include <malloc/malloc-internal.h>
+ 
+ /*
+   INTERNAL_SIZE_T is the word-size used for internal bookkeeping
+Index: b/malloc/tst-malloc-fork-deadlock.c
+===================================================================
+--- /dev/null
++++ b/malloc/tst-malloc-fork-deadlock.c
+@@ -0,0 +1,220 @@
++/* Test concurrent fork, getline, and fflush (NULL).
++   Copyright (C) 2016 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public License as
++   published by the Free Software Foundation; either version 2.1 of the
++   License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; see the file COPYING.LIB.  If
++   not, see <http://www.gnu.org/licenses/>.  */
++
++#include <sys/wait.h>
++#include <unistd.h>
++#include <errno.h>
++#include <stdio.h>
++#include <pthread.h>
++#include <stdbool.h>
++#include <stdlib.h>
++#include <malloc.h>
++#include <time.h>
++#include <string.h>
++#include <signal.h>
++
++static int do_test (void);
++#define TEST_FUNCTION do_test ()
++#include "../test-skeleton.c"
++
++enum {
++  /* Number of threads which call fork.  */
++  fork_thread_count = 4,
++  /* Number of threads which call getline (and, indirectly,
++     malloc).  */
++  read_thread_count = 8,
++};
++
++static bool termination_requested;
++
++static void *
++fork_thread_function (void *closure)
++{
++  while (!__atomic_load_n (&termination_requested, __ATOMIC_RELAXED))
++    {
++      pid_t pid = fork ();
++      if (pid < 0)
++        {
++          printf ("error: fork: %m\n");
++          abort ();
++        }
++      else if (pid == 0)
++        _exit (17);
++
++      int status;
++      if (waitpid (pid, &status, 0) < 0)
++        {
++          printf ("error: waitpid: %m\n");
++          abort ();
++        }
++      if (!WIFEXITED (status) || WEXITSTATUS (status) != 17)
++        {
++          printf ("error: waitpid returned invalid status: %d\n", status);
++          abort ();
++        }
++    }
++  return NULL;
++}
++
++static char *file_to_read;
++
++static void *
++read_thread_function (void *closure)
++{
++  FILE *f = fopen (file_to_read, "r");
++  if (f == NULL)
++    {
++      printf ("error: fopen (%s): %m\n", file_to_read);
++      abort ();
++    }
++
++  while (!__atomic_load_n (&termination_requested, __ATOMIC_RELAXED))
++    {
++      rewind (f);
++      char *line = NULL;
++      size_t line_allocated = 0;
++      ssize_t ret = getline (&line, &line_allocated, f);
++      if (ret < 0)
++        {
++          printf ("error: getline: %m\n");
++          abort ();
++        }
++      free (line);
++    }
++  fclose (f);
++
++  return NULL;
++}
++
++static void *
++flushall_thread_function (void *closure)
++{
++  while (!__atomic_load_n (&termination_requested, __ATOMIC_RELAXED))
++    if (fflush (NULL) != 0)
++      {
++        printf ("error: fflush (NULL): %m\n");
++        abort ();
++      }
++  return NULL;
++}
++
++static void
++create_threads (pthread_t *threads, size_t count, void *(*func) (void *))
++{
++  for (size_t i = 0; i < count; ++i)
++    {
++      int ret = pthread_create (threads + i, NULL, func, NULL);
++      if (ret != 0)
++        {
++          errno = ret;
++          printf ("error: pthread_create: %m\n");
++          abort ();
++        }
++    }
++}
++
++static void
++join_threads (pthread_t *threads, size_t count)
++{
++  for (size_t i = 0; i < count; ++i)
++    {
++      int ret = pthread_join (threads[i], NULL);
++      if (ret != 0)
++        {
++          errno = ret;
++          printf ("error: pthread_join: %m\n");
++          abort ();
++        }
++    }
++}
++
++/* Create a file which consists of a single long line, and assigns
++   file_to_read.  The hope is that this triggers an allocation in
++   getline which needs a lock.  */
++static void
++create_file_with_large_line (void)
++{
++  int fd = create_temp_file ("bug19431-large-line", &file_to_read);
++  if (fd < 0)
++    {
++      printf ("error: create_temp_file: %m\n");
++      abort ();
++    }
++  FILE *f = fdopen (fd, "w+");
++  if (f == NULL)
++    {
++      printf ("error: fdopen: %m\n");
++      abort ();
++    }
++  for (int i = 0; i < 50000; ++i)
++    fputc ('x', f);
++  fputc ('\n', f);
++  if (ferror (f))
++    {
++      printf ("error: fputc: %m\n");
++      abort ();
++    }
++  if (fclose (f) != 0)
++    {
++      printf ("error: fclose: %m\n");
++      abort ();
++    }
++}
++
++static int
++do_test (void)
++{
++  /* Make sure that we do not exceed the arena limit with the number
++     of threads we configured.  */
++  if (mallopt (M_ARENA_MAX, 400) == 0)
++    {
++      printf ("error: mallopt (M_ARENA_MAX) failed\n");
++      return 1;
++    }
++
++  /* Leave some room for shutting down all threads gracefully.  */
++  int timeout = 3;
++  if (timeout > TIMEOUT)
++    timeout = TIMEOUT - 1;
++
++  create_file_with_large_line ();
++
++  pthread_t fork_threads[fork_thread_count];
++  create_threads (fork_threads, fork_thread_count, fork_thread_function);
++  pthread_t read_threads[read_thread_count];
++  create_threads (read_threads, read_thread_count, read_thread_function);
++  pthread_t flushall_threads[1];
++  create_threads (flushall_threads, 1, flushall_thread_function);
++
++  struct timespec ts = {timeout, 0};
++  if (nanosleep (&ts, NULL))
++    {
++      printf ("error: error: nanosleep: %m\n");
++      abort ();
++    }
++
++  __atomic_store_n (&termination_requested, true, __ATOMIC_RELAXED);
++
++  join_threads (flushall_threads, 1);
++  join_threads (read_threads, read_thread_count);
++  join_threads (fork_threads, fork_thread_count);
++
++  free (file_to_read);
++
++  return 0;
++}
+Index: b/manual/memory.texi
+===================================================================
+--- a/manual/memory.texi
++++ b/manual/memory.texi
+@@ -1055,14 +1055,6 @@ systems that do not support @w{ISO C11}.
+ @c     _dl_addr_inside_object ok
+ @c    determine_info ok
+ @c    __rtld_lock_unlock_recursive (dl_load_lock) @aculock
+-@c   thread_atfork @asulock @aculock @acsfd @acsmem
+-@c    __register_atfork @asulock @aculock @acsfd @acsmem
+-@c     lll_lock (__fork_lock) @asulock @aculock
+-@c     fork_handler_alloc @asulock @aculock @acsfd @acsmem
+-@c      calloc dup @asulock @aculock @acsfd @acsmem
+-@c     __linkin_atfork ok
+-@c      catomic_compare_and_exchange_bool_acq ok
+-@c     lll_unlock (__fork_lock) @aculock
+ @c   *_environ @mtsenv
+ @c   next_env_entry ok
+ @c   strcspn dup ok
+Index: b/nptl/sysdeps/unix/sysv/linux/fork.c
+===================================================================
+--- a/nptl/sysdeps/unix/sysv/linux/fork.c
++++ b/nptl/sysdeps/unix/sysv/linux/fork.c
+@@ -29,7 +29,7 @@
+ #include <bits/stdio-lock.h>
+ #include <atomic.h>
+ #include <pthreadP.h>
+-
++#include <malloc/malloc-internal.h>
+ 
+ unsigned long int *__fork_generation_pointer;
+ 
+@@ -116,6 +116,11 @@ __libc_fork (void)
+ 
+   _IO_list_lock ();
+ 
++  /* Acquire malloc locks.  This needs to come last because fork
++     handlers may use malloc, and the libio list lock has an indirect
++     malloc dependency as well (via the getdelim function).  */
++  __malloc_fork_lock_parent ();
++
+ #ifndef NDEBUG
+   pid_t ppid = THREAD_GETMEM (THREAD_SELF, tid);
+ #endif
+@@ -172,6 +177,9 @@ __libc_fork (void)
+ # endif
+ #endif
+ 
++      /* Release malloc locks.  */
++      __malloc_fork_unlock_child ();
++
+       /* Reset the file list.  These are recursive mutexes.  */
+       fresetlockfiles ();
+ 
+@@ -213,6 +221,9 @@ __libc_fork (void)
+       /* Restore the PID value.  */
+       THREAD_SETMEM (THREAD_SELF, pid, parentpid);
+ 
++      /* Release malloc locks, parent process variant.  */
++      __malloc_fork_unlock_parent ();
++
+       /* We execute this even if the 'fork' call failed.  */
+       _IO_list_unlock ();
+ 

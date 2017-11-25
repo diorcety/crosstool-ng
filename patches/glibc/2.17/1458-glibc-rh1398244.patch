@@ -1,0 +1,17 @@
+2016-10-28  Tulio Magno Quites Machado Filho  <tuliom@linux.vnet.ibm.com>
+
+       [BZ #20728]
+       * sysdeps/unix/sysv/linux/powerpc/powerpc64/clone.S: Replace a
+       branch to _exit() by a function call.
+
+--- glibc-2.17-c758a686/sysdeps/unix/sysv/linux/powerpc/powerpc64/clone.S
++++ glibc-2.17-c758a686/sysdeps/unix/sysv/linux/powerpc/powerpc64/clone.S
+@@ -112,7 +112,7 @@
+ #ifdef SHARED
+ 	b	JUMPTARGET(__GI__exit)
+ #else
+-	b	JUMPTARGET(_exit)
++	bl	JUMPTARGET(_exit)
+ 	/* We won't ever get here but provide a nop so that the linker
+ 	   will insert a toc adjusting stub if necessary.  */
+ 	nop

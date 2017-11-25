@@ -1,0 +1,608 @@
+Author: Alexandre Oliva <aoliva@redhat.com>
+
+    Add malloc probes for sbrk and heap resizing.
+    
+    	* malloc/arena.c (new_heap): New memory_heap_new probe.
+    	(grow_heap): New memory_heap_more probe.
+    	(shrink_heap): New memory_heap_less probe.
+    	(heap_trim): New memory_heap_free probe.
+    	* malloc/malloc.c (sysmalloc): New memory_sbrk_more probe.
+    	(systrim): New memory_sbrk_less probe.
+    	* manual/probes.texi: Document them.
+
+    Add catch-all alloc retry probe.
+    
+    	* malloc/arena.c (arena_get_retry): Add memory_arena_retry probe.
+    	* manual/probes.texi: Document it.
+
+    Add probes for malloc retries.
+    
+    	* malloc/malloc.c (__libc_malloc): Add memory_malloc_retry probe.
+    	(__libc_realloc): Add memory_realloc_retry probe.
+    	(__libc_memalign): Add memory_memalign_retry probe.
+    	(__libc_valloc): Add memory_valloc_retry probe.
+    	(__libc_pvalloc): Add memory_pvalloc_retry probe.
+    	(__libc_calloc): Add memory_calloc_retry probe.
+    	* manual/probes.texi: Document them.
+
+    Add probes for malloc arena changes.
+    
+    	* malloc/arena.c (get_free_list): Add probe
+    	memory_arena_reuse_free_list.
+    	(reused_arena) [PER_THREAD]: Add probes memory_arena_reuse_wait
+    	and memory_arena_reuse.
+    	(arena_get2) [!PER_THREAD]: Likewise.
+    	* malloc/malloc.c (__libc_realloc) [!PER_THREAD]: Add probe
+    	memory_arena_reuse_realloc.
+    	* manual/probes.texi: Document them.
+
+    Add probes for all changes to malloc options.
+    
+    	* malloc/malloc.c (__libc_free): Add
+    	memory_mallopt_free_dyn_thresholds probe.
+    	(__libc_mallopt): Add multiple memory_mallopt probes.
+    	* manual/probes.texi: Document them.
+
+    Add first set of memory probes.
+    
+    	* malloc/malloc.c: Include stap-probe.h.
+    	(__libc_mallopt): Add memory_mallopt probe.
+    	* malloc/arena.c (_int_new_arena): Add memory_arena_new probe.
+    	* manual/probes.texi: New.
+    	* manual/Makefile (chapters): Add probes.
+    	* manual/debug.texi: Set next node.
+
+Index: glibc-2.17-c758a686/malloc/arena.c
+===================================================================
+--- glibc-2.17-c758a686/malloc/arena.c.orig
++++ glibc-2.17-c758a686/malloc/arena.c
+@@ -586,6 +586,7 @@ new_heap(size_t size, size_t top_pad)
+   h->size = size;
+   h->mprotect_size = size;
+   THREAD_STAT(stat_n_heaps++);
++  LIBC_PROBE (memory_heap_new, 2, h, h->size);
+   return h;
+ }
+ 
+@@ -611,6 +612,7 @@ grow_heap(heap_info *h, long diff)
+   }
+ 
+   h->size = new_size;
++  LIBC_PROBE (memory_heap_more, 2, h, h->size);
+   return 0;
+ }
+ 
+@@ -638,6 +640,7 @@ shrink_heap(heap_info *h, long diff)
+   /*fprintf(stderr, "shrink %p %08lx\n", h, new_size);*/
+ 
+   h->size = new_size;
++  LIBC_PROBE (memory_heap_less, 2, h, h->size);
+   return 0;
+ }
+ 
+@@ -679,6 +682,7 @@ heap_trim(heap_info *heap, size_t pad)
+       break;
+     ar_ptr->system_mem -= heap->size;
+     arena_mem -= heap->size;
++    LIBC_PROBE (memory_heap_free, 2, heap, heap->size);
+     delete_heap(heap);
+     heap = prev_heap;
+     if(!prev_inuse(p)) { /* consolidate backward */
+@@ -741,6 +745,7 @@ _int_new_arena(size_t size)
+   top(a) = (mchunkptr)ptr;
+   set_head(top(a), (((char*)h + h->size) - ptr) | PREV_INUSE);
+ 
++  LIBC_PROBE (memory_arena_new, 2, a, size);
+   tsd_setspecific(arena_key, (void *)a);
+   mutex_init(&a->mutex);
+   (void)mutex_lock(&a->mutex);
+@@ -779,6 +784,7 @@ get_free_list (void)
+ 
+       if (result != NULL)
+ 	{
++	  LIBC_PROBE (memory_arena_reuse_free_list, 1, result);
+ 	  (void)mutex_lock(&result->mutex);
+ 	  tsd_setspecific(arena_key, (void *)result);
+ 	  THREAD_STAT(++(result->stat_lock_loop));
+@@ -815,9 +821,11 @@ reused_arena (mstate avoid_arena)
+     result = result->next;
+ 
+   /* No arena available.  Wait for the next in line.  */
++  LIBC_PROBE (memory_arena_reuse_wait, 3, &result->mutex, result, avoid_arena);
+   (void)mutex_lock(&result->mutex);
+ 
+  out:
++  LIBC_PROBE (memory_arena_reuse, 2, result, avoid_arena);
+   tsd_setspecific(arena_key, (void *)result);
+   THREAD_STAT(++(result->stat_lock_loop));
+   next_to_use = result->next;
+@@ -896,6 +904,7 @@ arena_get2(mstate a_tsd, size_t size, ms
+       if (retried)
+ 	(void)mutex_unlock(&list_lock);
+       THREAD_STAT(++(a->stat_lock_loop));
++      LIBC_PROBE (memory_arena_reuse, 2, a, a_tsd);
+       tsd_setspecific(arena_key, (void *)a);
+       return a;
+     }
+@@ -908,6 +917,7 @@ arena_get2(mstate a_tsd, size_t size, ms
+      locks. */
+   if(!retried && mutex_trylock(&list_lock)) {
+     /* We will block to not run in a busy loop.  */
++    LIBC_PROBE (memory_arena_reuse_wait, 3, &list_lock, NULL, a_tsd);
+     (void)mutex_lock(&list_lock);
+ 
+     /* Since we blocked there might be an arena available now.  */
+@@ -931,6 +941,7 @@ arena_get2(mstate a_tsd, size_t size, ms
+ static mstate
+ arena_get_retry (mstate ar_ptr, size_t bytes)
+ {
++  LIBC_PROBE (memory_arena_retry, 2, bytes, ar_ptr);
+   if(ar_ptr != &main_arena) {
+     (void)mutex_unlock(&ar_ptr->mutex);
+     ar_ptr = &main_arena;
+Index: glibc-2.17-c758a686/malloc/malloc.c
+===================================================================
+--- glibc-2.17-c758a686/malloc/malloc.c.orig
++++ glibc-2.17-c758a686/malloc/malloc.c
+@@ -1884,6 +1884,8 @@ static int perturb_byte;
+ #define free_perturb(p, n) memset (p, perturb_byte & 0xff, n)
+ 
+ 
++#include <stap-probe.h>
++
+ /* ------------------- Support for multiple arenas -------------------- */
+ #include "arena.c"
+ 
+@@ -2452,8 +2454,10 @@ static void* sysmalloc(INTERNAL_SIZE_T n
+     below even if we cannot call MORECORE.
+   */
+ 
+-  if (size > 0)
++  if (size > 0) {
+     brk = (char*)(MORECORE(size));
++    LIBC_PROBE (memory_sbrk_more, 2, brk, size);
++  }
+ 
+   if (brk != (char*)(MORECORE_FAILURE)) {
+     /* Call the `morecore' hook if necessary.  */
+@@ -2753,6 +2757,8 @@ static int systrim(size_t pad, mstate av
+ 	(*hook) ();
+       new_brk = (char*)(MORECORE(0));
+ 
++      LIBC_PROBE (memory_sbrk_less, 2, new_brk, extra);
++
+       if (new_brk != (char*)MORECORE_FAILURE) {
+ 	released = (long)(current_brk - new_brk);
+ 
+@@ -2862,6 +2868,7 @@ __libc_malloc(size_t bytes)
+     return 0;
+   victim = _int_malloc(ar_ptr, bytes);
+   if(!victim) {
++    LIBC_PROBE (memory_malloc_retry, 1, bytes);
+     ar_ptr = arena_get_retry(ar_ptr, bytes);
+     if (__builtin_expect(ar_ptr != NULL, 1)) {
+       victim = _int_malloc(ar_ptr, bytes);
+@@ -2902,6 +2909,8 @@ __libc_free(void* mem)
+       {
+ 	mp_.mmap_threshold = chunksize (p);
+ 	mp_.trim_threshold = 2 * mp_.mmap_threshold;
++	LIBC_PROBE (memory_mallopt_free_dyn_thresholds, 2,
++		    mp_.mmap_threshold, mp_.trim_threshold);
+       }
+     munmap_chunk(p);
+     return;
+@@ -2981,6 +2990,7 @@ __libc_realloc(void* oldmem, size_t byte
+ #endif
+ 
+ #if !defined PER_THREAD
++  LIBC_PROBE (memory_arena_reuse_realloc, 1, ar_ptr);
+   /* As in malloc(), remember this arena for the next allocation. */
+   tsd_setspecific(arena_key, (void *)ar_ptr);
+ #endif
+@@ -2994,6 +3004,7 @@ __libc_realloc(void* oldmem, size_t byte
+   if (newp == NULL)
+     {
+       /* Try harder to allocate memory in other arenas.  */
++      LIBC_PROBE (memory_realloc_retry, 2, bytes, oldmem);
+       newp = __libc_malloc(bytes);
+       if (newp != NULL)
+ 	{
+@@ -3029,6 +3040,7 @@ __libc_memalign(size_t alignment, size_t
+     return 0;
+   p = _int_memalign(ar_ptr, alignment, bytes);
+   if(!p) {
++    LIBC_PROBE (memory_memalign_retry, 2, bytes, alignment);
+     ar_ptr = arena_get_retry (ar_ptr, bytes);
+     if (__builtin_expect(ar_ptr != NULL, 1)) {
+       p = _int_memalign(ar_ptr, alignment, bytes);
+@@ -3066,6 +3078,7 @@ __libc_valloc(size_t bytes)
+     return 0;
+   p = _int_valloc(ar_ptr, bytes);
+   if(!p) {
++    LIBC_PROBE (memory_valloc_retry, 1, bytes);
+     ar_ptr = arena_get_retry (ar_ptr, bytes);
+     if (__builtin_expect(ar_ptr != NULL, 1)) {
+       p = _int_memalign(ar_ptr, pagesz, bytes);
+@@ -3101,6 +3114,7 @@ __libc_pvalloc(size_t bytes)
+   arena_get(ar_ptr, bytes + 2*pagesz + MINSIZE);
+   p = _int_pvalloc(ar_ptr, bytes);
+   if(!p) {
++    LIBC_PROBE (memory_pvalloc_retry, 1, bytes);
+     ar_ptr = arena_get_retry (ar_ptr, bytes + 2*pagesz + MINSIZE);
+     if (__builtin_expect(ar_ptr != NULL, 1)) {
+       p = _int_memalign(ar_ptr, pagesz, rounded_bytes);
+@@ -3177,6 +3191,7 @@ __libc_calloc(size_t n, size_t elem_size
+ 	 av == arena_for_chunk(mem2chunk(mem)));
+ 
+   if (mem == 0) {
++    LIBC_PROBE (memory_calloc_retry, 1, sz);
+     av = arena_get_retry (av, sz);
+     if (__builtin_expect(av != NULL, 1)) {
+       mem = _int_malloc(av, sz);
+@@ -4695,21 +4710,29 @@ int __libc_mallopt(int param_number, int
+   /* Ensure initialization/consolidation */
+   malloc_consolidate(av);
+ 
++  LIBC_PROBE (memory_mallopt, 2, param_number, value);
++
+   switch(param_number) {
+   case M_MXFAST:
+-    if (value >= 0 && value <= MAX_FAST_SIZE) {
+-      set_max_fast(value);
+-    }
++    if (value >= 0 && value <= MAX_FAST_SIZE)
++      {
++	LIBC_PROBE (memory_mallopt_mxfast, 2, value, get_max_fast ());
++	set_max_fast(value);
++      }
+     else
+       res = 0;
+     break;
+ 
+   case M_TRIM_THRESHOLD:
++    LIBC_PROBE (memory_mallopt_trim_threshold, 3, value,
++		mp_.trim_threshold, mp_.no_dyn_threshold);
+     mp_.trim_threshold = value;
+     mp_.no_dyn_threshold = 1;
+     break;
+ 
+   case M_TOP_PAD:
++    LIBC_PROBE (memory_mallopt_top_pad, 3, value,
++		mp_.top_pad, mp_.no_dyn_threshold);
+     mp_.top_pad = value;
+     mp_.no_dyn_threshold = 1;
+     break;
+@@ -4720,33 +4743,45 @@ int __libc_mallopt(int param_number, int
+       res = 0;
+     else
+       {
++	LIBC_PROBE (memory_mallopt_mmap_threshold, 3, value,
++		    mp_.mmap_threshold, mp_.no_dyn_threshold);
+ 	mp_.mmap_threshold = value;
+ 	mp_.no_dyn_threshold = 1;
+       }
+     break;
+ 
+   case M_MMAP_MAX:
++    LIBC_PROBE (memory_mallopt_mmap_max, 3, value,
++		mp_.n_mmaps_max, mp_.no_dyn_threshold);
+     mp_.n_mmaps_max = value;
+     mp_.no_dyn_threshold = 1;
+     break;
+ 
+   case M_CHECK_ACTION:
++    LIBC_PROBE (memory_mallopt_check_action, 2, value, check_action);
+     check_action = value;
+     break;
+ 
+   case M_PERTURB:
++    LIBC_PROBE (memory_mallopt_perturb, 2, value, perturb_byte);
+     perturb_byte = value;
+     break;
+ 
+ #ifdef PER_THREAD
+   case M_ARENA_TEST:
+     if (value > 0)
+-      mp_.arena_test = value;
++      {
++	LIBC_PROBE (memory_mallopt_arena_test, 2, value, mp_.arena_test);
++	mp_.arena_test = value;
++      }
+     break;
+ 
+   case M_ARENA_MAX:
+     if (value > 0)
+-      mp_.arena_max = value;
++      {
++	LIBC_PROBE (memory_mallopt_arena_max, 2, value, mp_.arena_max);
++	mp_.arena_max = value;
++      }
+     break;
+ #endif
+   }
+Index: glibc-2.17-c758a686/manual/Makefile
+===================================================================
+--- glibc-2.17-c758a686/manual/Makefile.orig
++++ glibc-2.17-c758a686/manual/Makefile
+@@ -43,7 +43,7 @@ chapters = $(addsuffix .texi, \
+ 		       message search pattern io stdio llio filesys	\
+ 		       pipe socket terminal syslog math arith time	\
+ 		       resource setjmp signal startup process job nss	\
+-		       users sysinfo conf crypt debug)
++		       users sysinfo conf crypt debug probes)
+ add-chapters = $(wildcard $(foreach d, $(add-ons), ../$d/$d.texi))
+ appendices = lang.texi header.texi install.texi maint.texi platform.texi \
+ 	     contrib.texi
+Index: glibc-2.17-c758a686/manual/probes.texi
+===================================================================
+--- /dev/null
++++ glibc-2.17-c758a686/manual/probes.texi
+@@ -0,0 +1,257 @@
++@node Internal Probes
++@c @node Internal Probes, , Debugging Support, Top
++@c %MENU% Probes to monitor libc internal behavior
++@chapter Internal probes
++
++In order to aid in debugging and monitoring internal behavior,
++@theglibc{} exposes nearly-zero-overhead SystemTap probes marked with
++the @code{libc} provider.
++
++These probes are not part of the @glibcadj{} stable ABI, and they are
++subject to change or removal across releases.  Our only promise with
++regard to them is that, if we find a need to remove or modify the
++arguments of a probe, the modified probe will have a different name, so
++that program monitors relying on the old probe will not get unexpected
++arguments.
++
++@menu
++* Memory Allocation Probes::  Probes in the memory allocation subsystem
++@end menu
++
++@node Memory Allocation Probes
++@section Memory Allocation Probes
++
++These probes are designed to signal relatively unusual situations within
++the virtual memory subsystem of @theglibc{}.  The location and the
++availability of some probes depend on whether per-thread arenas are
++enabled (the default) or disabled at the time @theglibc{} is compiled.
++
++@deftp Probe memory_sbrk_more (void *@var{$arg1}, size_t @var{$arg2})
++This probe is triggered after the main arena is extended by calling
++@code{sbrk}.  Argument @var{$arg1} is the additional size requested to
++@code{sbrk}, and @var{$arg2} is the pointer that marks the end of the
++@code{sbrk} area, returned in response to the request.
++@end deftp
++
++@deftp Probe memory_sbrk_less (void *@var{$arg1}, size_t @var{$arg2})
++This probe is triggered after the size of the main arena is decreased by
++calling @code{sbrk}.  Argument @var{$arg1} is the size released by
++@code{sbrk} (the positive value, rather than the negative value passed
++to @code{sbrk}), and @var{$arg2} is the pointer that marks the end of
++the @code{sbrk} area, returned in response to the request.
++@end deftp
++
++@deftp Probe memory_heap_new (void *@var{$arg1}, size_t @var{$arg2})
++This probe is triggered after a new heap is @code{mmap}ed.  Argument
++@var{$arg1} is a pointer to the base of the memory area, where the
++@code{heap_info} data structure is held, and @var{$arg2} is the size of
++the heap.
++@end deftp
++
++@deftp Probe memory_heap_free (void *@var{$arg1}, size_t @var{$arg2})
++This probe is triggered @emph{before} (unlike the other sbrk and heap
++probes) a heap is completely removed via @code{munmap}.  Argument
++@var{$arg1} is a pointer to the heap, and @var{$arg2} is the size of the
++heap.
++@end deftp
++
++@deftp Probe memory_heap_more (void *@var{$arg1}, size_t @var{$arg2})
++This probe is triggered after a trailing portion of an @code{mmap}ed
++heap is extended.  Argument @var{$arg1} is a pointer to the heap, and
++@var{$arg2} is the new size of the heap.
++@end deftp
++
++@deftp Probe memory_heap_less (void *@var{$arg1}, size_t @var{$arg2})
++This probe is triggered after a trailing portion of an @code{mmap}ed
++heap is released.  Argument @var{$arg1} is a pointer to the heap, and
++@var{$arg2} is the new size of the heap.
++@end deftp
++
++@deftp Probe memory_malloc_retry (size_t @var{$arg1})
++@deftpx Probe memory_realloc_retry (size_t @var{$arg1}, void *@var{$arg2})
++@deftpx Probe memory_memalign_retry (size_t @var{$arg1}, size_t @var{$arg2})
++@deftpx Probe memory_valloc_retry (size_t @var{$arg1})
++@deftpx Probe memory_pvalloc_retry (size_t @var{$arg1})
++@deftpx Probe memory_calloc_retry (size_t @var{$arg1})
++These probes are triggered when the corresponding functions fail to
++obtain the requested amount of memory from the arena in use, before they
++call @code{arena_get_retry} to select an alternate arena in which to
++retry the allocation.  Argument @var{$arg1} is the amount of memory
++requested by the user; in the @code{calloc} case, that is the total size
++computed from both function arguments.  In the @code{realloc} case,
++@var{$arg2} is the pointer to the memory area being resized.  In the
++@code{memalign} case, @var{$arg2} is the alignment to be used for the
++request, which may be stricter than the value passed to the
++@code{memalign} function.
++
++Note that the argument order does @emph{not} match that of the
++corresponding two-argument functions, so that in all of these probes the
++user-requested allocation size is in @var{$arg1}.
++@end deftp
++
++@deftp Probe memory_arena_retry (size_t @var{$arg1}, void *@var{$arg2})
++This probe is triggered within @code{arena_get_retry} (the function
++called to select the alternate arena in which to retry an allocation
++that failed on the first attempt), before the selection of an alternate
++arena.  This probe is redundant, but much easier to use when it's not
++important to determine which of the various memory allocation functions
++is failing to allocate on the first try.  Argument @var{$arg1} is the
++same as in the function-specific probes, except for extra room for
++padding introduced by functions that have to ensure stricter alignment.
++Argument @var{$arg2} is the arena in which allocation failed.
++@end deftp
++
++@deftp Probe memory_arena_new (void *@var{$arg1}, size_t @var{$arg2})
++This probe is triggered when @code{malloc} allocates and initializes an
++additional arena (not the main arena), but before the arena is assigned
++to the running thread or inserted into the internal linked list of
++arenas.  The arena's @code{malloc_state} internal data structure is
++located at @var{$arg1}, within a newly-allocated heap big enough to hold
++at least @var{$arg2} bytes.
++@end deftp
++
++@deftp Probe memory_arena_reuse (void *@var{$arg1}, void *@var{$arg2})
++This probe is triggered when @code{malloc} has just selected an existing
++arena to reuse, and (temporarily) reserved it for exclusive use.
++Argument @var{$arg1} is a pointer to the newly-selected arena, and
++@var{$arg2} is a pointer to the arena previously used by that thread.
++
++When per-thread arenas are enabled, this occurs within
++@code{reused_arena}, right after the mutex mentioned in probe
++@code{memory_arena_reuse_wait} is acquired; argument @var{$arg1} will
++point to the same arena.  In this configuration, this will usually only
++occur once per thread.  The exception is when a thread first selected
++the main arena, but a subsequent allocation from it fails: then, and
++only then, may we switch to another arena to retry that allocations, and
++for further allocations within that thread.
++
++When per-thread arenas are disabled, this occurs within
++@code{arena_get2}, whenever the mutex for the previously-selected arena
++cannot be immediately acquired.
++@end deftp
++
++@deftp Probe memory_arena_reuse_wait (void *@var{$arg1}, void *@var{$arg2}, void *@var{$arg3})
++This probe is triggered when @code{malloc} is about to wait for an arena
++to become available for reuse.  Argument @var{$arg1} holds a pointer to
++the mutex the thread is going to wait on, @var{$arg2} is a pointer to a
++newly-chosen arena to be reused, and @var{$arg3} is a pointer to the
++arena previously used by that thread.
++
++When per-thread arenas are enabled, this occurs within
++@code{reused_arena}, when a thread first tries to allocate memory or
++needs a retry after a failure to allocate from the main arena, there
++isn't any free arena, the maximum number of arenas has been reached, and
++an existing arena was chosen for reuse, but its mutex could not be
++immediately acquired.  The mutex in @var{$arg1} is the mutex of the
++selected arena.
++
++When per-thread arenas are disabled, this occurs within
++@code{arena_get2}, when a thread first tries to allocate memory or the
++mutex of the arena it previously used could not be immediately acquired,
++and none of the existing arenas could be immediately reserved for
++exclusive use.  The mutex in @var{$arg1} is that of the list of arenas,
++and since the arena won't have been selected yet, @var{$arg2} will be
++@code{NULL}.
++@end deftp
++
++@deftp Probe memory_arena_reuse_free_list (void *@var{$arg1})
++This probe is triggered when @code{malloc} has chosen an arena that is
++in the free list for use by a thread, within the @code{get_free_list}
++function.  This probe is only available when @code{malloc} is configured
++to use per-thread arenas.  The argument @var{$arg1} holds a pointer to
++the selected arena.
++@end deftp
++
++@deftp Probe memory_arena_reuse_realloc (void *@var{$arg1})
++This probe is triggered within @code{realloc}, as the arena of the
++current thread is changed to match that in which the given address was
++allocated.  This probe is @emph{not} available when @code{malloc} is
++configured to use per-thread arenas.  The argument @var{$arg1} holds a
++pointer to the newly-selected arena.
++@end deftp
++
++@deftp Probe memory_mallopt (int @var{$arg1}, int @var{$arg2})
++This probe is triggered when function @code{mallopt} is called to change
++@code{malloc} internal configuration parameters, before any change to
++the parameters is made.  The arguments @var{$arg1} and @var{$arg2} are
++the ones passed to the @code{mallopt} function.
++@end deftp
++
++@deftp Probe memory_mallopt_mxfast (int @var{$arg1}, int @var{$arg2})
++This probe is triggered shortly after the @code{memory_mallopt} probe,
++when the parameter to be changed is @code{M_MXFAST}, and the requested
++value is in an acceptable range.  Argument @var{$arg1} is the requested
++value, and @var{$arg2} is the previous value of this @code{malloc}
++parameter.
++@end deftp
++
++@deftp Probe memory_mallopt_trim_threshold (int @var{$arg1}, int @var{$arg2}, int @var{$arg3})
++This probe is triggere shortly after the @code{memory_mallopt} probe,
++when the parameter to be changed is @code{M_TRIM_THRESHOLD}.  Argument
++@var{$arg1} is the requested value, @var{$arg2} is the previous value of
++this @code{malloc} parameter, and @var{$arg3} is nonzero if dynamic
++threshold adjustment was already disabled.
++@end deftp
++
++@deftp Probe memory_mallopt_top_pad (int @var{$arg1}, int @var{$arg2}, int @var{$arg3})
++This probe is triggered shortly after the @code{memory_mallopt} probe,
++when the parameter to be changed is @code{M_TOP_PAD}.  Argument
++@var{$arg1} is the requested value, @var{$arg2} is the previous value of
++this @code{malloc} parameter, and @var{$arg3} is nonzero if dynamic
++threshold adjustment was already disabled.
++@end deftp
++
++@deftp Probe memory_mallopt_mmap_threshold (int @var{$arg1}, int @var{$arg2}, int @var{$arg3})
++This probe is triggered shortly after the @code{memory_mallopt} probe,
++when the parameter to be changed is @code{M_MMAP_THRESHOLD}, and the
++requested value is in an acceptable range.  Argument @var{$arg1} is the
++requested value, @var{$arg2} is the previous value of this @code{malloc}
++parameter, and @var{$arg3} is nonzero if dynamic threshold adjustment
++was already disabled.
++@end deftp
++
++@deftp Probe memory_mallopt_mmap_max (int @var{$arg1}, int @var{$arg2}, int @var{$arg3})
++This probe is triggered shortly after the @code{memory_mallopt} probe,
++when the parameter to be changed is @code{M_MMAP_MAX}.  Argument
++@var{$arg1} is the requested value, @var{$arg2} is the previous value of
++this @code{malloc} parameter, and @var{$arg3} is nonzero if dynamic
++threshold adjustment was already disabled.
++@end deftp
++
++@deftp Probe memory_mallopt_check_action (int @var{$arg1}, int @var{$arg2})
++This probe is triggered shortly after the @code{memory_mallopt} probe,
++when the parameter to be changed is @code{M_CHECK_ACTION}.  Argument
++@var{$arg1} is the requested value, and @var{$arg2} is the previous
++value of this @code{malloc} parameter.
++@end deftp
++
++@deftp Probe memory_mallopt_perturb (int @var{$arg1}, int @var{$arg2})
++This probe is triggered shortly after the @code{memory_mallopt} probe,
++when the parameter to be changed is @code{M_PERTURB}.  Argument
++@var{$arg1} is the requested value, and @var{$arg2} is the previous
++value of this @code{malloc} parameter.
++@end deftp
++
++@deftp Probe memory_mallopt_arena_test (int @var{$arg1}, int @var{$arg2})
++This probe is triggered shortly after the @code{memory_mallopt} probe,
++when the parameter to be changed is @code{M_ARENA_TEST}, and the
++requested value is in an acceptable range.  Argument @var{$arg1} is the
++requested value, and @var{$arg2} is the previous value of this
++@code{malloc} parameter.  This probe is only available when per-thread
++arenas are enabled.
++@end deftp
++
++@deftp Probe memory_mallopt_arena_max (int @var{$arg1}, int @var{$arg2})
++This probe is triggered shortly after the @code{memory_mallopt} probe,
++when the parameter to be changed is @code{M_ARENA_MAX}, and the
++requested value is in an acceptable range.  Argument @var{$arg1} is the
++requested value, and @var{$arg2} is the previous value of this
++@code{malloc} parameter.  This probe is only available when per-thread
++arenas are enabled.
++@end deftp
++
++@deftp Probe memory_mallopt_free_dyn_thresholds (int @var{$arg1}, int @var{$arg2})
++This probe is triggered when function @code{free} decides to adjust the
++dynamic brk/mmap thresholds.  Argument @var{$arg1} and @var{$arg2} are
++the adjusted mmap and trim thresholds, respectively.
++@end deftp
+Index: glibc-2.17-c758a686/manual/debug.texi
+===================================================================
+--- glibc-2.17-c758a686/manual/debug.texi.orig
++++ glibc-2.17-c758a686/manual/debug.texi
+@@ -1,5 +1,5 @@
+ @node Debugging Support
+-@c @node Debugging Support, , Cryptographic Functions, Top
++@c @node Debugging Support, Internal Probes, Cryptographic Functions, Top
+ @c %MENU% Functions to help debugging applications
+ @chapter Debugging support
+ 

@@ -1,0 +1,52 @@
+From 6edf51a1d5d2f070998553f99f3a6dc90c5c2969 Mon Sep 17 00:00:00 2001
+From: Carlos Eduardo Seo <cseo@linux.vnet.ibm.com>
+Date: Wed, 19 Aug 2015 01:42:55 -0300
+Subject: [PATCH] powerpc: Sync hwcap.h with kernel
+
+Linux commit b4b56f9ecab40f3b4ef53e130c9f6663be491894 introduced
+a new HWCAP2 bit to indicate that the kernel now aborts a memory
+transaction when a syscall is made.  This patch adds that bit to
+sysdeps/powerpc/bits/hwcap.h.
+
+2015-08-26  Carlos Eduardo Seo  <cseo@linux.vnet.ibm.com>
+
+	* sysdeps/powerpc/bits/hwcap.h: Add PPC_FEATURE2_HTM_NOSC.
+	* sysdeps/powerpc/dl-procinfo.c:
+	(_dl_powerpc_cap_flags): Added descriptor for this hwcap
+	feature so it shows when LD_SHOW_AUXV=1.
+
+(cherry picked from commit 3c13f28c8eac1e5a883d1b3801314430a094fc99)
+---
+ ChangeLog                     | 7 +++++++
+ sysdeps/powerpc/bits/hwcap.h  | 2 ++
+ sysdeps/powerpc/dl-procinfo.c | 2 +-
+ 3 files changed, 10 insertions(+), 1 deletion(-)
+
+diff --git a/ChangeLog b/ChangeLog
+index d9d3659..079da2a 100644
+diff --git a/sysdeps/powerpc/bits/hwcap.h b/sysdeps/powerpc/bits/hwcap.h
+index f8c48cd..12554ca 100644
+--- a/sysdeps/powerpc/bits/hwcap.h
++++ b/sysdeps/powerpc/bits/hwcap.h
+@@ -64,3 +64,5 @@
+ #define PPC_FEATURE2_HAS_TAR       0x04000000 /* Target Address Register */
+ #define PPC_FEATURE2_HAS_VEC_CRYPTO  0x02000000  /* Target supports vector
+ 						    instruction.  */
++#define PPC_FEATURE2_HTM_NOSC	   0x01000000 /* Kernel aborts transaction
++						 when a syscall is made.  */
+diff --git a/sysdeps/powerpc/dl-procinfo.c b/sysdeps/powerpc/dl-procinfo.c
+index 6eda5d9..770c1f3 100644
+--- a/sysdeps/powerpc/dl-procinfo.c
++++ b/sysdeps/powerpc/dl-procinfo.c
+@@ -62,7 +62,7 @@ PROCINFO_CLASS const char _dl_powerpc_cap_flags[60][10]
+     "", "", "", "",
+     "", "", "", "",
+     "", "", "", "",
+-    "", "vcrypto", "tar", "isel",
++    "htm-nosc", "vcrypto", "tar", "isel",
+     "ebb", "dscr", "htm", "arch_2_07",
+   }
+ #endif
+-- 
+2.1.0
+

@@ -1,0 +1,62 @@
+commit c9bd40daaee18cf1d9824e4a7ebaebe321e0a5a8
+Author: Carlos O'Donell <carlos@redhat.com>
+Date:   Tue Jun 7 04:46:37 2016 -0400
+
+    Bug 20214: Fix linux/in6.h and netinet/in.h sync.
+    
+    In: https://sourceware.org/glibc/wiki/Synchronizing_Headers
+    we explain how we synchronize our headers with Linux kernel
+    headers.
+    
+    In order to synchronize with the Linux linux/in6.h and
+    linux/ipv6.h headers we checked for their guard macros and
+    then defined __USE_KERNEL_IPV6_DEFS and conditionalized code
+    on this macro.
+    
+    In upstream kernel 56c176c9 the _UAPI prefix was stripped and
+    this broke our synchronized headers again. We now need to check
+    for _LINUX_IN6_H and _IPV6_H, and keep checking the old versions
+    of the header guard checks for maximum backwards compatibility
+    with older Linux headers (the history is actually a bit muddled
+    here and it appears upstream linus kernel broke this 10 months
+    *before* our fix was ever applied to glibc, but without glibc
+    testing we didn't notice and distro kernels have their own
+    testing to fix this).
+    
+    This patch fixes synchronization with linux/in6.h and
+    with netinet/in.h.
+
+diff --git a/sysdeps/unix/sysv/linux/bits/in.h b/sysdeps/unix/sysv/linux/bits/in.h
+index 9bdadf3..4d70a6b 100644
+--- a/sysdeps/unix/sysv/linux/bits/in.h
++++ b/sysdeps/unix/sysv/linux/bits/in.h
+@@ -25,8 +25,14 @@
+    kernel then we will not define the IPv6 IPPROTO_* defines, in6_addr (nor the
+    defines), sockaddr_in6, or ipv6_mreq. Same for in6_ptkinfo or ip6_mtuinfo
+    in linux/ipv6.h. The ABI used by the linux-kernel and glibc match exactly.
+-   Neither the linux kernel nor glibc should break this ABI without coordination.  */
+-#if defined _UAPI_LINUX_IN6_H || defined _UAPI_IPV6_H
++   Neither the linux kernel nor glibc should break this ABI without coordination.
++   In upstream kernel 56c176c9 the _UAPI prefix was stripped so we need to check
++   for _LINUX_IN6_H and _IPV6_H now, and keep checking the old versions for
++   maximum backwards compatibility.  */
++#if defined _UAPI_LINUX_IN6_H \
++    || defined _UAPI_IPV6_H \
++    || defined _LINUX_IN6_H \
++    || defined _IPV6_H
+ /* This is not quite the same API since the kernel always defines s6_addr16 and
+    s6_addr32. This is not a violation of POSIX since POSIX says "at least the
+    following member" and that holds true.  */
+@@ -209,8 +215,10 @@ struct in_pktinfo
+ #define IPV6_TCLASS		67
+ 
+ /* Obsolete synonyms for the above.  */
+-#define IPV6_ADD_MEMBERSHIP	IPV6_JOIN_GROUP
+-#define IPV6_DROP_MEMBERSHIP	IPV6_LEAVE_GROUP
++#if !__USE_KERNEL_IPV6_DEFS
++# define IPV6_ADD_MEMBERSHIP	IPV6_JOIN_GROUP
++# define IPV6_DROP_MEMBERSHIP	IPV6_LEAVE_GROUP
++#endif
+ #define IPV6_RXHOPOPTS		IPV6_HOPOPTS
+ #define IPV6_RXDSTOPTS		IPV6_DSTOPTS
+ 

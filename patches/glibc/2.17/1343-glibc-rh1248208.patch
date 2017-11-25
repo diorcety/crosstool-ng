@@ -1,0 +1,224 @@
+commit e400f3ccd36fe91d432cc7d45b4ccc799dece763
+Author: Siddhesh Poyarekar <siddhesh@redhat.com>
+Date:   Fri Jul 24 19:13:38 2015 +0530
+
+    Use IE model for static variables in libc.so, libpthread.so and rtld
+    
+    The recently introduced TLS variables in the thread-local destructor
+    implementation (__cxa_thread_atexit_impl) used the default GD access
+    model, resulting in a call to __tls_get_addr.  This causes a deadlock
+    with recent changes to the way TLS is initialized because DTV
+    allocations are delayed and hence despite knowing the offset to the
+    variable inside its TLS block, the thread has to take the global rtld
+    lock to safely update the TLS offset.
+    
+    This causes deadlocks when a thread is instantiated and joined inside
+    a destructor of a dlopen'd DSO.  The correct long term fix is to
+    somehow not take the lock, but that will need a lot deeper change set
+    to alter the way in which the big rtld lock is used.
+    
+    Instead, this patch just eliminates the call to __tls_get_addr for the
+    thread-local variables inside libc.so, libpthread.so and rtld by
+    building all of their units with -mtls-model=initial-exec.
+    
+    There were concerns that the static storage for TLS is limited and
+    hence we should not be using it.  Additionally, dynamically loaded
+    modules may result in libc.so looking for this static storage pretty
+    late in static binaries.  Both concerns are valid when using TLSDESC
+    since that is where one may attempt to allocate a TLS block from
+    static storage for even those variables that are not IE.  They're not
+    very strong arguments for the traditional TLS model though, since it
+    assumes that the static storage would be used sparingly and definitely
+    not by default.  Hence, for now this would only theoretically affect
+    ARM architectures.
+    
+    The impact is hence limited to statically linked binaries that dlopen
+    modules that in turn load libc.so, all that on arm hardware.  It seems
+    like a small enough impact to justify fixing the larger problem that
+    currently affects everything everywhere.
+    
+    This still does not solve the original problem completely.  That is,
+    it is still possible to deadlock on the big rtld lock with a small
+    tweak to the test case attached to this patch.  That problem is
+    however not a regression in 2.22 and hence could be tackled as a
+    separate project.  The test case is picked up as is from Alex's patch.
+    
+    This change has been tested to verify that it does not cause any
+    issues on x86_64.
+    
+    ChangeLog:
+    
+    	[BZ #18457]
+    	* nptl/Makefile (tests): New test case tst-join7.
+    	(modules-names): New test case module tst-join7mod.
+    	* nptl/tst-join7.c: New file.
+    	* nptl/tst-join7mod.c: New file.
+    	* Makeconfig (tls-model): Pass -ftls-model=initial-exec for
+    	all translation units in libc.so, libpthread.so and rtld.
+
+diff --git a/nptl/Makefile b/nptl/Makefile
+index 140f063..aaca0a4 100644
+--- a/nptl/Makefile
++++ b/nptl/Makefile
+@@ -245,7 +245,7 @@ tests = tst-typesizes \
+ 	tst-basic7 \
+ 	tst-kill1 tst-kill2 tst-kill3 tst-kill4 tst-kill5 tst-kill6 \
+ 	tst-raise1 \
+-	tst-join1 tst-join2 tst-join3 tst-join4 tst-join5 tst-join6 \
++	tst-join1 tst-join2 tst-join3 tst-join4 tst-join5 tst-join6 tst-join7 \
+ 	tst-detach1 \
+ 	tst-eintr1 tst-eintr2 tst-eintr3 tst-eintr4 tst-eintr5 \
+ 	tst-tsd1 tst-tsd2 tst-tsd3 tst-tsd4 tst-tsd5 tst-tsd6 \
+@@ -327,7 +327,8 @@ endif
+ modules-names = tst-atfork2mod tst-tls3mod tst-tls4moda tst-tls4modb \
+ 		tst-tls5mod tst-tls5moda tst-tls5modb tst-tls5modc \
+ 		tst-tls5modd tst-tls5mode tst-tls5modf tst-stack4mod \
+-		tst-_res1mod1 tst-_res1mod2 tst-execstack-mod tst-fini1mod
++		tst-_res1mod1 tst-_res1mod2 tst-execstack-mod tst-fini1mod \
++		tst-join7mod
+ extra-test-objs += $(addsuffix .os,$(strip $(modules-names))) tst-cleanup4aux.o
+ test-extras += $(modules-names) tst-cleanup4aux
+ test-modules = $(addprefix $(objpfx),$(addsuffix .so,$(modules-names)))
+@@ -532,6 +533,11 @@ $(objpfx)tst-tls6.out: tst-tls6.sh $(objpfx)tst-tls5 \
+ 		    $(rtld-installed-name) '$(test-wrapper-env)'
+ endif
+ 
++$(objpfx)tst-join7: $(libdl) $(shared-thread-library)
++$(objpfx)tst-join7.out: $(objpfx)tst-join7mod.so
++$(objpfx)tst-join7mod.so: $(shared-thread-library)
++LDFLAGS-tst-join7mod.so = -Wl,-soname,tst-join7mod.so
++
+ $(objpfx)tst-dlsym1: $(libdl) $(shared-thread-library)
+ 
+ $(objpfx)tst-fini1: $(shared-thread-library) $(objpfx)tst-fini1mod.so
+diff --git a/nptl/tst-join7.c b/nptl/tst-join7.c
+new file mode 100644
+index 0000000..439d0fc
+--- /dev/null
++++ b/nptl/tst-join7.c
+@@ -0,0 +1,46 @@
++/* Verify that TLS access in separate thread in a dlopened library does not
++   deadlock.
++   Copyright (C) 2015 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <dlfcn.h>
++
++/* When one dynamically loads a module, which spawns a thread to perform some
++   activities, it could be possible that TLS storage is accessed for the first
++   time in that thread.  This results in an allocation request within the
++   thread, which could result in an attempt to take the rtld load_lock.  This
++   is a problem because it would then deadlock with the dlopen (which owns the
++   lock), if the main thread is waiting for the spawned thread to exit.  We can
++   at least ensure that this problem does not occur due to accesses within
++   libc.so, by marking TLS variables within libc.so as IE.  The problem of an
++   arbitrary variable being accessed and constructed within such a thread still
++   exists but this test case does not verify that.  */
++
++int
++do_test (void)
++{
++  void *f = dlopen ("tst-join7mod.so", RTLD_NOW | RTLD_GLOBAL);
++  if (f)
++    dlclose (f);
++  else
++    return 1;
++
++  return 0;
++}
++
++#define TEST_FUNCTION do_test ()
++#include "../test-skeleton.c"
+diff --git a/nptl/tst-join7mod.c b/nptl/tst-join7mod.c
+new file mode 100644
+index 0000000..92bb381
+--- /dev/null
++++ b/nptl/tst-join7mod.c
+@@ -0,0 +1,61 @@
++/* Verify that TLS access in separate thread in a dlopened library does not
++   deadlock - the module.
++   Copyright (C) 2015 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <stdio.h>
++#include <pthread.h>
++#include <atomic.h>
++
++static pthread_t th;
++static int running = 1;
++
++static void *
++test_run (void *p)
++{
++  while (atomic_load_relaxed (&running))
++    printf ("Test running\n");
++  printf ("Test finished\n");
++  return NULL;
++}
++
++static void __attribute__ ((constructor))
++do_init (void)
++{
++  int ret = pthread_create (&th, NULL, test_run, NULL);
++
++  if (ret != 0)
++    {
++      printf ("failed to create thread: %s (%d)\n", strerror (ret), ret);
++      exit (1);
++    }
++}
++
++static void __attribute__ ((destructor))
++do_end (void)
++{
++  atomic_store_relaxed (&running, 0);
++  int ret = pthread_join (th, NULL);
++
++  if (ret != 0)
++    {
++      printf ("pthread_join: %s(%d)\n", strerror (ret), ret);
++      exit (1);
++    }
++
++  printf ("Thread joined\n");
++}
+diff -pruN a/string/strerror_l.c b/string/strerror_l.c
+--- a/string/strerror_l.c
++++ b/string/strerror_l.c
+@@ -23,7 +23,7 @@
+ #include <sys/param.h>
+ 
+ 
+-static __thread char *last_value;
++static __thread char *last_value attribute_tls_model_ie;
+ 
+ 
+ static const char *

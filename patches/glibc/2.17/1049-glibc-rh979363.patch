@@ -1,0 +1,158 @@
+diff --git glibc-2.17-c758a686/libio/fileops.c glibc-2.17-c758a686/libio/fileops.c
+index 61b61b3..5f3dae7 100644
+--- glibc-2.17-c758a686/libio/fileops.c
++++ glibc-2.17-c758a686/libio/fileops.c
+@@ -1245,13 +1245,12 @@ _IO_new_file_write (f, data, n)
+      _IO_ssize_t n;
+ {
+   _IO_ssize_t to_do = n;
+-  _IO_ssize_t count = 0;
+   while (to_do > 0)
+     {
+-      count = (__builtin_expect (f->_flags2
+-				 & _IO_FLAGS2_NOTCANCEL, 0)
+-	       ? write_not_cancel (f->_fileno, data, to_do)
+-	       : write (f->_fileno, data, to_do));
++      _IO_ssize_t count = (__builtin_expect (f->_flags2
++					     & _IO_FLAGS2_NOTCANCEL, 0)
++			   ? write_not_cancel (f->_fileno, data, to_do)
++			   : write (f->_fileno, data, to_do));
+       if (count < 0)
+ 	{
+ 	  f->_flags |= _IO_ERR_SEEN;
+@@ -1263,7 +1262,7 @@ _IO_new_file_write (f, data, n)
+   n -= to_do;
+   if (f->_offset >= 0)
+     f->_offset += n;
+-  return count < 0 ? count : n;
++  return n;
+ }
+
+ _IO_size_t
+@@ -1323,13 +1322,11 @@ _IO_new_file_xsputn (f, data, n)
+       _IO_size_t block_size, do_write;
+       /* Next flush the (full) buffer. */
+       if (_IO_OVERFLOW (f, EOF) == EOF)
+-	/* If nothing else has to be written or nothing has been written, we
+-	   must not signal the caller that the call was even partially
+-	   successful.  */
+-	return (to_do == 0 || to_do == n) ? EOF : n - to_do;
++	/* If nothing else has to be written we must not signal the
++	   caller that everything has been written.  */
++	return to_do == 0 ? EOF : n - to_do;
+
+-      /* Try to maintain alignment: write a whole number of blocks.
+-	 dont_write is what gets left over. */
++      /* Try to maintain alignment: write a whole number of blocks.  */
+       block_size = f->_IO_buf_end - f->_IO_buf_base;
+       do_write = to_do - (block_size >= 128 ? to_do % block_size : 0);
+
+diff --git glibc-2.17-c758a686/libio/iofwrite.c glibc-2.17-c758a686/libio/iofwrite.c
+index 81596a6..66542ea 100644
+--- glibc-2.17-c758a686/libio/iofwrite.c
++++ glibc-2.17-c758a686/libio/iofwrite.c
+@@ -42,12 +42,12 @@ _IO_fwrite (buf, size, count, fp)
+   if (_IO_vtable_offset (fp) != 0 || _IO_fwide (fp, -1) == -1)
+     written = _IO_sputn (fp, (const char *) buf, request);
+   _IO_release_lock (fp);
+-  /* We are guaranteed to have written all of the input, none of it, or
+-     some of it.  */
+-  if (written == request)
++  /* We have written all of the input in case the return value indicates
++     this or EOF is returned.  The latter is a special case where we
++     simply did not manage to flush the buffer.  But the data is in the
++     buffer and therefore written as far as fwrite is concerned.  */
++  if (written == request || written == EOF)
+     return count;
+-  else if (written == EOF)
+-    return 0;
+   else
+     return written / size;
+ }
+diff --git glibc-2.17-c758a686/libio/iofwrite_u.c glibc-2.17-c758a686/libio/iofwrite_u.c
+index 4a9d6ca..18dc6d0 100644
+--- glibc-2.17-c758a686/libio/iofwrite_u.c
++++ glibc-2.17-c758a686/libio/iofwrite_u.c
+@@ -44,12 +44,12 @@ fwrite_unlocked (buf, size, count, fp)
+   if (_IO_fwide (fp, -1) == -1)
+     {
+       written = _IO_sputn (fp, (const char *) buf, request);
+-      /* We are guaranteed to have written all of the input, none of it, or
+-	 some of it.  */
+-      if (written == request)
++      /* We have written all of the input in case the return value indicates
++	 this or EOF is returned.  The latter is a special case where we
++	 simply did not manage to flush the buffer.  But the data is in the
++	 buffer and therefore written as far as fwrite is concerned.  */
++      if (written == request || written == EOF)
+ 	return count;
+-      else if (written == EOF)
+-	return 0;
+     }
+
+   return written / size;
+diff --git glibc-2.17-c758a686/libio/iopadn.c glibc-2.17-c758a686/libio/iopadn.c
+index cc93c0f..5ebbcf4 100644
+--- glibc-2.17-c758a686/libio/iopadn.c
++++ glibc-2.17-c758a686/libio/iopadn.c
+@@ -59,7 +59,7 @@ _IO_padn (fp, pad, count)
+       w = _IO_sputn (fp, padptr, PADSIZE);
+       written += w;
+       if (w != PADSIZE)
+-	return w == EOF ? w : written;
++	return written;
+     }
+
+   if (i > 0)
+diff --git glibc-2.17-c758a686/libio/iowpadn.c glibc-2.17-c758a686/libio/iowpadn.c
+index d94db71..5600f37 100644
+--- glibc-2.17-c758a686/libio/iowpadn.c
++++ glibc-2.17-c758a686/libio/iowpadn.c
+@@ -65,7 +65,7 @@ _IO_wpadn (fp, pad, count)
+       w = _IO_sputn (fp, (char *) padptr, PADSIZE);
+       written += w;
+       if (w != PADSIZE)
+-	return w == EOF ? w : written;
++	return written;
+     }
+
+   if (i > 0)
+diff --git glibc-2.17-c758a686/stdio-common/vfprintf.c glibc-2.17-c758a686/stdio-common/vfprintf.c
+index c8bcf5a..61d9dc2 100644
+--- glibc-2.17-c758a686/stdio-common/vfprintf.c
++++ glibc-2.17-c758a686/stdio-common/vfprintf.c
+@@ -90,13 +90,13 @@
+   do {									      \
+     if (width > 0)							      \
+       {									      \
+-	unsigned int d = _IO_padn (s, (Padchar), width);		      \
+-	if (__builtin_expect (d == EOF, 0))				      \
++	_IO_ssize_t written = _IO_padn (s, (Padchar), width);		      \
++	if (__glibc_unlikely (written != width))			      \
+ 	  {								      \
+ 	    done = -1;							      \
+ 	    goto all_done;						      \
+ 	  }								      \
+-	done_add (d);							      \
++	done_add (written);						      \
+       }									      \
+   } while (0)
+ # define PUTC(C, F)	_IO_putc_unlocked (C, F)
+@@ -119,13 +119,13 @@
+   do {									      \
+     if (width > 0)							      \
+       {									      \
+-	unsigned int d = _IO_wpadn (s, (Padchar), width);		      \
+-	if (__builtin_expect (d == EOF, 0))				      \
++	_IO_ssize_t written = _IO_wpadn (s, (Padchar), width);		      \
++	if (__glibc_unlikely (written != width))			      \
+ 	  {								      \
+ 	    done = -1;							      \
+ 	    goto all_done;						      \
+ 	  }								      \
+-	done_add (d);							      \
++	done_add (written);						      \
+       }									      \
+   } while (0)
+ # define PUTC(C, F)	_IO_putwc_unlocked (C, F)
+

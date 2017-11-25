@@ -1,0 +1,45 @@
+From 1aa79fbb9921281a8aedfe3eea1f273406b5f24c Mon Sep 17 00:00:00 2001
+From: Rajalakshmi Srinivasaraghavan <raji@linux.vnet.ibm.com>
+Date: Wed, 30 Jul 2014 11:23:08 -0500
+Subject: [PATCH] Fix cproj handling of (finite, NaN) arguments (bug 15531).
+
+commit c980f2f4fe0f5d301f706017a1f7e4e942193ec0
+Author: Joseph Myers <joseph@codesourcery.com>
+Date:   Tue Aug 20 19:41:15 2013 +0000
+
+    Fix cproj handling of (finite, NaN) arguments (bug 15531).
+
+	* math/s_cprojf.c (__cprojf): Only return an infinity if one part of
+	argument is infinite.
+
+This patch is added so as to compile isnan multiarch implementation
+successfully since __GI___isnanf is missing.This wll be fixed later in master.
+---
+ math/s_cprojf.c | 6 ++----
+ 1 file changed, 2 insertions(+), 4 deletions(-)
+
+diff --git glibc-2.17-c758a686/math/s_cprojf.c glibc-2.17-c758a686/math/s_cprojf.c
+index 6cbc93b..a0f0af9 100644
+--- glibc-2.17-c758a686/math/s_cprojf.c
++++ glibc-2.17-c758a686/math/s_cprojf.c
+@@ -1,5 +1,5 @@
+ /* Compute projection of complex float value to Riemann sphere.
+-   Copyright (C) 1997, 1999, 2010 Free Software Foundation, Inc.
++   Copyright (C) 1997-2014 Free Software Foundation, Inc.
+    This file is part of the GNU C Library.
+    Contributed by Ulrich Drepper <drepper@cygnus.com>, 1997.
+ 
+@@ -24,9 +24,7 @@
+ __complex__ float
+ __cprojf (__complex__ float x)
+ {
+-  if (isnan (__real__ x) && isnan (__imag__ x))
+-    return x;
+-  else if (!isfinite (__real__ x) || !isfinite (__imag__ x))
++  if (__isinf_nsf (__real__ x) || __isinf_nsf (__imag__ x))
+     {
+       __complex__ float res;
+ 
+-- 
+1.8.3.1
+

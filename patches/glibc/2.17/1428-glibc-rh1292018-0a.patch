@@ -1,0 +1,423 @@
+Required to get access to _rtld_global_ro@@GLIBC_PRIVATE
+since it's only available from ld.so.
+
+commit fab7ce3f5b4060bf62659e8b58529de4156b5a2f
+Author: Joseph Myers <joseph@codesourcery.com>
+Date:   Fri May 31 16:16:33 2013 +0000
+
+    Link extra-libs consistently with libc and ld.so.
+
+Index: glibc-2.17-c758a686/Makefile
+===================================================================
+--- glibc-2.17-c758a686.orig/Makefile
++++ glibc-2.17-c758a686/Makefile
+@@ -127,6 +127,9 @@ lib: $(common-objpfx)libc.so
+ 
+ lib: $(common-objpfx)linkobj/libc.so
+ 
++# Do not filter ld.so out of libc.so link.
++$(common-objpfx)linkobj/libc.so: link-libc-deps = # empty
++
+ $(common-objpfx)linkobj/libc.so: $(elfobjdir)/soinit.os \
+ 				 $(common-objpfx)linkobj/libc_pic.a \
+ 				 $(elfobjdir)/sofini.os \
+Index: glibc-2.17-c758a686/Makerules
+===================================================================
+--- glibc-2.17-c758a686.orig/Makerules
++++ glibc-2.17-c758a686/Makerules
+@@ -470,9 +470,10 @@ link-libc-deps = $(common-objpfx)libc.so
+ # This must come after the installation rules so Make doesn't try to
+ # build shared libraries in place from the installed *_pic.a files.
+ # $(LDLIBS-%.so) may contain -l switches to generate run-time dependencies
+-# on other shared objects.
+-lib%.so: lib%_pic.a $(+preinit) $(+postinit)
+-	$(build-shlib)
++# on other shared objects.  The linking with libc and ld.so is intended
++# to be as similar as possible to a default link with an installed libc.
++lib%.so: lib%_pic.a $(+preinit) $(+postinit) $(+interp) $(link-libc-deps)
++	$(build-shlib) $(link-libc-args)
+ 
+ define build-shlib-helper
+ $(LINK.o) -shared $(static-libgcc) -Wl,-O1 $(sysdep-LDFLAGS) \
+@@ -558,7 +559,8 @@ endef
+ 
+ build-module-helper-objlist = \
+ 	$(patsubst %_pic.a,$(whole-archive) %_pic.a $(no-whole-archive),\
+-		   $(filter-out %.lds $(map-file) $(+preinit) $(+postinit),$^))
++		   $(filter-out %.lds $(map-file) $(+preinit) $(+postinit) \
++				$(link-libc-deps),$^))
+ 
+ build-module-objlist = $(build-module-helper-objlist) $(LDLIBS-$(@F:%.so=%).so)
+ build-shlib-objlist = $(build-module-helper-objlist) \
+@@ -601,6 +603,9 @@ generated += libc_pic.opts libc_pic.os.c
+ libc_pic_clean := .clean
+ endif
+ 
++# Do not filter ld.so out of libc.so link.
++$(common-objpfx)libc.so: link-libc-deps = # empty
++
+ # Use our own special initializer and finalizer files for libc.so.
+ $(common-objpfx)libc.so: $(elfobjdir)/soinit.os \
+ 			 $(common-objpfx)libc_pic.os$(libc_pic_clean) \
+@@ -660,8 +665,7 @@ include $(patsubst %,$(..)extra-modules.
+ 
+ extra-modules-build := $(filter-out $(modules-names-nobuild),$(modules-names))
+ $(extra-modules-build:%=$(objpfx)%.so): $(objpfx)%.so: \
+-		$(objpfx)%.os $(shlib-lds) \
+-		$(common-objpfx)libc.so $(common-objpfx)libc_nonshared.a
++		$(objpfx)%.os $(shlib-lds) $(link-libs-deps)
+ 	$(build-module)
+ endif
+ 
+Index: glibc-2.17-c758a686/crypt/Makefile
+===================================================================
+--- glibc-2.17-c758a686.orig/crypt/Makefile
++++ glibc-2.17-c758a686/crypt/Makefile
+@@ -72,8 +72,3 @@ endif
+ ifeq (yes,$(build-bounded))
+ $(tests:%=$(objpfx)%-bp): $(objpfx)libcrypt_b.a
+ endif
+-
+-# Depend on libc.so so a DT_NEEDED is generated in the shared objects.
+-# This ensures they will load libc.so for needed symbols if loaded by
+-# a statically-linked program that hasn't already loaded it.
+-$(objpfx)libcrypt.so: $(common-objpfx)libc.so $(common-objpfx)libc_nonshared.a
+Index: glibc-2.17-c758a686/debug/Makefile
+===================================================================
+--- glibc-2.17-c758a686.orig/debug/Makefile
++++ glibc-2.17-c758a686/debug/Makefile
+@@ -159,13 +159,3 @@ $(objpfx)xtrace: xtrace.sh
+ 	    -e 's|@PKGVERSION@|$(PKGVERSION)|' \
+ 	    -e 's|@REPORT_BUGS_TO@|$(REPORT_BUGS_TO)|' $^ > $@.new \
+ 	&& rm -f $@ && mv $@.new $@ && chmod +x $@
+-
+-# Depend on libc.so so a DT_NEEDED is generated in the shared objects.
+-# This ensures they will load libc.so for needed symbols if loaded by
+-# a statically-linked program that hasn't already loaded it.
+-$(objpfx)libSegFault.so: $(common-objpfx)libc.so \
+-			 $(common-objpfx)libc_nonshared.a \
+-			 $(elf-objpfx)$(rtld-installed-name)
+-$(objpfx)libpcprofile.so: $(common-objpfx)libc.so \
+-			  $(common-objpfx)libc_nonshared.a \
+-			  $(elf-objpfx)$(rtld-installed-name)
+Index: glibc-2.17-c758a686/dlfcn/Makefile
+===================================================================
+--- glibc-2.17-c758a686.orig/dlfcn/Makefile
++++ glibc-2.17-c758a686/dlfcn/Makefile
+@@ -117,16 +117,9 @@ $(objpfx)bug-atexit1.out: $(objpfx)bug-a
+ $(objpfx)bug-atexit2: $(libdl)
+ $(objpfx)bug-atexit2.out: $(objpfx)bug-atexit2-lib.so
+ 
+-LDLIBS-bug-atexit3-lib.so = -lstdc++ -lgcc_eh $(elfobjdir)/ld.so \
+-			    $(common-objpfx)libc_nonshared.a
++LDLIBS-bug-atexit3-lib.so = -lstdc++ -lgcc_eh
+ $(objpfx)bug-atexit3: $(libdl)
+ $(objpfx)bug-atexit3.out: $(objpfx)bug-atexit3-lib.so
+ 
+ $(objpfx)tst-rec-dlopen: $(libdl)
+ $(objpfx)tst-rec-dlopen.out: $(objpfx)moddummy1.so $(objpfx)moddummy2.so
+-
+-# Depend on libc.so so a DT_NEEDED is generated in the shared objects.
+-# This ensures they will load libc.so for needed symbols if loaded by
+-# a statically-linked program that hasn't already loaded it.
+-$(objpfx)libdl.so: $(common-objpfx)libc.so $(common-objpfx)libc_nonshared.a \
+-		   $(elfobjdir)/ld.so
+Index: glibc-2.17-c758a686/hesiod/Makefile
+===================================================================
+--- glibc-2.17-c758a686.orig/hesiod/Makefile
++++ glibc-2.17-c758a686/hesiod/Makefile
+@@ -33,12 +33,7 @@ libnss_hesiod-inhibit-o	= $(filter-out .
+ 
+ include ../Rules
+ 
+-# Depend on libc.so so a DT_NEEDED is generated in the shared objects.
+-# This ensures they will load libc.so for needed symbols if loaded by
+-# a statically-linked program that hasn't already loaded it.
+-# The Hesiod NSS modules also needs the resolver and some help from
++# The Hesiod NSS module also needs the resolver and some help from
+ # the file service.
+ $(objpfx)libnss_hesiod.so: $(common-objpfx)resolv/libresolv.so \
+-			   $(common-objpfx)nss/libnss_files.so \
+-			   $(common-objpfx)libc.so \
+-			   $(common-objpfx)libc_nonshared.a
++			   $(common-objpfx)nss/libnss_files.so
+Index: glibc-2.17-c758a686/iconvdata/extra-module.mk
+===================================================================
+--- glibc-2.17-c758a686.orig/iconvdata/extra-module.mk
++++ glibc-2.17-c758a686/iconvdata/extra-module.mk
+@@ -4,16 +4,9 @@ extra-modules-left := $(strip $(filter-o
+ extra-objs := $(extra-objs) $(patsubst %,%.os,$($(mod)-routines))
+ 
+ $(objpfx)$(mod).so: $(addprefix $(objpfx),$(addsuffix .os,$($(mod)-routines)))\
+-		    $(shlib-lds)
++		    $(shlib-lds) $(link-libc-deps)
+ 	$(build-module-asneeded)
+ 
+-# Depend on libc.so so a DT_NEEDED is generated in the shared objects.
+-# This ensures they will load libc.so for needed symbols if loaded by
+-# a statically-linked program that hasn't already loaded it.
+-$(objpfx)$(mod).so: $(common-objpfx)libc.so \
+-	$(common-objpfx)/elf/ld.so \
+-	$(common-objpfx)libc_nonshared.a
+-
+ ifneq (,$(extra-modules-left))
+ include extra-module.mk
+ endif
+Index: glibc-2.17-c758a686/libidn/Makefile
+===================================================================
+--- glibc-2.17-c758a686.orig/libidn/Makefile
++++ glibc-2.17-c758a686/libidn/Makefile
+@@ -33,5 +33,3 @@ include $(..)Makeconfig
+ libcidn-inhibit-o = $(filter-out .os,$(object-suffixes))
+ 
+ include $(..)Rules
+-
+-$(objpfx)libcidn.so: $(common-objpfx)libc.so $(common-objpfx)libc_nonshared.a
+Index: glibc-2.17-c758a686/locale/Makefile
+===================================================================
+--- glibc-2.17-c758a686.orig/locale/Makefile
++++ glibc-2.17-c758a686/locale/Makefile
+@@ -99,9 +99,3 @@ cpp-srcs-left := $(localedef-modules) $(
+ 		 $(lib-modules)
+ lib := locale-programs
+ include $(patsubst %,$(..)cppflags-iterator.mk,$(cpp-srcs-left))
+-
+-# Depend on libc.so so a DT_NEEDED is generated in the shared objects.
+-# This ensures they will load libc.so for needed symbols if loaded by
+-# a statically-linked program that hasn't already loaded it.
+-$(objpfx)libBrokenLocale.so: $(common-objpfx)libc.so \
+-			     $(common-objpfx)libc_nonshared.a
+Index: glibc-2.17-c758a686/login/Makefile
+===================================================================
+--- glibc-2.17-c758a686.orig/login/Makefile
++++ glibc-2.17-c758a686/login/Makefile
+@@ -76,8 +76,3 @@ endif
+ $(inst_libexecdir)/pt_chown: $(objpfx)pt_chown $(+force)
+ 	$(make-target-directory)
+ 	-$(INSTALL_PROGRAM) -m 4755 -o root $< $@
+-
+-# Depend on libc.so so a DT_NEEDED is generated in the shared objects.
+-# This ensures they will load libc.so for needed symbols if loaded by
+-# a statically-linked program that hasn't already loaded it.
+-$(objpfx)libutil.so: $(common-objpfx)libc.so $(common-objpfx)libc_nonshared.a
+Index: glibc-2.17-c758a686/malloc/Makefile
+===================================================================
+--- glibc-2.17-c758a686.orig/malloc/Makefile
++++ glibc-2.17-c758a686/malloc/Makefile
+@@ -151,7 +151,7 @@ $(objpfx)memusage: memusage.sh
+ 
+ 
+ # The implementation uses `dlsym'
+-$(objpfx)libmemusage.so: $(common-objpfx)dlfcn/libdl.so $(elfobjdir)/ld.so
++$(objpfx)libmemusage.so: $(common-objpfx)dlfcn/libdl.so
+ 
+ # Extra dependencies
+ $(foreach o,$(all-object-suffixes),$(objpfx)malloc$(o)): arena.c hooks.c
+Index: glibc-2.17-c758a686/math/Makefile
+===================================================================
+--- glibc-2.17-c758a686.orig/math/Makefile
++++ glibc-2.17-c758a686/math/Makefile
+@@ -203,8 +203,3 @@ gmp-objs = $(patsubst %,$(common-objpfx)
+ $(objpfx)atest-exp: $(gmp-objs)
+ $(objpfx)atest-sincos: $(gmp-objs)
+ $(objpfx)atest-exp2: $(gmp-objs)
+-
+-# Depend on libc.so so a DT_NEEDED is generated in the shared objects.
+-# This ensures they will load libc.so for needed symbols if loaded by
+-# a statically-linked program that hasn't already loaded it.
+-$(objpfx)libm.so: $(common-objpfx)libc.so $(common-objpfx)libc_nonshared.a
+Index: glibc-2.17-c758a686/nis/Makefile
+===================================================================
+--- glibc-2.17-c758a686.orig/nis/Makefile
++++ glibc-2.17-c758a686/nis/Makefile
+@@ -77,12 +77,12 @@ $(objpfx)libnss_nis.so: $(objpfx)libnsl.
+ 			$(common-objpfx)nss/libnss_files.so
+ $(objpfx)libnss_nisplus.so: $(objpfx)libnsl.so$(libnsl.so-version)
+ 
+-# Depend on libc.so so a DT_NEEDED is generated in the shared objects.
+-# This ensures they will load libc.so for needed symbols if loaded by
+-# a statically-linked program that hasn't already loaded it.
+ libnsl-libc = $(common-objpfx)linkobj/libc.so
+-$(services:%=$(objpfx)libnss_%.so) $(objpfx)libnsl.so: $(libnsl-libc) \
+-					       $(common-objpfx)libc_nonshared.a
++# Target-specific variable setting to link objects using deprecated
++# RPC interfaces with the version of libc.so that makes them available
++# for new links:
++$(services:%=$(objpfx)libnss_%.so) $(objpfx)libnsl.so: \
++  libc-for-link = $(libnsl-libc)
+ 
+ 
+ ifeq ($(build-shared),yes)
+Index: glibc-2.17-c758a686/nptl/Makefile
+===================================================================
+--- glibc-2.17-c758a686.orig/nptl/Makefile
++++ glibc-2.17-c758a686/nptl/Makefile
+@@ -530,14 +530,6 @@ $(objpfx)libpthread.so: $(addprefix $(ob
+ $(objpfx)libpthread.so: +preinit += $(addprefix $(objpfx),$(crti-objs))
+ $(objpfx)libpthread.so: +postinit += $(addprefix $(objpfx),$(crtn-objs))
+ 
+-# Depend on libc.so so a DT_NEEDED is generated in the shared objects.
+-# This ensures they will load libc.so for needed symbols if loaded by
+-# a statically-linked program that hasn't already loaded it.
+-# Depend on ld.so too to get proper versions of ld.so symbols.
+-$(objpfx)libpthread.so: $(common-objpfx)libc.so \
+-			$(common-objpfx)libc_nonshared.a \
+-			$(elfobjdir)/ld.so
+-
+ # Make sure we link with the thread library.
+ ifeq ($(build-shared),yes)
+ $(addprefix $(objpfx), \
+Index: glibc-2.17-c758a686/nptl_db/Makefile
+===================================================================
+--- glibc-2.17-c758a686.orig/nptl_db/Makefile
++++ glibc-2.17-c758a686/nptl_db/Makefile
+@@ -51,12 +51,6 @@ libthread_db.so-no-z-defs = yes
+ 
+ include ../Rules
+ 
+-# Depend on libc.so so a DT_NEEDED is generated in the shared objects.
+-# This ensures they will load libc.so for needed symbols if loaded by
+-# a statically-linked program that hasn't already loaded it.
+-$(objpfx)libthread_db.so: $(common-objpfx)libc.so \
+-			  $(common-objpfx)libc_nonshared.a
+-
+ tests: $(objpfx)db-symbols.out
+ $(objpfx)db-symbols.out: $(objpfx)db-symbols.v.i \
+ 			 $(common-objpfx)nptl/libpthread.so
+Index: glibc-2.17-c758a686/nss/Makefile
+===================================================================
+--- glibc-2.17-c758a686.orig/nss/Makefile
++++ glibc-2.17-c758a686/nss/Makefile
+@@ -86,12 +86,11 @@ ifeq (yes,$(have-selinux))
+ LDLIBS-makedb		:= -lselinux
+ endif
+ 
+-# Depend on libc.so so a DT_NEEDED is generated in the shared objects.
+-# This ensures they will load libc.so for needed symbols if loaded by
+-# a statically-linked program that hasn't already loaded it.
+ libnss-libc = $(common-objpfx)linkobj/libc.so
+-$(services:%=$(objpfx)libnss_%.so): $(libnss-libc) \
+-				    $(common-objpfx)libc_nonshared.a
++# Target-specific variable setting to link objects using deprecated
++# RPC interfaces with the version of libc.so that makes them available
++# for new links:
++$(services:%=$(objpfx)libnss_%.so): libc-for-link = $(libnss-libc)
+ 
+ $(objpfx)libnss_db.so: $(objpfx)libnss_files.so
+ 
+@@ -109,8 +108,7 @@ $(inst_vardbdir)/Makefile: db-Makefile $
+ 	$(do-install)
+ 
+ libof-nss_test1 = extramodules
+-$(objpfx)/libnss_test1.so: $(objpfx)nss_test1.os $(common-objpfx)libc.so \
+-			   $(common-objpfx)libc_nonshared.a
++$(objpfx)/libnss_test1.so: $(objpfx)nss_test1.os $(link-libc-deps)
+ 	$(build-module)
+ ifdef libnss_test1.so-version
+ $(objpfx)/libnss_test1.so$(libnss_test1.so-version): $(objpfx)/libnss_test1.so
+Index: glibc-2.17-c758a686/ports/sysdeps/arm/Makefile
+===================================================================
+--- glibc-2.17-c758a686.orig/ports/sysdeps/arm/Makefile
++++ glibc-2.17-c758a686/ports/sysdeps/arm/Makefile
+@@ -25,11 +25,6 @@ sysdep_routines += $(aeabi_constants) $(
+ static-only-routines += $(aeabi_constants)
+ endif
+ 
+-# to pull in __aeabi_read_tp, needed for tls
+-ifeq ($(subdir),malloc)
+-$(objpfx)libmemusage.so: $(common-objpfx)libc_nonshared.a
+-endif
+-
+ ifeq ($(subdir),gmon)
+ sysdep_routines += arm-mcount
+ endif
+@@ -37,7 +32,3 @@ endif
+ ifeq ($(subdir),debug)
+ CFLAGS-backtrace.c += -funwind-tables
+ endif
+-
+-ifeq ($(subdir),math)
+-$(objpfx)libm.so: $(elfobjdir)/ld.so
+-endif
+Index: glibc-2.17-c758a686/resolv/Makefile
+===================================================================
+--- glibc-2.17-c758a686.orig/resolv/Makefile
++++ glibc-2.17-c758a686/resolv/Makefile
+@@ -88,23 +88,11 @@ CFLAGS-res_hconf.c = -fexceptions
+ # The BIND code elicits some harmless warnings.
+ +cflags += -Wno-strict-prototypes -Wno-write-strings
+ 
+-# Depend on libc.so so a DT_NEEDED is generated in the shared objects.
+-# This ensures they will load libc.so for needed symbols if loaded by
+-# a statically-linked program that hasn't already loaded it.
+-$(objpfx)libresolv.so: $(common-objpfx)libc.so $(common-objpfx)libc_nonshared.a
+-# Some hosts need '__stack_chk_guard', so pull in the definition from
+-# ld.so if required.
+-ifeq (yes,$(have-ssp))
+-LDLIBS-resolv.so += $(as-needed) $(elfobjdir)/ld.so $(no-as-needed)
+-endif
+-
+ # The DNS NSS modules needs the resolver.
+-$(objpfx)libnss_dns.so: $(objpfx)libresolv.so $(common-objpfx)libc.so \
+-			$(common-objpfx)libc_nonshared.a
++$(objpfx)libnss_dns.so: $(objpfx)libresolv.so
+ 
+ # The asynchronous name lookup code needs the thread library.
+-$(objpfx)libanl.so: $(common-objpfx)libc.so $(common-objpfx)libc_nonshared.a \
+-		    $(shared-thread-library)
++$(objpfx)libanl.so: $(shared-thread-library)
+ 
+ $(objpfx)ga_test: $(objpfx)libanl.so $(shared-thread-library)
+ 
+Index: glibc-2.17-c758a686/rt/Makefile
+===================================================================
+--- glibc-2.17-c758a686.orig/rt/Makefile
++++ glibc-2.17-c758a686/rt/Makefile
+@@ -64,12 +64,7 @@ CFLAGS-librt-cancellation.c = -fasynchro
+ 
+ LDFLAGS-rt.so = -Wl,--enable-new-dtags,-z,nodelete
+ 
+-# Depend on libc.so so a DT_NEEDED is generated in the shared objects.
+-# This ensures they will load libc.so for needed symbols if loaded by
+-# a statically-linked program that hasn't already loaded it.
+-$(objpfx)librt.so: $(common-objpfx)libc.so $(common-objpfx)libc_nonshared.a \
+-		   $(shared-thread-library) \
+-		   $(elfobjdir)/ld.so
++$(objpfx)librt.so: $(shared-thread-library)
+ 
+ ifeq (yes,$(build-shared))
+ $(addprefix $(objpfx),$(tests)): $(objpfx)librt.so $(shared-thread-library)
+Index: glibc-2.17-c758a686/stdlib/Makefile
+===================================================================
+--- glibc-2.17-c758a686.orig/stdlib/Makefile
++++ glibc-2.17-c758a686/stdlib/Makefile
+@@ -136,7 +136,7 @@ $(objpfx)tst-fmtmsg.out: tst-fmtmsg.sh $
+ $(objpfx)tst-putenv: $(objpfx)tst-putenvmod.so
+ LDFLAGS-tst-putenv = $(no-as-needed)
+ 
+-$(objpfx)tst-putenvmod.so: $(objpfx)tst-putenvmod.os
++$(objpfx)tst-putenvmod.so: $(objpfx)tst-putenvmod.os $(link-libc-deps)
+ 	$(build-module)
+ libof-tst-putenvmod = extramodules
+ 
+Index: glibc-2.17-c758a686/sysdeps/i386/fpu/Makefile
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/i386/fpu/Makefile
++++ /dev/null
+@@ -1,3 +0,0 @@
+-ifeq ($(subdir),math)
+-$(objpfx)libm.so: $(elfobjdir)/ld.so
+-endif
+Index: glibc-2.17-c758a686/sysdeps/powerpc/fpu/Makefile
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/powerpc/fpu/Makefile
++++ glibc-2.17-c758a686/sysdeps/powerpc/fpu/Makefile
+@@ -2,8 +2,6 @@ ifeq ($(subdir),math)
+ libm-support += fenv_const fe_nomask fe_mask t_sqrt
+ libm-tests += test-powerpc-snan
+ 
+-# libm needs ld.so to access dl_hwcap
+-$(objpfx)libm.so: $(elfobjdir)/ld.so
+ endif
+ 
+ ifeq ($(subdir),stdlib)

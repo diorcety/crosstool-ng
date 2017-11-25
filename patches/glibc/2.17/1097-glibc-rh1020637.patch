@@ -1,0 +1,128 @@
+commit acd98a8ed1460497e788c701eb92616f1df9b446
+Author: Andreas Krebbel <krebbel@linux.vnet.ibm.com>
+Date:   Fri Nov 29 09:57:04 2013 +0100
+
+    [BZ #16214] S/390: Fix TLS GOT pointer setup.
+
+diff --git glibc-2.17-c758a686/sysdeps/s390/Versions glibc-2.17-c758a686/sysdeps/s390/Versions
+index e18617c..baf9842 100644
+--- glibc-2.17-c758a686/sysdeps/s390/Versions
++++ glibc-2.17-c758a686/sysdeps/s390/Versions
+@@ -3,4 +3,8 @@ ld {
+     # runtime interface to TLS
+     __tls_get_offset;
+   }
++  GLIBC_PRIVATE {
++    # Exported by ld used by libc.
++    __tls_get_addr_internal;
++  }
+ }
+diff --git glibc-2.17-c758a686/sysdeps/s390/dl-tls.h glibc-2.17-c758a686/sysdeps/s390/dl-tls.h
+index 68a5af4..52192a2 100644
+--- glibc-2.17-c758a686/sysdeps/s390/dl-tls.h
++++ glibc-2.17-c758a686/sysdeps/s390/dl-tls.h
+@@ -26,11 +26,26 @@ typedef struct
+ 
+ 
+ #ifdef SHARED
+-/* This is the prototype for the GNU version.  */
+-extern void *__tls_get_addr (tls_index *ti) attribute_hidden;
++
+ extern unsigned long __tls_get_offset (unsigned long got_offset);
+ 
+ # ifdef IS_IN_rtld
++
++#  include <shlib-compat.h>
++
++extern void *__tls_get_addr (tls_index *ti) attribute_hidden;
++/* Make a temporary alias of __tls_get_addr to remove the hidden
++   attribute.  Then export __tls_get_addr as __tls_get_addr_internal
++   for use from libc.  We do not want to export __tls_get_addr, but we
++   do need to use it from libc when looking up the address of a TLS
++   variable. We don't use __tls_get_offset because it requires r12 to
++   be setup and that might not always be true. Either way it's more
++   optimal to use __tls_get_addr directly (that's what
++   __tls_get_offset does anyways).  */
++strong_alias (__tls_get_addr, __tls_get_addr_internal_tmp);
++versioned_symbol (ld, __tls_get_addr_internal_tmp,
++		  __tls_get_addr_internal, GLIBC_PRIVATE);
++
+ /* The special thing about the s390 TLS ABI is that we do not have the
+    standard __tls_get_addr function but the __tls_get_offset function
+    which differs in two important aspects:
+@@ -63,15 +78,21 @@ __tls_get_offset:\n\
+ 1:	.long	__tls_get_addr - 0b\n\
+ ");
+ #  endif
+-# endif
++# else /* IS_IN_rtld */
++extern void *__tls_get_addr_internal (tls_index *ti);
++# endif /* !IS_IN_rtld */
+ 
+ # define GET_ADDR_OFFSET \
+   (ti->ti_offset - (unsigned long) __builtin_thread_pointer ())
+ 
+-# define __TLS_GET_ADDR(__ti) \
+-  ({ extern char _GLOBAL_OFFSET_TABLE_[] attribute_hidden;		  \
+-     (void *) __tls_get_offset ((char *) (__ti) - _GLOBAL_OFFSET_TABLE_)  \
+-     + (unsigned long) __builtin_thread_pointer (); })
++/* Use the privately exported __tls_get_addr_internal instead of
++   __tls_get_offset in order to avoid the __tls_get_offset special
++   linkage requiring the GOT pointer to be set up in r12.  The
++   compiler will take care of setting up r12 only if itself issued the
++   __tls_get_offset call.  */
++# define __TLS_GET_ADDR(__ti)					\
++  ({ (void *) __tls_get_addr_internal ((char *) (__ti))		\
++      + (unsigned long) __builtin_thread_pointer (); })
+ 
+ #endif
+ 
+diff --git glibc-2.17-c758a686/sysdeps/s390/s390-32/tls-macros.h glibc-2.17-c758a686/sysdeps/s390/s390-32/tls-macros.h
+index 8a0ad58..a592d81 100644
+--- glibc-2.17-c758a686/sysdeps/s390/s390-32/tls-macros.h
++++ glibc-2.17-c758a686/sysdeps/s390/s390-32/tls-macros.h
+@@ -8,12 +8,15 @@
+ 
+ #ifdef PIC
+ # define TLS_IE(x) \
+-  ({ unsigned long __offset;						      \
++  ({ unsigned long __offset, __got;					      \
+      asm ("bras %0,1f\n"						      \
+-	  "0:\t.long " #x "@gotntpoff\n"				      \
+-	  "1:\tl %0,0(%0)\n\t"						      \
+-	  "l %0,0(%0,%%r12):tls_load:" #x				      \
+-	  : "=&a" (__offset) : : "cc" );				      \
++	  "0:\t.long _GLOBAL_OFFSET_TABLE_-0b\n\t"			      \
++	  ".long " #x "@gotntpoff\n"					      \
++	  "1:\tl %1,0(%0)\n\t"						      \
++	  "la %1,0(%1,%0)\n\t"						      \
++	  "l %0,4(%0)\n\t"						      \
++	  "l %0,0(%0,%1):tls_load:" #x "\n"				      \
++	  : "=&a" (__offset), "=&a" (__got) : : "cc" );			      \
+      (int *) (__builtin_thread_pointer() + __offset); })
+ #else
+ # define TLS_IE(x) \
+diff --git glibc-2.17-c758a686/sysdeps/s390/s390-64/tls-macros.h glibc-2.17-c758a686/sysdeps/s390/s390-64/tls-macros.h
+index be8aa6c..3c59436 100644
+--- glibc-2.17-c758a686/sysdeps/s390/s390-64/tls-macros.h
++++ glibc-2.17-c758a686/sysdeps/s390/s390-64/tls-macros.h
+@@ -8,12 +8,13 @@
+ 
+ #ifdef PIC
+ # define TLS_IE(x) \
+-  ({ unsigned long __offset;						      \
+-     asm ("bras %0,1f\n"						      \
+-	  "0:\t.quad " #x "@gotntpoff\n"				      \
+-	  "1:\tlg %0,0(%0)\n\t"						      \
+-	  "lg %0,0(%0,%%r12):tls_load:" #x				      \
+-	  : "=&a" (__offset) : : "cc" );				      \
++  ({ unsigned long __offset, __got;					      \
++     asm ("bras %0,0f\n\t"						      \
++	  ".quad " #x "@gotntpoff\n"					      \
++	  "0:\tlarl %1,_GLOBAL_OFFSET_TABLE_\n\t"			      \
++	  "lg %0,0(%0)\n\t"						      \
++	  "lg %0,0(%0,%1):tls_load:" #x	"\n"				      \
++	  : "=&a" (__offset), "=&a" (__got) : : "cc" );			      \
+      (int *) (__builtin_thread_pointer() + __offset); })
+ #else
+ # define TLS_IE(x) \

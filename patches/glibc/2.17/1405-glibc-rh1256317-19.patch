@@ -1,0 +1,254 @@
+commit 02657da2cf4457804ed938ee08b8316249126444
+Author: Siddhesh Poyarekar <siddhesh@redhat.com>
+Date:   Tue Sep 16 22:19:22 2014 +0530
+
+    Include .interp section only for libc.so
+    
+    Barring libc.so and libdl.so, none of the libraries have any entry
+    points, so it is pointless to add a .interp section for them.  The
+    libdl.so entry point (in dlfcn/eval.c) is also defunct, so remove that
+    file as well.
+    
+    Build tested for x86_64, ppc64 and s390x.  I have not moved
+    CFLAGS-interp.c to CPPFLAGS-interp.c isnce I'll be removing it
+    completely in a follow-up patch.
+    
+    Siddhesh
+    
+    	* Makerules (lib%.so): Don't include $(+interp) in
+    	prerequisites.
+    	* elf/Makefile (CFLAGS-interp.c): Don't define NOT_IN_libc.
+    	* dlfcn/eval.c: Remove file.
+
+Index: glibc-2.17-c758a686/Makerules
+===================================================================
+--- glibc-2.17-c758a686.orig/Makerules
++++ glibc-2.17-c758a686/Makerules
+@@ -461,7 +461,7 @@ link-libc-deps = $(common-objpfx)libc.so
+ # build shared libraries in place from the installed *_pic.a files.
+ # $(LDLIBS-%.so) may contain -l switches to generate run-time dependencies
+ # on other shared objects.
+-lib%.so: lib%_pic.a $(+preinit) $(+postinit) $(+interp)
++lib%.so: lib%_pic.a $(+preinit) $(+postinit)
+ 	$(build-shlib)
+ 
+ define build-shlib-helper
+Index: glibc-2.17-c758a686/dlfcn/eval.c
+===================================================================
+--- glibc-2.17-c758a686.orig/dlfcn/eval.c
++++ /dev/null
+@@ -1,200 +0,0 @@
+-/* You don't really want to know what this hack is for.
+-   Copyright (C) 1996, 1997, 2000, 2001 Free Software Foundation, Inc.
+-   This file is part of the GNU C Library.
+-
+-   The GNU C Library is free software; you can redistribute it and/or
+-   modify it under the terms of the GNU Lesser General Public
+-   License as published by the Free Software Foundation; either
+-   version 2.1 of the License, or (at your option) any later version.
+-
+-   The GNU C Library is distributed in the hope that it will be useful,
+-   but WITHOUT ANY WARRANTY; without even the implied warranty of
+-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+-   Lesser General Public License for more details.
+-
+-   You should have received a copy of the GNU Lesser General Public
+-   License along with the GNU C Library; if not, see
+-   <http://www.gnu.org/licenses/>.  */
+-
+-#include <assert.h>
+-#include <ctype.h>
+-#include <dlfcn.h>
+-#include <errno.h>
+-#include <limits.h>
+-#include <stdio.h>
+-#include <stdlib.h>
+-#include <string.h>
+-#include <unistd.h>
+-
+-static void *funcall (char **stringp) __attribute_noinline__;
+-static void *eval (char **stringp);
+-
+-
+-long int weak_function
+-__strtol_internal (const char *nptr, char **endptr, int base, int group)
+-{
+-  unsigned long int result = 0;
+-  long int sign = 1;
+-
+-  while (*nptr == ' ' || *nptr == '\t')
+-    ++nptr;
+-
+-  if (*nptr == '-')
+-    {
+-      sign = -1;
+-      ++nptr;
+-    }
+-  else if (*nptr == '+')
+-    ++nptr;
+-
+-  if (*nptr < '0' || *nptr > '9')
+-    {
+-      if (endptr != NULL)
+-	*endptr = (char *) nptr;
+-      return 0L;
+-    }
+-
+-  assert (base == 0);
+-  base = 10;
+-  if (*nptr == '0')
+-    {
+-      if (nptr[1] == 'x' || nptr[1] == 'X')
+-	{
+-	  base = 16;
+-	  nptr += 2;
+-	}
+-      else
+-	base = 8;
+-    }
+-
+-  while (*nptr >= '0' && *nptr <= '9')
+-    {
+-      unsigned long int digval = *nptr - '0';
+-      if (result > LONG_MAX / 10
+-	  || (sign > 0 ? result == LONG_MAX / 10 && digval > LONG_MAX % 10
+-	      : (result == ((unsigned long int) LONG_MAX + 1) / 10
+-		 && digval > ((unsigned long int) LONG_MAX + 1) % 10)))
+-	{
+-	  errno = ERANGE;
+-	  return sign > 0 ? LONG_MAX : LONG_MIN;
+-	}
+-      result *= base;
+-      result += digval;
+-      ++nptr;
+-    }
+-
+-  return (long int) result * sign;
+-}
+-
+-
+-static void *
+-funcall (char **stringp)
+-{
+-  void *args[strlen (*stringp)], **ap = args;
+-  void *argcookie = &args[1];
+-
+-  do
+-    {
+-      /* Evaluate the next token.  */
+-      *ap++ = eval (stringp);
+-
+-      /* Whitespace is irrelevant.  */
+-      while (isspace (**stringp))
+-	++*stringp;
+-
+-      /* Terminate at closing paren or end of line.  */
+-    } while (**stringp != '\0' && **stringp != ')');
+-  if (**stringp != '\0')
+-    /* Swallow closing paren.  */
+-    ++*stringp;
+-
+-  if (args[0] == NULL)
+-    {
+-      static const char unknown[] = "Unknown function\n";
+-      write (1, unknown, sizeof unknown - 1);
+-      return NULL;
+-    }
+-
+-  /* Do it to it.  */
+-  __builtin_return (__builtin_apply (args[0],
+-				     &argcookie,
+-				     (char *) ap - (char *) &args[1]));
+-}
+-
+-static void *
+-eval (char **stringp)
+-{
+-  void *value;
+-  char *p = *stringp, c;
+-
+-  /* Whitespace is irrelevant.  */
+-  while (isspace (*p))
+-    ++p;
+-
+-  switch (*p)
+-    {
+-    case '"':
+-      /* String constant.  */
+-      value = ++p;
+-      do
+-	if (*p == '\\')
+-	  {
+-	    switch (*strcpy (p, p + 1))
+-	      {
+-	      case 't':
+-		*p = '\t';
+-		break;
+-	      case 'n':
+-		*p = '\n';
+-		break;
+-	      }
+-	    ++p;
+-	  }
+-      while (*p != '\0' && *p++ != '"');
+-      if (p[-1] == '"')
+-	p[-1] = '\0';
+-      break;
+-
+-    case '(':
+-      *stringp = ++p;
+-      return funcall (stringp);
+-
+-    default:
+-      /* Try to parse it as a number.  */
+-      value = (void *) __strtol_internal (p, stringp, 0, 0);
+-      if (*stringp != p)
+-	return value;
+-
+-      /* Anything else is a symbol that produces its address.  */
+-      value = p;
+-      do
+-	++p;
+-      while (*p != '\0' && !isspace (*p) && (!ispunct (*p) || *p == '_'));
+-      c = *p;
+-      *p = '\0';
+-      value = dlsym (NULL, value);
+-      *p = c;
+-      break;
+-    }
+-
+-  *stringp = p;
+-  return value;
+-}
+-
+-
+-extern void _start (void) __attribute__ ((noreturn));
+-void
+-__attribute__ ((noreturn))
+-_start (void)
+-{
+-  char *buf = NULL;
+-  size_t bufsz = 0;
+-
+-  while (__getdelim (&buf, &bufsz, '\n', stdin) > 0)
+-    {
+-      char *p = buf;
+-      eval (&p);
+-    }
+-
+-  exit (0);
+-}
+Index: glibc-2.17-c758a686/elf/Makefile
+===================================================================
+--- glibc-2.17-c758a686.orig/elf/Makefile
++++ glibc-2.17-c758a686/elf/Makefile
+@@ -345,8 +345,7 @@ $(objpfx)ld.so: $(objpfx)librtld.os $(ld
+ 	  | $(AWK) '($$7 ~ /^UND(|EF)$$/ && $$1 != "0:" && $$4 != "REGISTER") { print; p=1 } END { exit p != 0 }'
+ 
+ # interp.c exists just to get this string into the libraries.
+-CFLAGS-interp.c = -D'RUNTIME_LINKER="$(rtlddir)/$(rtld-installed-name)"' \
+-		  -DNOT_IN_libc=1
++CFLAGS-interp.c = -D'RUNTIME_LINKER="$(rtlddir)/$(rtld-installed-name)"'
+ $(objpfx)interp.os: $(common-objpfx)config.make
+ 
+ ifneq (ld.so,$(rtld-installed-name))

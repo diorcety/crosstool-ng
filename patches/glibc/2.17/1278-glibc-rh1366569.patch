@@ -1,0 +1,16 @@
+Do not set initgroups.  The commented-out setting reflects the
+glibc default (derived from group).
+
+Index: b/releng/nsswitch.conf
+===================================================================
+--- a/releng/nsswitch.conf
++++ b/releng/nsswitch.conf
+@@ -33,7 +33,7 @@
+ passwd:     files sss
+ shadow:     files sss
+ group:      files sss
+-initgroups: files
++#initgroups: files sss
+ 
+ #hosts:     db files nisplus nis dns
+ hosts:      files dns
