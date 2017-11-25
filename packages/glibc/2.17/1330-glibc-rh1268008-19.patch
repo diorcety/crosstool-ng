@@ -1,0 +1,1314 @@
+From 1026f1e15a84134fd19f58c98af85ec9474f7722 Mon Sep 17 00:00:00 2001
+From: Stefan Liebler <stli@linux.vnet.ibm.com>
+Date: Thu, 8 Oct 2015 11:21:50 +0200
+Subject: [PATCH 19/30] S390: Optimize strncmp and wcsncmp. (AND COMMON-CODE
+ WCSNCMP - picked form upstream)
+
+upstream-commit-id: cee82e70ccb7b2f054cd781b0a603ae244523e72
+https://www.sourceware.org/ml/libc-alpha/2015-07/msg00087.html
+
+common-code wcsncmp:
+upstream-commit-id: 920a0395ba9fa5949ec87aaf5daa0259da16749d
+https://www.sourceware.org/ml/libc-alpha/2015-04/msg00098.html
+
+This patch provides optimized versions of strncmp and wcsncmp with the z13
+vector instructions.
+
+ChangeLog:
+
+	* sysdeps/s390/multiarch/strncmp-c.c: New File.
+	* sysdeps/s390/multiarch/strncmp-vx.S: Likewise.
+	* sysdeps/s390/multiarch/strncmp.c: Likewise.
+	* sysdeps/s390/multiarch/wcsncmp-c.c: Likewise.
+	* sysdeps/s390/multiarch/wcsncmp-vx.S: Likewise.
+	* sysdeps/s390/multiarch/wcsncmp.c: Likewise.
+	* sysdeps/s390/multiarch/Makefile (sysdep_routines): Add strncmp and
+	wcsncmp functions.
+	* sysdeps/s390/multiarch/ifunc-impl-list.c
+	(__libc_ifunc_impl_list): Add ifunc test for strncmp, wcsncmp.
+	* wcsmbs/wcsncmp.c (WCSNCMP): Define and use macro.
+	* benchtests/bench-strncmp.c: Add wcsncmp support.
+	* benchtests/bench-wcsncmp.c: New File.
+	* benchtests/Makefile (wcsmbs-bench): Add wcsncmp.
+---
+ benchtests/Makefile                      |   2 +-
+ benchtests/bench-strncmp.c               | 104 +++++++++++++-----
+ benchtests/bench-wcsncmp.c               |  20 ++++
+ localedata/tests-mbwc/dat_wcsncmp.c      |  18 ++--
+ localedata/tests-mbwc/tst_wcsncmp.c      |   2 +
+ string/strncmp.c                         |   2 +-
+ string/test-strncmp.c                    | 175 +++++++++++++++++++++---------
+ sysdeps/s390/multiarch/Makefile          |   6 +-
+ sysdeps/s390/multiarch/ifunc-impl-list.c |   3 +
+ sysdeps/s390/multiarch/strncmp-c.c       |  28 +++++
+ sysdeps/s390/multiarch/strncmp-vx.S      | 137 ++++++++++++++++++++++++
+ sysdeps/s390/multiarch/strncmp.c         |  30 ++++++
+ sysdeps/s390/multiarch/wcsncmp-c.c       |  25 +++++
+ sysdeps/s390/multiarch/wcsncmp-vx.S      | 177 +++++++++++++++++++++++++++++++
+ sysdeps/s390/multiarch/wcsncmp.c         |  27 +++++
+ wcsmbs/Makefile                          |   2 +-
+ wcsmbs/test-wcsncmp-ifunc.c              |  20 ++++
+ wcsmbs/test-wcsncmp.c                    |   2 +
+ wcsmbs/wcsncmp.c                         |  41 +++----
+ 19 files changed, 716 insertions(+), 105 deletions(-)
+ create mode 100644 benchtests/bench-wcsncmp.c
+ create mode 100644 sysdeps/s390/multiarch/strncmp-c.c
+ create mode 100644 sysdeps/s390/multiarch/strncmp-vx.S
+ create mode 100644 sysdeps/s390/multiarch/strncmp.c
+ create mode 100644 sysdeps/s390/multiarch/wcsncmp-c.c
+ create mode 100644 sysdeps/s390/multiarch/wcsncmp-vx.S
+ create mode 100644 sysdeps/s390/multiarch/wcsncmp.c
+ create mode 100644 wcsmbs/test-wcsncmp-ifunc.c
+ create mode 100644 wcsmbs/test-wcsncmp.c
+
+diff --git a/benchtests/Makefile b/benchtests/Makefile
+index f6333eb..f6342da 100644
+--- a/benchtests/Makefile
++++ b/benchtests/Makefile
+@@ -39,7 +39,7 @@ string-bench := bcopy bzero memccpy memchr memcmp memcpy memmem memmove \
+ 		strncasecmp strncat strncmp strncpy strnlen strpbrk strrchr \
+ 		strspn strstr strcpy_chk stpcpy_chk memrchr strsep strtok
+ wcsmbs-bench := wcslen wcsnlen wcscpy wcpcpy wcsncpy wcpncpy wcscat wcsncat \
+-		wcsncmp
++		wcsncmp wcsncmp
+ string-bench-all := $(string-bench) ${wcsmbs-bench}
+ 
+ stdlib-bench := strtod
+diff --git a/benchtests/bench-strncmp.c b/benchtests/bench-strncmp.c
+index 25df3db..496ed68 100644
+--- a/benchtests/bench-strncmp.c
++++ b/benchtests/bench-strncmp.c
+@@ -17,17 +17,66 @@
+    <http://www.gnu.org/licenses/>.  */
+ 
+ #define TEST_MAIN
+-#define TEST_NAME "strncmp"
++#ifdef WIDE
++# define TEST_NAME "wcsncmp"
++#else
++# define TEST_NAME "strncmp"
++#endif /* !WIDE */
+ #include "bench-string.h"
+ 
+-typedef int (*proto_t) (const char *, const char *, size_t);
+-int simple_strncmp (const char *, const char *, size_t);
+-int stupid_strncmp (const char *, const char *, size_t);
++#ifdef WIDE
++# include <wchar.h>
++
++# define L(str) L##str
++# define STRNCMP wcsncmp
++# define SIMPLE_STRNCMP simple_wcsncmp
++# define STUPID_STRNCMP stupid_wcsncmp
++# define CHAR wchar_t
++# define CHARBYTES 4
++/* Wcsncmp uses signed semantics for comparison, not unsigned.
++   Avoid using substraction since possible overflow.  */
++int
++simple_wcsncmp (const CHAR *s1, const CHAR *s2, size_t n)
++{
++  wchar_t c1, c2;
++  while (n--)
++    {
++      c1 = *s1++;
++      c2 = *s2++;
++      if (c1 == L ('\0') || c1 != c2)
++	return c1 > c2 ? 1 : (c1 < c2 ? -1 : 0);
++    }
++  return 0;
++}
+ 
+-IMPL (stupid_strncmp, 0)
+-IMPL (simple_strncmp, 0)
+-IMPL (strncmp, 1)
++int
++stupid_wcsncmp (const CHAR *s1, const CHAR *s2, size_t n)
++{
++  wchar_t c1, c2;
++  size_t ns1 = wcsnlen (s1, n) + 1, ns2 = wcsnlen (s2, n) + 1;
++
++  n = ns1 < n ? ns1 : n;
++  n = ns2 < n ? ns2 : n;
+ 
++  while (n--)
++    {
++      c1 = *s1++;
++      c2 = *s2++;
++      if (c1 != c2)
++	return c1 > c2 ? 1 : -1;
++    }
++  return 0;
++}
++
++#else
++# define L(str) str
++# define STRNCMP strncmp
++# define SIMPLE_STRNCMP simple_strncmp
++# define STUPID_STRNCMP stupid_strncmp
++# define CHAR char
++# define CHARBYTES 1
++
++/* Strncmp uses unsigned semantics for comparison.  */
+ int
+ simple_strncmp (const char *s1, const char *s2, size_t n)
+ {
+@@ -49,9 +98,16 @@ stupid_strncmp (const char *s1, const char *s2, size_t n)
+   while (n-- && (ret = *(unsigned char *) s1++ - * (unsigned char *) s2++) == 0);
+   return ret;
+ }
++#endif /* !WIDE */
++
++typedef int (*proto_t) (const CHAR *, const CHAR *, size_t);
++
++IMPL (STUPID_STRNCMP, 0)
++IMPL (SIMPLE_STRNCMP, 0)
++IMPL (STRNCMP, 1)
+ 
+ static void
+-do_one_test (impl_t *impl, const char *s1, const char *s2, size_t n,
++do_one_test (impl_t *impl, const CHAR *s1, const CHAR *s2, size_t n,
+ 	     int exp_result)
+ {
+   size_t i, iters = INNER_LOOP_ITERS;
+@@ -74,12 +130,12 @@ do_test_limit (size_t align1, size_t align2, size_t len, size_t n, int max_char,
+ 	 int exp_result)
+ {
+   size_t i, align_n;
+-  char *s1, *s2;
++  CHAR *s1, *s2;
+ 
+   if (n == 0)
+     {
+-      s1 = (char*)(buf1 + page_size);
+-      s2 = (char*)(buf2 + page_size);
++      s1 = (CHAR*)(buf1 + page_size);
++      s2 = (CHAR*)(buf2 + page_size);
+       printf ("Length %4zd/%4zd:", len, n);
+ 
+       FOR_EACH_IMPL (impl, 0)
+@@ -92,16 +148,16 @@ do_test_limit (size_t align1, size_t align2, size_t len, size_t n, int max_char,
+ 
+   align1 &= 15;
+   align2 &= 15;
+-  align_n = (page_size - n) & 15;
++  align_n = (page_size - n * CHARBYTES) & 15;
+ 
+-  s1 = (char*)(buf1 + page_size - n);
+-  s2 = (char*)(buf2 + page_size - n);
++  s1 = (CHAR*)(buf1 + page_size - n * CHARBYTES);
++  s2 = (CHAR*)(buf2 + page_size - n * CHARBYTES);
+ 
+   if (align1 < align_n)
+-    s1 -= (align_n - align1);
++    s1 = (CHAR *) ((char *) s1 - (align_n - align1));
+ 
+   if (align2 < align_n)
+-    s2 -= (align_n - align2);
++    s2 = (CHAR *) ((char *) s2 - (align_n - align2));
+ 
+   for (i = 0; i < n; i++)
+     s1[i] = s2[i] = 1 + 23 * i % max_char;
+@@ -129,24 +185,24 @@ do_test (size_t align1, size_t align2, size_t len, size_t n, int max_char,
+ 	 int exp_result)
+ {
+   size_t i;
+-  char *s1, *s2;
++  CHAR *s1, *s2;
+ 
+   if (n == 0)
+     return;
+ 
+-  align1 &= 7;
+-  if (align1 + n + 1 >= page_size)
++  align1 &= 63;
++  if (align1 + (n + 1) * CHARBYTES >= page_size)
+     return;
+ 
+   align2 &= 7;
+-  if (align2 + n + 1 >= page_size)
++  if (align2 + (n + 1) * CHARBYTES >= page_size)
+     return;
+ 
+-  s1 = (char*)(buf1 + align1);
+-  s2 = (char*)(buf2 + align2);
++  s1 = (CHAR*)(buf1 + align1);
++  s2 = (CHAR*)(buf2 + align2);
+ 
+   for (i = 0; i < n; i++)
+-    s1[i] = s2[i] = 1 + 23 * i % max_char;
++    s1[i] = s2[i] = 1 + (23 << ((CHARBYTES - 1) * 8)) * i % max_char;
+ 
+   s1[n] = 24 + exp_result;
+   s2[n] = 23;
+@@ -162,7 +218,7 @@ do_test (size_t align1, size_t align2, size_t len, size_t n, int max_char,
+   printf ("Length %4zd/%4zd, alignment %2zd/%2zd:", len, n, align1, align2);
+ 
+   FOR_EACH_IMPL (impl, 0)
+-    do_one_test (impl, (char*)s1, (char*)s2, n, exp_result);
++    do_one_test (impl, s1, s2, n, exp_result);
+ 
+   putchar ('\n');
+ }
+diff --git a/benchtests/bench-wcsncmp.c b/benchtests/bench-wcsncmp.c
+new file mode 100644
+index 0000000..8720060
+--- /dev/null
++++ b/benchtests/bench-wcsncmp.c
+@@ -0,0 +1,20 @@
++/* Measure wcsncmp functions.
++   Copyright (C) 2015 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#define WIDE 1
++#include "bench-strncmp.c"
+diff --git a/localedata/tests-mbwc/dat_wcsncmp.c b/localedata/tests-mbwc/dat_wcsncmp.c
+index 167ce48..f468a8b 100644
+--- a/localedata/tests-mbwc/dat_wcsncmp.c
++++ b/localedata/tests-mbwc/dat_wcsncmp.c
+@@ -33,7 +33,7 @@ TST_WCSNCMP tst_wcsncmp_loc [] = {
+       },
+       { /*input.*/ { { 0x00D1,0x00D2,0x00D3,0x0000 },
+ 		     { 0x0000,0x00D2,0x00D3,0x0000 }, 3 },  /* #06 */
+-	/*expect*/ { 0,1,0x00D1,			},
++	/*expect*/ { 0,1,1,			},
+       },
+       { /*input.*/ { { 0x00D1,0x00D2,0x00D3,0x0000 },
+ 		     { 0x00D1,0x00D2,0x00D9,0x0000 }, 2 },  /* #07 */
+@@ -41,11 +41,11 @@ TST_WCSNCMP tst_wcsncmp_loc [] = {
+       },
+       { /*input.*/ { { 0x00D1,0x00D2,0x00D3,0x0000 },
+ 		     { 0x00D1,0x00D2,0x00D9,0x0000 }, 3 },  /* #08 */
+-	/*expect*/ { 0,1,-0x0006,			},
++	/*expect*/ { 0,1,-1,			},
+       },
+       { /*input.*/ { { 0x00D1,0x00D2,0x00D3,0x0000 },
+ 		     { 0x00D1,0x00D2,0x0000	   }, 4 },  /* #09 */
+-	/*expect*/ { 0,1,0x00D3,			},
++	/*expect*/ { 0,1,1,			},
+       },
+       { .is_last = 1 }
+     }
+@@ -75,7 +75,7 @@ TST_WCSNCMP tst_wcsncmp_loc [] = {
+       },
+       { /*input.*/ { { 0x0041,0x0042,0x0043,0x0000 },
+ 		     { 0x0000,0x0042,0x0043,0x0000 }, 3 },  /* #06 */
+-	/*expect*/ { 0,1,0x0041,			},
++	/*expect*/ { 0,1,1,			},
+       },
+       { /*input.*/ { { 0x0041,0x0042,0x0043,0x0000 },
+ 		     { 0x0041,0x0042,0x0049,0x0000 }, 2 },  /* #07 */
+@@ -83,11 +83,11 @@ TST_WCSNCMP tst_wcsncmp_loc [] = {
+       },
+       { /*input.*/ { { 0x0041,0x0042,0x0043,0x0000 },
+ 		     { 0x0041,0x0042,0x0049,0x0000 }, 3 },  /* #08 */
+-	/*expect*/ { 0,1,-0x0006,			},
++	/*expect*/ { 0,1,-1,			},
+       },
+       { /*input.*/ { { 0x0041,0x0042,0x0043,0x0000 },
+ 		     { 0x0041,0x0042,0x0000	   }, 4 },  /* #09 */
+-	/*expect*/ { 0,1,0x0043,			},
++	/*expect*/ { 0,1,1,			},
+       },
+       { .is_last = 1 }
+     }
+@@ -117,7 +117,7 @@ TST_WCSNCMP tst_wcsncmp_loc [] = {
+       },
+       { /*input.*/ { { 0x3041,0x3042,0x3043,0x0000 },
+ 		     { 0x0000,0x3042,0x3043,0x0000 }, 3 },  /* #06 */
+-	/*expect*/ { 0,1,0x3041,			},
++	/*expect*/ { 0,1,1,			},
+       },
+       { /*input.*/ { { 0x3041,0x3042,0x3043,0x0000 },
+ 		     { 0x3041,0x3042,0x3049,0x0000 }, 2 },  /* #07 */
+@@ -125,11 +125,11 @@ TST_WCSNCMP tst_wcsncmp_loc [] = {
+       },
+       { /*input.*/ { { 0x3041,0x3042,0x3043,0x0000 },
+ 		     { 0x3041,0x3042,0x3049,0x0000 }, 3 },  /* #08 */
+-	/*expect*/ { 0,1,-0x0006,			},
++	/*expect*/ { 0,1,-1,			},
+       },
+       { /*input.*/ { { 0x3041,0x3042,0x3043,0x0000 },
+ 		     { 0x3041,0x3042,0x0000	   }, 4 },  /* #09 */
+-	/*expect*/ { 0,1,0x3043,			},
++	/*expect*/ { 0,1,1,			},
+       },
+       { .is_last = 1 }
+     }
+diff --git a/localedata/tests-mbwc/tst_wcsncmp.c b/localedata/tests-mbwc/tst_wcsncmp.c
+index d046ecd..e378efb 100644
+--- a/localedata/tests-mbwc/tst_wcsncmp.c
++++ b/localedata/tests-mbwc/tst_wcsncmp.c
+@@ -24,6 +24,8 @@ tst_wcsncmp (FILE * fp, int debug_flg)
+       ws2 = TST_INPUT (wcsncmp).ws2;
+       n = TST_INPUT (wcsncmp).n;
+       ret = wcsncmp (ws1, ws2, n);
++      ret = (ret > 0 ? 1 : ret < 0 ? -1 : 0);
++
+ 
+       if (debug_flg)
+ 	{
+diff --git a/string/strncmp.c b/string/strncmp.c
+index d79305a..bd52138 100644
+--- a/string/strncmp.c
++++ b/string/strncmp.c
+@@ -21,7 +21,7 @@
+ #undef strncmp
+ 
+ #ifndef STRNCMP
+-#define STRNCMP strncmp
++# define STRNCMP strncmp
+ #endif
+ 
+ /* Compare no more than N characters of S1 and S2,
+diff --git a/string/test-strncmp.c b/string/test-strncmp.c
+index 7169593..950bf24 100644
+--- a/string/test-strncmp.c
++++ b/string/test-strncmp.c
+@@ -1,5 +1,5 @@
+ /* Test and measure strncmp functions.
+-   Copyright (C) 1999-2012 Free Software Foundation, Inc.
++   Copyright (C) 1999-2015 Free Software Foundation, Inc.
+    This file is part of the GNU C Library.
+    Written by Jakub Jelinek <jakub@redhat.com>, 1999.
+ 
+@@ -18,18 +18,82 @@
+    <http://www.gnu.org/licenses/>.  */
+ 
+ #define TEST_MAIN
+-#define TEST_NAME "strncmp"
++#ifdef WIDE
++# define TEST_NAME "wcsncmp"
++#else
++# define TEST_NAME "strncmp"
++#endif
+ #include "test-string.h"
+ 
+-typedef int (*proto_t) (const char *, const char *, size_t);
+-int simple_strncmp (const char *, const char *, size_t);
+-int stupid_strncmp (const char *, const char *, size_t);
++#ifdef WIDE
++# include <wchar.h>
++
++# define L(str) L##str
++# define STRNCMP wcsncmp
++# define STRCPY wcscpy
++# define STRDUP wcsdup
++# define MEMCPY wmemcpy
++# define SIMPLE_STRNCMP simple_wcsncmp
++# define STUPID_STRNCMP stupid_wcsncmp
++# define CHAR wchar_t
++# define UCHAR wchar_t
++# define CHARBYTES 4
++# define CHAR__MAX WCHAR_MAX
++# define CHAR__MIN WCHAR_MIN
++
++/* Wcsncmp uses signed semantics for comparison, not unsigned.
++   Avoid using substraction since possible overflow */
++int
++simple_wcsncmp (const CHAR *s1, const CHAR *s2, size_t n)
++{
++  wchar_t c1, c2;
++
++  while (n--)
++    {
++      c1 = *s1++;
++      c2 = *s2++;
++      if (c1 == L('\0') || c1 != c2)
++	return c1 > c2 ? 1 : (c1 < c2 ? -1 : 0);
++    }
++  return 0;
++}
+ 
+-IMPL (stupid_strncmp, 0)
+-IMPL (simple_strncmp, 0)
+-IMPL (strncmp, 1)
+ 
+ int
++stupid_wcsncmp (const CHAR *s1, const CHAR *s2, size_t n)
++{
++  wchar_t c1, c2;
++  size_t ns1 = wcsnlen (s1, n) + 1, ns2 = wcsnlen (s2, n) + 1;
++
++  n = ns1 < n ? ns1 : n;
++  n = ns2 < n ? ns2 : n;
++
++  while (n--)
++    {
++      c1 = *s1++;
++      c2 = *s2++;
++      if (c1 != c2)
++	return c1 > c2 ? 1 : -1;
++    }
++  return 0;
++}
++
++#else
++# define L(str) str
++# define STRNCMP strncmp
++# define STRCPY strcpy
++# define STRDUP strdup
++# define MEMCPY memcpy
++# define SIMPLE_STRNCMP simple_strncmp
++# define STUPID_STRNCMP stupid_strncmp
++# define CHAR char
++# define UCHAR unsigned char
++# define CHARBYTES 1
++# define CHAR__MAX CHAR_MAX
++# define CHAR__MIN CHAR_MIN
++
++/* Strncmp uses unsigned semantics for comparison. */
++int
+ simple_strncmp (const char *s1, const char *s2, size_t n)
+ {
+   int ret = 0;
+@@ -50,9 +114,16 @@ stupid_strncmp (const char *s1, const char *s2, size_t n)
+   while (n-- && (ret = *(unsigned char *) s1++ - * (unsigned char *) s2++) == 0);
+   return ret;
+ }
++#endif
++
++typedef int (*proto_t) (const CHAR *, const CHAR *, size_t);
++
++IMPL (STUPID_STRNCMP, 0)
++IMPL (SIMPLE_STRNCMP, 0)
++IMPL (STRNCMP, 1)
+ 
+ static int
+-check_result (impl_t *impl, const char *s1, const char *s2, size_t n,
++check_result (impl_t *impl, const CHAR *s1, const CHAR *s2, size_t n,
+ 	     int exp_result)
+ {
+   int result = CALL (impl, s1, s2, n);
+@@ -70,7 +141,7 @@ check_result (impl_t *impl, const char *s1, const char *s2, size_t n,
+ }
+ 
+ static void
+-do_one_test (impl_t *impl, const char *s1, const char *s2, size_t n,
++do_one_test (impl_t *impl, const CHAR *s1, const CHAR *s2, size_t n,
+ 	     int exp_result)
+ {
+   if (check_result (impl, s1, s2, n, exp_result) < 0)
+@@ -82,12 +153,12 @@ do_test_limit (size_t align1, size_t align2, size_t len, size_t n, int max_char,
+ 	 int exp_result)
+ {
+   size_t i, align_n;
+-  char *s1, *s2;
++  CHAR *s1, *s2;
+ 
+   if (n == 0)
+     {
+-      s1 = (char*)(buf1 + page_size);
+-      s2 = (char*)(buf2 + page_size);
++      s1 = (CHAR*) (buf1 + page_size);
++      s2 = (CHAR*) (buf2 + page_size);
+ 
+       FOR_EACH_IMPL (impl, 0)
+ 	do_one_test (impl, s1, s2, n, 0);
+@@ -97,16 +168,16 @@ do_test_limit (size_t align1, size_t align2, size_t len, size_t n, int max_char,
+ 
+   align1 &= 15;
+   align2 &= 15;
+-  align_n = (page_size - n) & 15;
++  align_n = (page_size - n * CHARBYTES) & 15;
+ 
+-  s1 = (char*)(buf1 + page_size - n);
+-  s2 = (char*)(buf2 + page_size - n);
++  s1 = (CHAR*) (buf1 + page_size - n * CHARBYTES);
++  s2 = (CHAR*) (buf2 + page_size - n * CHARBYTES);
+ 
+   if (align1 < align_n)
+-    s1 -= (align_n - align1);
++    s1 = (CHAR *) ((char *) s1 - (align_n - align1));
+ 
+   if (align2 < align_n)
+-    s2 -= (align_n - align2);
++    s2 = (CHAR *) ((char *) s2 - (align_n - align2));
+ 
+   for (i = 0; i < n; i++)
+     s1[i] = s2[i] = 1 + 23 * i % max_char;
+@@ -130,24 +201,24 @@ do_test (size_t align1, size_t align2, size_t len, size_t n, int max_char,
+ 	 int exp_result)
+ {
+   size_t i;
+-  char *s1, *s2;
++  CHAR *s1, *s2;
+ 
+   if (n == 0)
+     return;
+ 
+-  align1 &= 7;
+-  if (align1 + n + 1 >= page_size)
++  align1 &= 63;
++  if (align1 + (n + 1) * CHARBYTES >= page_size)
+     return;
+ 
+   align2 &= 7;
+-  if (align2 + n + 1 >= page_size)
++  if (align2 + (n + 1) * CHARBYTES >= page_size)
+     return;
+ 
+-  s1 = (char*)(buf1 + align1);
+-  s2 = (char*)(buf2 + align2);
++  s1 = (CHAR*) (buf1 + align1);
++  s2 = (CHAR*) (buf2 + align2);
+ 
+   for (i = 0; i < n; i++)
+-    s1[i] = s2[i] = 1 + 23 * i % max_char;
++    s1[i] = s2[i] = 1 + (23 << ((CHARBYTES - 1) * 8)) * i % max_char;
+ 
+   s1[n] = 24 + exp_result;
+   s2[n] = 23;
+@@ -161,19 +232,20 @@ do_test (size_t align1, size_t align2, size_t len, size_t n, int max_char,
+     s2[n - 1] -= exp_result;
+ 
+   FOR_EACH_IMPL (impl, 0)
+-    do_one_test (impl, (char*)s1, (char*)s2, n, exp_result);
++    do_one_test (impl, s1, s2, n, exp_result);
+ }
+ 
+ static void
+-do_page_test (size_t offset1, size_t offset2, char *s2)
++do_page_test (size_t offset1, size_t offset2, CHAR *s2)
+ {
+-  char *s1;
++  CHAR *s1;
+   int exp_result;
+ 
+-  if (offset1 >= page_size || offset2 >= page_size)
++  if (offset1 * CHARBYTES >= page_size || offset2 * CHARBYTES >= page_size)
+     return;
+ 
+-  s1 = (char *) (buf1 + offset1);
++  s1 = (CHAR *) buf1;
++  s1 += offset1;
+   s2 += offset2;
+ 
+   exp_result= *s1;
+@@ -191,8 +263,8 @@ do_random_tests (void)
+   size_t i, j, n, align1, align2, pos, len1, len2, size;
+   int result;
+   long r;
+-  unsigned char *p1 = buf1 + page_size - 512;
+-  unsigned char *p2 = buf2 + page_size - 512;
++  UCHAR *p1 = (UCHAR *) (buf1 + page_size - 512 * CHARBYTES);
++  UCHAR *p2 = (UCHAR *) (buf2 + page_size - 512 * CHARBYTES);
+ 
+   for (n = 0; n < ITERATIONS; n++)
+     {
+@@ -240,7 +312,7 @@ do_random_tests (void)
+ 	}
+ 
+       result = 0;
+-      memcpy (p2 + align2, p1 + align1, pos);
++      MEMCPY (p2 + align2, p1 + align1, pos);
+       if (pos < len1)
+ 	{
+ 	  if (p2[align2 + pos] == p1[align1 + pos])
+@@ -263,7 +335,7 @@ do_random_tests (void)
+ 
+       FOR_EACH_IMPL (impl, 1)
+ 	{
+-	  r = CALL (impl, (char*)(p1 + align1), (char*)(p2 + align2), size);
++	  r = CALL (impl, (CHAR *)(p1 + align1), (CHAR *)(p2 + align2), size);
+ 	  /* Test whether on 64-bit architectures where ABI requires
+ 	     callee to promote has the promotion been done.  */
+ 	  asm ("" : "=g" (r) : "0" (r));
+@@ -282,19 +354,26 @@ do_random_tests (void)
+ static void
+ check1 (void)
+ {
+-  char *s1 = (char *)(buf1 + 0xb2c);
+-  char *s2 = (char *)(buf1 + 0xfd8);
+-  size_t i;
++  CHAR *s1 = (CHAR *)(buf1 + 0xb2c);
++  CHAR *s2 = (CHAR *)(buf1 + 0xfd8);
++  size_t i, offset;
+   int exp_result;
+ 
+-  strcpy(s1, "abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrs");
+-  strcpy(s2, "abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijkLMNOPQRSTUV");
++  strcpy(s1, L("abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrs"));
++  strcpy(s2, L("abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijkLMNOPQRSTUV"));
++
++  /* Check possible overflow bug for wcsncmp */
++  s1[4] = CHAR__MAX;
++  s2[4] = CHAR__MIN;
+ 
+-  for (i = 0; i < 80; i++)
++  for (offset = 0; offset < 6; offset++)
+     {
+-      exp_result = simple_strncmp (s1, s2, i);
+-      FOR_EACH_IMPL (impl, 0)
+-	 check_result (impl, s1, s2, i, exp_result);
++      for (i = 0; i < 80; i++)
++	{
++	  exp_result = SIMPLE_STRNCMP (s1 + offset, s2 + offset, i);
++	  FOR_EACH_IMPL (impl, 0)
++	    check_result (impl, s1 + offset, s2 + offset, i, exp_result);
++	}
+     }
+ }
+ 
+@@ -302,17 +381,17 @@ static void
+ check2 (void)
+ {
+   size_t i;
+-  char *s1, *s2;
++  CHAR *s1, *s2;
+ 
+-  s1 = (char *) buf1;
+-  for (i = 0; i < page_size - 1; i++)
++  s1 = (CHAR *) buf1;
++  for (i = 0; i < (page_size / CHARBYTES) - 1; i++)
+     s1[i] = 23;
+   s1[i] = 0;
+ 
+-  s2 = strdup (s1);
++  s2 = STRDUP (s1);
+ 
+   for (i = 0; i < 64; ++i)
+-    do_page_test (3990 + i, 2635, s2);
++    do_page_test ((3988 / CHARBYTES) + i, (2636 / CHARBYTES), s2);
+ 
+   free (s2);
+ }
+diff --git a/sysdeps/s390/multiarch/Makefile b/sysdeps/s390/multiarch/Makefile
+index d8fbd55..d77bee5 100644
+--- a/sysdeps/s390/multiarch/Makefile
++++ b/sysdeps/s390/multiarch/Makefile
+@@ -7,7 +7,8 @@ sysdep_routines += strlen strlen-vx strlen-c \
+ 		   stpncpy stpncpy-vx stpncpy-c \
+ 		   strcat strcat-vx strcat-c \
+ 		   strncat strncat-vx strncat-c \
+-		   strcmp strcmp-vx
++		   strcmp strcmp-vx \
++		   strncmp strncmp-vx strncmp-c
+ endif
+ 
+ ifeq ($(subdir),wcsmbs)
+@@ -19,5 +20,6 @@ sysdep_routines += wcslen wcslen-vx wcslen-c \
+ 		   wcpncpy wcpncpy-vx wcpncpy-c \
+ 		   wcscat wcscat-vx wcscat-c \
+ 		   wcsncat wcsncat-vx wcsncat-c \
+-		   wcscmp wcscmp-vx wcscmp-c
++		   wcscmp wcscmp-vx wcscmp-c \
++		   wcsncmp wcsncmp-vx wcsncmp-c
+ endif
+diff --git a/sysdeps/s390/multiarch/ifunc-impl-list.c b/sysdeps/s390/multiarch/ifunc-impl-list.c
+index 196d3ec..5bfc493 100644
+--- a/sysdeps/s390/multiarch/ifunc-impl-list.c
++++ b/sysdeps/s390/multiarch/ifunc-impl-list.c
+@@ -106,6 +106,9 @@ __libc_ifunc_impl_list (const char *name, struct libc_ifunc_impl *array,
+   IFUNC_VX_IMPL (strcmp);
+   IFUNC_VX_IMPL (wcscmp);
+ 
++  IFUNC_VX_IMPL (strncmp);
++  IFUNC_VX_IMPL (wcsncmp);
++
+ #endif /* HAVE_S390_VX_ASM_SUPPORT */
+ 
+   return i;
+diff --git a/sysdeps/s390/multiarch/strncmp-c.c b/sysdeps/s390/multiarch/strncmp-c.c
+new file mode 100644
+index 0000000..75da859
+--- /dev/null
++++ b/sysdeps/s390/multiarch/strncmp-c.c
+@@ -0,0 +1,28 @@
++/* Default strncmp implementation for S/390.
++   Copyright (C) 2015 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#if defined HAVE_S390_VX_ASM_SUPPORT && !defined NOT_IN_libc
++# define STRNCMP  __strncmp_c
++# ifdef SHARED
++#  undef libc_hidden_builtin_def
++#  define libc_hidden_builtin_def(name)			\
++  __hidden_ver1 (__strncmp_c, __GI_strncmp, __strncmp_c);
++# endif /* SHARED */
++
++# include <string/strncmp.c>
++#endif /* HAVE_S390_VX_ASM_SUPPORT && !defined NOT_IN_libc */
+diff --git a/sysdeps/s390/multiarch/strncmp-vx.S b/sysdeps/s390/multiarch/strncmp-vx.S
+new file mode 100644
+index 0000000..36e99b8
+--- /dev/null
++++ b/sysdeps/s390/multiarch/strncmp-vx.S
+@@ -0,0 +1,137 @@
++/* Vector optimized 32/64 bit S/390 version of strncmp.
++   Copyright (C) 2015 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#if defined HAVE_S390_VX_ASM_SUPPORT && !defined NOT_IN_libc
++
++# include "sysdep.h"
++# include "asm-syntax.h"
++
++	.text
++
++/* int strncmp (const char *s1, const char *s2, size_t n)
++   Compare at most n characters of two strings.
++
++   Register usage:
++   -r0=tmp
++   -r1=tmp
++   -r2=s1
++   -r3=s2
++   -r4=n
++   -r5=current_len
++   -v16=part of s1
++   -v17=part of s2
++   -v18=index of unequal
++*/
++ENTRY(__strncmp_vx)
++	.machine "z13"
++	.machinemode "zarch_nohighgprs"
++
++# if !defined __s390x__
++	llgfr	%r4,%r4
++# endif /* !defined __s390x__ */
++
++	clgije	%r4,0,.Lend_equal /* Nothing to do if n == 0,  */
++	lghi	%r5,0		/* current_len = 0.  */
++
++.Lloop:
++	vlbb	%v16,0(%r5,%r2),6 /* Load s1 to block boundary.  */
++	vlbb	%v17,0(%r5,%r3),6 /* Load s2 to block boundary.  */
++	lcbb	%r0,0(%r5,%r2),6 /* Get loaded byte count of s1.  */
++	jo	.Llt16_1	/* Jump away if vr is not fully loaded.  */
++	lcbb	%r1,0(%r5,%r3),6 /* Get loaded byte count of s2.  */
++	jo	.Llt16_2	/* Jump away if vr is not fully loaded.  */
++	aghi	%r5,16		/* Both vrs are fully loaded.  */
++	clgrjhe	%r5,%r4,.Llastcmp /* If current_len >= n ->last compare.  */
++	vfenezbs %v18,%v16,%v17	/* Compare not equal with zero search.  */
++	jno	.Lfound
++
++	vlbb	%v16,0(%r5,%r2),6
++	vlbb	%v17,0(%r5,%r3),6
++	lcbb	%r0,0(%r5,%r2),6
++	jo	.Llt16_1
++	lcbb	%r1,0(%r5,%r3),6
++	jo	.Llt16_2
++	aghi	%r5,16
++	clgrjhe	%r5,%r4,.Llastcmp
++	vfenezbs %v18,%v16,%v17
++	jno	.Lfound
++
++	vlbb	%v16,0(%r5,%r2),6
++	vlbb	%v17,0(%r5,%r3),6
++	lcbb	%r0,0(%r5,%r2),6
++	jo	.Llt16_1
++	lcbb	%r1,0(%r5,%r3),6
++	jo	.Llt16_2
++	aghi	%r5,16
++	clgrjhe	%r5,%r4,.Llastcmp
++	vfenezbs %v18,%v16,%v17
++	jno	.Lfound
++
++	vlbb	%v16,0(%r5,%r2),6
++	vlbb	%v17,0(%r5,%r3),6
++	lcbb	%r0,0(%r5,%r2),6
++	jo	.Llt16_1
++	lcbb	%r1,0(%r5,%r3),6
++	jo	.Llt16_2
++	aghi	%r5,16
++	clgrjhe	%r5,%r4,.Llastcmp
++	vfenezbs %v18,%v16,%v17
++	jno	.Lfound
++	j	.Lloop
++
++.Llt16_1:
++	lcbb	%r1,0(%r5,%r3),6 /* Get loaded byte count ofs2.  */
++.Llt16_2:
++	clr	%r0,%r1		/* Compare logical.  */
++	locrh	%r0,%r1		/* Compute minimum of bytes loaded.  */
++	algfr	%r5,%r0		/* Add smallest loaded bytes to current_len.  */
++	clgrj	%r5,%r4,10,.Llastcmp /* If current_len >= n ->last compare.  */
++	vfenezbs %v18,%v16,%v17	/* Compare not equal with zero search.  */
++	vlgvb	%r1,%v18,7	/* Get not equal index or 16 if all equal.  */
++	clrjl	%r1,%r0,.Lfound /* Jump away if miscompare is within
++				    loaded bytes (index < loaded-bytes) */
++	j	.Lloop
++
++.Llastcmp:
++	/* Use comparision result only if located within first n characters.
++	   %r0: loaded byte count in vreg;
++	   %r5: current_len;
++	   %r4: n;
++	   (current_len - n): [0...16[
++	   First ignored match index: loaded bytes - (current_len-n): ]0...16]
++	*/
++	slgr	%r5,%r4		/* %r5 = current_len - n.  */
++	slr	%r0,%r5		/* %r0 = first ignored match index.  */
++	vfenezbs %v18,%v16,%v17	/* Compare not equal with zero search.  */
++	vlgvb	%r1,%v18,7	/* Get not equal index or 16 if all equal.  */
++	clrjl	%r1,%r0,.Lfound /* Jump away if miscompare is within
++				    loaded bytes and below n bytes.  */
++	j	.Lend_equal	/* Miscompare after n-bytes -> end equal.  */
++
++.Lfound:
++	/* Difference or end of string.  */
++	je	.Lend_equal
++	lghi	%r2,1
++	lghi	%r1,-1
++	locgrl	%r2,%r1
++	br	%r14
++.Lend_equal:
++	lghi	%r2,0
++	br	%r14
++END(__strncmp_vx)
++#endif /* HAVE_S390_VX_ASM_SUPPORT && !defined NOT_IN_libc */
+diff --git a/sysdeps/s390/multiarch/strncmp.c b/sysdeps/s390/multiarch/strncmp.c
+new file mode 100644
+index 0000000..1e1e05a
+--- /dev/null
++++ b/sysdeps/s390/multiarch/strncmp.c
+@@ -0,0 +1,30 @@
++/* Multiple versions of strncmp.
++   Copyright (C) 2015 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#if defined HAVE_S390_VX_ASM_SUPPORT && !defined NOT_IN_libc
++# include <string.h>
++# include <ifunc-resolve.h>
++
++
++# undef strcmp
++extern __typeof (strncmp) __strncmp;
++s390_vx_libc_ifunc2 (__strncmp, strncmp)
++
++#else
++# include <string/strncmp.c>
++#endif /* !(defined HAVE_S390_VX_ASM_SUPPORT && !defined NOT_IN_libc) */
+diff --git a/sysdeps/s390/multiarch/wcsncmp-c.c b/sysdeps/s390/multiarch/wcsncmp-c.c
+new file mode 100644
+index 0000000..058cd0c
+--- /dev/null
++++ b/sysdeps/s390/multiarch/wcsncmp-c.c
+@@ -0,0 +1,25 @@
++/* Default wcsncmp implementation for S/390.
++   Copyright (C) 2015 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#if defined HAVE_S390_VX_ASM_SUPPORT && !defined NOT_IN_libc
++# define WCSNCMP  __wcsncmp_c
++
++# include <wchar.h>
++extern __typeof (wcsncmp) __wcsncmp_c;
++# include <wcsmbs/wcsncmp.c>
++#endif
+diff --git a/sysdeps/s390/multiarch/wcsncmp-vx.S b/sysdeps/s390/multiarch/wcsncmp-vx.S
+new file mode 100644
+index 0000000..9a44424
+--- /dev/null
++++ b/sysdeps/s390/multiarch/wcsncmp-vx.S
+@@ -0,0 +1,177 @@
++/* Vector optimized 32/64 bit S/390 version of wcsncmp.
++   Copyright (C) 2015 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#if defined HAVE_S390_VX_ASM_SUPPORT && !defined NOT_IN_libc
++
++# include "sysdep.h"
++# include "asm-syntax.h"
++
++	.text
++
++/* int wcsncmp (const wchar_t *s1, const wchar_t *s2, size_t n)
++   Compare at most n characters of two strings.
++
++   Register usage:
++   -r0=tmp
++   -r1=tmp
++   -r2=s1
++   -r3=s2
++   -r4=n
++   -r5=current_len
++   -v16=part of s1
++   -v17=part of s2
++   -v18=index of unequal
++*/
++ENTRY(__wcsncmp_vx)
++	.machine "z13"
++	.machinemode "zarch_nohighgprs"
++
++# if !defined __s390x__
++	llgfr	%r4,%r4
++# endif /* !defined __s390x__ */
++
++	clgije	%r4,0,.Lend_equal /* Nothing to do if n == 0.  */
++
++	/* Check range of n and convert to byte-count.  */
++# ifdef __s390x__
++	tmhh	%r4,49152	/* Test bit 0 or 1 of maxlen.  */
++	lghi	%r1,-4		/* Max byte-count is 18446744073709551612.  */
++# else
++	tmlh	%r4,49152	/* Test bit 0 or 1 of maxlen.  */
++	llilf	%r1,4294967292	/* Max byte-count is 4294967292.  */
++# endif /* !__s390x__ */
++	sllg	%r4,%r4,2	/* Convert character-count to byte-count.  */
++	locgrne	%r4,%r1		/* Use max byte-count, if bit 0/1 was one.  */
++
++	/* Check first character without vector load.  */
++	lghi	%r5,4		/* current_len = 4 bytes.  */
++	/* Check s1/2[0].  */
++	lt	%r0,0(%r2)
++	l	%r1,0(%r3)
++	je	.Lend_cmp_one_char
++	crjne	%r0,%r1,.Lend_cmp_one_char
++
++.Lloop:
++	vlbb	%v17,0(%r5,%r3),6 /* Load s2 to block boundary.  */
++	vlbb	%v16,0(%r5,%r2),6 /* Load s1 to block boundary.  */
++	lcbb	%r0,0(%r5,%r2),6 /* Get loaded byte count of s1.  */
++	jo	.Llt16_1	/* Jump away if vector not fully loaded.  */
++	lcbb	%r1,0(%r5,%r3),6 /* Get loaded byte count of s2.  */
++	jo	.Llt16_2	/* Jump away if vector not fully loaded.  */
++	aghi	%r5,16		/* Both vectors are fully loaded.  */
++	vfenezfs %v18,%v16,%v17	/* Compare not equal with zero search.  */
++	clgrjhe	%r5,%r4,.Llastcmp /* If current_len >= n ->last compare.  */
++	jno	.Lfound
++
++	vlbb	%v17,0(%r5,%r3),6
++	vlbb	%v16,0(%r5,%r2),6
++	lcbb	%r0,0(%r5,%r2),6
++	jo	.Llt16_1
++	lcbb	%r1,0(%r5,%r3),6
++	jo	.Llt16_2
++	aghi	%r5,16
++	vfenezfs %v18,%v16,%v17
++	clgrjhe	%r5,%r4,.Llastcmp
++	jno	.Lfound
++
++	vlbb	%v17,0(%r5,%r3),6
++	vlbb	%v16,0(%r5,%r2),6
++	lcbb	%r0,0(%r5,%r2),6
++	jo	.Llt16_1
++	lcbb	%r1,0(%r5,%r3),6
++	jo	.Llt16_2
++	aghi	%r5,16
++	vfenezfs %v18,%v16,%v17
++	clgrjhe	%r5,%r4,.Llastcmp
++	jno	.Lfound
++
++	vlbb	%v17,0(%r5,%r3),6
++	vlbb	%v16,0(%r5,%r2),6
++	lcbb	%r0,0(%r5,%r2),6
++	jo	.Llt16_1
++	lcbb	%r1,0(%r5,%r3),6
++	jo	.Llt16_2
++	aghi	%r5,16
++	vfenezfs %v18,%v16,%v17
++	clgrjhe	%r5,%r4,.Llastcmp
++	jno	.Lfound
++
++	j	.Lloop
++
++.Llt16_1:
++	lcbb	%r1,0(%r5,%r3),6 /* Get loaded byte count of s2.  */
++.Llt16_2:
++	clr	%r0,%r1		/* Compare logical.  */
++	locrh	%r0,%r1		/* Compute minimum of bytes loaded.  */
++	nill	%r0,65532	/* Align bytes loaded to full characters.  */
++	jz	.Lcmp_one_char	/* Jump away if no full char is available.  */
++.Llt_cmp:
++	algfr	%r5,%r0		/* Add smallest loaded bytes to current_len.  */
++	vfenezfs %v18,%v16,%v17	/* Compare not equal with zero search.  */
++	clgrj	%r5,%r4,10,.Llastcmp /* If current_len >= n -> last compare  */
++	vlgvb	%r1,%v18,7	/* Get not equal index or 16 if all equal.  */
++	clrjl	%r1,%r0,.Lfound /* Jump away if miscompare is within
++				   loaded bytes; (index < loaded-bytes) */
++	j	.Lloop
++
++.Lcmp_one_char:
++	/* At least one of both strings is not 4-byte aligned
++	   and there is no full character before next block-boundary.
++	   Compare one character to get over the boundary and
++	   proceed with normal loop!  */
++	vlef	%v16,0(%r5,%r2),0 /* Load one character.  */
++	lghi	%r0,4		/* Loaded byte count is 4.  */
++	vlef	%v17,0(%r5,%r3),0
++	j	.Llt_cmp	/* Proceed with comparision.  */
++
++.Llastcmp:
++	/* Use comparision result only if located within first n characters.
++	   %r0: loaded byte count in vreg;
++	   %r5: current_len;
++	   %r4: n;
++	   (current_len - n): [0...16[
++	   First ignored match index: loaded bytes - (current_len-n): ]0...16]
++	*/
++	slgr	%r5,%r4		/* %r5 = current_len - n.  */
++	slr	%r0,%r5		/* %r0 = first ignored match index.  */
++	vlgvb	%r4,%v18,7	/* Get not equal index or 16 if all equal.  */
++	clrjl	%r4,%r0,.Lfound2 /* Jump away if miscompare is within
++				     loaded bytes and below n bytes.  */
++.Lend_equal:
++	lghi	%r2,0
++	br	%r14
++
++.Lfound:
++	/* Difference or end of string.  */
++	/* vfenezf found an unequal element or zero.
++	   This instruction compares unsigned words, but wchar_t is signed.
++	   Thus we have to compare the found element again.  */
++	vlgvb	%r4,%v18,7	/* Extract not equal byte-index.  */
++.Lfound2:
++	srl	%r4,2		/* And convert it to character-index.  */
++	vlgvf	%r0,%v16,0(%r4)	/* Load character-values.  */
++	vlgvf	%r1,%v17,0(%r4)
++.Lend_cmp_one_char:
++	cr	%r0,%r1
++	je	.Lend_equal
++	lghi	%r2,1
++	lghi	%r1,-1
++	locgrl	%r2,%r1
++	br	%r14
++END(__wcsncmp_vx)
++#endif /* HAVE_S390_VX_ASM_SUPPORT && !defined NOT_IN_libc */
+diff --git a/sysdeps/s390/multiarch/wcsncmp.c b/sysdeps/s390/multiarch/wcsncmp.c
+new file mode 100644
+index 0000000..0d79661
+--- /dev/null
++++ b/sysdeps/s390/multiarch/wcsncmp.c
+@@ -0,0 +1,27 @@
++/* Multiple versions of wcsncmp.
++   Copyright (C) 2015 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#if defined HAVE_S390_VX_ASM_SUPPORT && !defined NOT_IN_libc
++# include <wchar.h>
++# include <ifunc-resolve.h>
++
++s390_vx_libc_ifunc2 (__wcsncmp, wcsncmp)
++
++#else
++# include <wcsmbs/wcsncmp.c>
++#endif /* !(defined HAVE_S390_VX_ASM_SUPPORT && !defined NOT_IN_libc) */
+diff --git a/wcsmbs/Makefile b/wcsmbs/Makefile
+index 44b1502..611b2c9 100644
+--- a/wcsmbs/Makefile
++++ b/wcsmbs/Makefile
+@@ -41,7 +41,7 @@ routines := wcscat wcschr wcscmp wcscpy wcscspn wcsdup wcslen wcsncat \
+ 	    isoc99_swscanf isoc99_vswscanf \
+ 	    mbrtoc16 c16rtomb
+ 
+-strop-tests :=  wcscmp wmemcmp wcslen wcschr wcsrchr wcscpy wcsnlen \
++strop-tests :=  wcscmp wcsncmp wmemcmp wcslen wcschr wcsrchr wcscpy wcsnlen \
+ 		wcpcpy wcsncpy wcpncpy wcscat wcsncat
+ tests := tst-wcstof wcsmbs-tst1 tst-wcsnlen tst-btowc tst-mbrtowc \
+ 	 tst-wcrtomb tst-wcpncpy tst-mbsrtowcs tst-wchar-h tst-mbrtowc2 \
+diff --git a/wcsmbs/test-wcsncmp-ifunc.c b/wcsmbs/test-wcsncmp-ifunc.c
+new file mode 100644
+index 0000000..35176f0
+--- /dev/null
++++ b/wcsmbs/test-wcsncmp-ifunc.c
+@@ -0,0 +1,20 @@
++/* Test and measure IFUNC implementations of wcsncmp function.
++   Copyright (C) 2015 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#define TEST_IFUNC 1
++#include "test-wcsncmp.c"
+diff --git a/wcsmbs/test-wcsncmp.c b/wcsmbs/test-wcsncmp.c
+new file mode 100644
+index 0000000..07757d8
+--- /dev/null
++++ b/wcsmbs/test-wcsncmp.c
+@@ -0,0 +1,2 @@
++#define WIDE 1
++#include "../string/test-strncmp.c"
+diff --git a/wcsmbs/wcsncmp.c b/wcsmbs/wcsncmp.c
+index 7f1704f..1522b6f 100644
+--- a/wcsmbs/wcsncmp.c
++++ b/wcsmbs/wcsncmp.c
+@@ -18,53 +18,56 @@
+ 
+ #include <wchar.h>
+ 
++#ifndef WCSNCMP
++# define WCSNCMP wcsncmp
++#endif
+ 
+ /* Compare no more than N characters of S1 and S2,
+    returning less than, equal to or greater than zero
+    if S1 is lexicographically less than, equal to or
+    greater than S2.  */
+ int
+-wcsncmp (s1, s2, n)
++WCSNCMP (s1, s2, n)
+      const wchar_t *s1;
+      const wchar_t *s2;
+      size_t n;
+ {
+-  wint_t c1 = L'\0';
+-  wint_t c2 = L'\0';
++  wchar_t c1 = L'\0';
++  wchar_t c2 = L'\0';
+ 
+   if (n >= 4)
+     {
+       size_t n4 = n >> 2;
+       do
+ 	{
+-	  c1 = (wint_t) *s1++;
+-	  c2 = (wint_t) *s2++;
++	  c1 = *s1++;
++	  c2 = *s2++;
+ 	  if (c1 == L'\0' || c1 != c2)
+-	    return c1 - c2;
+-	  c1 = (wint_t) *s1++;
+-	  c2 = (wint_t) *s2++;
++	    return c1 > c2 ? 1 : (c1 < c2 ? -1 : 0);
++	  c1 = *s1++;
++	  c2 = *s2++;
+ 	  if (c1 == L'\0' || c1 != c2)
+-	    return c1 - c2;
+-	  c1 = (wint_t) *s1++;
+-	  c2 = (wint_t) *s2++;
++	    return c1 > c2 ? 1 : (c1 < c2 ? -1 : 0);
++	  c1 = *s1++;
++	  c2 = *s2++;
+ 	  if (c1 == L'\0' || c1 != c2)
+-	    return c1 - c2;
+-	  c1 = (wint_t) *s1++;
+-	  c2 = (wint_t) *s2++;
++	    return c1 > c2 ? 1 : (c1 < c2 ? -1 : 0);
++	  c1 = *s1++;
++	  c2 = *s2++;
+ 	  if (c1 == L'\0' || c1 != c2)
+-	    return c1 - c2;
++	    return c1 > c2 ? 1 : (c1 < c2 ? -1 : 0);
+ 	} while (--n4 > 0);
+       n &= 3;
+     }
+ 
+   while (n > 0)
+     {
+-      c1 = (wint_t) *s1++;
+-      c2 = (wint_t) *s2++;
++      c1 = *s1++;
++      c2 = *s2++;
+       if (c1 == L'\0' || c1 != c2)
+-	return c1 - c2;
++	return c1 > c2 ? 1 : (c1 < c2 ? -1 : 0);
+       n--;
+     }
+ 
+-  return c1 - c2;
++  return 0;
+ }
+-- 
+2.3.0
+

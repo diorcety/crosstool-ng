@@ -1,0 +1,336 @@
+From 9b608ba89342c722baadb89d221894ca270d4a02 Mon Sep 17 00:00:00 2001
+From: Rajalakshmi Srinivasaraghavan <raji@linux.vnet.ibm.com>
+Date: Wed, 30 Jul 2014 12:09:18 -0500
+Subject: [PATCH] PowerPC: multiarch modf/modff for PowerPC64
+
+commit 83efded42445e9684173b09a6244109d058ed2bd
+Author: Adhemerval Zanella <azanella@linux.vnet.ibm.com>
+Date:   Fri Dec 13 15:37:23 2013 -0500
+
+Added the following files apart from the original commit.
+sysdeps/powerpc/powerpc32/power4/fpu/multiarch/s_modf-power5+.c
+sysdeps/powerpc/powerpc32/power4/fpu/multiarch/s_modff-power5+.c
+---
+ .../power4/fpu/multiarch/s_modf-power5+.c          | 31 +++++++++++++++
+ .../power4/fpu/multiarch/s_modff-power5+.c         | 27 +++++++++++++
+ sysdeps/powerpc/powerpc64/fpu/multiarch/Makefile   |  8 +++-
+ .../powerpc64/fpu/multiarch/s_modf-power5+.c       | 19 ++++++++++
+ .../powerpc/powerpc64/fpu/multiarch/s_modf-ppc64.c | 29 ++++++++++++++
+ sysdeps/powerpc/powerpc64/fpu/multiarch/s_modf.c   | 44 ++++++++++++++++++++++
+ .../powerpc64/fpu/multiarch/s_modff-power5+.c      | 19 ++++++++++
+ .../powerpc64/fpu/multiarch/s_modff-ppc64.c        | 26 +++++++++++++
+ sysdeps/powerpc/powerpc64/fpu/multiarch/s_modff.c  | 30 +++++++++++++++
+ 9 files changed, 231 insertions(+), 2 deletions(-)
+ create mode 100644 sysdeps/powerpc/powerpc32/power4/fpu/multiarch/s_modf-power5+.c
+ create mode 100644 sysdeps/powerpc/powerpc32/power4/fpu/multiarch/s_modff-power5+.c
+ create mode 100644 sysdeps/powerpc/powerpc64/fpu/multiarch/s_modf-power5+.c
+ create mode 100644 sysdeps/powerpc/powerpc64/fpu/multiarch/s_modf-ppc64.c
+ create mode 100644 sysdeps/powerpc/powerpc64/fpu/multiarch/s_modf.c
+ create mode 100644 sysdeps/powerpc/powerpc64/fpu/multiarch/s_modff-power5+.c
+ create mode 100644 sysdeps/powerpc/powerpc64/fpu/multiarch/s_modff-ppc64.c
+ create mode 100644 sysdeps/powerpc/powerpc64/fpu/multiarch/s_modff.c
+
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc32/power4/fpu/multiarch/s_modf-power5+.c glibc-2.17-c758a686/sysdeps/powerpc/powerpc32/power4/fpu/multiarch/s_modf-power5+.c
+new file mode 100644
+index 0000000..d7ad0b7
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc32/power4/fpu/multiarch/s_modf-power5+.c
+@@ -0,0 +1,31 @@
++/* PowerPC/POWER5+ implementation for modf.
++   Copyright (C) 2013-2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <math.h>
++#include <math_ldbl_opt.h>
++
++#undef weak_alias
++#define weak_alias(a,b)
++#undef strong_alias
++#define strong_alias(a,b)
++#undef compat_symbol
++#define compat_symbol(a,b,c,d)
++
++#define __modf __modf_power5plus
++
++#include <sysdeps/powerpc/power5+/fpu/s_modf.c>
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc32/power4/fpu/multiarch/s_modff-power5+.c glibc-2.17-c758a686/sysdeps/powerpc/powerpc32/power4/fpu/multiarch/s_modff-power5+.c
+new file mode 100644
+index 0000000..4021b52
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc32/power4/fpu/multiarch/s_modff-power5+.c
+@@ -0,0 +1,27 @@
++/* PowerPC/POWER5+ implementation for modff.
++   Copyright (C) 2013-2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <math.h>
++#include <math_ldbl_opt.h>
++
++#undef weak_alias
++#define weak_alias(a,b)
++
++#define __modff __modff_power5plus
++
++#include <sysdeps/powerpc/power5+/fpu/s_modff.c>
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/Makefile glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/Makefile
+index 87aabca..e152bf5 100644
+--- glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/Makefile
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/Makefile
+@@ -3,7 +3,8 @@ sysdep_routines += s_isnan-power7 s_isnan-power6x s_isnan-power6 \
+                   s_isnan-power5 s_isnan-ppc64 s_copysign-power6 \
+                   s_copysign-ppc64 s_finite-power7 s_finite-ppc64 \
+                   s_finitef-ppc64 s_isinff-ppc64 s_isinf-power7 \
+-                  s_isinf-ppc64
++                  s_isinf-ppc64 s_modf-power5+ s_modf-ppc64 \
++                  s_modff-power5+ s_modff-ppc64
+ 
+ libm-sysdep_routines += s_isnan-power7 s_isnan-power6x s_isnan-power6 \
+                        s_isnan-power5 s_isnan-ppc64 s_llround-power6x \
+@@ -18,9 +19,12 @@ libm-sysdep_routines += s_isnan-power7 s_isnan-power6x s_isnan-power6 \
+                        s_finitef-ppc64 s_isinff-ppc64 s_isinf-power7 \
+                        s_isinf-ppc64 s_logb-power7 s_logbf-power7 \
+                        s_logbl-power7 s_logb-ppc64 s_logbf-ppc64 \
+-                       s_logbl-ppc64
++                       s_logbl-ppc64 s_modf-power5+ s_modf-ppc64 \
++                       s_modff-power5+ s_modff-ppc64
+ 
+ CFLAGS-s_logbf-power7.c = -mcpu=power7
+ CFLAGS-s_logbl-power7.c = -mcpu=power7
+ CFLAGS-s_logb-power7.c = -mcpu=power7
++CFLAGS-s_modf-power5+.c = -mcpu=power5+
++CFLAGS-s_modff-power5+.c = -mcpu=power5+
+ endif
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_modf-power5+.c glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_modf-power5+.c
+new file mode 100644
+index 0000000..bda9920
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_modf-power5+.c
+@@ -0,0 +1,19 @@
++/* PowerPC/POWER5+ implementation for modf.
++   Copyright (C) 2013-2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <sysdeps/powerpc/powerpc32/power4/fpu/multiarch/s_modf-power5+.c>
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_modf-ppc64.c glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_modf-ppc64.c
+new file mode 100644
+index 0000000..90e7599
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_modf-ppc64.c
+@@ -0,0 +1,29 @@
++/* PowerPC64 default implementation for modf.
++   Copyright (C) 2013-2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <math.h>
++#include <math_ldbl_opt.h>
++
++#undef weak_alias
++#define weak_alias(a,b)
++#undef strong_alias
++#define strong_alias(a,b)
++
++#define __modf __modf_ppc64
++
++#include <sysdeps/ieee754/dbl-64/s_modf.c>
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_modf.c glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_modf.c
+new file mode 100644
+index 0000000..f416fa9
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_modf.c
+@@ -0,0 +1,44 @@
++/* Multiple versions of modf.
++   Copyright (C) 2013-2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <math.h>
++#include <math_ldbl_opt.h>
++#include <shlib-compat.h>
++#include "init-arch.h"
++
++extern __typeof (__modf) __modf_ppc64 attribute_hidden;
++extern __typeof (__modf) __modf_power5plus attribute_hidden;
++
++libc_ifunc (__modf,
++	    (hwcap & PPC_FEATURE_POWER5_PLUS)
++	    ? __modf_power5plus
++            : __modf_ppc64);
++
++weak_alias (__modf, modf)
++
++#ifdef NO_LONG_DOUBLE
++strong_alias (__modf, __modfl)
++weak_alias (__modf, modfl)
++#endif
++#ifdef IS_IN_libm
++# if LONG_DOUBLE_COMPAT(libm, GLIBC_2_0)
++compat_symbol (libm, __modf, modfl, GLIBC_2_0);
++# endif
++#elif LONG_DOUBLE_COMPAT(libc, GLIBC_2_0)
++compat_symbol (libc, __modf, modfl, GLIBC_2_0);
++#endif
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_modff-power5+.c glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_modff-power5+.c
+new file mode 100644
+index 0000000..70a536d
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_modff-power5+.c
+@@ -0,0 +1,19 @@
++/* PowerPC/POWER5+ implementation for modff.
++   Copyright (C) 2013-2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <sysdeps/powerpc/powerpc32/power4/fpu/multiarch/s_modff-power5+.c>
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_modff-ppc64.c glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_modff-ppc64.c
+new file mode 100644
+index 0000000..89d8f63
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_modff-ppc64.c
+@@ -0,0 +1,26 @@
++/* PowerPC64 default implementation for modff.
++   Copyright (C) 2013-2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <math.h>
++
++#undef weak_alias
++#define weak_alias(a,b)
++
++#define __modff __modff_ppc64
++
++#include <sysdeps/ieee754/flt-32/s_modff.c>
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_modff.c glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_modff.c
+new file mode 100644
+index 0000000..137b7aa
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_modff.c
+@@ -0,0 +1,30 @@
++/* Multiple versions of modff.
++   Copyright (C) 2013-2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <math.h>
++#include "init-arch.h"
++
++extern __typeof (__modff) __modff_ppc64 attribute_hidden;
++extern __typeof (__modff) __modff_power5plus attribute_hidden;
++
++libc_ifunc (__modff,
++	    (hwcap & PPC_FEATURE_POWER5_PLUS)
++	    ? __modff_power5plus
++            : __modff_ppc64);
++
++weak_alias (__modff, modff)
+-- 
+1.8.3.1
+

@@ -1,0 +1,16 @@
+Add "sss" to the automount database.  The sss service ordering is
+based on passwd (and others; sss comes after files) and netgroup (sss
+comes after nisplus).
+
+Index: b/releng/nsswitch.conf
+===================================================================
+--- a/releng/nsswitch.conf
++++ b/releng/nsswitch.conf
+@@ -59,6 +59,6 @@ netgroup:   nisplus sss
+ 
+ publickey:  nisplus
+ 
+-automount:  files nisplus
++automount:  files nisplus sss
+ aliases:    files nisplus
+ 

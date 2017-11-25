@@ -1,0 +1,256 @@
+From 2d5b6d3bb4813306ba5aa9ba03a56fe686bc6d4c Mon Sep 17 00:00:00 2001
+From: Rajalakshmi Srinivasaraghavan <raji@linux.vnet.ibm.com>
+Date: Wed, 30 Jul 2014 05:05:19 -0500
+Subject: [PATCH] PowerPC: multirach memcmp for PowerPC64
+
+commit 07253fcf7b03535b26c81ee216d284ed7f1e250b
+Author: Adhemerval Zanella <azanella@linux.vnet.ibm.com>
+Date:   Fri Dec 13 14:32:31 2013 -0500
+---
+ string/memcmp.c                                    |  6 +++-
+ sysdeps/powerpc/powerpc64/multiarch/Makefile       |  3 +-
+ .../powerpc/powerpc64/multiarch/ifunc-impl-list.c  |  8 +++++
+ .../powerpc/powerpc64/multiarch/memcmp-power4.S    | 41 ++++++++++++++++++++++
+ .../powerpc/powerpc64/multiarch/memcmp-power7.S    | 41 ++++++++++++++++++++++
+ sysdeps/powerpc/powerpc64/multiarch/memcmp-ppc64.c | 33 +++++++++++++++++
+ sysdeps/powerpc/powerpc64/multiarch/memcmp.c       | 39 ++++++++++++++++++++
+ 7 files changed, 169 insertions(+), 2 deletions(-)
+ create mode 100644 sysdeps/powerpc/powerpc64/multiarch/memcmp-power4.S
+ create mode 100644 sysdeps/powerpc/powerpc64/multiarch/memcmp-power7.S
+ create mode 100644 sysdeps/powerpc/powerpc64/multiarch/memcmp-ppc64.c
+ create mode 100644 sysdeps/powerpc/powerpc64/multiarch/memcmp.c
+
+diff --git glibc-2.17-c758a686/string/memcmp.c glibc-2.17-c758a686/string/memcmp.c
+index a73cc19..4a3ef58 100644
+--- glibc-2.17-c758a686/string/memcmp.c
++++ glibc-2.17-c758a686/string/memcmp.c
+@@ -30,6 +30,10 @@
+ 
+ #undef memcmp
+ 
++#ifndef MEMCMP
++# define MEMCMP memcmp
++#endif
++
+ #ifdef _LIBC
+ 
+ # include <memcopy.h>
+@@ -308,7 +312,7 @@ memcmp_not_common_alignment (srcp1, srcp2, len)
+ }
+ 
+ int
+-memcmp (s1, s2, len)
++MEMCMP (s1, s2, len)
+      const __ptr_t s1;
+      const __ptr_t s2;
+      size_t len;
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/Makefile glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/Makefile
+index 638c102..c0bc520 100644
+--- glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/Makefile
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/Makefile
+@@ -1,4 +1,5 @@
+ ifeq ($(subdir),string)
+ sysdep_routines += memcpy-power7 memcpy-a2 memcpy-power6 memcpy-cell \
+-                  memcpy-power4 memcpy-ppc64
++                  memcpy-power4 memcpy-ppc64 memcmp-power7 memcmp-power4 \
++                  memcmp-ppc64
+ endif
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/ifunc-impl-list.c glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/ifunc-impl-list.c
+index 5090af4..295ebca 100644
+--- glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/ifunc-impl-list.c
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/ifunc-impl-list.c
+@@ -62,5 +62,13 @@ __libc_ifunc_impl_list (const char *name, struct libc_ifunc_impl *array,
+              IFUNC_IMPL_ADD (array, i, memcpy, 1, __memcpy_ppc))
+ #endif
+ 
++  /* Support sysdeps/powerpc/powerpc64/multiarch/memcmp.c.  */
++  IFUNC_IMPL (i, name, memcmp,
++             IFUNC_IMPL_ADD (array, i, memcmp, hwcap & PPC_FEATURE_HAS_VSX,
++                             __memcmp_power7)
++             IFUNC_IMPL_ADD (array, i, memcmp, hwcap & PPC_FEATURE_POWER4,
++                             __memcmp_power4)
++             IFUNC_IMPL_ADD (array, i, memcmp, 1, __memcmp_ppc))
++
+   return i;
+ }
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/memcmp-power4.S glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/memcmp-power4.S
+new file mode 100644
+index 0000000..12db42c
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/memcmp-power4.S
+@@ -0,0 +1,41 @@
++/* Optimized memcmp implementation for PowerPC64/POWER4.
++   Copyright (C) 2013-2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <sysdep.h>
++
++#undef EALIGN
++#define EALIGN(name, alignt, words)				\
++  .section ".text";						\
++  ENTRY_2(__memcmp_power4)					\
++  .align ALIGNARG(alignt);					\
++  EALIGN_W_##words;						\
++  BODY_LABEL(__memcmp_power4):					\
++  cfi_startproc;
++
++#undef END
++#define END(name)						\
++  cfi_endproc;							\
++  TRACEBACK(__memcmp_power4)					\
++  END_2(__memcmp_power4)
++
++#undef libc_hidden_builtin_def
++#define libc_hidden_builtin_def(name)
++#undef weak_alias
++#define weak_alias(name,alias)
++
++#include <sysdeps/powerpc/powerpc64/power4/memcmp.S>
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/memcmp-power7.S glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/memcmp-power7.S
+new file mode 100644
+index 0000000..4898a88
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/memcmp-power7.S
+@@ -0,0 +1,41 @@
++/* Optimized memcmp implementation for PowerPC64/POWER7.
++   Copyright (C) 2013-2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <sysdep.h>
++
++#undef EALIGN
++#define EALIGN(name, alignt, words)				\
++  .section ".text";						\
++  ENTRY_2(__memcmp_power7)					\
++  .align ALIGNARG(alignt);					\
++  EALIGN_W_##words;						\
++  BODY_LABEL(__memcmp_power7):					\
++  cfi_startproc;
++
++#undef END
++#define END(name)						\
++  cfi_endproc;							\
++  TRACEBACK(__memcmp_power7)					\
++  END_2(__memcmp_power7)
++
++#undef libc_hidden_builtin_def
++#define libc_hidden_builtin_def(name)
++#undef weak_alias
++#define weak_alias(name,alias)
++
++#include <sysdeps/powerpc/powerpc64/power7/memcmp.S>
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/memcmp-ppc64.c glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/memcmp-ppc64.c
+new file mode 100644
+index 0000000..1a39d4a
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/memcmp-ppc64.c
+@@ -0,0 +1,33 @@
++/* Copyright (C) 2013-2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <string.h>
++
++#define MEMCMP __memcmp_ppc
++#undef weak_alias
++#define weak_alias(name, aliasname) \
++  extern __typeof (__memcmp_ppc) aliasname \
++    __attribute__ ((weak, alias ("__memcmp_ppc")));
++#if !defined(NOT_IN_libc) && defined(SHARED)
++# undef libc_hidden_builtin_def
++# define libc_hidden_builtin_def(name) \
++  __hidden_ver1(__memcmp_ppc, __GI_memcmp, __memcmp_ppc);
++#endif
++
++extern __typeof (memcmp) __memcmp_ppc attribute_hidden;
++
++#include <string/memcmp.c>
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/memcmp.c glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/memcmp.c
+new file mode 100644
+index 0000000..af90f0a
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/memcmp.c
+@@ -0,0 +1,39 @@
++/* Multiple versions of memcmp. PowerPC64 version.
++   Copyright (C) 2013-2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++/* Define multiple versions only for definition in libc.  */
++#ifndef NOT_IN_libc
++# include <string.h>
++# include <shlib-compat.h>
++# include "init-arch.h"
++
++extern __typeof (memcmp) __memcmp_ppc attribute_hidden;
++extern __typeof (memcmp) __memcmp_power4 attribute_hidden;
++extern __typeof (memcmp) __memcmp_power7 attribute_hidden;
++
++/* Avoid DWARF definition DIE on ifunc symbol so that GDB can handle
++   ifunc symbol properly.  */
++libc_ifunc (memcmp,
++            (hwcap & PPC_FEATURE_HAS_VSX)
++            ? __memcmp_power7 :
++	      (hwcap & PPC_FEATURE_POWER4)
++		? __memcmp_power4
++            : __memcmp_ppc);
++#else
++#include <string/memcmp.c>
++#endif
+-- 
+1.8.3.1
+

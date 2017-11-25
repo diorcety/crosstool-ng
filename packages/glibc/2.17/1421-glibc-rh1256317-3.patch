@@ -1,0 +1,24 @@
+commit 76ca86a506a81d8a08655fb331162926569a47d6
+Author: Siddhesh Poyarekar <siddhesh@redhat.com>
+Date:   Thu Nov 20 21:24:22 2014 +0530
+
+    Remove last place for definition of IS_IN_* macros
+    
+    Ignoring IS_IN_build, which has a different purpose altogether, this
+    patch removes the last bit of IS_IN_* macro definitions.  Now barring
+    NOT_IN_libc, all cases use the IN_MODULE scheme.
+    
+    Generated code unchanged on x86_64.
+    
+    	* extra-lib.mk (CPPFLAGS-$(lib)): Remove IS_IN_$(lib).
+
+Index: glibc-2.17-c758a686/extra-lib.mk
+===================================================================
+--- glibc-2.17-c758a686.orig/extra-lib.mk
++++ glibc-2.17-c758a686/extra-lib.mk
+@@ -101,4 +101,4 @@ ifneq (,$(cpp-srcs-left))
+ include $(patsubst %,$(..)cppflags-iterator.mk,$(cpp-srcs-left))
+ endif
+ 
+-CPPFLAGS-$(lib) := -DNOT_IN_libc=1 -DIS_IN_$(lib)=1
++CPPFLAGS-$(lib) := -DNOT_IN_libc=1

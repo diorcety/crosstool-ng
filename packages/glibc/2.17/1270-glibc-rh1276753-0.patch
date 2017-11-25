@@ -1,0 +1,310 @@
+commit 5782a80f9f8ca86899b30161166f044b0b6b8590
+Author: Ondřej Bílka <neleai@seznam.cz>
+Date:   Tue Dec 10 17:56:59 2013 +0100
+
+    Drop PER_THREAD conditionals from malloc.
+
+Index: glibc-2.17-c758a686/malloc/Makefile
+===================================================================
+--- glibc-2.17-c758a686.orig/malloc/Makefile
++++ glibc-2.17-c758a686/malloc/Makefile
+@@ -121,7 +121,6 @@ endif
+ tst-mcheck-ENV = MALLOC_CHECK_=3
+ tst-malloc-usable-ENV = MALLOC_CHECK_=3
+ 
+-CPPFLAGS-malloc.c += -DPER_THREAD
+ # Uncomment this for test releases.  For public releases it is too expensive.
+ #CPPFLAGS-malloc.o += -DMALLOC_DEBUG=1
+ 
+Index: glibc-2.17-c758a686/malloc/arena.c
+===================================================================
+--- glibc-2.17-c758a686.orig/malloc/arena.c
++++ glibc-2.17-c758a686/malloc/arena.c
+@@ -78,10 +78,8 @@ extern int sanity_check_heap_info_alignm
+ 
+ static tsd_key_t arena_key;
+ static mutex_t list_lock = MUTEX_INITIALIZER;
+-#ifdef PER_THREAD
+ static size_t narenas = 1;
+ static mstate free_list;
+-#endif
+ 
+ #if THREAD_STATS
+ static int stat_n_heaps;
+@@ -117,21 +115,12 @@ int __malloc_initialized = -1;
+   ptr = (mstate)tsd_getspecific(arena_key, vptr); \
+ } while(0)
+ 
+-#ifdef PER_THREAD
+ # define arena_lock(ptr, size) do { \
+   if(ptr && !arena_is_corrupt (ptr)) \
+     (void)mutex_lock(&ptr->mutex); \
+   else \
+     ptr = arena_get2(ptr, (size), NULL); \
+ } while(0)
+-#else
+-# define arena_lock(ptr, size) do { \
+-  if(ptr && !mutex_trylock(&ptr->mutex)) { \
+-    THREAD_STAT(++(ptr->stat_lock_direct)); \
+-  } else \
+-    ptr = arena_get2(ptr, (size), NULL); \
+-} while(0)
+-#endif
+ 
+ /* find the heap and corresponding arena for a given ptr */
+ 
+@@ -297,17 +286,13 @@ ptmalloc_unlock_all2 (void)
+   tsd_setspecific(arena_key, save_arena);
+   __malloc_hook = save_malloc_hook;
+   __free_hook = save_free_hook;
+-#ifdef PER_THREAD
+   free_list = NULL;
+-#endif
+   for(ar_ptr = &main_arena;;) {
+     mutex_init(&ar_ptr->mutex);
+-#ifdef PER_THREAD
+     if (ar_ptr != save_arena) {
+       ar_ptr->next_free = free_list;
+       free_list = ar_ptr;
+     }
+-#endif
+     ar_ptr = ar_ptr->next;
+     if(ar_ptr == &main_arena) break;
+   }
+@@ -428,13 +413,10 @@ ptmalloc_init (void)
+ 		{
+ 		  if (memcmp (envline, "MMAP_MAX_", 9) == 0)
+ 		    __libc_mallopt(M_MMAP_MAX, atoi(&envline[10]));
+-#ifdef PER_THREAD
+ 		  else if (memcmp (envline, "ARENA_MAX", 9) == 0)
+ 		    __libc_mallopt(M_ARENA_MAX, atoi(&envline[10]));
+-#endif
+ 		}
+ 	      break;
+-#ifdef PER_THREAD
+ 	    case 10:
+ 	      if (! __builtin_expect (__libc_enable_secure, 0))
+ 		{
+@@ -442,7 +424,6 @@ ptmalloc_init (void)
+ 		    __libc_mallopt(M_ARENA_TEST, atoi(&envline[11]));
+ 		}
+ 	      break;
+-#endif
+ 	    case 15:
+ 	      if (! __builtin_expect (__libc_enable_secure, 0))
+ 		{
+@@ -750,18 +731,14 @@ _int_new_arena(size_t size)
+   mutex_init(&a->mutex);
+   (void)mutex_lock(&a->mutex);
+ 
+-#ifdef PER_THREAD
+   (void)mutex_lock(&list_lock);
+-#endif
+ 
+   /* Add the new arena to the global list.  */
+   a->next = main_arena.next;
+   atomic_write_barrier ();
+   main_arena.next = a;
+ 
+-#ifdef PER_THREAD
+   (void)mutex_unlock(&list_lock);
+-#endif
+ 
+   THREAD_STAT(++(a->stat_lock_loop));
+ 
+@@ -769,7 +746,6 @@ _int_new_arena(size_t size)
+ }
+ 
+ 
+-#ifdef PER_THREAD
+ static mstate
+ get_free_list (void)
+ {
+@@ -846,7 +822,6 @@ reused_arena (mstate avoid_arena)
+ 
+   return result;
+ }
+-#endif
+ 
+ static mstate
+ internal_function
+@@ -854,7 +829,6 @@ arena_get2(mstate a_tsd, size_t size, ms
+ {
+   mstate a;
+ 
+-#ifdef PER_THREAD
+   static size_t narenas_limit;
+ 
+   a = get_free_list ();
+@@ -897,54 +871,6 @@ arena_get2(mstate a_tsd, size_t size, ms
+       else
+ 	a = reused_arena (avoid_arena);
+     }
+-#else
+-  if(!a_tsd)
+-    a = a_tsd = &main_arena;
+-  else {
+-    a = a_tsd->next;
+-    if(!a) {
+-      /* This can only happen while initializing the new arena. */
+-      (void)mutex_lock(&main_arena.mutex);
+-      THREAD_STAT(++(main_arena.stat_lock_wait));
+-      return &main_arena;
+-    }
+-  }
+-
+-  /* Check the global, circularly linked list for available arenas. */
+-  bool retried = false;
+- repeat:
+-  do {
+-    if(!mutex_trylock(&a->mutex)) {
+-      if (retried)
+-	(void)mutex_unlock(&list_lock);
+-      THREAD_STAT(++(a->stat_lock_loop));
+-      LIBC_PROBE (memory_arena_reuse, 2, a, a_tsd);
+-      tsd_setspecific(arena_key, (void *)a);
+-      return a;
+-    }
+-    a = a->next;
+-  } while(a != a_tsd);
+-
+-  /* If not even the list_lock can be obtained, try again.  This can
+-     happen during `atfork', or for example on systems where thread
+-     creation makes it temporarily impossible to obtain _any_
+-     locks. */
+-  if(!retried && mutex_trylock(&list_lock)) {
+-    /* We will block to not run in a busy loop.  */
+-    LIBC_PROBE (memory_arena_reuse_wait, 3, &list_lock, NULL, a_tsd);
+-    (void)mutex_lock(&list_lock);
+-
+-    /* Since we blocked there might be an arena available now.  */
+-    retried = true;
+-    a = a_tsd;
+-    goto repeat;
+-  }
+-
+-  /* Nothing immediately available, so generate a new arena.  */
+-  a = _int_new_arena(size);
+-  (void)mutex_unlock(&list_lock);
+-#endif
+-
+   return a;
+ }
+ 
+@@ -970,7 +896,6 @@ arena_get_retry (mstate ar_ptr, size_t b
+   return ar_ptr;
+ }
+ 
+-#ifdef PER_THREAD
+ static void __attribute__ ((section ("__libc_thread_freeres_fn")))
+ arena_thread_freeres (void)
+ {
+@@ -987,7 +912,6 @@ arena_thread_freeres (void)
+     }
+ }
+ text_set_element (__libc_thread_subfreeres, arena_thread_freeres);
+-#endif
+ 
+ /*
+  * Local variables:
+Index: glibc-2.17-c758a686/malloc/hooks.c
+===================================================================
+--- glibc-2.17-c758a686.orig/malloc/hooks.c
++++ glibc-2.17-c758a686/malloc/hooks.c
+@@ -464,11 +464,9 @@ __malloc_get_state(void)
+   ms->max_mmapped_mem = mp_.max_mmapped_mem;
+   ms->using_malloc_checking = using_malloc_checking;
+   ms->max_fast = get_max_fast();
+-#ifdef PER_THREAD
+   ms->arena_test = mp_.arena_test;
+   ms->arena_max = mp_.arena_max;
+   ms->narenas = narenas;
+-#endif
+   (void)mutex_unlock(&main_arena.mutex);
+   return (void*)ms;
+ }
+@@ -565,11 +563,9 @@ __malloc_set_state(void* msptr)
+     }
+   }
+   if (ms->version >= 4) {
+-#ifdef PER_THREAD
+     mp_.arena_test = ms->arena_test;
+     mp_.arena_max = ms->arena_max;
+     narenas = ms->narenas;
+-#endif
+   }
+   check_malloc_state(&main_arena);
+ 
+Index: glibc-2.17-c758a686/malloc/malloc.c
+===================================================================
+--- glibc-2.17-c758a686.orig/malloc/malloc.c
++++ glibc-2.17-c758a686/malloc/malloc.c
+@@ -1727,10 +1727,8 @@ struct malloc_state {
+   /* Linked list */
+   struct malloc_state *next;
+ 
+-#ifdef PER_THREAD
+   /* Linked list for free arenas.  */
+   struct malloc_state *next_free;
+-#endif
+ 
+   /* Memory allocated from the system in this arena.  */
+   INTERNAL_SIZE_T system_mem;
+@@ -1742,10 +1740,8 @@ struct malloc_par {
+   unsigned long    trim_threshold;
+   INTERNAL_SIZE_T  top_pad;
+   INTERNAL_SIZE_T  mmap_threshold;
+-#ifdef PER_THREAD
+   INTERNAL_SIZE_T  arena_test;
+   INTERNAL_SIZE_T  arena_max;
+-#endif
+ 
+   /* Memory map support */
+   int              n_mmaps;
+@@ -1787,18 +1783,14 @@ static struct malloc_par mp_ =
+     .n_mmaps_max    = DEFAULT_MMAP_MAX,
+     .mmap_threshold = DEFAULT_MMAP_THRESHOLD,
+     .trim_threshold = DEFAULT_TRIM_THRESHOLD,
+-#ifdef PER_THREAD
+ # define NARENAS_FROM_NCORES(n) ((n) * (sizeof(long) == 4 ? 2 : 8))
+     .arena_test     = NARENAS_FROM_NCORES (1)
+-#endif
+   };
+ 
+ 
+-#ifdef PER_THREAD
+ /*  Non public mallopt parameters.  */
+ #define M_ARENA_TEST -7
+ #define M_ARENA_MAX  -8
+-#endif
+ 
+ 
+ /* Maximum size of memory handled in fastbins.  */
+@@ -3008,11 +3000,6 @@ __libc_realloc(void* oldmem, size_t byte
+   (void)mutex_lock(&ar_ptr->mutex);
+ #endif
+ 
+-#if !defined PER_THREAD
+-  LIBC_PROBE (memory_arena_reuse_realloc, 1, ar_ptr);
+-  /* As in malloc(), remember this arena for the next allocation. */
+-  tsd_setspecific(arena_key, (void *)ar_ptr);
+-#endif
+ 
+   newp = _int_realloc(ar_ptr, oldp, oldsize, nb);
+ 
+@@ -4823,7 +4810,6 @@ int __libc_mallopt(int param_number, int
+     perturb_byte = value;
+     break;
+ 
+-#ifdef PER_THREAD
+   case M_ARENA_TEST:
+     if (value > 0)
+       {
+@@ -4839,7 +4825,6 @@ int __libc_mallopt(int param_number, int
+ 	mp_.arena_max = value;
+       }
+     break;
+-#endif
+   }
+   (void)mutex_unlock(&av->mutex);
+   return res;

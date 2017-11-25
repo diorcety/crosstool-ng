@@ -1,0 +1,33 @@
+#
+# This is the original fix for bug 1124987 in Fedora.
+# This patch should never go upstream. We are applying it
+# in rhel-7.2 as a workaround.
+#
+# Upstream commit f8aeae347377f3dfa8cbadde057adf1827fb1d44 fixes
+# this issue correctly, but reveals other bugs, therefore for now
+# this patch is a workaround.
+#
+diff -urN glibc-2.17-c758a686/sysdeps/generic/ldsodefs.h glibc-2.17-c758a686/sysdeps/generic/ldsodefs.h
+--- glibc-2.17-c758a686/sysdeps/generic/ldsodefs.h	2014-08-21 01:00:55.000000000 -0400
++++ glibc-2.17-c758a686/sysdeps/generic/ldsodefs.h	2014-09-04 19:29:42.929692810 -0400
+@@ -388,8 +388,18 @@
+    have to iterate beyond the first element in the slotinfo list.  */
+ #define TLS_SLOTINFO_SURPLUS (62)
+ 
+-/* Number of additional slots in the dtv allocated.  */
+-#define DTV_SURPLUS	(14)
++/* Number of additional allocated dtv slots.  This was initially
++   14, but problems with python, MESA, and X11's uses of static TLS meant
++   that most distributions were very close to this limit when they loaded
++   dynamically interpreted languages that used graphics. The simplest
++   solution was to roughly double the number of slots. The actual static
++   image space usage was relatively small, for example in MESA you
++   had only two dispatch pointers for a total of 16 bytes.  If we hit up
++   against this limit again we should start a campaign with the
++   distributions to coordinate the usage of static TLS.  Any user of this
++   resource is effectively coordinating a global resource since this
++   surplus is allocated for each thread at startup.  */
++#define DTV_SURPLUS	(32)
+ 
+   /* Initial dtv of the main thread, not allocated with normal malloc.  */
+   EXTERN void *_dl_initial_dtv;

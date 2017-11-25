@@ -1,0 +1,725 @@
+commit 72276d6e8843db6df5971b06787f0a5e39bda138
+Author: Andrew Senkevich <andrew.senkevich@intel.com>
+Date:   Sat Jan 16 00:49:45 2016 +0300
+
+    Added memcpy/memmove family optimized with AVX512 for KNL hardware.
+
+    Added AVX512 implementations of memcpy, mempcpy, memmove, memcpy_chk,
+    mempcpy_chk, memmove_chk.
+    It shows average improvement more than 30% over AVX versions on KNL
+    hardware (performance results in the thread
+    <https://sourceware.org/ml/libc-alpha/2016-01/msg00258.html>).
+
+        * sysdeps/x86_64/multiarch/Makefile (sysdep_routines): Added new files.
+        * sysdeps/x86_64/multiarch/ifunc-impl-list.c: Added new tests.
+        * sysdeps/x86_64/multiarch/memcpy-avx512-no-vzeroupper.S: New file.
+        * sysdeps/x86_64/multiarch/mempcpy-avx512-no-vzeroupper.S: Likewise.
+        * sysdeps/x86_64/multiarch/memmove-avx512-no-vzeroupper.S: Likewise.
+        * sysdeps/x86_64/multiarch/memcpy.S: Added new IFUNC branch.
+        * sysdeps/x86_64/multiarch/memcpy_chk.S: Likewise.
+        * sysdeps/x86_64/multiarch/memmove.c: Likewise.
+        * sysdeps/x86_64/multiarch/memmove_chk.c: Likewise.
+        * sysdeps/x86_64/multiarch/mempcpy.S: Likewise.
+        * sysdeps/x86_64/multiarch/mempcpy_chk.S: Likewise.
+
+Index: glibc-2.17-c758a686/sysdeps/x86_64/multiarch/Makefile
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/x86_64/multiarch/Makefile
++++ glibc-2.17-c758a686/sysdeps/x86_64/multiarch/Makefile
+@@ -17,7 +17,8 @@ sysdep_routines += strncat-c stpncpy-c s
+ 		   strcat-ssse3 strncat-ssse3 strlen-sse2-pminub \
+ 		   strnlen-sse2-no-bsf strrchr-sse2-no-bsf strchr-sse2-no-bsf \
+ 		   memcmp-ssse3 strstr-sse2-unaligned \
+-		   memset-avx512-no-vzeroupper
++		   memset-avx512-no-vzeroupper memcpy-avx512-no-vzeroupper \
++		   mempcpy-avx512-no-vzeroupper memmove-avx512-no-vzeroupper
+ ifeq (yes,$(config-cflags-sse4))
+ sysdep_routines += strcspn-c strpbrk-c strspn-c strstr-c strcasestr-c varshift
+ CFLAGS-varshift.c += -msse4
+Index: glibc-2.17-c758a686/sysdeps/x86_64/multiarch/ifunc-impl-list.c
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/x86_64/multiarch/ifunc-impl-list.c
++++ glibc-2.17-c758a686/sysdeps/x86_64/multiarch/ifunc-impl-list.c
+@@ -24,7 +24,7 @@
+ #include "init-arch.h"
+ 
+ /* Maximum number of IFUNC implementations.  */
+-#define MAX_IFUNC	4
++#define MAX_IFUNC	5
+ 
+ /* Fill ARRAY of MAX elements with IFUNC implementations for function
+    NAME supported on target machine and return the number of valid
+@@ -46,8 +46,11 @@ __libc_ifunc_impl_list (const char *name
+ 			      __memcmp_ssse3)
+ 	      IFUNC_IMPL_ADD (array, i, memcmp, 1, __memcmp_sse2))
+ 
+-  /* Support sysdeps/x86_64/multiarch/memmove_chk.S.  */
++  /* Support sysdeps/x86_64/multiarch/memmove_chk.c.  */
+   IFUNC_IMPL (i, name, __memmove_chk,
++	      IFUNC_IMPL_ADD (array, i, __memmove_chk,
++			      HAS_ARCH_FEATURE (AVX512F_Usable),
++			      __memmove_chk_avx512_no_vzeroupper)
+ 	      IFUNC_IMPL_ADD (array, i, __memmove_chk, HAS_CPU_FEATURE (SSSE3),
+ 			      __memmove_chk_ssse3_back)
+ 	      IFUNC_IMPL_ADD (array, i, __memmove_chk, HAS_CPU_FEATURE (SSSE3),
+@@ -57,6 +60,9 @@ __libc_ifunc_impl_list (const char *name
+ 
+   /* Support sysdeps/x86_64/multiarch/memmove.S.  */
+   IFUNC_IMPL (i, name, memmove,
++	      IFUNC_IMPL_ADD (array, i, memmove,
++			      HAS_ARCH_FEATURE (AVX512F_Usable),
++			      __memmove_avx512_no_vzeroupper)
+ 	      IFUNC_IMPL_ADD (array, i, memmove, HAS_CPU_FEATURE (SSSE3),
+ 			      __memmove_ssse3_back)
+ 	      IFUNC_IMPL_ADD (array, i, memmove, HAS_CPU_FEATURE (SSSE3),
+@@ -263,6 +269,9 @@ __libc_ifunc_impl_list (const char *name
+ #ifdef SHARED
+   /* Support sysdeps/x86_64/multiarch/memcpy_chk.S.  */
+   IFUNC_IMPL (i, name, __memcpy_chk,
++	      IFUNC_IMPL_ADD (array, i, __memcpy_chk,
++			      HAS_ARCH_FEATURE (AVX512F_Usable),
++			      __memcpy_chk_avx512_no_vzeroupper)
+ 	      IFUNC_IMPL_ADD (array, i, __memcpy_chk, HAS_CPU_FEATURE (SSSE3),
+ 			      __memcpy_chk_ssse3_back)
+ 	      IFUNC_IMPL_ADD (array, i, __memcpy_chk, HAS_CPU_FEATURE (SSSE3),
+@@ -274,11 +283,18 @@ __libc_ifunc_impl_list (const char *name
+   IFUNC_IMPL (i, name, memcpy,
+ 	      IFUNC_IMPL_ADD (array, i, memcpy, HAS_CPU_FEATURE (SSSE3),
+ 			      __memcpy_ssse3_back)
+-	      IFUNC_IMPL_ADD (array, i, memcpy, HAS_CPU_FEATURE (SSSE3), __memcpy_ssse3)
++	      IFUNC_IMPL_ADD (array, i, memcpy, HAS_CPU_FEATURE (SSSE3),
++			      __memcpy_ssse3)
++	      IFUNC_IMPL_ADD (array, i, memcpy,
++			      HAS_ARCH_FEATURE (AVX512F_Usable),
++			      __memcpy_avx512_no_vzeroupper)
+ 	      IFUNC_IMPL_ADD (array, i, memcpy, 1, __memcpy_sse2))
+ 
+   /* Support sysdeps/x86_64/multiarch/mempcpy_chk.S.  */
+   IFUNC_IMPL (i, name, __mempcpy_chk,
++	      IFUNC_IMPL_ADD (array, i, __mempcpy_chk,
++			      HAS_ARCH_FEATURE (AVX512F_Usable),
++			      __mempcpy_chk_avx512_no_vzeroupper)
+ 	      IFUNC_IMPL_ADD (array, i, __mempcpy_chk, HAS_CPU_FEATURE (SSSE3),
+ 			      __mempcpy_chk_ssse3_back)
+ 	      IFUNC_IMPL_ADD (array, i, __mempcpy_chk, HAS_CPU_FEATURE (SSSE3),
+@@ -288,6 +304,9 @@ __libc_ifunc_impl_list (const char *name
+ 
+   /* Support sysdeps/x86_64/multiarch/mempcpy.S.  */
+   IFUNC_IMPL (i, name, mempcpy,
++	      IFUNC_IMPL_ADD (array, i, mempcpy,
++			      HAS_ARCH_FEATURE (AVX512F_Usable),
++			      __mempcpy_avx512_no_vzeroupper)
+ 	      IFUNC_IMPL_ADD (array, i, mempcpy, HAS_CPU_FEATURE (SSSE3),
+ 			      __mempcpy_ssse3_back)
+ 	      IFUNC_IMPL_ADD (array, i, mempcpy, HAS_CPU_FEATURE (SSSE3),
+Index: glibc-2.17-c758a686/sysdeps/x86_64/multiarch/memcpy-avx512-no-vzeroupper.S
+===================================================================
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/x86_64/multiarch/memcpy-avx512-no-vzeroupper.S
+@@ -0,0 +1,408 @@
++/* memcpy optimized with AVX512 for KNL hardware.
++   Copyright (C) 2016 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <sysdep.h>
++
++#if defined HAVE_AVX512_ASM_SUPPORT && IS_IN (libc) \
++    && (defined SHARED \
++	|| defined USE_AS_MEMMOVE \
++	|| !defined USE_MULTIARCH)
++
++#include "asm-syntax.h"
++#ifndef MEMCPY
++# define MEMCPY		__memcpy_avx512_no_vzeroupper
++# define MEMCPY_CHK	__memcpy_chk_avx512_no_vzeroupper
++#endif
++
++	.section .text,"ax",@progbits
++#if !defined USE_AS_BCOPY
++ENTRY (MEMCPY_CHK)
++	cmpq	%rdx, %rcx
++	jb	HIDDEN_JUMPTARGET (__chk_fail)
++END (MEMCPY_CHK)
++#endif
++
++ENTRY (MEMCPY)
++	mov	%rdi, %rax
++#ifdef USE_AS_MEMPCPY
++	add	%rdx, %rax
++#endif
++	lea	(%rsi, %rdx), %rcx
++	lea	(%rdi, %rdx), %r9
++	cmp	$512, %rdx
++	ja	L(512bytesormore)
++
++L(check):
++	cmp	$16, %rdx
++	jbe	L(less_16bytes)
++	cmp	$256, %rdx
++	jb	L(less_256bytes)
++	vmovups	(%rsi), %zmm0
++	vmovups 0x40(%rsi), %zmm1
++	vmovups 0x80(%rsi), %zmm2
++	vmovups 0xC0(%rsi), %zmm3
++	vmovups	-0x100(%rcx), %zmm4
++	vmovups -0xC0(%rcx), %zmm5
++	vmovups -0x80(%rcx), %zmm6
++	vmovups -0x40(%rcx), %zmm7
++	vmovups %zmm0, (%rdi)
++	vmovups %zmm1, 0x40(%rdi)
++	vmovups %zmm2, 0x80(%rdi)
++	vmovups %zmm3, 0xC0(%rdi)
++	vmovups	%zmm4, -0x100(%r9)
++	vmovups %zmm5, -0xC0(%r9)
++	vmovups %zmm6, -0x80(%r9)
++	vmovups %zmm7, -0x40(%r9)
++	ret
++
++L(less_256bytes):
++	cmp	$128, %dl
++	jb	L(less_128bytes)
++	vmovups	(%rsi), %zmm0
++	vmovups 0x40(%rsi), %zmm1
++	vmovups -0x80(%rcx), %zmm2
++	vmovups -0x40(%rcx), %zmm3
++	vmovups	%zmm0, (%rdi)
++	vmovups %zmm1, 0x40(%rdi)
++	vmovups %zmm2, -0x80(%r9)
++	vmovups %zmm3, -0x40(%r9)
++	ret
++
++L(less_128bytes):
++	cmp	$64, %dl
++	jb	L(less_64bytes)
++	vmovdqu (%rsi), %ymm0
++	vmovdqu 0x20(%rsi), %ymm1
++	vmovdqu -0x40(%rcx), %ymm2
++	vmovdqu -0x20(%rcx), %ymm3
++	vmovdqu %ymm0, (%rdi)
++	vmovdqu %ymm1, 0x20(%rdi)
++	vmovdqu %ymm2, -0x40(%r9)
++	vmovdqu %ymm3, -0x20(%r9)
++	ret
++
++L(less_64bytes):
++	cmp	$32, %dl
++	jb	L(less_32bytes)
++	vmovdqu	(%rsi), %ymm0
++	vmovdqu -0x20(%rcx), %ymm1
++	vmovdqu	%ymm0, (%rdi)
++	vmovdqu	%ymm1, -0x20(%r9)
++	ret
++
++L(less_32bytes):
++	vmovdqu (%rsi), %xmm0
++	vmovdqu -0x10(%rcx), %xmm1
++	vmovdqu %xmm0, (%rdi)
++	vmovdqu %xmm1, -0x10(%r9)
++	ret
++
++L(less_16bytes):
++	cmp	$8, %dl
++	jb	L(less_8bytes)
++	movq	(%rsi), %rsi
++	movq	-0x8(%rcx), %rcx
++	movq	%rsi, (%rdi)
++	movq	%rcx, -0x8(%r9)
++	ret
++
++L(less_8bytes):
++	cmp	$4, %dl
++	jb	L(less_4bytes)
++	mov	(%rsi), %esi
++	mov	-0x4(%rcx), %ecx
++	mov	%esi, (%rdi)
++	mov	%ecx, -0x4(%r9)
++	ret
++
++L(less_4bytes):
++	cmp	$2, %dl
++	jb	L(less_2bytes)
++	mov	(%rsi), %si
++	mov	-0x2(%rcx), %cx
++	mov	%si, (%rdi)
++	mov	%cx, -0x2(%r9)
++	ret
++
++L(less_2bytes):
++	cmp	$1, %dl
++	jb	L(less_1bytes)
++	mov	(%rsi), %cl
++	mov	%cl, (%rdi)
++L(less_1bytes):
++	ret
++
++L(512bytesormore):
++#ifdef SHARED_CACHE_SIZE_HALF
++	mov	$SHARED_CACHE_SIZE_HALF, %r8
++#else
++	mov	__x86_64_shared_cache_size_half(%rip), %r8
++#endif
++	cmp	%r8, %rdx
++	jae	L(preloop_large)
++	cmp	$1024, %rdx
++	ja	L(1024bytesormore)
++	prefetcht1 (%rsi)
++	prefetcht1 0x40(%rsi)
++	prefetcht1 0x80(%rsi)
++	prefetcht1 0xC0(%rsi)
++	prefetcht1 0x100(%rsi)
++	prefetcht1 0x140(%rsi)
++	prefetcht1 0x180(%rsi)
++	prefetcht1 0x1C0(%rsi)
++	prefetcht1 -0x200(%rcx)
++	prefetcht1 -0x1C0(%rcx)
++	prefetcht1 -0x180(%rcx)
++	prefetcht1 -0x140(%rcx)
++	prefetcht1 -0x100(%rcx)
++	prefetcht1 -0xC0(%rcx)
++	prefetcht1 -0x80(%rcx)
++	prefetcht1 -0x40(%rcx)
++	vmovups	(%rsi), %zmm0
++	vmovups 0x40(%rsi), %zmm1
++	vmovups 0x80(%rsi), %zmm2
++	vmovups 0xC0(%rsi), %zmm3
++	vmovups	0x100(%rsi), %zmm4
++	vmovups 0x140(%rsi), %zmm5
++	vmovups 0x180(%rsi), %zmm6
++	vmovups 0x1C0(%rsi), %zmm7
++	vmovups	-0x200(%rcx), %zmm8
++	vmovups -0x1C0(%rcx), %zmm9
++	vmovups -0x180(%rcx), %zmm10
++	vmovups -0x140(%rcx), %zmm11
++	vmovups	-0x100(%rcx), %zmm12
++	vmovups -0xC0(%rcx), %zmm13
++	vmovups -0x80(%rcx), %zmm14
++	vmovups -0x40(%rcx), %zmm15
++	vmovups %zmm0, (%rdi)
++	vmovups %zmm1, 0x40(%rdi)
++	vmovups %zmm2, 0x80(%rdi)
++	vmovups %zmm3, 0xC0(%rdi)
++	vmovups %zmm4, 0x100(%rdi)
++	vmovups %zmm5, 0x140(%rdi)
++	vmovups %zmm6, 0x180(%rdi)
++	vmovups %zmm7, 0x1C0(%rdi)
++	vmovups	%zmm8, -0x200(%r9)
++	vmovups %zmm9, -0x1C0(%r9)
++	vmovups %zmm10, -0x180(%r9)
++	vmovups %zmm11, -0x140(%r9)
++	vmovups	%zmm12, -0x100(%r9)
++	vmovups %zmm13, -0xC0(%r9)
++	vmovups %zmm14, -0x80(%r9)
++	vmovups %zmm15, -0x40(%r9)
++	ret
++
++L(1024bytesormore):
++	cmp	%rsi, %rdi
++	ja	L(1024bytesormore_bkw)
++	sub	$512, %r9
++	vmovups -0x200(%rcx), %zmm8
++	vmovups -0x1C0(%rcx), %zmm9
++	vmovups -0x180(%rcx), %zmm10
++	vmovups -0x140(%rcx), %zmm11
++	vmovups	-0x100(%rcx), %zmm12
++	vmovups -0xC0(%rcx), %zmm13
++	vmovups -0x80(%rcx), %zmm14
++	vmovups -0x40(%rcx), %zmm15
++	prefetcht1 (%rsi)
++	prefetcht1 0x40(%rsi)
++	prefetcht1 0x80(%rsi)
++	prefetcht1 0xC0(%rsi)
++	prefetcht1 0x100(%rsi)
++	prefetcht1 0x140(%rsi)
++	prefetcht1 0x180(%rsi)
++	prefetcht1 0x1C0(%rsi)
++
++/* Loop with unaligned memory access.  */
++L(gobble_512bytes_loop):
++	vmovups	(%rsi), %zmm0
++	vmovups 0x40(%rsi), %zmm1
++	vmovups 0x80(%rsi), %zmm2
++	vmovups 0xC0(%rsi), %zmm3
++	vmovups	0x100(%rsi), %zmm4
++	vmovups 0x140(%rsi), %zmm5
++	vmovups 0x180(%rsi), %zmm6
++	vmovups 0x1C0(%rsi), %zmm7
++	add	$512, %rsi
++	prefetcht1 (%rsi)
++	prefetcht1 0x40(%rsi)
++	prefetcht1 0x80(%rsi)
++	prefetcht1 0xC0(%rsi)
++	prefetcht1 0x100(%rsi)
++	prefetcht1 0x140(%rsi)
++	prefetcht1 0x180(%rsi)
++	prefetcht1 0x1C0(%rsi)
++	vmovups	%zmm0, (%rdi)
++	vmovups %zmm1, 0x40(%rdi)
++	vmovups %zmm2, 0x80(%rdi)
++	vmovups %zmm3, 0xC0(%rdi)
++	vmovups	%zmm4, 0x100(%rdi)
++	vmovups %zmm5, 0x140(%rdi)
++	vmovups %zmm6, 0x180(%rdi)
++	vmovups %zmm7, 0x1C0(%rdi)
++	add	$512, %rdi
++	cmp	%r9, %rdi
++	jb	L(gobble_512bytes_loop)
++	vmovups %zmm8, (%r9)
++	vmovups %zmm9, 0x40(%r9)
++	vmovups %zmm10, 0x80(%r9)
++	vmovups %zmm11, 0xC0(%r9)
++	vmovups %zmm12, 0x100(%r9)
++	vmovups %zmm13, 0x140(%r9)
++	vmovups %zmm14, 0x180(%r9)
++	vmovups %zmm15, 0x1C0(%r9)
++	ret
++
++L(1024bytesormore_bkw):
++	add	$512, %rdi
++	vmovups	0x1C0(%rsi), %zmm8
++	vmovups 0x180(%rsi), %zmm9
++	vmovups 0x140(%rsi), %zmm10
++	vmovups 0x100(%rsi), %zmm11
++	vmovups	0xC0(%rsi), %zmm12
++	vmovups 0x80(%rsi), %zmm13
++	vmovups 0x40(%rsi), %zmm14
++	vmovups (%rsi), %zmm15
++	prefetcht1 -0x40(%rcx)
++	prefetcht1 -0x80(%rcx)
++	prefetcht1 -0xC0(%rcx)
++	prefetcht1 -0x100(%rcx)
++	prefetcht1 -0x140(%rcx)
++	prefetcht1 -0x180(%rcx)
++	prefetcht1 -0x1C0(%rcx)
++	prefetcht1 -0x200(%rcx)
++
++/* Backward loop with unaligned memory access.  */
++L(gobble_512bytes_loop_bkw):
++	vmovups -0x40(%rcx), %zmm0
++	vmovups -0x80(%rcx), %zmm1
++	vmovups -0xC0(%rcx), %zmm2
++	vmovups	-0x100(%rcx), %zmm3
++	vmovups -0x140(%rcx), %zmm4
++	vmovups -0x180(%rcx), %zmm5
++	vmovups -0x1C0(%rcx), %zmm6
++	vmovups	-0x200(%rcx), %zmm7
++	sub	$512, %rcx
++	prefetcht1 -0x40(%rcx)
++	prefetcht1 -0x80(%rcx)
++	prefetcht1 -0xC0(%rcx)
++	prefetcht1 -0x100(%rcx)
++	prefetcht1 -0x140(%rcx)
++	prefetcht1 -0x180(%rcx)
++	prefetcht1 -0x1C0(%rcx)
++	prefetcht1 -0x200(%rcx)
++	vmovups %zmm0, -0x40(%r9)
++	vmovups %zmm1, -0x80(%r9)
++	vmovups %zmm2, -0xC0(%r9)
++	vmovups	%zmm3, -0x100(%r9)
++	vmovups %zmm4, -0x140(%r9)
++	vmovups %zmm5, -0x180(%r9)
++	vmovups %zmm6, -0x1C0(%r9)
++	vmovups	%zmm7, -0x200(%r9)
++	sub	$512, %r9
++	cmp	%rdi, %r9
++	ja	L(gobble_512bytes_loop_bkw)
++	vmovups %zmm8, -0x40(%rdi)
++	vmovups %zmm9, -0x80(%rdi)
++	vmovups %zmm10, -0xC0(%rdi)
++	vmovups %zmm11, -0x100(%rdi)
++	vmovups %zmm12, -0x140(%rdi)
++	vmovups %zmm13, -0x180(%rdi)
++	vmovups %zmm14, -0x1C0(%rdi)
++	vmovups %zmm15, -0x200(%rdi)
++	ret
++
++L(preloop_large):
++	cmp	%rsi, %rdi
++	ja	L(preloop_large_bkw)
++	vmovups	(%rsi), %zmm4
++	vmovups	0x40(%rsi), %zmm5
++
++/* Align destination for access with non-temporal stores in the loop.  */
++	mov	%rdi, %r8
++	and	$-0x80, %rdi
++	add	$0x80, %rdi
++	sub	%rdi, %r8
++	sub	%r8, %rsi
++	add	%r8, %rdx
++L(gobble_256bytes_nt_loop):
++	prefetcht1 0x200(%rsi)
++	prefetcht1 0x240(%rsi)
++	prefetcht1 0x280(%rsi)
++	prefetcht1 0x2C0(%rsi)
++	prefetcht1 0x300(%rsi)
++	prefetcht1 0x340(%rsi)
++	prefetcht1 0x380(%rsi)
++	prefetcht1 0x3C0(%rsi)
++	vmovdqu64 (%rsi), %zmm0
++	vmovdqu64 0x40(%rsi), %zmm1
++	vmovdqu64 0x80(%rsi), %zmm2
++	vmovdqu64 0xC0(%rsi), %zmm3
++	vmovntdq %zmm0, (%rdi)
++	vmovntdq %zmm1, 0x40(%rdi)
++	vmovntdq %zmm2, 0x80(%rdi)
++	vmovntdq %zmm3, 0xC0(%rdi)
++	sub	$256, %rdx
++	add	$256, %rsi
++	add	$256, %rdi
++	cmp	$256, %rdx
++	ja	L(gobble_256bytes_nt_loop)
++	sfence
++	vmovups	%zmm4, (%rax)
++	vmovups	%zmm5, 0x40(%rax)
++	jmp	L(check)
++
++L(preloop_large_bkw):
++	vmovups -0x80(%rcx), %zmm4
++	vmovups -0x40(%rcx), %zmm5
++
++/* Align end of destination for access with non-temporal stores.  */
++	mov	%r9, %r8
++	and	$-0x80, %r9
++	sub	%r9, %r8
++	sub	%r8, %rcx
++	sub	%r8, %rdx
++	add	%r9, %r8
++L(gobble_256bytes_nt_loop_bkw):
++	prefetcht1 -0x400(%rcx)
++	prefetcht1 -0x3C0(%rcx)
++	prefetcht1 -0x380(%rcx)
++	prefetcht1 -0x340(%rcx)
++	prefetcht1 -0x300(%rcx)
++	prefetcht1 -0x2C0(%rcx)
++	prefetcht1 -0x280(%rcx)
++	prefetcht1 -0x240(%rcx)
++	vmovdqu64 -0x100(%rcx), %zmm0
++	vmovdqu64 -0xC0(%rcx), %zmm1
++	vmovdqu64 -0x80(%rcx), %zmm2
++	vmovdqu64 -0x40(%rcx), %zmm3
++	vmovntdq %zmm0,	-0x100(%r9)
++	vmovntdq %zmm1,	-0xC0(%r9)
++	vmovntdq %zmm2,	-0x80(%r9)
++	vmovntdq %zmm3,	-0x40(%r9)
++	sub	$256, %rdx
++	sub	$256, %rcx
++	sub	$256, %r9
++	cmp	$256, %rdx
++	ja	L(gobble_256bytes_nt_loop_bkw)
++	sfence
++	vmovups	%zmm4, -0x80(%r8)
++	vmovups	%zmm5, -0x40(%r8)
++	jmp	L(check)
++END (MEMCPY)
++#endif
+Index: glibc-2.17-c758a686/sysdeps/x86_64/multiarch/memcpy.S
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/x86_64/multiarch/memcpy.S
++++ glibc-2.17-c758a686/sysdeps/x86_64/multiarch/memcpy.S
+@@ -30,7 +30,15 @@
+ ENTRY(__new_memcpy)
+ 	.type	__new_memcpy, @gnu_indirect_function
+ 	LOAD_RTLD_GLOBAL_RO_RDX
+-	leaq	__memcpy_sse2(%rip), %rax
++#ifdef HAVE_AVX512_ASM_SUPPORT
++	HAS_ARCH_FEATURE (AVX512F_Usable)
++	jz	1f
++	HAS_ARCH_FEATURE (Prefer_No_VZEROUPPER)
++	jz	1f
++	leaq    __memcpy_avx512_no_vzeroupper(%rip), %rax
++	ret
++#endif
++1:	leaq	__memcpy_sse2(%rip), %rax
+ 	HAS_CPU_FEATURE (SSSE3)
+ 	jz	2f
+ 	leaq	__memcpy_ssse3(%rip), %rax
+Index: glibc-2.17-c758a686/sysdeps/x86_64/multiarch/memcpy_chk.S
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/x86_64/multiarch/memcpy_chk.S
++++ glibc-2.17-c758a686/sysdeps/x86_64/multiarch/memcpy_chk.S
+@@ -30,7 +30,15 @@
+ ENTRY(__memcpy_chk)
+ 	.type	__memcpy_chk, @gnu_indirect_function
+ 	LOAD_RTLD_GLOBAL_RO_RDX
+-	leaq	__memcpy_chk_sse2(%rip), %rax
++#ifdef HAVE_AVX512_ASM_SUPPORT
++	HAS_ARCH_FEATURE (AVX512F_Usable)
++	jz      1f
++#	HAS_ARCH_FEATURE (Prefer_No_VZEROUPPER)
++#	jz      1f
++	leaq    __memcpy_avx512_no_vzeroupper(%rip), %rax
++	ret
++#endif
++1:	leaq	__memcpy_chk_sse2(%rip), %rax
+ 	HAS_CPU_FEATURE (SSSE3)
+ 	jz	2f
+ 	leaq	__memcpy_chk_ssse3(%rip), %rax
+Index: glibc-2.17-c758a686/sysdeps/x86_64/multiarch/memmove-avx512-no-vzeroupper.S
+===================================================================
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/x86_64/multiarch/memmove-avx512-no-vzeroupper.S
+@@ -0,0 +1,22 @@
++/* memmove optimized with AVX512 for KNL hardware.
++   Copyright (C) 2016 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#define USE_AS_MEMMOVE
++#define MEMCPY		__memmove_avx512_no_vzeroupper
++#define MEMCPY_CHK	__memmove_chk_avx512_no_vzeroupper
++#include "memcpy-avx512-no-vzeroupper.S"
+Index: glibc-2.17-c758a686/sysdeps/x86_64/multiarch/memmove.c
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/x86_64/multiarch/memmove.c
++++ glibc-2.17-c758a686/sysdeps/x86_64/multiarch/memmove.c
+@@ -35,6 +35,9 @@
+ extern __typeof (__redirect_memmove) __memmove_sse2 attribute_hidden;
+ extern __typeof (__redirect_memmove) __memmove_ssse3 attribute_hidden;
+ extern __typeof (__redirect_memmove) __memmove_ssse3_back attribute_hidden;
++# ifdef HAVE_AVX512_ASM_SUPPORT
++extern __typeof (__redirect_memmove) __memmove_avx512_no_vzeroupper attribute_hidden;
++# endif
+ #endif
+ 
+ #include "string/memmove.c"
+@@ -47,10 +50,16 @@ extern __typeof (__redirect_memmove) __m
+    ifunc symbol properly.  */
+ extern __typeof (__redirect_memmove) __libc_memmove;
+ libc_ifunc (__libc_memmove,
+-	    HAS_CPU_FEATURE (SSSE3)
++#ifdef HAVE_AVX512_ASM_SUPPORT
++	    HAS_ARCH_FEATURE (AVX512F_Usable)
++	      && HAS_ARCH_FEATURE (Prefer_No_VZEROUPPER)
++	    ? __memmove_avx512_no_vzeroupper
++	    :
++#endif
++	    (HAS_CPU_FEATURE (SSSE3)
+ 	    ? (HAS_ARCH_FEATURE (Fast_Copy_Backward)
+ 	       ? __memmove_ssse3_back : __memmove_ssse3)
+-	    : __memmove_sse2)
++	    : __memmove_sse2))
+ 
+ strong_alias (__libc_memmove, memmove)
+ 
+Index: glibc-2.17-c758a686/sysdeps/x86_64/multiarch/memmove_chk.c
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/x86_64/multiarch/memmove_chk.c
++++ glibc-2.17-c758a686/sysdeps/x86_64/multiarch/memmove_chk.c
+@@ -25,11 +25,20 @@
+ extern __typeof (__memmove_chk) __memmove_chk_sse2 attribute_hidden;
+ extern __typeof (__memmove_chk) __memmove_chk_ssse3 attribute_hidden;
+ extern __typeof (__memmove_chk) __memmove_chk_ssse3_back attribute_hidden;
++# ifdef HAVE_AVX512_ASM_SUPPORT
++extern __typeof (__memmove_chk) __memmove_chk_avx512_no_vzeroupper attribute_hidden;
++# endif
+ 
+ #include "debug/memmove_chk.c"
+ 
+ libc_ifunc (__memmove_chk,
+-	    HAS_CPU_FEATURE (SSSE3)
++#ifdef HAVE_AVX512_ASM_SUPPORT
++	    HAS_ARCH_FEATURE (AVX512F_Usable)
++	      && HAS_ARCH_FEATURE (Prefer_No_VZEROUPPER)
++	    ? __memmove_chk_avx512_no_vzeroupper
++	    :
++#endif
++	    (HAS_CPU_FEATURE (SSSE3)
+ 	    ? (HAS_ARCH_FEATURE (Fast_Copy_Backward)
+ 	       ? __memmove_chk_ssse3_back : __memmove_chk_ssse3)
+-	    : __memmove_chk_sse2);
++	    : __memmove_chk_sse2));
+Index: glibc-2.17-c758a686/sysdeps/x86_64/multiarch/mempcpy-avx512-no-vzeroupper.S
+===================================================================
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/x86_64/multiarch/mempcpy-avx512-no-vzeroupper.S
+@@ -0,0 +1,22 @@
++/* mempcpy optimized with AVX512 for KNL hardware.
++   Copyright (C) 2016 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#define USE_AS_MEMPCPY
++#define MEMCPY		__mempcpy_avx512_no_vzeroupper
++#define MEMCPY_CHK	__mempcpy_chk_avx512_no_vzeroupper
++#include "memcpy-avx512-no-vzeroupper.S"
+Index: glibc-2.17-c758a686/sysdeps/x86_64/multiarch/mempcpy.S
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/x86_64/multiarch/mempcpy.S
++++ glibc-2.17-c758a686/sysdeps/x86_64/multiarch/mempcpy.S
+@@ -28,7 +28,15 @@
+ ENTRY(__mempcpy)
+ 	.type	__mempcpy, @gnu_indirect_function
+ 	LOAD_RTLD_GLOBAL_RO_RDX
+-	leaq	__mempcpy_sse2(%rip), %rax
++#ifdef HAVE_AVX512_ASM_SUPPORT
++	HAS_ARCH_FEATURE (AVX512F_Usable)
++	jz	1f
++	HAS_ARCH_FEATURE (Prefer_No_VZEROUPPER)
++	jz	1f
++	leaq    __mempcpy_avx512_no_vzeroupper(%rip), %rax
++	ret
++#endif
++1:	leaq	__mempcpy_sse2(%rip), %rax
+ 	HAS_CPU_FEATURE (SSSE3)
+ 	jz	2f
+ 	leaq	__mempcpy_ssse3(%rip), %rax
+Index: glibc-2.17-c758a686/sysdeps/x86_64/multiarch/mempcpy_chk.S
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/x86_64/multiarch/mempcpy_chk.S
++++ glibc-2.17-c758a686/sysdeps/x86_64/multiarch/mempcpy_chk.S
+@@ -30,7 +30,15 @@
+ ENTRY(__mempcpy_chk)
+ 	.type	__mempcpy_chk, @gnu_indirect_function
+ 	LOAD_RTLD_GLOBAL_RO_RDX
+-	leaq	__mempcpy_chk_sse2(%rip), %rax
++#ifdef HAVE_AVX512_ASM_SUPPORT
++	HAS_ARCH_FEATURE (AVX512F_Usable)
++	jz	1f
++	HAS_ARCH_FEATURE (Prefer_No_VZEROUPPER)
++	jz	1f
++	leaq    __mempcpy_chk_avx512_no_vzeroupper(%rip), %rax
++	ret
++#endif
++1:	leaq	__mempcpy_chk_sse2(%rip), %rax
+ 	HAS_CPU_FEATURE (SSSE3)
+ 	jz	2f
+ 	leaq	__mempcpy_chk_ssse3(%rip), %rax

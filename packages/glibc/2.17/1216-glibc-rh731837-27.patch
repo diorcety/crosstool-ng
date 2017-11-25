@@ -1,0 +1,261 @@
+From defecce61df9fb5579cefdc26201d2be12b8c72a Mon Sep 17 00:00:00 2001
+From: Rajalakshmi Srinivasaraghavan <raji@linux.vnet.ibm.com>
+Date: Wed, 30 Jul 2014 11:20:40 -0500
+Subject: [PATCH] PowerPC: multiarch round/roundf for PowerPC64
+
+commit 59a3e194f75c4845b15caa1ae16b0264f9c7cf0c
+Author: Adhemerval Zanella <azanella@linux.vnet.ibm.com>
+Date:   Fri Dec 13 15:06:01 2013 -0500
+---
+ sysdeps/powerpc/powerpc64/fpu/multiarch/Makefile   |  3 +-
+ .../powerpc64/fpu/multiarch/s_round-power5+.S      | 31 +++++++++++++++++
+ .../powerpc64/fpu/multiarch/s_round-ppc64.S        | 31 +++++++++++++++++
+ sysdeps/powerpc/powerpc64/fpu/multiarch/s_round.c  | 40 ++++++++++++++++++++++
+ .../powerpc64/fpu/multiarch/s_roundf-power5+.S     | 26 ++++++++++++++
+ .../powerpc64/fpu/multiarch/s_roundf-ppc64.S       | 26 ++++++++++++++
+ sysdeps/powerpc/powerpc64/fpu/multiarch/s_roundf.c | 32 +++++++++++++++++
+ 7 files changed, 188 insertions(+), 1 deletion(-)
+ create mode 100644 sysdeps/powerpc/powerpc64/fpu/multiarch/s_round-power5+.S
+ create mode 100644 sysdeps/powerpc/powerpc64/fpu/multiarch/s_round-ppc64.S
+ create mode 100644 sysdeps/powerpc/powerpc64/fpu/multiarch/s_round.c
+ create mode 100644 sysdeps/powerpc/powerpc64/fpu/multiarch/s_roundf-power5+.S
+ create mode 100644 sysdeps/powerpc/powerpc64/fpu/multiarch/s_roundf-ppc64.S
+ create mode 100644 sysdeps/powerpc/powerpc64/fpu/multiarch/s_roundf.c
+
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/Makefile glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/Makefile
+index d3d230d..303cd0f 100644
+--- glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/Makefile
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/Makefile
+@@ -7,5 +7,6 @@ libm-sysdep_routines += s_isnan-power7 s_isnan-power6x s_isnan-power6 \
+                        s_llround-power5+ s_llround-ppc64 s_ceil-power5+ \
+                        s_ceil-ppc64 s_ceilf-power5+ s_ceilf-ppc64 \
+                        s_floor-power5+ s_floor-ppc64 s_floorf-power5+ \
+-                       s_floorf-ppc64
++                       s_floorf-ppc64 s_round-power5+ s_round-ppc64 \
++                       s_roundf-power5+ s_roundf-ppc64
+ endif
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_round-power5+.S glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_round-power5+.S
+new file mode 100644
+index 0000000..c2afb4f
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_round-power5+.S
+@@ -0,0 +1,31 @@
++/* round function.  PowerPC64/power5+ version.
++   Copyright (C) 2013-2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <sysdep.h>
++#include <math_ldbl_opt.h>
++
++#undef weak_alias
++#define weak_alias(a,b)
++#undef strong_alias
++#define strong_alias(a,b)
++#undef compat_symbol
++#define compat_symbol(a,b,c,d)
++
++#define __round __round_power5plus
++
++#include <sysdeps/powerpc/powerpc64/power5+/fpu/s_round.S>
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_round-ppc64.S glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_round-ppc64.S
+new file mode 100644
+index 0000000..76c96b6
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_round-ppc64.S
+@@ -0,0 +1,31 @@
++/* round function.  PowerPC64 default version.
++   Copyright (C) 2013-2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <sysdep.h>
++#include <math_ldbl_opt.h>
++
++#undef weak_alias
++#define weak_alias(a,b)
++#undef strong_alias
++#define strong_alias(a,b)
++#undef compat_symbol
++#define compat_symbol(a,b,c,d)
++
++#define __round __round_ppc64
++
++#include <sysdeps/powerpc/powerpc64/fpu/s_round.S>
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_round.c glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_round.c
+new file mode 100644
+index 0000000..5818411
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_round.c
+@@ -0,0 +1,40 @@
++/* Multiple versions of round.
++   Copyright (C) 2013-2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <math.h>
++#include <math_ldbl_opt.h>
++#include <shlib-compat.h>
++#include "init-arch.h"
++
++extern __typeof (__round) __round_ppc64 attribute_hidden;
++extern __typeof (__round) __round_power5plus attribute_hidden;
++
++libc_ifunc (__round,
++	    (hwcap & PPC_FEATURE_POWER5_PLUS)
++	    ? __round_power5plus
++            : __round_ppc64);
++
++weak_alias (__round, round)
++
++#ifdef NO_LONG_DOUBLE
++strong_alias (__round, __roundl)
++weak_alias (__round, roundl)
++#endif
++#if LONG_DOUBLE_COMPAT(libm, GLIBC_2_0)
++compat_symbol (libm, __round, roundl, GLIBC_2_0);
++#endif
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_roundf-power5+.S glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_roundf-power5+.S
+new file mode 100644
+index 0000000..8fbef39
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_roundf-power5+.S
+@@ -0,0 +1,26 @@
++/* roundf function.  PowerPC64/power5+ version.
++   Copyright (C) 2013-2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <sysdep.h>
++
++#undef weak_alias
++#define weak_alias(a,b)
++
++#define __roundf __roundf_power5plus
++
++#include <sysdeps/powerpc/powerpc64/power5+/fpu/s_roundf.S>
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_roundf-ppc64.S glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_roundf-ppc64.S
+new file mode 100644
+index 0000000..bc51fdd
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_roundf-ppc64.S
+@@ -0,0 +1,26 @@
++/* roundf function.  PowerPC64 default version.
++   Copyright (C) 2013-2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <sysdep.h>
++
++#undef weak_alias
++#define weak_alias(a,b)
++
++#define __roundf __roundf_ppc64
++
++#include <sysdeps/powerpc/powerpc64/fpu/s_roundf.S>
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_roundf.c glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_roundf.c
+new file mode 100644
+index 0000000..34c5bc7
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_roundf.c
+@@ -0,0 +1,32 @@
++/* Multiple versions of roundf.
++   Copyright (C) 2013-2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <math.h>
++#include <math_ldbl_opt.h>
++#include <shlib-compat.h>
++#include "init-arch.h"
++
++extern __typeof (__roundf) __roundf_ppc64 attribute_hidden;
++extern __typeof (__roundf) __roundf_power5plus attribute_hidden;
++
++libc_ifunc (__roundf,
++	    (hwcap & PPC_FEATURE_POWER5_PLUS)
++	    ? __roundf_power5plus
++            : __roundf_ppc64);
++
++weak_alias (__roundf, roundf)
+-- 
+1.8.3.1
+

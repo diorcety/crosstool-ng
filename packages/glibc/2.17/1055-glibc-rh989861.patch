@@ -1,0 +1,37 @@
+commit 27572ef96a66b61f5a6d81196c05983ab3dc9994
+Author: Siddhesh Poyarekar <siddhesh@redhat.com>
+Date:   Sun Jun 30 20:45:19 2013 +0530
+
+    Check for integer overflow
+
+diff --git glibc-2.17-c758a686/string/strcoll_l.c glibc-2.17-c758a686/string/strcoll_l.c
+index 1be6874..cbe5962 100644
+--- glibc-2.17-c758a686/string/strcoll_l.c
++++ glibc-2.17-c758a686/string/strcoll_l.c
+@@ -524,6 +524,14 @@ STRCOLL (const STRING_TYPE *s1, const STRING_TYPE *s2, __locale_t l)
+   memset (&seq1, 0, sizeof (seq1));
+   seq2 = seq1;
+ 
++  size_t size_max = SIZE_MAX / (sizeof (int32_t) + 1);
++
++  /* If the strings are long enough to cause overflow in the size request, then
++     skip the allocation and proceed with the non-cached routines.  */
++  if (MIN (s1len, s2len) > size_max
++      || MAX (s1len, s2len) > size_max - MIN (s1len, s2len))
++    goto begin_collate;
++
+   if (! __libc_use_alloca ((s1len + s2len) * (sizeof (int32_t) + 1)))
+     {
+       seq1.idxarr = (int32_t *) malloc ((s1len + s2len) * (sizeof (int32_t) + 1));
+@@ -546,8 +554,10 @@ STRCOLL (const STRING_TYPE *s1, const STRING_TYPE *s2, __locale_t l)
+       seq2.rulearr = (unsigned char *) alloca (s2len);
+     }
+ 
+-  int rule = 0;
++  int rule;
+ 
++ begin_collate:
++  rule = 0;
+   /* Cache values in the first pass and if needed, use them in subsequent
+      passes.  */
+   for (int pass = 0; pass < nrules; ++pass)

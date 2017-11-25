@@ -1,0 +1,280 @@
+From dfb57bf8871503967f23f9ce4bf17479a19cf8e4 Mon Sep 17 00:00:00 2001
+From: "Ryan S. Arnold" <rsa@linux.vnet.ibm.com>
+Date: Fri, 28 Jun 2013 16:50:48 -0500
+Subject: [PATCH 39/42] Add GLRO(dl_hwcap2) for new AT_HWCAP2 auxv_t a_type.
+ (cherry picked from commit
+ 1ae8bfe07c1ab2444cc1d186321ff1431a1b9f96)
+
+---
+ elf/dl-support.c                                |  4 ++++
+ elf/dl-sysdep.c                                 | 10 +++++++---
+ misc/getauxval.c                                |  2 ++
+ ports/sysdeps/alpha/dl-procinfo.h               |  2 +-
+ ports/sysdeps/mips/dl-procinfo.h                |  2 +-
+ ports/sysdeps/unix/sysv/linux/arm/dl-procinfo.h |  6 +++++-
+ sysdeps/generic/dl-procinfo.h                   |  2 +-
+ sysdeps/generic/ldsodefs.h                      |  4 ++++
+ sysdeps/i386/dl-procinfo.h                      |  2 +-
+ sysdeps/powerpc/dl-procinfo.h                   |  6 +++++-
+ sysdeps/s390/dl-procinfo.h                      |  2 +-
+ sysdeps/sparc/dl-procinfo.h                     |  6 +++++-
+ sysdeps/unix/sysv/linux/i386/dl-procinfo.h      |  6 +++++-
+ sysdeps/unix/sysv/linux/s390/dl-procinfo.h      |  6 +++++-
+ 18 files changed, 89 insertions(+), 13 deletions(-)
+
+diff --git glibc-2.17-c758a686/elf/dl-support.c glibc-2.17-c758a686/elf/dl-support.c
+index 81e7172..05f53ee 100644
+--- glibc-2.17-c758a686/elf/dl-support.c
++++ glibc-2.17-c758a686/elf/dl-support.c
+@@ -129,6 +129,7 @@ ElfW(auxv_t) *_dl_auxv;
+ ElfW(Phdr) *_dl_phdr;
+ size_t _dl_phnum;
+ uint64_t _dl_hwcap __attribute__ ((nocommon));
++uint64_t _dl_hwcap2 __attribute__ ((nocommon));
+ 
+ /* This is not initialized to HWCAP_IMPORTANT, matching the definition
+    of _dl_important_hwcaps, below, where no hwcap strings are ever
+@@ -212,6 +213,9 @@ _dl_aux_init (ElfW(auxv_t) *av)
+       case AT_HWCAP:
+ 	GLRO(dl_hwcap) = (unsigned long int) av->a_un.a_val;
+ 	break;
++      case AT_HWCAP2:
++	GLRO(dl_hwcap2) = (unsigned long int) av->a_un.a_val;
++	break;
+ #ifdef NEED_DL_SYSINFO
+       case AT_SYSINFO:
+ 	GL(dl_sysinfo) = av->a_un.a_val;
+diff --git glibc-2.17-c758a686/elf/dl-sysdep.c glibc-2.17-c758a686/elf/dl-sysdep.c
+index 65a9046..a0d1d04 100644
+--- glibc-2.17-c758a686/elf/dl-sysdep.c
++++ glibc-2.17-c758a686/elf/dl-sysdep.c
+@@ -156,6 +156,9 @@ _dl_sysdep_start (void **start_argptr,
+       case AT_HWCAP:
+ 	GLRO(dl_hwcap) = (unsigned long int) av->a_un.a_val;
+ 	break;
++      case AT_HWCAP2:
++	GLRO(dl_hwcap2) = (unsigned long int) av->a_un.a_val;
++	break;
+       case AT_CLKTCK:
+ 	GLRO(dl_clktck) = av->a_un.a_val;
+ 	break;
+@@ -298,6 +301,7 @@ _dl_show_auxv (void)
+ 	  [AT_SYSINFO - 2] =		{ "SYSINFO:      0x", hex },
+ 	  [AT_SYSINFO_EHDR - 2] =	{ "SYSINFO_EHDR: 0x", hex },
+ 	  [AT_RANDOM - 2] =		{ "RANDOM:       0x", hex },
++	  [AT_HWCAP2 - 2] =		{ "HWCAP2:       0x", hex },
+ 	};
+       unsigned int idx = (unsigned int) (av->a_type - 2);
+ 
+@@ -309,10 +313,10 @@ _dl_show_auxv (void)
+       assert (AT_NULL == 0);
+       assert (AT_IGNORE == 1);
+ 
+-      if (av->a_type == AT_HWCAP)
++      if (av->a_type == AT_HWCAP || av->a_type == AT_HWCAP2)
+ 	{
+-	  /* This is handled special.  */
+-	  if (_dl_procinfo (av->a_un.a_val) == 0)
++	  /* These are handled in a special way per platform.  */
++	  if (_dl_procinfo (av->a_type, av->a_un.a_val) == 0)
+ 	    continue;
+ 	}
+ 
+diff --git glibc-2.17-c758a686/misc/getauxval.c glibc-2.17-c758a686/misc/getauxval.c
+index bff4560..1c1882b 100644
+--- glibc-2.17-c758a686/misc/getauxval.c
++++ glibc-2.17-c758a686/misc/getauxval.c
+@@ -26,6 +26,8 @@ __getauxval (unsigned long int type)
+ 
+   if (type == AT_HWCAP)
+     return GLRO(dl_hwcap);
++  else if (type == AT_HWCAP2)
++    return GLRO(dl_hwcap2);
+ 
+   for (p = GLRO(dl_auxv); p->a_type != AT_NULL; p++)
+     if (p->a_type == type)
+diff --git glibc-2.17-c758a686/ports/sysdeps/alpha/dl-procinfo.h glibc-2.17-c758a686/ports/sysdeps/alpha/dl-procinfo.h
+index 3db0efb..c3b27b4 100644
+--- glibc-2.17-c758a686/ports/sysdeps/alpha/dl-procinfo.h
++++ glibc-2.17-c758a686/ports/sysdeps/alpha/dl-procinfo.h
+@@ -51,7 +51,7 @@ _dl_string_platform (const char *str)
+ };
+ 
+ /* We cannot provide a general printing function.  */
+-#define _dl_procinfo(word) -1
++#define _dl_procinfo(type, word) -1
+ 
+ /* There are no hardware capabilities defined.  */
+ #define _dl_hwcap_string(idx) ""
+diff --git glibc-2.17-c758a686/ports/sysdeps/mips/dl-procinfo.h glibc-2.17-c758a686/ports/sysdeps/mips/dl-procinfo.h
+index d42aea7..8c9f5c2 100644
+--- glibc-2.17-c758a686/ports/sysdeps/mips/dl-procinfo.h
++++ glibc-2.17-c758a686/ports/sysdeps/mips/dl-procinfo.h
+@@ -51,7 +51,7 @@ _dl_string_platform (const char *str)
+ };
+ 
+ /* We cannot provide a general printing function.  */
+-#define _dl_procinfo(word) -1
++#define _dl_procinfo(type, word) -1
+ 
+ /* There are no hardware capabilities defined.  */
+ #define _dl_hwcap_string(idx) ""
+diff --git glibc-2.17-c758a686/ports/sysdeps/unix/sysv/linux/arm/dl-procinfo.h glibc-2.17-c758a686/ports/sysdeps/unix/sysv/linux/arm/dl-procinfo.h
+index bea7100..c96297b 100644
+--- glibc-2.17-c758a686/ports/sysdeps/unix/sysv/linux/arm/dl-procinfo.h
++++ glibc-2.17-c758a686/ports/sysdeps/unix/sysv/linux/arm/dl-procinfo.h
+@@ -31,10 +31,14 @@
+ 
+ static inline int
+ __attribute__ ((unused))
+-_dl_procinfo (int word)
++_dl_procinfo (unsigned int type, unsigned long int word)
+ {
+   int i;
+ 
++  /* Fallback to unknown output mechanism.  */
++  if (type == AT_HWCAP2)
++    return -1;
++
+   _dl_printf ("AT_HWCAP:   ");
+ 
+   for (i = 0; i < _DL_HWCAP_COUNT; ++i)
+diff --git glibc-2.17-c758a686/sysdeps/generic/dl-procinfo.h glibc-2.17-c758a686/sysdeps/generic/dl-procinfo.h
+index c2bf914..0345717 100644
+--- glibc-2.17-c758a686/sysdeps/generic/dl-procinfo.h
++++ glibc-2.17-c758a686/sysdeps/generic/dl-procinfo.h
+@@ -21,7 +21,7 @@
+ #define _DL_PROCINFO_H	1
+ 
+ /* We cannot provide a general printing function.  */
+-#define _dl_procinfo(word) -1
++#define _dl_procinfo(type, word) -1
+ 
+ /* There are no hardware capabilities defined.  */
+ #define _dl_hwcap_string(idx) ""
+diff --git glibc-2.17-c758a686/sysdeps/generic/ldsodefs.h glibc-2.17-c758a686/sysdeps/generic/ldsodefs.h
+index c667e34..5635d72 100644
+--- glibc-2.17-c758a686/sysdeps/generic/ldsodefs.h
++++ glibc-2.17-c758a686/sysdeps/generic/ldsodefs.h
+@@ -548,6 +548,10 @@ struct rtld_global_ro
+   EXTERN struct link_map *_dl_sysinfo_map;
+ #endif
+ 
++  /* Mask for more hardware capabilities that are available on some
++     platforms.  */
++  EXTERN uint64_t _dl_hwcap2;
++
+ #ifdef SHARED
+   /* We add a function table to _rtld_global which is then used to
+      call the function instead of going through the PLT.  The result
+diff --git glibc-2.17-c758a686/sysdeps/i386/dl-procinfo.h glibc-2.17-c758a686/sysdeps/i386/dl-procinfo.h
+index 6ecaac2..38e902d 100644
+--- glibc-2.17-c758a686/sysdeps/i386/dl-procinfo.h
++++ glibc-2.17-c758a686/sysdeps/i386/dl-procinfo.h
+@@ -61,7 +61,7 @@ enum
+ };
+ 
+ /* We cannot provide a general printing function.  */
+-#define _dl_procinfo(word) -1
++#define _dl_procinfo(type, word) -1
+ 
+ static inline const char *
+ __attribute__ ((unused))
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/dl-procinfo.h glibc-2.17-c758a686/sysdeps/powerpc/dl-procinfo.h
+index 0939dcf..7732ed2 100644
+--- glibc-2.17-c758a686/sysdeps/powerpc/dl-procinfo.h
++++ glibc-2.17-c758a686/sysdeps/powerpc/dl-procinfo.h
+@@ -159,8 +159,12 @@ _dl_string_platform (const char *str)
+ #ifdef IS_IN_rtld
+ static inline int
+ __attribute__ ((unused))
+-_dl_procinfo (int word)
++_dl_procinfo (unsigned int type, unsigned long int word)
+ {
++  /* Fallback to unknown output mechanism.  */
++  if (type == AT_HWCAP2)
++    return -1;
++
+   _dl_printf ("AT_HWCAP:       ");
+ 
+   for (int i = _DL_HWCAP_FIRST; i < _DL_HWCAP_COUNT; ++i)
+diff --git glibc-2.17-c758a686/sysdeps/s390/dl-procinfo.h glibc-2.17-c758a686/sysdeps/s390/dl-procinfo.h
+index 97dcf07..26de043 100644
+--- glibc-2.17-c758a686/sysdeps/s390/dl-procinfo.h
++++ glibc-2.17-c758a686/sysdeps/s390/dl-procinfo.h
+@@ -56,7 +56,7 @@ enum
+ 			  | HWCAP_S390_EIMM | HWCAP_S390_DFP)
+ 
+ /* We cannot provide a general printing function.  */
+-#define _dl_procinfo(word) -1
++#define _dl_procinfo(type, word) -1
+ 
+ static inline const char *
+ __attribute__ ((unused))
+diff --git glibc-2.17-c758a686/sysdeps/sparc/dl-procinfo.h glibc-2.17-c758a686/sysdeps/sparc/dl-procinfo.h
+index 6ae8768..a05d458 100644
+--- glibc-2.17-c758a686/sysdeps/sparc/dl-procinfo.h
++++ glibc-2.17-c758a686/sysdeps/sparc/dl-procinfo.h
+@@ -28,10 +28,14 @@
+ 
+ static inline int
+ __attribute__ ((unused))
+-_dl_procinfo (int word)
++_dl_procinfo (unsigned int type, unsigned long int word)
+ {
+   int i;
+ 
++  /* Fallback to unknown output mechanism.  */
++  if (type == AT_HWCAP2)
++    return -1;
++
+   _dl_printf ("AT_HWCAP:   ");
+ 
+   for (i = 0; i < _DL_HWCAP_COUNT; ++i)
+diff --git glibc-2.17-c758a686/sysdeps/unix/sysv/linux/i386/dl-procinfo.h glibc-2.17-c758a686/sysdeps/unix/sysv/linux/i386/dl-procinfo.h
+index 4c61357..23f4501 100644
+--- glibc-2.17-c758a686/sysdeps/unix/sysv/linux/i386/dl-procinfo.h
++++ glibc-2.17-c758a686/sysdeps/unix/sysv/linux/i386/dl-procinfo.h
+@@ -24,12 +24,16 @@
+ #undef _dl_procinfo
+ static inline int
+ __attribute__ ((unused))
+-_dl_procinfo (int word)
++_dl_procinfo (unsigned int type, unsigned long int word)
+ {
+   /* This table should match the information from arch/i386/kernel/setup.c
+      in the kernel sources.  */
+   int i;
+ 
++  /* Fallback to unknown output mechanism.  */
++  if (type == AT_HWCAP2)
++    return -1;
++
+   _dl_printf ("AT_HWCAP:   ");
+ 
+   for (i = 0; i < _DL_HWCAP_COUNT; ++i)
+diff --git glibc-2.17-c758a686/sysdeps/unix/sysv/linux/s390/dl-procinfo.h glibc-2.17-c758a686/sysdeps/unix/sysv/linux/s390/dl-procinfo.h
+index f36ba55..759738e 100644
+--- glibc-2.17-c758a686/sysdeps/unix/sysv/linux/s390/dl-procinfo.h
++++ glibc-2.17-c758a686/sysdeps/unix/sysv/linux/s390/dl-procinfo.h
+@@ -24,12 +24,16 @@
+ #undef _dl_procinfo
+ static inline int
+ __attribute__ ((unused))
+-_dl_procinfo (int word)
++_dl_procinfo (unsigned int type, unsigned long int word)
+ {
+   /* This table should match the information from arch/s390/kernel/setup.c
+      in the kernel sources.  */
+   int i;
+ 
++  /* Fallback to unknown output mechanism.  */
++  if (type == AT_HWCAP2)
++    return -1;
++
+   _dl_printf ("AT_HWCAP:   ");
+ 
+   for (i = 0; i < _DL_HWCAP_COUNT; ++i)
+-- 
+1.7.11.7
+

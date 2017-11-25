@@ -1,0 +1,45 @@
+#
+# commit 4cb81307b3771672864fa3a7498bd39c13267a00
+# Author: Alan Modra <amodra@gmail.com>
+# Date:   Fri Oct 4 12:48:51 2013 +0930
+# 
+#     Use stdint.h types in union unaligned.
+# 
+#         * sysdeps/powerpc/powerpc32/dl-machine.c (__process_machine_rela):
+#         Use stdint types in rather than __attribute__((mode())).
+#         * sysdeps/powerpc/powerpc64/dl-machine.h (elf_machine_rela): Likewise.
+# 
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc32/dl-machine.c glibc-2.17-c758a686/sysdeps/powerpc/powerpc32/dl-machine.c
+index f81899a..aba3618 100644
+--- glibc-2.17-c758a686/sysdeps/powerpc/powerpc32/dl-machine.c
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc32/dl-machine.c
+@@ -418,8 +418,8 @@ __process_machine_rela (struct link_map *map,
+ {
+   union unaligned
+     {
+-      unsigned u2 __attribute__ ((mode (HI)));
+-      unsigned u4 __attribute__ ((mode (SI)));
++      uint16_t u2;
++      uint32_t u4;
+     } __attribute__((__packed__));
+ 
+   switch (rinfo)
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/dl-machine.h glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/dl-machine.h
+index b69a1ce..18cf157 100644
+--- glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/dl-machine.h
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/dl-machine.h
+@@ -563,10 +563,10 @@ elf_machine_rela (struct link_map *map,
+   const Elf64_Sym *const refsym = sym;
+   union unaligned
+     {
+-      unsigned u2 __attribute__ ((mode (HI)));
+-      unsigned u4 __attribute__ ((mode (SI)));
+-      unsigned u8 __attribute__ ((mode (DI)));
+-    } __attribute__((__packed__));
++      uint16_t u2;
++      uint32_t u4;
++      uint64_t u8;
++    } __attribute__ ((__packed__));
+ 
+   if (r_type == R_PPC64_RELATIVE)
+     {

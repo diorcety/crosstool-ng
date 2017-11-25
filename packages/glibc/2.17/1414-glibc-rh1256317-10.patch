@@ -1,0 +1,46 @@
+commit fb6784e3068a747ead34e6dee6a9a1978668a955
+Author: Siddhesh Poyarekar <siddhesh@redhat.com>
+Date:   Thu Nov 20 12:33:44 2014 +0530
+
+    Remove IS_IN_ldconfig
+    
+    Replace with IS_IN (ldconfig).  No change in generated code.
+    
+    	* elf/Makefile (CFLAGS-ldconfig.c): Remove definition of
+    	IS_IN_ldconfig.
+    	* sysdeps/unix/sysv/linux/x86_64/dl-procinfo.c: Use IS_IN.
+    	* sysdeps/unix/sysv/linux/x86_64/dl-procinfo.h: Likewise.
+
+Index: glibc-2.17-c758a686/elf/Makefile
+===================================================================
+--- glibc-2.17-c758a686.orig/elf/Makefile
++++ glibc-2.17-c758a686/elf/Makefile
+@@ -437,7 +437,7 @@ $(objpfx)pldd: $(pldd-modules:%=$(objpfx
+ 
+ SYSCONF-FLAGS := -D'SYSCONFDIR="$(sysconfdir)"'
+ CFLAGS-ldconfig.c = $(SYSCONF-FLAGS) -D'LIBDIR="$(libdir)"' \
+-		    -D'SLIBDIR="$(slibdir)"' -DIS_IN_ldconfig=1 -DNOT_IN_libc=1
++		    -D'SLIBDIR="$(slibdir)"' -DNOT_IN_libc
+ libof-ldconfig = ldconfig
+ CFLAGS-dl-cache.c = $(SYSCONF-FLAGS)
+ CFLAGS-cache.c = $(SYSCONF-FLAGS)
+Index: glibc-2.17-c758a686/sysdeps/unix/sysv/linux/x86_64/dl-procinfo.c
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/unix/sysv/linux/x86_64/dl-procinfo.c
++++ glibc-2.17-c758a686/sysdeps/unix/sysv/linux/x86_64/dl-procinfo.c
+@@ -1,4 +1,4 @@
+-#ifdef IS_IN_ldconfig
++#if IS_IN (ldconfig)
+ # include <sysdeps/i386/dl-procinfo.c>
+ #else
+ # include <sysdeps/generic/dl-procinfo.c>
+Index: glibc-2.17-c758a686/sysdeps/unix/sysv/linux/x86_64/dl-procinfo.h
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/unix/sysv/linux/x86_64/dl-procinfo.h
++++ glibc-2.17-c758a686/sysdeps/unix/sysv/linux/x86_64/dl-procinfo.h
+@@ -1,4 +1,4 @@
+-#ifdef IS_IN_ldconfig
++#if IS_IN (ldconfig)
+ # include <sysdeps/unix/sysv/linux/i386/dl-procinfo.h>
+ #else
+ # include <sysdeps/generic/dl-procinfo.h>

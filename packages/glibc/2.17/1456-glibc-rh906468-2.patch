@@ -1,0 +1,811 @@
+Based on the following upstream commit:
+
+commit ef4f97648dc95849e417dd3e6328165de4c22185
+Author: Florian Weimer <fweimer@redhat.com>
+Date:   Fri Aug 26 22:40:27 2016 +0200
+
+    malloc: Simplify static malloc interposition [BZ #20432]
+    
+    Existing interposed mallocs do not define the glibc-internal
+    fork callbacks (and they should not), so statically interposed
+    mallocs lead to link failures because the strong reference from
+    fork pulls in glibc's malloc, resulting in multiple definitions
+    of malloc-related symbols.
+
+Adjustments: __libc_memalign is defined.  <support/xthread.h> is
+included because libsupport provides definitions of xthread_*
+functions, but not our version of the test skeleton.
+
+Index: b/include/libc-symbols.h
+===================================================================
+--- a/include/libc-symbols.h
++++ b/include/libc-symbols.h
+@@ -119,6 +119,21 @@
+ # define weak_extern(symbol) _weak_extern (weak symbol)
+ # define _weak_extern(expr) _Pragma (#expr)
+ 
++/* In shared builds, the expression call_function_static_weak
++   (FUNCTION-SYMBOL, ARGUMENTS) invokes FUNCTION-SYMBOL (an
++   identifier) unconditionally, with the (potentially empty) argument
++   list ARGUMENTS.  In static builds, if FUNCTION-SYMBOL has a
++   definition, the function is invoked as before; if FUNCTION-SYMBOL
++   is NULL, no call is performed.  */
++# ifdef SHARED
++#  define call_function_static_weak(func, ...) func (__VA_ARGS__)
++# else	/* !SHARED */
++#  define call_function_static_weak(func, ...)		\
++  ({							\
++    extern __typeof__ (func) func weak_function;	\
++    (func != NULL ? func (__VA_ARGS__) : (void)0);	\
++  })
++# endif
+ 
+ #else /* __ASSEMBLER__ */
+ 
+Index: b/malloc/Makefile
+===================================================================
+--- a/malloc/Makefile
++++ b/malloc/Makefile
+@@ -28,7 +28,16 @@ tests := mallocbug tst-malloc tst-valloc
+ 	 tst-mallocstate tst-mcheck tst-mallocfork tst-trim1 \
+ 	 tst-malloc-usable \
+ 	 tst-malloc-backtrace tst-malloc-thread-exit \
+-	 tst-malloc-thread-fail tst-malloc-fork-deadlock
++	 tst-malloc-thread-fail tst-malloc-fork-deadlock \
++	 tst-interpose-nothread \
++	 tst-interpose-thread \
++	 tst-interpose-static-nothread \
++	 tst-interpose-static-thread \
++
++tests-static := \
++	 tst-interpose-static-nothread \
++	 tst-interpose-static-thread \
++
+ test-srcs = tst-mtrace
+ 
+ routines = malloc morecore mcheck mtrace obstack
+@@ -40,6 +49,15 @@ non-lib.a := libmcheck.a
+ extra-libs = libmemusage
+ extra-libs-others = $(extra-libs)
+ 
++# Helper objects for some tests.
++extra-tests-objs += \
++  tst-interpose-aux-nothread.o \
++  tst-interpose-aux-thread.o \
++
++test-extras = \
++  tst-interpose-aux-nothread \
++  tst-interpose-aux-thread \
++
+ libmemusage-routines = memusage
+ libmemusage-inhibit-o = $(filter-out .os,$(object-suffixes))
+ 
+@@ -157,6 +175,17 @@ $(objpfx)libmemusage.so: $(common-objpfx
+ # Extra dependencies
+ $(foreach o,$(all-object-suffixes),$(objpfx)malloc$(o)): arena.c hooks.c
+ 
++# max_align_t requires C11.
++CFLAGS-tst-interpose-aux-nothread.c = -std=gnu11
++CFLAGS-tst-interpose-aux-thread.c = -std=gnu11
++
++$(objpfx)tst-interpose-nothread: $(objpfx)tst-interpose-aux-nothread.o
++$(objpfx)tst-interpose-thread: \
++  $(objpfx)tst-interpose-aux-thread.o $(shared-thread-library)
++$(objpfx)tst-interpose-static-nothread: $(objpfx)tst-interpose-aux-nothread.o
++$(objpfx)tst-interpose-static-thread: \
++  $(objpfx)tst-interpose-aux-thread.o $(static-thread-library)
++
+ # Compile the tests with a flag which suppresses the mallopt call in
+ # the test skeleton.
+ $(tests:%=$(objpfx)%.o): CPPFLAGS += -DTEST_NO_MALLOPT
+Index: b/malloc/tst-interpose-aux-nothread.c
+===================================================================
+--- /dev/null
++++ b/malloc/tst-interpose-aux-nothread.c
+@@ -0,0 +1,20 @@
++/* Interposed malloc, version without threading support.
++   Copyright (C) 2016 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public License as
++   published by the Free Software Foundation; either version 2.1 of the
++   License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; see the file COPYING.LIB.  If
++   not, see <http://www.gnu.org/licenses/>.  */
++
++#define INTERPOSE_THREADS 0
++#include "tst-interpose-aux.c"
+Index: b/malloc/tst-interpose-aux-thread.c
+===================================================================
+--- /dev/null
++++ b/malloc/tst-interpose-aux-thread.c
+@@ -0,0 +1,20 @@
++/* Interposed malloc, version with threading support.
++   Copyright (C) 2016 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public License as
++   published by the Free Software Foundation; either version 2.1 of the
++   License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; see the file COPYING.LIB.  If
++   not, see <http://www.gnu.org/licenses/>.  */
++
++#define INTERPOSE_THREADS 1
++#include "tst-interpose-aux.c"
+Index: b/malloc/tst-interpose-aux.c
+===================================================================
+--- /dev/null
++++ b/malloc/tst-interpose-aux.c
+@@ -0,0 +1,283 @@
++/* Minimal malloc implementation for interposition tests.
++   Copyright (C) 2016 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public License as
++   published by the Free Software Foundation; either version 2.1 of the
++   License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; see the file COPYING.LIB.  If
++   not, see <http://www.gnu.org/licenses/>.  */
++
++#include "tst-interpose-aux.h"
++
++#include <errno.h>
++#include <stdarg.h>
++#include <stddef.h>
++#include <stdio.h>
++#include <stdlib.h>
++#include <string.h>
++#include <sys/mman.h>
++#include <sys/uio.h>
++#include <unistd.h>
++
++#if INTERPOSE_THREADS
++#include <pthread.h>
++#endif
++
++/* Print the error message and terminate the process with status 1.  */
++__attribute__ ((noreturn))
++__attribute__ ((format (printf, 1, 2)))
++static void *
++fail (const char *format, ...)
++{
++  /* This assumes that vsnprintf will not call malloc.  It does not do
++     so for the format strings we use.  */
++  char message[4096];
++  va_list ap;
++  va_start (ap, format);
++  vsnprintf (message, sizeof (message), format, ap);
++  va_end (ap);
++
++  enum { count = 3 };
++  struct iovec iov[count];
++
++  iov[0].iov_base = (char *) "error: ";
++  iov[1].iov_base = (char *) message;
++  iov[2].iov_base = (char *) "\n";
++
++  for (int i = 0; i < count; ++i)
++    iov[i].iov_len = strlen (iov[i].iov_base);
++
++  int unused __attribute__ ((unused));
++  unused = writev (STDOUT_FILENO, iov, count);
++  _exit (1);
++}
++
++#if INTERPOSE_THREADS
++static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
++#endif
++
++static void
++lock (void)
++{
++#if INTERPOSE_THREADS
++  int ret = pthread_mutex_lock (&mutex);
++  if (ret != 0)
++    {
++      errno = ret;
++      fail ("pthread_mutex_lock: %m");
++    }
++#endif
++}
++
++static void
++unlock (void)
++{
++#if INTERPOSE_THREADS
++  int ret = pthread_mutex_unlock (&mutex);
++  if (ret != 0)
++    {
++      errno = ret;
++      fail ("pthread_mutex_unlock: %m");
++    }
++#endif
++}
++
++struct __attribute__ ((aligned (__alignof__ (max_align_t)))) allocation_header
++{
++  size_t allocation_index;
++  size_t allocation_size;
++};
++
++/* Array of known allocations, to track invalid frees.  */
++enum { max_allocations = 65536 };
++static struct allocation_header *allocations[max_allocations];
++static size_t allocation_index;
++static size_t deallocation_count;
++
++/* Sanity check for successful malloc interposition.  */
++__attribute__ ((destructor))
++static void
++check_for_allocations (void)
++{
++  if (allocation_index == 0)
++    {
++      /* Make sure that malloc is called at least once from libc.  */
++      void *volatile ptr = strdup ("ptr");
++      free (ptr);
++      /* Compiler barrier.  The strdup function calls malloc, which
++         updates allocation_index, but strdup is marked __THROW, so
++         the compiler could optimize away the reload.  */
++      __asm__ volatile ("" ::: "memory");
++      /* If the allocation count is still zero, it means we did not
++         interpose malloc successfully.  */
++      if (allocation_index == 0)
++        fail ("malloc does not seem to have been interposed");
++    }
++}
++
++static struct allocation_header *get_header (const char *op, void *ptr)
++{
++  struct allocation_header *header = ((struct allocation_header *) ptr) - 1;
++  if (header->allocation_index >= allocation_index)
++    fail ("%s: %p: invalid allocation index: %zu (not less than %zu)",
++          op, ptr, header->allocation_index, allocation_index);
++  if (allocations[header->allocation_index] != header)
++    fail ("%s: %p: allocation pointer does not point to header, but %p",
++          op, ptr, allocations[header->allocation_index]);
++  return header;
++}
++
++/* Internal helper functions.  Those must be called while the lock is
++   acquired.  */
++
++static void *
++malloc_internal (size_t size)
++{
++  if (allocation_index == max_allocations)
++    {
++      errno = ENOMEM;
++      return NULL;
++    }
++  size_t allocation_size = size + sizeof (struct allocation_header);
++  if (allocation_size < size)
++    {
++      errno = ENOMEM;
++      return NULL;
++    }
++
++  size_t index = allocation_index++;
++  void *result = mmap (NULL, allocation_size, PROT_READ | PROT_WRITE,
++                       MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
++  if (result == MAP_FAILED)
++    return NULL;
++  allocations[index] = result;
++  *allocations[index] = (struct allocation_header)
++    {
++      .allocation_index = index,
++      .allocation_size = allocation_size
++    };
++  return allocations[index] + 1;
++}
++
++static void
++free_internal (const char *op, struct allocation_header *header)
++{
++  size_t index = header->allocation_index;
++  int result = mprotect (header, header->allocation_size, PROT_NONE);
++  if (result != 0)
++    fail ("%s: mprotect (%p, %zu): %m", op, header, header->allocation_size);
++  /* Catch double-free issues.  */
++  allocations[index] = NULL;
++  ++deallocation_count;
++}
++
++static void *
++realloc_internal (void *ptr, size_t new_size)
++{
++  struct allocation_header *header = get_header ("realloc", ptr);
++  size_t old_size = header->allocation_size - sizeof (struct allocation_header);
++  if (old_size >= new_size)
++    return ptr;
++
++  void *newptr = malloc_internal (new_size);
++  if (newptr == NULL)
++    return NULL;
++  memcpy (newptr, ptr, old_size);
++  free_internal ("realloc", header);
++  return newptr;
++}
++
++/* Public interfaces.  These functions must perform locking.  */
++
++size_t
++malloc_allocation_count (void)
++{
++  lock ();
++  size_t count = allocation_index;
++  unlock ();
++  return count;
++}
++
++size_t
++malloc_deallocation_count (void)
++{
++  lock ();
++  size_t count = deallocation_count;
++  unlock ();
++  return count;
++}
++
++void *
++malloc (size_t size)
++{
++  lock ();
++  void *result = malloc_internal (size);
++  unlock ();
++  return result;
++}
++
++void
++free (void *ptr)
++{
++  if (ptr == NULL)
++    return;
++  lock ();
++  struct allocation_header *header = get_header ("free", ptr);
++  free_internal ("free", header);
++  unlock ();
++}
++
++void *
++calloc (size_t a, size_t b)
++{
++  if (b > 0 && a > SIZE_MAX / b)
++    {
++      errno = ENOMEM;
++      return NULL;
++    }
++  lock ();
++  /* malloc_internal uses mmap, so the memory is zeroed.  */
++  void *result = malloc_internal (a * b);
++  unlock ();
++  return result;
++}
++
++void *
++realloc (void *ptr, size_t n)
++{
++  if (n ==0)
++    {
++      free (ptr);
++      return NULL;
++    }
++  else if (ptr == NULL)
++    return malloc (n);
++  else
++    {
++      lock ();
++      void *result = realloc_internal (ptr, n);
++      unlock ();
++      return result;
++    }
++}
++
++/* The dyanmic linker still uses __libc_memalign because we have not
++   backported the fix for swbz#17730.  It does not normally request
++   large alignments, so we can call malloc directly.  */
++void *
++__libc_memalign (size_t alignment, size_t size)
++{
++  void *result = malloc (size);
++  if (((uintptr_t) result % alignment) != 0)
++    fail ("could not fulfill requested alignment %zu", alignment);
++  return result;
++}
+Index: b/malloc/tst-interpose-aux.h
+===================================================================
+--- /dev/null
++++ b/malloc/tst-interpose-aux.h
+@@ -0,0 +1,30 @@
++/* Statistics interface for the minimal malloc implementation.
++   Copyright (C) 2016 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public License as
++   published by the Free Software Foundation; either version 2.1 of the
++   License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; see the file COPYING.LIB.  If
++   not, see <http://www.gnu.org/licenses/>.  */
++
++#ifndef TST_INTERPOSE_AUX_H
++#define TST_INTERPOSE_AUX_H
++
++#include <stddef.h>
++
++/* Return the number of allocations performed.  */
++size_t malloc_allocation_count (void);
++
++/* Return the number of deallocations performed.  */
++size_t malloc_deallocation_count (void);
++
++#endif /* TST_INTERPOSE_AUX_H */
+Index: b/malloc/tst-interpose-nothread.c
+===================================================================
+--- /dev/null
++++ b/malloc/tst-interpose-nothread.c
+@@ -0,0 +1,20 @@
++/* Malloc interposition test, dynamically-linked version without threads.
++   Copyright (C) 2016 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public License as
++   published by the Free Software Foundation; either version 2.1 of the
++   License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; see the file COPYING.LIB.  If
++   not, see <http://www.gnu.org/licenses/>.  */
++
++#define INTERPOSE_THREADS 0
++#include "tst-interpose-skeleton.c"
+Index: b/malloc/tst-interpose-skeleton.c
+===================================================================
+--- /dev/null
++++ b/malloc/tst-interpose-skeleton.c
+@@ -0,0 +1,204 @@
++/* Test driver for malloc interposition tests.
++   Copyright (C) 2016 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public License as
++   published by the Free Software Foundation; either version 2.1 of the
++   License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; see the file COPYING.LIB.  If
++   not, see <http://www.gnu.org/licenses/>.  */
++
++#include <stdio.h>
++#include <stdlib.h>
++#include <string.h>
++#include <unistd.h>
++
++#if INTERPOSE_THREADS
++#include <support/xthread.h>
++#endif
++
++static int do_test (void);
++#define TEST_FUNCTION do_test ()
++#include "../test-skeleton.c"
++
++/* Fills BUFFER with a test string.  */
++static void
++line_string (int number, char *buffer, size_t length)
++{
++  for (size_t i = 0; i < length - 2; ++i)
++    buffer[i] = 'A' + ((number + i) % 26);
++  buffer[length - 2] = '\n';
++  buffer[length - 1] = '\0';
++}
++
++/* Perform the tests.  */
++static void *
++run_tests (void *closure)
++{
++  char *temp_file_path;
++  int fd = create_temp_file ("tst-malloc-interpose", &temp_file_path);
++  if (fd < 0)
++    _exit (1);
++
++  /* Line lengths excluding the line terminator.  */
++  static const int line_lengths[] = { 0, 45, 80, 2, 8201, 0, 17, -1 };
++
++  /* Fill the test file with data.  */
++  {
++    FILE *fp = fdopen (fd, "w");
++    for (int lineno = 0; line_lengths[lineno] >= 0; ++lineno)
++      {
++        char buffer[line_lengths[lineno] + 2];
++        line_string (lineno, buffer, sizeof (buffer));
++        fprintf (fp, "%s", buffer);
++      }
++
++    if (ferror (fp))
++      {
++        printf ("error: fprintf: %m\n");
++        _exit (1);
++      }
++    if (fclose (fp) != 0)
++      {
++        printf ("error: fclose: %m\n");
++        _exit (1);
++      }
++  }
++
++  /* Read the test file.  This tests libc-internal allocation with
++     realloc.  */
++  {
++    FILE *fp = fopen (temp_file_path, "r");
++
++    char *actual = NULL;
++    size_t actual_size = 0;
++    for (int lineno = 0; ; ++lineno)
++      {
++        errno = 0;
++        ssize_t result = getline (&actual, &actual_size, fp);
++        if (result == 0)
++          {
++            printf ("error: invalid return value 0 from getline\n");
++            _exit (1);
++          }
++        if (result < 0 && errno != 0)
++          {
++            printf ("error: getline: %m\n");
++            _exit (1);
++          }
++        if (result < 0 && line_lengths[lineno] >= 0)
++          {
++            printf ("error: unexpected end of file after line %d\n", lineno);
++            _exit (1);
++          }
++        if (result > 0 && line_lengths[lineno] < 0)
++          {
++            printf ("error: no end of file after line %d\n", lineno);
++            _exit (1);
++          }
++        if (result == -1 && line_lengths[lineno] == -1)
++          /* End of file reached as expected.  */
++          break;
++
++        if (result != line_lengths[lineno] + 1)
++          {
++            printf ("error: line length mismatch: expected %d, got %zd\n",
++                    line_lengths[lineno], result);
++            _exit (1);
++          }
++
++        char expected[line_lengths[lineno] + 2];
++        line_string (lineno, expected, sizeof (expected));
++        if (strcmp (actual, expected) != 0)
++          {
++            printf ("error: line mismatch\n");
++            printf ("error:   expected: [[%s]]\n", expected);
++            printf ("error:   actual:   [[%s]]\n", actual);
++            _exit (1);
++          }
++      }
++
++    if (fclose (fp) != 0)
++      {
++        printf ("error: fclose (after reading): %m\n");
++        _exit (1);
++      }
++  }
++
++  free (temp_file_path);
++
++  /* Make sure that fork is working.  */
++  pid_t pid = fork ();
++  if (pid == -1)
++    {
++      printf ("error: fork: %m\n");
++      _exit (1);
++    }
++  enum { exit_code = 55 };
++  if (pid == 0)
++    _exit (exit_code);
++  int status;
++  int ret = waitpid (pid, &status, 0);
++  if (ret < 0)
++    {
++      printf ("error: waitpid: %m\n");
++      _exit (1);
++    }
++  if (!WIFEXITED (status) || WEXITSTATUS (status) != exit_code)
++    {
++      printf ("error: unexpected exit status from child process: %d\n",
++              status);
++      _exit (1);
++    }
++
++  return NULL;
++}
++
++/* This is used to detect if malloc has not been successfully
++   interposed.  The interposed malloc does not use brk/sbrk.  */
++static void *initial_brk;
++__attribute__ ((constructor))
++static void
++set_initial_brk (void)
++{
++  initial_brk = sbrk (0);
++}
++
++/* Terminate the process if the break value has been changed.  */
++__attribute__ ((destructor))
++static void
++check_brk (void)
++{
++  void *current = sbrk (0);
++  if (current != initial_brk)
++    {
++      printf ("error: brk changed from %p to %p; no interposition?\n",
++              initial_brk, current);
++      _exit (1);
++    }
++}
++
++static int
++do_test (void)
++{
++  check_brk ();
++
++#if INTERPOSE_THREADS
++  pthread_t thr = xpthread_create (NULL, run_tests, NULL);
++  xpthread_join (thr);
++#else
++  run_tests (NULL);
++#endif
++
++  check_brk ();
++
++  return 0;
++}
+Index: b/malloc/tst-interpose-static-nothread.c
+===================================================================
+--- /dev/null
++++ b/malloc/tst-interpose-static-nothread.c
+@@ -0,0 +1,19 @@
++/* Malloc interposition test, static version without threads.
++   Copyright (C) 2016 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public License as
++   published by the Free Software Foundation; either version 2.1 of the
++   License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; see the file COPYING.LIB.  If
++   not, see <http://www.gnu.org/licenses/>.  */
++
++#include "tst-interpose-nothread.c"
+Index: b/malloc/tst-interpose-static-thread.c
+===================================================================
+--- /dev/null
++++ b/malloc/tst-interpose-static-thread.c
+@@ -0,0 +1,19 @@
++/* Malloc interposition test, static version with threads.
++   Copyright (C) 2016 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public License as
++   published by the Free Software Foundation; either version 2.1 of the
++   License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; see the file COPYING.LIB.  If
++   not, see <http://www.gnu.org/licenses/>.  */
++
++#include "tst-interpose-nothread.c"
+Index: b/malloc/tst-interpose-thread.c
+===================================================================
+--- /dev/null
++++ b/malloc/tst-interpose-thread.c
+@@ -0,0 +1,20 @@
++/* Malloc interposition test, dynamically-linked version with threads.
++   Copyright (C) 2016 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public License as
++   published by the Free Software Foundation; either version 2.1 of the
++   License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; see the file COPYING.LIB.  If
++   not, see <http://www.gnu.org/licenses/>.  */
++
++#define INTERPOSE_THREADS 1
++#include "tst-interpose-skeleton.c"
+Index: b/nptl/sysdeps/unix/sysv/linux/fork.c
+===================================================================
+--- a/nptl/sysdeps/unix/sysv/linux/fork.c
++++ b/nptl/sysdeps/unix/sysv/linux/fork.c
+@@ -119,7 +119,7 @@ __libc_fork (void)
+   /* Acquire malloc locks.  This needs to come last because fork
+      handlers may use malloc, and the libio list lock has an indirect
+      malloc dependency as well (via the getdelim function).  */
+-  __malloc_fork_lock_parent ();
++  call_function_static_weak (__malloc_fork_lock_parent);
+ 
+ #ifndef NDEBUG
+   pid_t ppid = THREAD_GETMEM (THREAD_SELF, tid);
+@@ -178,7 +178,7 @@ __libc_fork (void)
+ #endif
+ 
+       /* Release malloc locks.  */
+-      __malloc_fork_unlock_child ();
++      call_function_static_weak (__malloc_fork_unlock_child);
+ 
+       /* Reset the file list.  These are recursive mutexes.  */
+       fresetlockfiles ();
+@@ -222,7 +222,7 @@ __libc_fork (void)
+       THREAD_SETMEM (THREAD_SELF, pid, parentpid);
+ 
+       /* Release malloc locks, parent process variant.  */
+-      __malloc_fork_unlock_parent ();
++      call_function_static_weak (__malloc_fork_unlock_parent);
+ 
+       /* We execute this even if the 'fork' call failed.  */
+       _IO_list_unlock ();

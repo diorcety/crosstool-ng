@@ -1,0 +1,31 @@
+diff -pruN glibc-2.17-c758a686/rtkaio/Makefile glibc-2.17-c758a686/rtkaio/Makefile
+--- glibc-2.17-c758a686/rtkaio/Makefile	2011-10-19 16:34:41.000000000 +0530
++++ glibc-2.17-c758a686/rtkaio/Makefile	2013-08-13 18:23:21.064888432 +0530
+@@ -55,7 +55,7 @@ extra-libs-others := $(extra-libs)
+ 
+ include $(..)Makeconfig
+ 
+-ifeq (yesyes,$(build-shared)$(elf))
++ifeq (yes,$(build-shared))
+ generated += librt.so$(librt.so-version)
+ 
+ $(objpfx)librt.so$(librt.so-version): $(objpfx)librtkaio.so; $(make-link)
+@@ -73,7 +73,7 @@ CPPFLAGS-librtkaio += -DIS_IN_librt=1 -I
+ 
+ rpath-dirs := $(patsubst rt,rtkaio,$(rpath-dirs))
+ 
+-ifeq (yesyes,$(build-shared)$(elf))
++ifeq (yes,$(build-shared))
+ others: $(objpfx)librt.so$(librt.so-version)
+ endif
+ 
+@@ -81,8 +81,7 @@ endif
+ # This ensures they will load libc.so for needed symbols if loaded by
+ # a statically-linked program that hasn't already loaded it.
+ $(objpfx)librtkaio.so: $(common-objpfx)libc.so $(common-objpfx)libc_nonshared.a \
+-		   $(shared-thread-library) \
+-		   $(if $(filter yes,$(elf)), $(elfobjdir)/ld.so)
++		   $(shared-thread-library) $(elfobjdir)/ld.so
+ 
+ ifeq (yes,$(build-shared))
+ $(addprefix $(objpfx),$(tests)): $(objpfx)librtkaio.so $(shared-thread-library)

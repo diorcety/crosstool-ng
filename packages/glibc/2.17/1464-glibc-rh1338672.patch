@@ -1,0 +1,296 @@
+commit 3375cfafa7961c6ae0e509c31c3b3cef9ad1f03d
+Author: Florian Weimer <fweimer@redhat.com>
+Date:   Mon May 23 19:43:09 2016 +0200
+
+    Make padding in struct sockaddr_storage explicit [BZ #20111]
+    
+    This avoids aliasing issues with GCC 6 in -fno-strict-aliasing
+    mode.  (With implicit padding, not all data is copied.)
+    
+    This change makes it explicit that struct sockaddr_storage is
+    only 126 bytes large on m68k (unlike elsewhere, where we end up
+    with the requested 128 bytes).  The new test case makes sure that
+    this does not happen on other architectures.
+
+[modified by DJ Delorie <dj@redhat.com> for RHEL]
+
+diff -rupN a/bits/sockaddr.h b/bits/sockaddr.h
+--- a/bits/sockaddr.h	2012-12-24 22:02:13.000000000 -0500
++++ b/bits/sockaddr.h	2017-03-01 16:54:46.606261055 -0500
+@@ -1,4 +1,4 @@
+-/* Definition of `struct sockaddr_*' common members.  Generic/4.2 BSD version.
++/* Definition of struct sockaddr_* common members and sizes, generic version.
+    Copyright (C) 1995,1996,1997,1998,2000,2001 Free Software Foundation, Inc.
+    This file is part of the GNU C Library.
+ 
+@@ -36,4 +36,7 @@ typedef unsigned short int sa_family_t;
+ 
+ #define __SOCKADDR_COMMON_SIZE	(sizeof (unsigned short int))
+ 
++/* Size of struct sockaddr_storage.  */
++#define _SS_SIZE 128
++
+ #endif	/* bits/sockaddr.h */
+diff -rupN a/bits/socket.h b/bits/socket.h
+--- a/bits/socket.h	2012-12-24 22:02:13.000000000 -0500
++++ b/bits/socket.h	2017-03-01 16:38:24.861208175 -0500
+@@ -133,20 +133,20 @@ struct sockaddr
+ 
+ 
+ /* Structure large enough to hold any socket address (with the historical
+-   exception of AF_UNIX).  We reserve 128 bytes.  */
++   exception of AF_UNIX).  */
+ #if ULONG_MAX > 0xffffffff
+ # define __ss_aligntype	__uint64_t
+ #else
+ # define __ss_aligntype	__uint32_t
+ #endif
+-#define _SS_SIZE	128
+-#define _SS_PADSIZE	(_SS_SIZE - (2 * sizeof (__ss_aligntype)))
++#define _SS_PADSIZE \
++  (_SS_SIZE - __SOCKADDR_COMMON_SIZE - sizeof (__ss_aligntype))
+ 
+ struct sockaddr_storage
+   {
+     __SOCKADDR_COMMON (ss_);	/* Address family, etc.  */
+-    __ss_aligntype __ss_align;	/* Force desired alignment.  */
+     char __ss_padding[_SS_PADSIZE];
++    __ss_aligntype __ss_align;	/* Force desired alignment.  */
+   };
+ 
+ 
+diff -rupN a/inet/Makefile b/inet/Makefile
+--- a/inet/Makefile	2017-03-01 16:06:12.000000000 -0500
++++ b/inet/Makefile	2017-03-01 16:55:21.919485376 -0500
+@@ -51,7 +51,7 @@ aux := check_pf check_native ifreq
+ 
+ tests := htontest test_ifindex tst-ntoa tst-ether_aton tst-network \
+ 	 tst-gethnm test-ifaddrs bug-if1 test-inet6_opt tst-ether_line \
+-	 tst-getni1 tst-getni2 tst-inet6_rth tst-checks tst-deadline
++	 tst-getni1 tst-getni2 tst-inet6_rth tst-checks tst-deadline tst-sockaddr
+ 
+ # tst-deadline must be linked statically so that we can access
+ # internal functions.
+@@ -89,6 +89,8 @@ CFLAGS-either_hton.c = -fexceptions
+ CFLAGS-getnetgrent.c = -fexceptions
+ CFLAGS-getnetgrent_r.c = -fexceptions
+ 
++CFLAGS-tst-sockaddr.c = -fno-strict-aliasing
++
+ endif
+ 
+ ifeq ($(build-static-nss),yes)
+diff -rupN a/inet/tst-sockaddr.c b/inet/tst-sockaddr.c
+--- a/inet/tst-sockaddr.c	1969-12-31 19:00:00.000000000 -0500
++++ b/inet/tst-sockaddr.c	2017-03-01 16:38:24.869208278 -0500
+@@ -0,0 +1,125 @@
++/* Tests for socket address type definitions.
++   Copyright (C) 2016 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public License as
++   published by the Free Software Foundation; either version 2.1 of the
++   License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; see the file COPYING.LIB.  If
++   not, see <http://www.gnu.org/licenses/>.  */
++
++#include <netinet/in.h>
++#include <stdbool.h>
++#include <stddef.h>
++#include <stdio.h>
++#include <stdlib.h>
++#include <string.h>
++#include <sys/socket.h>
++#include <sys/un.h>
++
++/* This is a copy of the previous definition of struct
++   sockaddr_storage.  It is not equal to the old value of _SS_SIZE
++   (128) on all architectures.  We must stay compatible with the old
++   definition.  */
++
++#define OLD_REFERENCE_SIZE 128
++#define OLD_PADSIZE (OLD_REFERENCE_SIZE - (2 * sizeof (__ss_aligntype)))
++struct sockaddr_storage_old
++  {
++    __SOCKADDR_COMMON (old_);
++    __ss_aligntype old_align;
++    char old_padding[OLD_PADSIZE];
++  };
++
++static bool errors;
++
++static void
++check (bool ok, const char *message)
++{
++  if (!ok)
++    {
++      printf ("error: failed check: %s\n", message);
++      errors = true;
++    }
++}
++
++static int
++do_test (void)
++{
++  check (OLD_REFERENCE_SIZE >= _SS_SIZE,
++         "old target size is not smaller than actual size");
++  check (sizeof (struct sockaddr_storage_old)
++         == sizeof (struct sockaddr_storage),
++         "old and new sizes match");
++  check (__alignof (struct sockaddr_storage_old)
++         == __alignof (struct sockaddr_storage),
++         "old and new alignment matches");
++  check (offsetof (struct sockaddr_storage_old, old_family)
++         == offsetof (struct sockaddr_storage, ss_family),
++         "old and new family offsets match");
++  check (sizeof (struct sockaddr_storage) == _SS_SIZE,
++         "struct sockaddr_storage size");
++
++  /* Check for lack of holes in the struct definition.   */
++  check (offsetof (struct sockaddr_storage, __ss_padding)
++         == __SOCKADDR_COMMON_SIZE,
++         "implicit padding before explicit padding");
++  check (offsetof (struct sockaddr_storage, __ss_align)
++         == __SOCKADDR_COMMON_SIZE
++           + sizeof (((struct sockaddr_storage) {}).__ss_padding),
++         "implicit padding before explicit padding");
++
++  /* Check for POSIX compatibility requirements between struct
++     sockaddr_storage and struct sockaddr_un.  */
++  check (sizeof (struct sockaddr_storage) >= sizeof (struct sockaddr_un),
++         "sockaddr_storage is at least as large as sockaddr_un");
++  check (__alignof (struct sockaddr_storage)
++         >= __alignof (struct sockaddr_un),
++         "sockaddr_storage is at least as aligned as sockaddr_un");
++  check (offsetof (struct sockaddr_storage, ss_family)
++         == offsetof (struct sockaddr_un, sun_family),
++         "family offsets match");
++
++  /* Check that the compiler preserves bit patterns in aggregate
++     copies.  Based on <https://gcc.gnu.org/PR71120>.  */
++  check (sizeof (struct sockaddr_storage) >= sizeof (struct sockaddr_in),
++         "sockaddr_storage is at least as large as sockaddr_in");
++  {
++    struct sockaddr_storage addr;
++    memset (&addr, 0, sizeof (addr));
++    {
++      struct sockaddr_in *sinp = (struct sockaddr_in *)&addr;
++      sinp->sin_family = AF_INET;
++      sinp->sin_addr.s_addr = htonl (INADDR_LOOPBACK);
++      sinp->sin_port = htons (80);
++    }
++    struct sockaddr_storage copy;
++    copy = addr;
++
++    struct sockaddr_storage *p = malloc (sizeof (*p));
++    if (p == NULL)
++      {
++        printf ("error: malloc: %m\n");
++        return 1;
++      }
++    *p = copy;
++    const struct sockaddr_in *sinp = (const struct sockaddr_in *)p;
++    check (sinp->sin_family == AF_INET, "sin_family");
++    check (sinp->sin_addr.s_addr == htonl (INADDR_LOOPBACK), "sin_addr");
++    check (sinp->sin_port == htons (80), "sin_port");
++    free (p);
++  }
++
++  return errors;
++}
++
++#define TEST_FUNCTION do_test ()
++#include "../test-skeleton.c"
+diff -rupN a/sysdeps/mach/hurd/bits/socket.h b/sysdeps/mach/hurd/bits/socket.h
+--- a/sysdeps/mach/hurd/bits/socket.h	2012-12-24 22:02:13.000000000 -0500
++++ b/sysdeps/mach/hurd/bits/socket.h	2017-03-01 16:38:24.873208329 -0500
+@@ -156,20 +156,20 @@ struct sockaddr
+ 
+ 
+ /* Structure large enough to hold any socket address (with the historical
+-   exception of AF_UNIX).  We reserve 128 bytes.  */
++   exception of AF_UNIX).  */
+ #if ULONG_MAX > 0xffffffff
+ # define __ss_aligntype	__uint64_t
+ #else
+ # define __ss_aligntype	__uint32_t
+ #endif
+-#define _SS_SIZE	128
+-#define _SS_PADSIZE	(_SS_SIZE - (2 * sizeof (__ss_aligntype)))
++#define _SS_PADSIZE \
++  (_SS_SIZE - __SOCKADDR_COMMON_SIZE - sizeof (__ss_aligntype))
+ 
+ struct sockaddr_storage
+   {
+     __SOCKADDR_COMMON (ss_);	/* Address family, etc.  */
+-    __ss_aligntype __ss_align;	/* Force desired alignment.  */
+     char __ss_padding[_SS_PADSIZE];
++    __ss_aligntype __ss_align;	/* Force desired alignment.  */
+   };
+ 
+ 
+diff -rupN a/sysdeps/unix/bsd/bsd4.4/bits/sockaddr.h b/sysdeps/unix/bsd/bsd4.4/bits/sockaddr.h
+--- a/sysdeps/unix/bsd/bsd4.4/bits/sockaddr.h	2012-12-24 22:02:13.000000000 -0500
++++ b/sysdeps/unix/bsd/bsd4.4/bits/sockaddr.h	2017-03-01 17:30:34.962261748 -0500
+@@ -37,6 +37,9 @@ typedef unsigned char sa_family_t;
+ 
+ #define __SOCKADDR_COMMON_SIZE	(2 * sizeof (unsigned char))
+ 
++/* Size of struct sockaddr_storage.  */
++#define _SS_SIZE	128
++
+ #define _HAVE_SA_LEN	1	/* We have the sa_len field.  */
+ 
+ #endif	/* bits/sockaddr.h */
+diff -rupN a/sysdeps/unix/bsd/bsd4.4/bits/socket.h b/sysdeps/unix/bsd/bsd4.4/bits/socket.h
+--- a/sysdeps/unix/bsd/bsd4.4/bits/socket.h	2012-12-24 22:02:13.000000000 -0500
++++ b/sysdeps/unix/bsd/bsd4.4/bits/socket.h	2017-03-01 17:31:23.790246360 -0500
+@@ -142,14 +142,13 @@ struct sockaddr
+ #else
+ # define __ss_aligntype	__uint32_t
+ #endif
+-#define _SS_SIZE	128
+-#define _SS_PADSIZE	(_SS_SIZE - (2 * sizeof (__ss_aligntype)))
++#define _SS_PADSIZE	(_SS_SIZE - __SOCKADDR_COMMON_SIZE - sizeof (__ss_aligntype))
+ 
+ struct sockaddr_storage
+   {
+     __SOCKADDR_COMMON (ss_);	/* Address family, etc.  */
+-    __ss_aligntype __ss_align;	/* Force desired alignment.  */
+     char __ss_padding[_SS_PADSIZE];
++    __ss_aligntype __ss_align;	/* Force desired alignment.  */
+   };
+ 
+ 
+diff -rupN a/sysdeps/unix/sysv/linux/bits/socket.h b/sysdeps/unix/sysv/linux/bits/socket.h
+--- a/sysdeps/unix/sysv/linux/bits/socket.h	2017-03-01 16:06:12.000000000 -0500
++++ b/sysdeps/unix/sysv/linux/bits/socket.h	2017-03-01 16:38:26.993235460 -0500
+@@ -155,16 +155,16 @@ struct sockaddr
+ 
+ 
+ /* Structure large enough to hold any socket address (with the historical
+-   exception of AF_UNIX).  We reserve 128 bytes.  */
++   exception of AF_UNIX).  */
+ #define __ss_aligntype	unsigned long int
+-#define _SS_SIZE	128
+-#define _SS_PADSIZE	(_SS_SIZE - (2 * sizeof (__ss_aligntype)))
++#define _SS_PADSIZE \
++  (_SS_SIZE - __SOCKADDR_COMMON_SIZE - sizeof (__ss_aligntype))
+ 
+ struct sockaddr_storage
+   {
+     __SOCKADDR_COMMON (ss_);	/* Address family, etc.  */
+-    __ss_aligntype __ss_align;	/* Force desired alignment.  */
+     char __ss_padding[_SS_PADSIZE];
++    __ss_aligntype __ss_align;	/* Force desired alignment.  */
+   };
+ 
+ 

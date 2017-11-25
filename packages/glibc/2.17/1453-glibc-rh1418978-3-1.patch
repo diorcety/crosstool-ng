@@ -1,0 +1,127 @@
+commit c5c13355132e73578bbc0c612ddff964e6199747
+Author: Will Newton <will.newton@linaro.org>
+Date:   Fri Apr 11 15:21:23 2014 +0100
+
+    test-skeleton.c: Use stdout for error messages
+    
+    At the moment the test skeleton uses a mixture of stdout and
+    stderr for error message output. Using stdout for all test output
+    keeps all output correctly ordered and properly redirected to the
+    output file. The suggestion to use stdout is also made on the wiki:
+    
+    https://sourceware.org/glibc/wiki/Testing/Testsuite#Writing_a_test_case
+    
+    ChangeLog:
+    
+    2014-06-23  Will Newton  <will.newton@linaro.org>
+    
+            * test-skeleton.c (signal_handler): Use printf and %m
+            rather than perror.  Use printf rather than fprintf to
+            stderr.  Use puts rather than fputs to stderr.
+            (main): Likewise.
+
+Index: b/test-skeleton.c
+===================================================================
+--- a/test-skeleton.c
++++ b/test-skeleton.c
+@@ -188,7 +188,7 @@ signal_handler (int sig __attribute__ ((
+     }
+   if (killed != 0 && killed != pid)
+     {
+-      perror ("Failed to kill test process");
++      printf ("Failed to kill test process: %m\n");
+       exit (1);
+     }
+ 
+@@ -209,16 +209,16 @@ signal_handler (int sig __attribute__ ((
+ #endif
+ 
+   if (killed == 0 || (WIFSIGNALED (status) && WTERMSIG (status) == SIGKILL))
+-    fputs ("Timed out: killed the child process\n", stderr);
++    puts ("Timed out: killed the child process");
+   else if (WIFSTOPPED (status))
+-    fprintf (stderr, "Timed out: the child process was %s\n",
+-	     strsignal (WSTOPSIG (status)));
++    printf ("Timed out: the child process was %s\n",
++	    strsignal (WSTOPSIG (status)));
+   else if (WIFSIGNALED (status))
+-    fprintf (stderr, "Timed out: the child process got signal %s\n",
+-	     strsignal (WTERMSIG (status)));
++    printf ("Timed out: the child process got signal %s\n",
++	    strsignal (WTERMSIG (status)));
+   else
+-    fprintf (stderr, "Timed out: killed the child process but it exited %d\n",
+-	     WEXITSTATUS (status));
++    printf ("Timed out: killed the child process but it exited %d\n",
++	    WEXITSTATUS (status));
+ 
+   /* Exit with an error.  */
+   exit (1);
+@@ -308,7 +308,7 @@ main (int argc, char *argv[])
+ 
+       if (chdir (test_dir) < 0)
+ 	{
+-	  perror ("chdir");
++	  printf ("chdir: %m\n");
+ 	  exit (1);
+ 	}
+     }
+@@ -367,10 +367,10 @@ main (int argc, char *argv[])
+ 	    data_limit.rlim_cur = MIN ((rlim_t) TEST_DATA_LIMIT,
+ 				       data_limit.rlim_max);
+ 	  if (setrlimit (RLIMIT_DATA, &data_limit) < 0)
+-	    perror ("setrlimit: RLIMIT_DATA");
++	    printf ("setrlimit: RLIMIT_DATA: %m\n");
+ 	}
+       else
+-	perror ("getrlimit: RLIMIT_DATA");
++	printf ("getrlimit: RLIMIT_DATA: %m\n");
+ #endif
+ 
+       /* We put the test process in its own pgrp so that if it bogusly
+@@ -382,7 +382,7 @@ main (int argc, char *argv[])
+     }
+   else if (pid < 0)
+     {
+-      perror ("Cannot fork test program");
++      printf ("Cannot fork test program: %m\n");
+       exit (1);
+     }
+ 
+@@ -420,18 +420,16 @@ main (int argc, char *argv[])
+       if (EXPECTED_SIGNAL != 0)
+ 	{
+ 	  if (WTERMSIG (status) == 0)
+-	    fprintf (stderr,
+-		     "Expected signal '%s' from child, got none\n",
+-		     strsignal (EXPECTED_SIGNAL));
++	    printf ("Expected signal '%s' from child, got none\n",
++		    strsignal (EXPECTED_SIGNAL));
+ 	  else
+-	    fprintf (stderr,
+-		     "Incorrect signal from child: got `%s', need `%s'\n",
+-		     strsignal (WTERMSIG (status)),
+-		     strsignal (EXPECTED_SIGNAL));
++	    printf ("Incorrect signal from child: got `%s', need `%s'\n",
++		    strsignal (WTERMSIG (status)),
++		    strsignal (EXPECTED_SIGNAL));
+ 	}
+       else
+-	fprintf (stderr, "Didn't expect signal from child: got `%s'\n",
+-		 strsignal (WTERMSIG (status)));
++	printf ("Didn't expect signal from child: got `%s'\n",
++		strsignal (WTERMSIG (status)));
+       exit (1);
+     }
+ 
+@@ -441,8 +439,8 @@ main (int argc, char *argv[])
+ #else
+   if (WEXITSTATUS (status) != EXPECTED_STATUS)
+     {
+-      fprintf (stderr, "Expected status %d, got %d\n",
+-	       EXPECTED_STATUS, WEXITSTATUS (status));
++      printf ("Expected status %d, got %d\n",
++	      EXPECTED_STATUS, WEXITSTATUS (status));
+       exit (1);
+     }
+ 

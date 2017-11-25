@@ -1,0 +1,698 @@
+From fa809e97912e4bb6faafa74c15a86588c05e89bc Mon Sep 17 00:00:00 2001
+From: Rajalakshmi Srinivasaraghavan <raji@linux.vnet.ibm.com>
+Date: Wed, 30 Jul 2014 12:04:31 -0500
+Subject: [PATCH] PowerPC: multiarch logb/logbl/logbf for PowerPC64
+
+commit 43e246d2a6a75710fbe3d3f3db23db3aeb8a9f93
+Author: Adhemerval Zanella <azanella@linux.vnet.ibm.com>
+Date:   Fri Dec 13 15:36:33 2013 -0500
+
+Added the following file apart from the original commit.
+sysdeps/powerpc/power7/fpu/s_logb.c
+sysdeps/powerpc/power7/fpu/s_logbf.c
+sysdeps/powerpc/power7/fpu/s_logbl.c
+sysdeps/powerpc/powerpc32/power4/fpu/multiarch/s_logb-power7.c
+sysdeps/powerpc/powerpc32/power4/fpu/multiarch/s_logbf-power7.c
+sysdeps/powerpc/powerpc32/power4/fpu/multiarch/s_logbl-power7.c
+
+---
+ sysdeps/ieee754/ldbl-128ibm/s_logbl.c              |  2 +
+ sysdeps/powerpc/power7/fpu/s_logb.c                | 78 ++++++++++++++++++++++
+ sysdeps/powerpc/power7/fpu/s_logbf.c               | 60 +++++++++++++++++
+ sysdeps/powerpc/power7/fpu/s_logbl.c               | 72 ++++++++++++++++++++
+ .../powerpc32/power4/fpu/multiarch/s_logb-power7.c | 31 +++++++++
+ .../power4/fpu/multiarch/s_logbf-power7.c          | 26 ++++++++
+ .../power4/fpu/multiarch/s_logbl-power7.c          | 21 ++++++
+ sysdeps/powerpc/powerpc64/fpu/multiarch/Makefile   |  8 ++-
+ .../powerpc64/fpu/multiarch/s_logb-power7.c        | 19 ++++++
+ .../powerpc/powerpc64/fpu/multiarch/s_logb-ppc64.c | 28 ++++++++
+ sysdeps/powerpc/powerpc64/fpu/multiarch/s_logb.c   | 41 ++++++++++++
+ .../powerpc64/fpu/multiarch/s_logbf-power7.c       | 19 ++++++
+ .../powerpc64/fpu/multiarch/s_logbf-ppc64.c        | 26 ++++++++
+ sysdeps/powerpc/powerpc64/fpu/multiarch/s_logbf.c  | 32 +++++++++
+ .../powerpc64/fpu/multiarch/s_logbl-power7.c       | 19 ++++++
+ .../powerpc64/fpu/multiarch/s_logbl-ppc64.c        | 21 ++++++
+ sysdeps/powerpc/powerpc64/fpu/multiarch/s_logbl.c  | 32 +++++++++
+ 17 files changed, 534 insertions(+), 1 deletion(-)
+ create mode 100644 sysdeps/powerpc/power7/fpu/s_logb.c
+ create mode 100644 sysdeps/powerpc/power7/fpu/s_logbf.c
+ create mode 100644 sysdeps/powerpc/power7/fpu/s_logbl.c
+ create mode 100644 sysdeps/powerpc/powerpc32/power4/fpu/multiarch/s_logb-power7.c
+ create mode 100644 sysdeps/powerpc/powerpc32/power4/fpu/multiarch/s_logbf-power7.c
+ create mode 100644 sysdeps/powerpc/powerpc32/power4/fpu/multiarch/s_logbl-power7.c
+ create mode 100644 sysdeps/powerpc/powerpc64/fpu/multiarch/s_logb-power7.c
+ create mode 100644 sysdeps/powerpc/powerpc64/fpu/multiarch/s_logb-ppc64.c
+ create mode 100644 sysdeps/powerpc/powerpc64/fpu/multiarch/s_logb.c
+ create mode 100644 sysdeps/powerpc/powerpc64/fpu/multiarch/s_logbf-power7.c
+ create mode 100644 sysdeps/powerpc/powerpc64/fpu/multiarch/s_logbf-ppc64.c
+ create mode 100644 sysdeps/powerpc/powerpc64/fpu/multiarch/s_logbf.c
+ create mode 100644 sysdeps/powerpc/powerpc64/fpu/multiarch/s_logbl-power7.c
+ create mode 100644 sysdeps/powerpc/powerpc64/fpu/multiarch/s_logbl-ppc64.c
+ create mode 100644 sysdeps/powerpc/powerpc64/fpu/multiarch/s_logbl.c
+
+diff --git glibc-2.17-c758a686/sysdeps/ieee754/ldbl-128ibm/s_logbl.c glibc-2.17-c758a686/sysdeps/ieee754/ldbl-128ibm/s_logbl.c
+index 6cbfcfa..28a50de 100644
+--- glibc-2.17-c758a686/sysdeps/ieee754/ldbl-128ibm/s_logbl.c
++++ glibc-2.17-c758a686/sysdeps/ieee754/ldbl-128ibm/s_logbl.c
+@@ -44,4 +44,6 @@ __logbl (long double x)
+   return (long double) (rhx - 1023);
+ }
+ 
++#ifndef __logbl
+ long_double_symbol (libm, __logbl, logbl);
++#endif
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/power7/fpu/s_logb.c glibc-2.17-c758a686/sysdeps/powerpc/power7/fpu/s_logb.c
+new file mode 100644
+index 0000000..87176c3
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/power7/fpu/s_logb.c
+@@ -0,0 +1,78 @@
++/* logb(). PowerPC/POWER7 version.
++   Copyright (C) 2012 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <math_ldbl_opt.h>
++
++/* This implementation avoids FP to INT conversions by using VSX
++   bitwise instructions over FP values.  */
++
++static const double two1div52 = 2.220446049250313e-16;	/* 1/2**52  */
++static const double two10m1   = -1023.0;		/* 2**10 -1  */
++
++/* FP mask to extract the exponent.  */
++static const union {
++  unsigned long long mask;
++  double d;
++} mask = { 0x7ff0000000000000ULL };
++
++double
++__logb (double x)
++{
++  double ret;
++
++  if (__builtin_expect (x == 0.0, 0))
++    /* Raise FE_DIVBYZERO and return -HUGE_VAL[LF].  */
++    return -1.0 / __builtin_fabs (x);
++
++  /* ret = x & 0x7ff0000000000000;  */
++  asm (
++    "xxland %x0,%x1,%x2\n"
++    "fcfid  %0,%0"
++    : "=f" (ret)
++    : "f" (x), "f" (mask.d));
++  /* ret = (ret >> 52) - 1023.0;  */
++  ret = (ret * two1div52) + two10m1;
++  if (__builtin_expect (ret > -two10m1, 0))
++    /* Multiplication is used to set logb (+-INF) = INF.  */
++    return (x * x);
++  else if (__builtin_expect (ret == two10m1, 0))
++    {
++      /* POSIX specifies that denormal numbers are treated as
++         though they were normalized.  */
++      int32_t lx, ix;
++      int ma;
++
++      EXTRACT_WORDS (ix, lx, x);
++      if (ix == 0)
++	ma = __builtin_clz (lx) + 32;
++      else
++	ma = __builtin_clz (ix);
++      return (double) (-1023 - (ma - 12));
++    }
++  /* Test to avoid logb_downward (0.0) == -0.0.  */
++  return ret == -0.0 ? 0.0 : ret;
++}
++weak_alias (__logb, logb)
++#ifdef NO_LONG_DOUBLE
++strong_alias (__logb, __logbl)
++weak_alias (__logb, logbl)
++#endif
++
++#if LONG_DOUBLE_COMPAT (libm, GLIBC_2_0)
++compat_symbol (libm, logb, logbl, GLIBC_2_0);
++#endif
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/power7/fpu/s_logbf.c glibc-2.17-c758a686/sysdeps/powerpc/power7/fpu/s_logbf.c
+new file mode 100644
+index 0000000..aa8499a
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/power7/fpu/s_logbf.c
+@@ -0,0 +1,60 @@
++/* logbf(). PowerPC/POWER7 version.
++   Copyright (C) 2012 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include "math_private.h"
++
++/* This implementation avoids FP to INT conversions by using VSX
++   bitwise instructions over FP values.  */
++
++static const double two1div52 = 2.220446049250313e-16;	/* 1/2**52  */
++static const double two10m1   = -1023.0;		/* -2**10 + 1  */
++static const double two7m1    = -127.0;			/* -2**7 + 1  */
++
++/* FP mask to extract the exponent.  */
++static const union {
++  unsigned long long mask;
++  double d;
++} mask = { 0x7ff0000000000000ULL };
++
++float
++__logbf (float x)
++{
++  /* VSX operation are all done internally as double.  */
++  double ret;
++
++  if (__builtin_expect (x == 0.0, 0))
++    /* Raise FE_DIVBYZERO and return -HUGE_VAL[LF].  */
++    return -1.0 / __builtin_fabsf (x);
++
++  /* ret = x & 0x7f800000;  */
++  asm (
++    "xxland %x0,%x1,%x2\n"
++    "fcfid  %0,%0"
++    : "=f"(ret)
++    : "f" (x), "f" (mask.d));
++  /* ret = (ret >> 52) - 1023.0, since ret is double.  */
++  ret = (ret * two1div52) + two10m1;
++  if (__builtin_expect (ret > -two7m1, 0))
++    /* Multiplication is used to set logb (+-INF) = INF.  */
++    return (x * x);
++  /* Since operations are done with double we don't need
++     additional tests for subnormal numbers.
++     The test is to avoid logb_downward (0.0) == -0.0.  */
++  return ret == -0.0 ? 0.0 : ret;
++}
++weak_alias (__logbf, logbf)
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/power7/fpu/s_logbl.c glibc-2.17-c758a686/sysdeps/powerpc/power7/fpu/s_logbl.c
+new file mode 100644
+index 0000000..e1ec089
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/power7/fpu/s_logbl.c
+@@ -0,0 +1,72 @@
++/* logbl(). PowerPC/POWER7 version.
++   Copyright (C) 2012 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <math.h>
++#include <math_private.h>
++#include <math_ldbl_opt.h>
++
++/* This implementation avoids FP to INT conversions by using VSX
++   bitwise instructions over FP values.  */
++
++static const double two1div52 = 2.220446049250313e-16;	/* 1/2**52  */
++static const double two10m1   = -1023.0;		/* 2**10 -1  */
++
++/* FP mask to extract the exponent.  */
++static const union {
++  unsigned long long mask;
++  double d;
++} mask = { 0x7ff0000000000000ULL };
++
++long double
++__logbl (long double x)
++{
++  double xh, xl;
++  double ret;
++
++  if (__builtin_expect (x == 0.0L, 0))
++    /* Raise FE_DIVBYZERO and return -HUGE_VAL[LF].  */
++    return -1.0L / __builtin_fabsl (x);
++
++  ldbl_unpack (x, &xh, &xl);
++  /* ret = x & 0x7ff0000000000000;  */
++  asm (
++    "xxland %x0,%x1,%x2\n"
++    "fcfid  %0,%0"
++    : "=f" (ret)
++    : "f" (xh), "f" (mask.d));
++  /* ret = (ret >> 52) - 1023.0;  */
++  ret = (ret * two1div52) + two10m1;
++  if (__builtin_expect (ret > -two10m1, 0))
++    /* Multiplication is used to set logb (+-INF) = INF.  */
++    return (xh * xh);
++  else if (__builtin_expect (ret == two10m1, 0))
++    {
++      /* POSIX specifies that denormal number is treated as
++         though it were normalized.  */
++      int64_t lx, hx;
++
++      GET_LDOUBLE_WORDS64 (hx, lx, x);
++      return (long double) (-1023 - (__builtin_clzll (hx) - 12));
++    }
++  /* Test to avoid logb_downward (0.0) == -0.0.  */
++  return ret == -0.0 ? 0.0 : ret;
++}
++
++#ifndef __logbl
++long_double_symbol (libm, __logbl, logbl);
++#endif
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc32/power4/fpu/multiarch/s_logb-power7.c glibc-2.17-c758a686/sysdeps/powerpc/powerpc32/power4/fpu/multiarch/s_logb-power7.c
+new file mode 100644
+index 0000000..3280566
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc32/power4/fpu/multiarch/s_logb-power7.c
+@@ -0,0 +1,31 @@
++/* logb(). PowerPC32/POWER7 version.
++   Copyright (C) 2013-2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <math.h>
++#include <math_ldbl_opt.h>
++
++#undef weak_alias
++#define weak_alias(a, b)
++#undef strong_alias
++#define strong_alias(a, b)
++#undef compat_symbol
++#define compat_symbol(lib, name, alias, ver)
++
++#define __logb __logb_power7
++
++#include <sysdeps/powerpc/power7/fpu/s_logb.c>
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc32/power4/fpu/multiarch/s_logbf-power7.c glibc-2.17-c758a686/sysdeps/powerpc/powerpc32/power4/fpu/multiarch/s_logbf-power7.c
+new file mode 100644
+index 0000000..6531af0
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc32/power4/fpu/multiarch/s_logbf-power7.c
+@@ -0,0 +1,26 @@
++/* logbf(). PowerPC32/POWER7 version.
++   Copyright (C) 2013-2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <math.h>
++
++#undef weak_alias
++#define weak_alias(a, b)
++
++#define __logbf __logbf_power7
++
++#include <sysdeps/powerpc/power7/fpu/s_logbf.c>
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc32/power4/fpu/multiarch/s_logbl-power7.c glibc-2.17-c758a686/sysdeps/powerpc/powerpc32/power4/fpu/multiarch/s_logbl-power7.c
+new file mode 100644
+index 0000000..7c5ad47
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc32/power4/fpu/multiarch/s_logbl-power7.c
+@@ -0,0 +1,21 @@
++/* logbl(). PowerPC32/POWER7 version.
++   Copyright (C) 2013-2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#define __logbl __logbl_power7
++
++#include <sysdeps/powerpc/power7/fpu/s_logbl.c>
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/Makefile glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/Makefile
+index 64dd85f..87aabca 100644
+--- glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/Makefile
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/Makefile
+@@ -16,5 +16,11 @@ libm-sysdep_routines += s_isnan-power7 s_isnan-power6x s_isnan-power6 \
+                        s_copysign-power6 s_copysign-ppc64 s_llrint-power6x \
+                        s_llrint-ppc64 s_finite-power7 s_finite-ppc64 \
+                        s_finitef-ppc64 s_isinff-ppc64 s_isinf-power7 \
+-                       s_isinf-ppc64
++                       s_isinf-ppc64 s_logb-power7 s_logbf-power7 \
++                       s_logbl-power7 s_logb-ppc64 s_logbf-ppc64 \
++                       s_logbl-ppc64
++
++CFLAGS-s_logbf-power7.c = -mcpu=power7
++CFLAGS-s_logbl-power7.c = -mcpu=power7
++CFLAGS-s_logb-power7.c = -mcpu=power7
+ endif
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_logb-power7.c glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_logb-power7.c
+new file mode 100644
+index 0000000..049f2c1
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_logb-power7.c
+@@ -0,0 +1,19 @@
++/* logb().  PowerPC64/POWER7 version.
++   Copyright (C) 2013-2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <sysdeps/powerpc/powerpc32/power4/fpu/multiarch/s_logb-power7.c>
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_logb-ppc64.c glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_logb-ppc64.c
+new file mode 100644
+index 0000000..41d1d9b
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_logb-ppc64.c
+@@ -0,0 +1,28 @@
++/* logb(). PowerPC32/POWER7 version.
++   Copyright (C) 2013-2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <math.h>
++
++#undef weak_alias
++#define weak_alias(a, b)
++#undef strong_alias
++#define strong_alias(a, b)
++
++#define __logb __logb_ppc64
++
++#include <sysdeps/ieee754/dbl-64/s_logb.c>
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_logb.c glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_logb.c
+new file mode 100644
+index 0000000..e14efa7
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_logb.c
+@@ -0,0 +1,41 @@
++/* Multiple versions of logb.
++   Copyright (C) 2013-2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <math.h>
++#include <math_ldbl_opt.h>
++#include <shlib-compat.h>
++#include "init-arch.h"
++
++extern __typeof (__logb) __logb_ppc64 attribute_hidden;
++extern __typeof (__logb) __logb_power7 attribute_hidden;
++
++libc_ifunc (__logb,
++	    (hwcap & PPC_FEATURE_ARCH_2_06)
++	    ? __logb_power7
++            : __logb_ppc64);
++
++weak_alias (__logb, logb)
++
++#ifdef NO_LONG_DOUBLE
++strong_alias (__logb, __logbl)
++weak_alias (__logb, logbl)
++#endif
++
++#if LONG_DOUBLE_COMPAT (libm, GLIBC_2_0)
++compat_symbol (libm, logb, logbl, GLIBC_2_0);
++#endif
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_logbf-power7.c glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_logbf-power7.c
+new file mode 100644
+index 0000000..5e4e4fc
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_logbf-power7.c
+@@ -0,0 +1,19 @@
++/* logb().  PowerPC64/POWER7 version.
++   Copyright (C) 2013-2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <sysdeps/powerpc/powerpc32/power4/fpu/multiarch/s_logbf-power7.c>
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_logbf-ppc64.c glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_logbf-ppc64.c
+new file mode 100644
+index 0000000..08674a6
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_logbf-ppc64.c
+@@ -0,0 +1,26 @@
++/* logbf().  PowerPC64 default implementation.
++   Copyright (C) 2013-2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <math.h>
++
++#undef weak_alias
++#define weak_alias(a, b)
++
++#define __logbf __logbf_ppc64
++
++#include <sysdeps/ieee754/flt-32/s_logbf.c>
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_logbf.c glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_logbf.c
+new file mode 100644
+index 0000000..01f9ecb
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_logbf.c
+@@ -0,0 +1,32 @@
++/* Multiple versions of logbf.
++   Copyright (C) 2013-2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <math.h>
++#include <math_ldbl_opt.h>
++#include <shlib-compat.h>
++#include "init-arch.h"
++
++extern __typeof (__logbf) __logbf_ppc64 attribute_hidden;
++extern __typeof (__logbf) __logbf_power7 attribute_hidden;
++
++libc_ifunc (__logbf,
++	    (hwcap & PPC_FEATURE_ARCH_2_06)
++	    ? __logbf_power7
++            : __logbf_ppc64);
++
++weak_alias (__logbf, logbf)
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_logbl-power7.c glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_logbl-power7.c
+new file mode 100644
+index 0000000..258d502
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_logbl-power7.c
+@@ -0,0 +1,19 @@
++/* logb().  PowerPC64/POWER7 version.
++   Copyright (C) 2013-2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <sysdeps/powerpc/powerpc32/power4/fpu/multiarch/s_logbl-power7.c>
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_logbl-ppc64.c glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_logbl-ppc64.c
+new file mode 100644
+index 0000000..47d4153
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_logbl-ppc64.c
+@@ -0,0 +1,21 @@
++/* logbl(). PowerPC64/POWER7 version.
++   Copyright (C) 2012-2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#define __logbl __logbl_ppc64
++
++#include <sysdeps/ieee754/ldbl-128ibm/s_logbl.c>
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_logbl.c glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_logbl.c
+new file mode 100644
+index 0000000..cb0b0c5
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_logbl.c
+@@ -0,0 +1,32 @@
++/* Multiple versions of logbl.
++   Copyright (C) 2013-2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <math.h>
++#include <math_ldbl_opt.h>
++#include <shlib-compat.h>
++#include "init-arch.h"
++
++extern __typeof (__logbl) __logbl_ppc64 attribute_hidden;
++extern __typeof (__logbl) __logbl_power7 attribute_hidden;
++
++libc_ifunc (__logbl,
++	    (hwcap & PPC_FEATURE_ARCH_2_06)
++	    ? __logbl_power7
++            : __logbl_ppc64);
++
++long_double_symbol (libm, __logbl, logbl);
+-- 
+1.8.3.1
+

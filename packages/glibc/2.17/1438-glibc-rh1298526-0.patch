@@ -1,0 +1,348 @@
+commit 83d776f979342f923b5c3d2a5b43afab841c6086
+Author: Andrew Senkevich <andrew.senkevich@intel.com>
+Date:   Sat Dec 19 02:47:28 2015 +0300
+
+    Added memset optimized with AVX512 for KNL hardware.
+    
+    It shows improvement up to 28% over AVX2 memset (performance results
+    attached at <https://sourceware.org/ml/libc-alpha/2015-12/msg00052.html>).
+    
+        * sysdeps/x86_64/multiarch/memset-avx512-no-vzeroupper.S: New file.
+        * sysdeps/x86_64/multiarch/Makefile (sysdep_routines): Added new file.
+        * sysdeps/x86_64/multiarch/ifunc-impl-list.c: Added new tests.
+        * sysdeps/x86_64/multiarch/memset.S: Added new IFUNC branch.
+        * sysdeps/x86_64/multiarch/memset_chk.S: Likewise.
+        * sysdeps/x86/cpu-features.h (bit_Prefer_No_VZEROUPPER,
+        index_Prefer_No_VZEROUPPER): New.
+        * sysdeps/x86/cpu-features.c (init_cpu_features): Set the
+        Prefer_No_VZEROUPPER for Knights Landing.
+
+Index: glibc-2.17-c758a686/sysdeps/x86/cpu-features.c
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/x86/cpu-features.c
++++ glibc-2.17-c758a686/sysdeps/x86/cpu-features.c
+@@ -76,6 +76,8 @@ init_cpu_features (struct cpu_features *
+ 
+ 	    case 0x57:
+ 	      /* Knights Landing.  Enable Silvermont optimizations.  */
++	      cpu_features->feature[index_Prefer_No_VZEROUPPER]
++		|= bit_Prefer_No_VZEROUPPER;
+ 
+ 	    case 0x37:
+ 	    case 0x4a:
+Index: glibc-2.17-c758a686/sysdeps/x86/cpu-features.h
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/x86/cpu-features.h
++++ glibc-2.17-c758a686/sysdeps/x86/cpu-features.h
+@@ -33,6 +33,7 @@
+ #define bit_AVX512F_Usable		(1 << 12)
+ #define bit_AVX512DQ_Usable		(1 << 13)
+ #define bit_Prefer_MAP_32BIT_EXEC	(1 << 16)
++#define bit_Prefer_No_VZEROUPPER	(1 << 17)
+ 
+ /* CPUID Feature flags.  */
+ 
+@@ -93,6 +94,7 @@
+ # define index_AVX512F_Usable		FEATURE_INDEX_1*FEATURE_SIZE
+ # define index_AVX512DQ_Usable		FEATURE_INDEX_1*FEATURE_SIZE
+ # define index_Prefer_MAP_32BIT_EXEC	FEATURE_INDEX_1*FEATURE_SIZE
++# define index_Prefer_No_VZEROUPPER	FEATURE_INDEX_1*FEATURE_SIZE
+ 
+ # if defined (_LIBC) && !IS_IN (nonlib)
+ #  ifdef __x86_64__
+@@ -270,6 +272,7 @@ extern const struct cpu_features *__get_
+ # define index_AVX512F_Usable		FEATURE_INDEX_1
+ # define index_AVX512DQ_Usable		FEATURE_INDEX_1
+ # define index_Prefer_MAP_32BIT_EXEC	FEATURE_INDEX_1
++# define index_Prefer_No_VZEROUPPER     FEATURE_INDEX_1
+ 
+ #endif	/* !__ASSEMBLER__ */
+ 
+Index: glibc-2.17-c758a686/sysdeps/x86_64/multiarch/Makefile
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/x86_64/multiarch/Makefile
++++ glibc-2.17-c758a686/sysdeps/x86_64/multiarch/Makefile
+@@ -16,7 +16,8 @@ sysdep_routines += strncat-c stpncpy-c s
+ 		   strcat-sse2-unaligned strncat-sse2-unaligned \
+ 		   strcat-ssse3 strncat-ssse3 strlen-sse2-pminub \
+ 		   strnlen-sse2-no-bsf strrchr-sse2-no-bsf strchr-sse2-no-bsf \
+-		   memcmp-ssse3 strstr-sse2-unaligned
++		   memcmp-ssse3 strstr-sse2-unaligned \
++		   memset-avx512-no-vzeroupper
+ ifeq (yes,$(config-cflags-sse4))
+ sysdep_routines += strcspn-c strpbrk-c strspn-c strstr-c strcasestr-c varshift
+ CFLAGS-varshift.c += -msse4
+Index: glibc-2.17-c758a686/sysdeps/x86_64/multiarch/ifunc-impl-list.c
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/x86_64/multiarch/ifunc-impl-list.c
++++ glibc-2.17-c758a686/sysdeps/x86_64/multiarch/ifunc-impl-list.c
+@@ -20,6 +20,7 @@
+ #include <string.h>
+ #include <wchar.h>
+ #include <ifunc-impl-list.h>
++#include <sysdep.h>
+ #include "init-arch.h"
+ 
+ /* Maximum number of IFUNC implementations.  */
+@@ -66,12 +67,24 @@ __libc_ifunc_impl_list (const char *name
+   IFUNC_IMPL (i, name, __memset_chk,
+ 	      IFUNC_IMPL_ADD (array, i, __memset_chk, 1, __memset_chk_sse2)
+ 	      IFUNC_IMPL_ADD (array, i, __memset_chk, 1,
+-			      __memset_chk_x86_64))
++			      __memset_chk_x86_64)
++#ifdef HAVE_AVX512_ASM_SUPPORT
++	      IFUNC_IMPL_ADD (array, i, __memset_chk,
++			      HAS_ARCH_FEATURE (AVX512F_Usable),
++			      __memset_chk_avx512_no_vzeroupper)
++#endif
++	      )
+ 
+   /* Support sysdeps/x86_64/multiarch/memset.S.  */
+   IFUNC_IMPL (i, name, memset,
+ 	      IFUNC_IMPL_ADD (array, i, memset, 1, __memset_sse2)
+-	      IFUNC_IMPL_ADD (array, i, memset, 1, __memset_x86_64))
++	      IFUNC_IMPL_ADD (array, i, memset, 1, __memset_x86_64)
++#ifdef HAVE_AVX512_ASM_SUPPORT
++	      IFUNC_IMPL_ADD (array, i, memset,
++			      HAS_ARCH_FEATURE (AVX512F_Usable),
++			      __memset_avx512_no_vzeroupper)
++#endif
++	     )
+ 
+   /* Support sysdeps/x86_64/multiarch/rawmemchr.S.  */
+   IFUNC_IMPL (i, name, rawmemchr,
+Index: glibc-2.17-c758a686/sysdeps/x86_64/multiarch/memset-avx512-no-vzeroupper.S
+===================================================================
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/x86_64/multiarch/memset-avx512-no-vzeroupper.S
+@@ -0,0 +1,194 @@
++/* memset optimized with AVX512 for KNL hardware.
++   Copyright (C) 2015 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <sysdep.h>
++
++#if defined HAVE_AVX512_ASM_SUPPORT && IS_IN (libc)
++
++#include "asm-syntax.h"
++#ifndef MEMSET
++# define MEMSET __memset_avx512_no_vzeroupper
++# define MEMSET_CHK __memset_chk_avx512_no_vzeroupper
++#endif
++
++	.section .text,"ax",@progbits
++#if defined PIC
++ENTRY (MEMSET_CHK)
++	cmpq	%rdx, %rcx
++	jb	HIDDEN_JUMPTARGET (__chk_fail)
++END (MEMSET_CHK)
++#endif
++
++ENTRY (MEMSET)
++	vpxor	%xmm0, %xmm0, %xmm0
++	vmovd	%esi, %xmm1
++	lea	(%rdi, %rdx), %rsi
++	mov	%rdi, %rax
++	vpshufb	%xmm0, %xmm1, %xmm0
++	cmp	$16, %rdx
++	jb	L(less_16bytes)
++	cmp	$512, %rdx
++	vbroadcastss	%xmm0, %zmm2
++	ja	L(512bytesormore)
++	cmp	$256, %rdx
++	jb	L(less_256bytes)
++	vmovups	%zmm2, (%rdi)
++	vmovups %zmm2, 0x40(%rdi)
++	vmovups %zmm2, 0x80(%rdi)
++	vmovups %zmm2, 0xC0(%rdi)
++	vmovups %zmm2, -0x100(%rsi)
++	vmovups %zmm2, -0xC0(%rsi)
++	vmovups %zmm2, -0x80(%rsi)
++	vmovups %zmm2, -0x40(%rsi)
++	ret
++
++L(less_256bytes):
++	cmp	$128, %dl
++	jb	L(less_128bytes)
++	vmovups	%zmm2, (%rdi)
++	vmovups %zmm2, 0x40(%rdi)
++	vmovups %zmm2, -0x80(%rsi)
++	vmovups %zmm2, -0x40(%rsi)
++	ret
++
++L(less_128bytes):
++	cmp	$64, %dl
++	jb	L(less_64bytes)
++	vmovups	%zmm2, (%rdi)
++	vmovups	%zmm2, -0x40(%rsi)
++	ret
++
++L(less_64bytes):
++	cmp	$32, %dl
++	jb	L(less_32bytes)
++	vmovdqu	%ymm2, (%rdi)
++	vmovdqu %ymm2, -0x20(%rsi)
++	ret
++
++L(less_32bytes):
++	vmovdqu %xmm0, (%rdi)
++	vmovdqu %xmm0, -0x10(%rsi)
++	ret
++
++L(less_16bytes):
++	cmp	$8, %dl
++	jb	L(less_8bytes)
++	vmovq	%xmm0, (%rdi)
++	vmovq	%xmm0, -0x08(%rsi)
++	ret
++
++L(less_8bytes):
++	vmovd	%xmm0, %ecx
++	cmp	$4, %dl
++	jb	L(less_4bytes)
++	mov	%ecx, (%rdi)
++	mov	%ecx, -0x04(%rsi)
++	ret
++
++L(less_4bytes):
++	cmp	$2, %dl
++	jb	L(less_2bytes)
++	mov	%cx, (%rdi)
++	mov	%cx, -0x02(%rsi)
++	ret
++
++L(less_2bytes):
++	cmp	$1, %dl
++	jb	L(less_1bytes)
++	mov	%cl, (%rdi)
++L(less_1bytes):
++	ret
++
++L(512bytesormore):
++	mov	__x86_64_shared_cache_size_half(%rip), %rcx
++	cmp	%rcx, %rdx
++	ja	L(preloop_large)
++	cmp	$1024, %rdx
++	ja	L(1024bytesormore)
++
++	vmovups	%zmm2, (%rdi)
++	vmovups	%zmm2, 0x40(%rdi)
++	vmovups	%zmm2, 0x80(%rdi)
++	vmovups	%zmm2, 0xC0(%rdi)
++	vmovups	%zmm2, 0x100(%rdi)
++	vmovups	%zmm2, 0x140(%rdi)
++	vmovups	%zmm2, 0x180(%rdi)
++	vmovups	%zmm2, 0x1C0(%rdi)
++	vmovups %zmm2, -0x200(%rsi)
++	vmovups %zmm2, -0x1C0(%rsi)
++	vmovups %zmm2, -0x180(%rsi)
++	vmovups %zmm2, -0x140(%rsi)
++	vmovups %zmm2, -0x100(%rsi)
++	vmovups %zmm2, -0xC0(%rsi)
++	vmovups %zmm2, -0x80(%rsi)
++	vmovups %zmm2, -0x40(%rsi)
++	ret
++
++/* Align on 64 and loop with aligned stores.  */
++L(1024bytesormore):
++	sub	$0x100, %rsi
++	vmovups	%zmm2, (%rax)
++	and	$-0x40, %rdi
++	add	$0x40, %rdi
++
++L(gobble_256bytes_loop):
++	vmovaps	%zmm2, (%rdi)
++	vmovaps	%zmm2, 0x40(%rdi)
++	vmovaps	%zmm2, 0x80(%rdi)
++	vmovaps	%zmm2, 0xC0(%rdi)
++	add	$0x100, %rdi
++	cmp	%rsi, %rdi
++	jb	L(gobble_256bytes_loop)
++	vmovups %zmm2, (%rsi)
++	vmovups %zmm2, 0x40(%rsi)
++	vmovups %zmm2, 0x80(%rsi)
++	vmovups %zmm2, 0xC0(%rsi)
++	ret
++
++/* Align on 128 and loop with non-temporal stores.  */
++L(preloop_large):
++	and	$-0x80, %rdi
++	add	$0x80, %rdi
++	vmovups	%zmm2, (%rax)
++	vmovups	%zmm2, 0x40(%rax)
++	sub	$0x200, %rsi
++
++L(gobble_512bytes_nt_loop):
++	vmovntdq %zmm2, (%rdi)
++	vmovntdq %zmm2, 0x40(%rdi)
++	vmovntdq %zmm2, 0x80(%rdi)
++	vmovntdq %zmm2, 0xC0(%rdi)
++	vmovntdq %zmm2, 0x100(%rdi)
++	vmovntdq %zmm2, 0x140(%rdi)
++	vmovntdq %zmm2, 0x180(%rdi)
++	vmovntdq %zmm2, 0x1C0(%rdi)
++	add	$0x200, %rdi
++	cmp	%rsi, %rdi
++	jb	L(gobble_512bytes_nt_loop)
++	sfence
++	vmovups %zmm2, (%rsi)
++	vmovups %zmm2, 0x40(%rsi)
++	vmovups %zmm2, 0x80(%rsi)
++	vmovups %zmm2, 0xC0(%rsi)
++	vmovups	%zmm2, 0x100(%rsi)
++	vmovups	%zmm2, 0x140(%rsi)
++	vmovups	%zmm2, 0x180(%rsi)
++	vmovups	%zmm2, 0x1C0(%rsi)
++	ret
++END (MEMSET)
++#endif
+Index: glibc-2.17-c758a686/sysdeps/x86_64/multiarch/memset.S
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/x86_64/multiarch/memset.S
++++ glibc-2.17-c758a686/sysdeps/x86_64/multiarch/memset.S
+@@ -29,6 +29,13 @@ ENTRY(memset)
+ 	HAS_ARCH_FEATURE (Prefer_SSE_for_memop)
+ 	jz	2f
+ 	leaq	__memset_sse2(%rip), %rax
++#ifdef HAVE_AVX512_ASM_SUPPORT
++	HAS_ARCH_FEATURE (AVX512F_Usable)
++	jz	2f
++	HAS_ARCH_FEATURE (Prefer_No_VZEROUPPER)
++	jz	2f
++	leaq	__memset_avx512_no_vzeroupper(%rip), %rax
++#endif
+ 2:	ret
+ END(memset)
+ 
+Index: glibc-2.17-c758a686/sysdeps/x86_64/multiarch/memset_chk.S
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/x86_64/multiarch/memset_chk.S
++++ glibc-2.17-c758a686/sysdeps/x86_64/multiarch/memset_chk.S
+@@ -30,6 +30,13 @@ ENTRY(__memset_chk)
+ 	HAS_ARCH_FEATURE (Prefer_SSE_for_memop)
+ 	jz	2f
+ 	leaq	__memset_chk_sse2(%rip), %rax
++#ifdef HAVE_AVX512_ASM_SUPPORT
++	HAS_ARCH_FEATURE (AVX512F_Usable)
++	jz	2f
++	HAS_ARCH_FEATURE (Prefer_No_VZEROUPPER)
++	jz	2f
++	leaq	__memset_chk_avx512_no_vzeroupper(%rip), %rax
++#endif
+ 2:	ret
+ END(__memset_chk)
+ 

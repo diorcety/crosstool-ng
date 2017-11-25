@@ -1,0 +1,188 @@
+From b860ebda47c7964db0582d65ad949780c4c784c5 Mon Sep 17 00:00:00 2001
+From: Rajalakshmi Srinivasaraghavan <raji@linux.vnet.ibm.com>
+Date: Wed, 30 Jul 2014 05:39:07 -0500
+Subject: [PATCH] PowerPC: multiarch strlen for PowerPC64
+
+commit a65f4904ab96de789d13f2c4f27c2d82959a546d
+Author: Adhemerval Zanella <azanella@linux.vnet.ibm.com>
+Date:   Fri Dec 13 14:38:17 2013 -0500
+---
+ sysdeps/powerpc/powerpc64/multiarch/Makefile       |  2 +-
+ .../powerpc/powerpc64/multiarch/ifunc-impl-list.c  |  7 ++++
+ .../powerpc/powerpc64/multiarch/strlen-power7.S    | 38 ++++++++++++++++++++
+ sysdeps/powerpc/powerpc64/multiarch/strlen-ppc64.S | 40 +++++++++++++++++++++
+ sysdeps/powerpc/powerpc64/multiarch/strlen.c       | 41 ++++++++++++++++++++++
+ 5 files changed, 127 insertions(+), 1 deletion(-)
+ create mode 100644 sysdeps/powerpc/powerpc64/multiarch/strlen-power7.S
+ create mode 100644 sysdeps/powerpc/powerpc64/multiarch/strlen-ppc64.S
+ create mode 100644 sysdeps/powerpc/powerpc64/multiarch/strlen.c
+
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/Makefile glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/Makefile
+index 695112c..9da7be1 100644
+--- glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/Makefile
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/Makefile
+@@ -5,5 +5,5 @@ sysdep_routines += memcpy-power7 memcpy-a2 memcpy-power6 memcpy-cell \
+                   memset-ppc64 bzero-power4 bzero-power6 bzero-power7 \
+                   mempcpy-power7 mempcpy-ppc64 memchr-power7 memchr-ppc64 \
+                   memrchr-power7 memrchr-ppc64 rawmemchr-power7 \
+-                  rawmemchr-ppc64
++                  rawmemchr-ppc64 strlen-power7 strlen-ppc64
+ endif
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/ifunc-impl-list.c glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/ifunc-impl-list.c
+index 5b15c3f..bdc908b 100644
+--- glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/ifunc-impl-list.c
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/ifunc-impl-list.c
+@@ -70,6 +70,13 @@ __libc_ifunc_impl_list (const char *name, struct libc_ifunc_impl *array,
+              IFUNC_IMPL_ADD (array, i, memset, hwcap & PPC_FEATURE_POWER4,
+                              __memset_power4)
+              IFUNC_IMPL_ADD (array, i, memset, 1, __memset_ppc))
++
++  /* Support sysdeps/powerpc/powerpc64/multiarch/strlen.c.  */
++  IFUNC_IMPL (i, name, strlen,
++             IFUNC_IMPL_ADD (array, i, strlen, hwcap & PPC_FEATURE_HAS_VSX,
++                             __strlen_power7)
++             IFUNC_IMPL_ADD (array, i, strlen, 1,
++                             __strlen_ppc))
+ #endif
+ 
+   /* Support sysdeps/powerpc/powerpc64/multiarch/memcmp.c.  */
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/strlen-power7.S glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/strlen-power7.S
+new file mode 100644
+index 0000000..a38521d
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/strlen-power7.S
+@@ -0,0 +1,38 @@
++/* Optimized strlen implementation for POWER7.
++   Copyright (C) 2013-2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <sysdep.h>
++
++#undef ENTRY
++#define ENTRY(name)						\
++  .section ".text";						\
++  ENTRY_2(__strlen_power7)					\
++  .align ALIGNARG(2);						\
++  BODY_LABEL(__strlen_power7):					\
++  cfi_startproc;
++
++#undef END
++#define END(name)						\
++  cfi_endproc;							\
++  TRACEBACK(__strlen_power7)					\
++  END_2(__strlen_power7)
++
++#undef libc_hidden_builtin_def
++#define libc_hidden_builtin_def(name)
++
++#include <sysdeps/powerpc/powerpc64/power7/strlen.S>
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/strlen-ppc64.S glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/strlen-ppc64.S
+new file mode 100644
+index 0000000..b463b3a
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/strlen-ppc64.S
+@@ -0,0 +1,40 @@
++/* Default strlen implementation for PowerPC64.
++   Copyright (C) 2013-2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <sysdep.h>
++
++#if defined SHARED && !defined NOT_IN_libc
++# undef ENTRY
++# define ENTRY(name)						\
++  .section ".text";						\
++  ENTRY_2(__strlen_ppc)						\
++  .align ALIGNARG(2);						\
++  BODY_LABEL(__strlen_ppc):					\
++  cfi_startproc;
++
++# undef END
++# define END(name)						\
++  cfi_endproc;							\
++  TRACEBACK(__strlen_ppc)					\
++  END_2(__strlen_ppc)
++
++# undef libc_hidden_builtin_def
++# define libc_hidden_builtin_def(name)
++#endif
++
++#include <sysdeps/powerpc/powerpc64/strlen.S>
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/strlen.c glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/strlen.c
+new file mode 100644
+index 0000000..d2c26e9
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/strlen.c
+@@ -0,0 +1,41 @@
++/* Multiple versions of strlen. PowerPC64 version.
++   Copyright (C) 2013-2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#if defined SHARED && !defined NOT_IN_libc
++/* Redefine strlen so that the compiler won't complain about the type
++   mismatch with the IFUNC selector in strong_alias, below.  */
++# undef strlen
++# define strlen __redirect_strlen
++# include <string.h>
++# include <shlib-compat.h>
++# include "init-arch.h"
++
++extern __typeof (__redirect_strlen) __libc_strlen;
++
++extern __typeof (__redirect_strlen) __strlen_ppc attribute_hidden;
++extern __typeof (__redirect_strlen) __strlen_power7 attribute_hidden;
++
++libc_ifunc (__libc_strlen,
++            (hwcap & PPC_FEATURE_HAS_VSX)
++            ? __strlen_power7
++            : __strlen_ppc);
++
++#undef strlen
++strong_alias (__libc_strlen, strlen)
++libc_hidden_ver (__libc_strlen, strlen)
++#endif
+-- 
+1.8.3.1
+

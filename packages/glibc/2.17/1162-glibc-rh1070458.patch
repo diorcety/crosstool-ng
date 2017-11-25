@@ -1,0 +1,124 @@
+Backport of commit f8b4877a75765b14432a6f83ead11dcecc5b1985
+Author: Marcus Shawcroft <marcus.shawcroft@linaro.org>
+Date:   Fri Jul 26 08:29:17 2013 +0100
+
+    [AArch64] Provide symbol version for _mcount.
+
+2013-07-26  Marcus Shawcroft  <marcus.shawcroft@linaro.org>
+
+       * sysdeps/aarch64/Versions: New file.
+       * sysdeps/aarch64/machine-gmon.h: New file.
+       * sysdeps/aarch64/mcount.c: New file.
+       * sysdeps/unix/sysv/linux/aarch64/nptl/libc.abilist (_mcount): Add.
+
+
+
+diff -ruNp glibc-2.17-c758a686/ports/sysdeps/aarch64/machine-gmon.h glibc-2.17-c758a686/ports/sysdeps/aarch64/machine-gmon.h
+--- glibc-2.17-c758a686/ports/sysdeps/aarch64/machine-gmon.h	2012-12-24 22:02:13.000000000 -0500
++++ glibc-2.17-c758a686/ports/sysdeps/aarch64/machine-gmon.h	2014-03-27 12:06:51.361046886 -0400
+@@ -1,5 +1,5 @@
+-/* Copyright (C) 2011-2012 Free Software Foundation, Inc.
+-
++/* AArch64 definitions for profiling support.
++   Copyright (C) 1996-2014 Free Software Foundation, Inc.
+    This file is part of the GNU C Library.
+ 
+    The GNU C Library is free software; you can redistribute it and/or
+@@ -13,13 +13,22 @@
+    Lesser General Public License for more details.
+ 
+    You should have received a copy of the GNU Lesser General Public
+-   License along with the GNU C Library.  If not, see
++   License along with the GNU C Library; if not, see
+    <http://www.gnu.org/licenses/>.  */
+ 
+-#define _MCOUNT_DECL(from, self) \
+- void __mcount_internal (u_long from, u_long self)
+-
+-/* Call __mcount_internal with our the return PC for our caller, and
+-   the return PC our caller will return to.  Empty since we use an
+-   assembly stub instead. */
+-#define MCOUNT
++/* Accept 'frompc' address as argument from the function that calls
++   __mcount for profiling.  Use  __builtin_return_address (0)
++   for the 'selfpc' address.  */
++
++#include <sysdep.h>
++
++static void mcount_internal (u_long frompc, u_long selfpc);
++
++#define _MCOUNT_DECL(frompc, selfpc) \
++static inline void mcount_internal (u_long frompc, u_long selfpc)
++
++#define MCOUNT                                                    \
++void __mcount (void *frompc)                                      \
++{                                                                 \
++  mcount_internal ((u_long) frompc, (u_long) RETURN_ADDRESS (0)); \
++}
+diff -ruNp glibc-2.17-c758a686/ports/sysdeps/aarch64/mcount.c glibc-2.17-c758a686/ports/sysdeps/aarch64/mcount.c
+--- glibc-2.17-c758a686/ports/sysdeps/aarch64/mcount.c	1969-12-31 19:00:00.000000000 -0500
++++ glibc-2.17-c758a686/ports/sysdeps/aarch64/mcount.c	2014-03-27 11:54:54.435418262 -0400
+@@ -0,0 +1,33 @@
++/* Copyright (C) 2013 Free Software Foundation, Inc.
++
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library.  If not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <shlib-compat.h>
++
++#include <gmon/mcount.c>
++
++/* We forgot to add _mcount in glibc 2.17.  We added it in 2.18
++   therefore we want it to be added with version GLIBC_2_18.  However,
++   setting the version is not straight forward because a generic
++   Version file includes an earlier 2.xx version for each this symbol
++   and the linker uses the first version it sees.  */
++
++#if SHLIB_COMPAT (libc, GLIBC_2_17, GLIBC_2_18)
++versioned_symbol (libc, __mcount, _mcount, GLIBC_2_18);
++#else
++strong_alias (__mcount, _mcount);
++#endif
+diff -ruNp glibc-2.17-c758a686/ports/sysdeps/aarch64/Versions glibc-2.17-c758a686/ports/sysdeps/aarch64/Versions
+--- glibc-2.17-c758a686/ports/sysdeps/aarch64/Versions	1969-12-31 19:00:00.000000000 -0500
++++ glibc-2.17-c758a686/ports/sysdeps/aarch64/Versions	2014-03-27 11:54:54.435418262 -0400
+@@ -0,0 +1,5 @@
++libc {
++  GLIBC_2.18 {
++    _mcount;
++  }
++}
+diff -ruNp glibc-2.17-c758a686/ports/sysdeps/unix/sysv/linux/aarch64/nptl/libc.abilist glibc-2.17-c758a686/ports/sysdeps/unix/sysv/linux/aarch64/nptl/libc.abilist
+--- glibc-2.17-c758a686/ports/sysdeps/unix/sysv/linux/aarch64/nptl/libc.abilist	2012-12-24 22:02:13.000000000 -0500
++++ glibc-2.17-c758a686/ports/sysdeps/unix/sysv/linux/aarch64/nptl/libc.abilist	2014-03-27 11:54:54.495412015 -0400
+@@ -2077,3 +2077,6 @@ GLIBC_2.17
+  xencrypt F
+  xprt_register F
+  xprt_unregister F
++GLIBC_2.18
++ GLIBC_2.18 A
++ _mcount F
+diff -ruNp glibc-2.17-c758a686/Versions.def glibc-2.17-c758a686/Versions.def
+--- glibc-2.17-c758a686/Versions.def	2012-12-24 22:02:13.000000000 -0500
++++ glibc-2.17-c758a686/Versions.def	2014-03-27 11:54:54.535407851 -0400
+@@ -34,6 +34,7 @@ libc {
+   GLIBC_2.15
+   GLIBC_2.16
+   GLIBC_2.17
++  GLIBC_2.18
+   HURD_CTHREADS_0.3
+ %ifdef EXPORT_UNWIND_FIND_FDE
+   GCC_3.0

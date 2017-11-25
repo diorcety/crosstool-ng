@@ -1,0 +1,98 @@
+From c58ed232c3d94c9ad7b4acddb8593ae0b1f9db10 Mon Sep 17 00:00:00 2001
+From: Stefan Liebler <stli@linux.vnet.ibm.com>
+Date: Thu, 8 Oct 2015 10:16:32 +0200
+Subject: [PATCH 01/30] S/390: Unify 31 and 64 bit configure.in
+
+upstream-commit-id: 579db35a068e70a4f3112000778138ede6994ac0
+
+This patch is needed to prepare for the optimized string function patchset.
+The configure fragments for s390-32/64 are identical and thus unified to one
+configure file.
+
+---
+ sysdeps/s390/configure            | 5 +++++
+ sysdeps/s390/configure.in         | 6 ++++++
+ sysdeps/s390/s390-32/configure    | 5 -----
+ sysdeps/s390/s390-32/configure.in | 6 ------
+ sysdeps/s390/s390-64/configure    | 5 -----
+ sysdeps/s390/s390-64/configure.in | 6 ------
+ 6 files changed, 11 insertions(+), 22 deletions(-)
+ create mode 100644 sysdeps/s390/configure
+ create mode 100644 sysdeps/s390/configure.in
+ delete mode 100644 sysdeps/s390/s390-32/configure
+ delete mode 100644 sysdeps/s390/s390-32/configure.in
+ delete mode 100644 sysdeps/s390/s390-64/configure
+ delete mode 100644 sysdeps/s390/s390-64/configure.in
+
+diff --git a/sysdeps/s390/configure b/sysdeps/s390/configure
+new file mode 100644
+index 0000000..669bb9b
+--- /dev/null
++++ b/sysdeps/s390/configure
+@@ -0,0 +1,5 @@
++# This file is generated from configure.in by Autoconf.  DO NOT EDIT!
++ # Local configure fragment for sysdeps/s390.
++
++$as_echo "#define PI_STATIC_AND_HIDDEN 1" >>confdefs.h
++
+diff --git a/sysdeps/s390/configure.in b/sysdeps/s390/configure.in
+new file mode 100644
+index 0000000..b5af4e1
+--- /dev/null
++++ b/sysdeps/s390/configure.in
+@@ -0,0 +1,6 @@
++GLIBC_PROVIDES dnl See aclocal.m4 in the top level source directory.
++# Local configure fragment for sysdeps/s390.
++
++dnl It is always possible to access static and hidden symbols in an
++dnl position independent way.
++AC_DEFINE(PI_STATIC_AND_HIDDEN)
+diff --git a/sysdeps/s390/s390-32/configure b/sysdeps/s390/s390-32/configure
+deleted file mode 100644
+index 669bb9b..0000000
+--- a/sysdeps/s390/s390-32/configure
++++ /dev/null
+@@ -1,5 +0,0 @@
+-# This file is generated from configure.in by Autoconf.  DO NOT EDIT!
+- # Local configure fragment for sysdeps/s390.
+-
+-$as_echo "#define PI_STATIC_AND_HIDDEN 1" >>confdefs.h
+-
+diff --git a/sysdeps/s390/s390-32/configure.in b/sysdeps/s390/s390-32/configure.in
+deleted file mode 100644
+index b5af4e1..0000000
+--- a/sysdeps/s390/s390-32/configure.in
++++ /dev/null
+@@ -1,6 +0,0 @@
+-GLIBC_PROVIDES dnl See aclocal.m4 in the top level source directory.
+-# Local configure fragment for sysdeps/s390.
+-
+-dnl It is always possible to access static and hidden symbols in an
+-dnl position independent way.
+-AC_DEFINE(PI_STATIC_AND_HIDDEN)
+diff --git a/sysdeps/s390/s390-64/configure b/sysdeps/s390/s390-64/configure
+deleted file mode 100644
+index 669bb9b..0000000
+--- a/sysdeps/s390/s390-64/configure
++++ /dev/null
+@@ -1,5 +0,0 @@
+-# This file is generated from configure.in by Autoconf.  DO NOT EDIT!
+- # Local configure fragment for sysdeps/s390.
+-
+-$as_echo "#define PI_STATIC_AND_HIDDEN 1" >>confdefs.h
+-
+diff --git a/sysdeps/s390/s390-64/configure.in b/sysdeps/s390/s390-64/configure.in
+deleted file mode 100644
+index b5af4e1..0000000
+--- a/sysdeps/s390/s390-64/configure.in
++++ /dev/null
+@@ -1,6 +0,0 @@
+-GLIBC_PROVIDES dnl See aclocal.m4 in the top level source directory.
+-# Local configure fragment for sysdeps/s390.
+-
+-dnl It is always possible to access static and hidden symbols in an
+-dnl position independent way.
+-AC_DEFINE(PI_STATIC_AND_HIDDEN)
+-- 
+2.3.0
+

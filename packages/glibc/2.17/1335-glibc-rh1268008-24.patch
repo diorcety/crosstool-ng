@@ -1,0 +1,1403 @@
+From 685417419834a85cd5d59787c25e487cd7129890 Mon Sep 17 00:00:00 2001
+From: Stefan Liebler <stli@linux.vnet.ibm.com>
+Date: Thu, 8 Oct 2015 12:58:39 +0200
+Subject: [PATCH 24/30] S390: Optimize strpbrk and wcspbrk.
+
+upstream-commit-id: f0ba659847446eec3b2477d60c97c77ef4680e81
+https://www.sourceware.org/ml/libc-alpha/2015-07/msg00091.html
+
+This patch provides optimized versions of strpbrk and wcspbrk with the z13
+vector instructions.
+
+ChangeLog:
+
+	* sysdeps/s390/multiarch/strpbrk-c.c: New File.
+	* sysdeps/s390/multiarch/strpbrk-vx.S: Likewise.
+	* sysdeps/s390/multiarch/strpbrk.c: Likewise.
+	* sysdeps/s390/multiarch/wcspbrk-c.c: Likewise.
+	* sysdeps/s390/multiarch/wcspbrk-vx.S: Likewise.
+	* sysdeps/s390/multiarch/wcspbrk.c: Likewise.
+	* sysdeps/s390/multiarch/Makefile (sysdep_routines): Add strpbrk and
+	wcspbrk functions.
+	* sysdeps/s390/multiarch/ifunc-impl-list.c
+	(__libc_ifunc_impl_list): Add ifunc test for strpbrk, wcspbrk.
+	* wcsmbs/wcspbrk.c: Use WCSPBRK if defined.
+	* string/test-strpbrk.c: Add wcspbrk support.
+	* wcsmbs/test-wcspbrk.c: New File.
+	* wcsmbs/Makefile (strop-tests): Add wcspbrk.
+	* benchtests/bench-strpbrk.c: Add wcspbrk support.
+	* benchtests/bench-wcspbrk.c: New File.
+	* benchtests/Makefile (wcsmbs-bench): Add wcspbrk.
+---
+ benchtests/Makefile                      |   2 +-
+ benchtests/bench-strpbrk.c               | 100 ++++++----
+ benchtests/bench-wcspbrk.c               |  20 ++
+ string/strpbrk.c                         |   8 +-
+ string/test-strpbrk.c                    | 130 ++++++++-----
+ sysdeps/s390/multiarch/Makefile          |   6 +-
+ sysdeps/s390/multiarch/ifunc-impl-list.c |   3 +
+ sysdeps/s390/multiarch/strpbrk-c.c       |  28 +++
+ sysdeps/s390/multiarch/strpbrk-vx.S      | 302 +++++++++++++++++++++++++++++
+ sysdeps/s390/multiarch/strpbrk.c         |  27 +++
+ sysdeps/s390/multiarch/wcspbrk-c.c       |  31 +++
+ sysdeps/s390/multiarch/wcspbrk-vx.S      | 315 +++++++++++++++++++++++++++++++
+ sysdeps/s390/multiarch/wcspbrk.c         |  27 +++
+ wcsmbs/Makefile                          |   2 +-
+ wcsmbs/test-wcspbrk-ifunc.c              |  20 ++
+ wcsmbs/test-wcspbrk.c                    |  20 ++
+ wcsmbs/wcspbrk.c                         |   3 +
+ 17 files changed, 953 insertions(+), 91 deletions(-)
+ create mode 100644 benchtests/bench-wcspbrk.c
+ create mode 100644 sysdeps/s390/multiarch/strpbrk-c.c
+ create mode 100644 sysdeps/s390/multiarch/strpbrk-vx.S
+ create mode 100644 sysdeps/s390/multiarch/strpbrk.c
+ create mode 100644 sysdeps/s390/multiarch/wcspbrk-c.c
+ create mode 100644 sysdeps/s390/multiarch/wcspbrk-vx.S
+ create mode 100644 sysdeps/s390/multiarch/wcspbrk.c
+ create mode 100644 wcsmbs/test-wcspbrk-ifunc.c
+ create mode 100644 wcsmbs/test-wcspbrk.c
+
+diff --git a/benchtests/Makefile b/benchtests/Makefile
+index 337b2a1..015b5d6 100644
+--- a/benchtests/Makefile
++++ b/benchtests/Makefile
+@@ -39,7 +39,7 @@ string-bench := bcopy bzero memccpy memchr memcmp memcpy memmem memmove \
+ 		strncasecmp strncat strncmp strncpy strnlen strpbrk strrchr \
+ 		strspn strstr strcpy_chk stpcpy_chk memrchr strsep strtok
+ wcsmbs-bench := wcslen wcsnlen wcscpy wcpcpy wcsncpy wcpncpy wcscat wcsncat \
+-		wcsncmp wcsncmp wcschr wcschrnul wcsrchr wcsspn
++		wcsncmp wcsncmp wcschr wcschrnul wcsrchr wcsspn wcspbrk
+ string-bench-all := $(string-bench) ${wcsmbs-bench}
+ 
+ stdlib-bench := strtod
+diff --git a/benchtests/bench-strpbrk.c b/benchtests/bench-strpbrk.c
+index fe966be..f2db902 100644
+--- a/benchtests/bench-strpbrk.c
++++ b/benchtests/bench-strpbrk.c
+@@ -16,50 +16,80 @@
+    License along with the GNU C Library; if not, see
+    <http://www.gnu.org/licenses/>.  */
+ 
++#ifndef WIDE
++# define CHAR char
++# define STRLEN strlen
++# define STRCHR strchr
++# define BIG_CHAR CHAR_MAX
++# define SMALL_CHAR 127
++#else
++# include <wchar.h>
++# define CHAR wchar_t
++# define STRLEN wcslen
++# define STRCHR wcschr
++# define BIG_CHAR WCHAR_MAX
++# define SMALL_CHAR 1273
++#endif /* WIDE */
++
+ #ifndef STRPBRK_RESULT
+ # define STRPBRK_RESULT(s, pos) ((s)[(pos)] ? (s) + (pos) : NULL)
+-# define RES_TYPE char *
++# define RES_TYPE CHAR *
+ # define TEST_MAIN
+-# define TEST_NAME "strpbrk"
++# ifndef WIDE
++#  define TEST_NAME "strpbrk"
++# else
++#  define TEST_NAME "wcspbrk"
++# endif /* WIDE */
+ # include "bench-string.h"
+ 
+-typedef char *(*proto_t) (const char *, const char *);
+-char *simple_strpbrk (const char *, const char *);
+-char *stupid_strpbrk (const char *, const char *);
+-
+-IMPL (stupid_strpbrk, 0)
+-IMPL (simple_strpbrk, 0)
+-IMPL (strpbrk, 1)
+-
+-char *
+-simple_strpbrk (const char *s, const char *rej)
++# ifndef WIDE
++#  define STRPBRK strpbrk
++#  define SIMPLE_STRPBRK simple_strpbrk
++#  define STUPID_STRPBRK stupid_strpbrk
++# else
++#  include <wchar.h>
++#  define STRPBRK wcspbrk
++#  define SIMPLE_STRPBRK simple_wcspbrk
++#  define STUPID_STRPBRK stupid_wcspbrk
++# endif /* WIDE */
++
++typedef CHAR *(*proto_t) (const CHAR *, const CHAR *);
++CHAR *SIMPLE_STRPBRK (const CHAR *, const CHAR *);
++CHAR *STUPID_STRPBRK (const CHAR *, const CHAR *);
++
++IMPL (STUPID_STRPBRK, 0)
++IMPL (SIMPLE_STRPBRK, 0)
++IMPL (STRPBRK, 1)
++
++CHAR *
++SIMPLE_STRPBRK (const CHAR *s, const CHAR *rej)
+ {
+-  const char *r;
+-  char c;
++  const CHAR *r;
++  CHAR c;
+ 
+   while ((c = *s++) != '\0')
+     for (r = rej; *r != '\0'; ++r)
+       if (*r == c)
+-	return (char *) s - 1;
++	return (CHAR *) s - 1;
+   return NULL;
+ }
+ 
+-char *
+-stupid_strpbrk (const char *s, const char *rej)
++CHAR *
++STUPID_STRPBRK (const CHAR *s, const CHAR *rej)
+ {
+-  size_t ns = strlen (s), nrej = strlen (rej);
++  size_t ns = STRLEN (s), nrej = STRLEN (rej);
+   size_t i, j;
+ 
+   for (i = 0; i < ns; ++i)
+     for (j = 0; j < nrej; ++j)
+       if (s[i] == rej[j])
+-	return (char *) s + i;
++	return (CHAR *) s + i;
+   return NULL;
+ }
+-#endif
++#endif /* !STRPBRK_RESULT */
+ 
+ static void
+-do_one_test (impl_t *impl, const char *s, const char *rej, RES_TYPE exp_res)
++do_one_test (impl_t *impl, const CHAR *s, const CHAR *rej, RES_TYPE exp_res)
+ {
+   RES_TYPE res = CALL (impl, s, rej);
+   size_t i, iters = INNER_LOOP_ITERS;
+@@ -91,35 +121,35 @@ do_test (size_t align, size_t pos, size_t len)
+   size_t i;
+   int c;
+   RES_TYPE result;
+-  char *rej, *s;
++  CHAR *rej, *s;
+ 
+   align &= 7;
+-  if (align + pos + 10 >= page_size || len > 240)
++  if ((align + pos + 10) * sizeof (CHAR) >= page_size || len > 240)
+     return;
+ 
+-  rej = (char *) (buf2 + (random () & 255));
+-  s = (char *) (buf1 + align);
++  rej = (CHAR *) (buf2) + (random () & BIG_CHAR);
++  s = (CHAR *) (buf1) + align;
+ 
+   for (i = 0; i < len; ++i)
+     {
+-      rej[i] = random () & 255;
++      rej[i] = random () & BIG_CHAR;
+       if (!rej[i])
+-	rej[i] = random () & 255;
++	rej[i] = random () & BIG_CHAR;
+       if (!rej[i])
+-	rej[i] = 1 + (random () & 127);
++	rej[i] = 1 + (random () & SMALL_CHAR);
+     }
+   rej[len] = '\0';
+-  for (c = 1; c <= 255; ++c)
+-    if (strchr (rej, c) == NULL)
++  for (c = 1; c <= BIG_CHAR; ++c)
++    if (STRCHR (rej, c) == NULL)
+       break;
+ 
+   for (i = 0; i < pos; ++i)
+     {
+-      s[i] = random () & 255;
+-      if (strchr (rej, s[i]))
++      s[i] = random () & BIG_CHAR;
++      if (STRCHR (rej, s[i]))
+ 	{
+-	  s[i] = random () & 255;
+-	  if (strchr (rej, s[i]))
++	  s[i] = random () & BIG_CHAR;
++	  if (STRCHR (rej, s[i]))
+ 	    s[i] = c;
+ 	}
+     }
+@@ -127,7 +157,7 @@ do_test (size_t align, size_t pos, size_t len)
+   if (s[pos])
+     {
+       for (i = pos + 1; i < pos + 10; ++i)
+-	s[i] = random () & 255;
++	s[i] = random () & BIG_CHAR;
+       s[i] = '\0';
+     }
+   result = STRPBRK_RESULT (s, pos);
+diff --git a/benchtests/bench-wcspbrk.c b/benchtests/bench-wcspbrk.c
+new file mode 100644
+index 0000000..3d9f00f
+--- /dev/null
++++ b/benchtests/bench-wcspbrk.c
+@@ -0,0 +1,20 @@
++/* Measure wcspbrk functions.
++   Copyright (C) 2015 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#define WIDE 1
++#include "bench-strpbrk.c"
+diff --git a/string/strpbrk.c b/string/strpbrk.c
+index 7f45fdf..c153d8e 100644
+--- a/string/strpbrk.c
++++ b/string/strpbrk.c
+@@ -25,11 +25,13 @@
+ 
+ #undef strpbrk
+ 
++#ifndef STRPBRK
++# define STRPBRK strpbrk
++#endif
++
+ /* Find the first occurrence in S of any character in ACCEPT.  */
+ char *
+-strpbrk (s, accept)
+-     const char *s;
+-     const char *accept;
++STRPBRK (const char *s, const char *accept)
+ {
+   while (*s != '\0')
+     {
+diff --git a/string/test-strpbrk.c b/string/test-strpbrk.c
+index 72eaaa1..c36c5b5 100644
+--- a/string/test-strpbrk.c
++++ b/string/test-strpbrk.c
+@@ -17,50 +17,82 @@
+    License along with the GNU C Library; if not, see
+    <http://www.gnu.org/licenses/>.  */
+ 
++#ifndef WIDE
++# define CHAR char
++# define UCHAR unsigned char
++# define STRLEN strlen
++# define STRCHR strchr
++# define BIG_CHAR CHAR_MAX
++# define SMALL_CHAR 127
++#else
++# include <wchar.h>
++# define CHAR wchar_t
++# define UCHAR wchar_t
++# define STRLEN wcslen
++# define STRCHR wcschr
++# define BIG_CHAR WCHAR_MAX
++# define SMALL_CHAR 1273
++#endif /* WIDE */
++
+ #ifndef STRPBRK_RESULT
+ # define STRPBRK_RESULT(s, pos) ((s)[(pos)] ? (s) + (pos) : NULL)
+-# define RES_TYPE char *
++# define RES_TYPE CHAR *
+ # define TEST_MAIN
+-# define TEST_NAME "strpbrk"
++# ifndef WIDE
++#  define TEST_NAME "strpbrk"
++# else
++#  define TEST_NAME "wcspbrk"
++# endif /* WIDE */
+ # include "test-string.h"
+ 
+-typedef char *(*proto_t) (const char *, const char *);
+-char *simple_strpbrk (const char *, const char *);
+-char *stupid_strpbrk (const char *, const char *);
++# ifndef WIDE
++#  define STRPBRK strpbrk
++#  define SIMPLE_STRPBRK simple_strpbrk
++#  define STUPID_STRPBRK stupid_strpbrk
++# else
++#  include <wchar.h>
++#  define STRPBRK wcspbrk
++#  define SIMPLE_STRPBRK simple_wcspbrk
++#  define STUPID_STRPBRK stupid_wcspbrk
++# endif /* WIDE */
++
++typedef CHAR *(*proto_t) (const CHAR *, const CHAR *);
++CHAR *SIMPLE_STRPBRK (const CHAR *, const CHAR *);
++CHAR *STUPID_STRPBRK (const CHAR *, const CHAR *);
+ 
+-IMPL (stupid_strpbrk, 0)
+-IMPL (simple_strpbrk, 0)
+-IMPL (strpbrk, 1)
++IMPL (STUPID_STRPBRK, 0)
++IMPL (SIMPLE_STRPBRK, 0)
++IMPL (STRPBRK, 1)
+ 
+-char *
+-simple_strpbrk (const char *s, const char *rej)
++CHAR *
++SIMPLE_STRPBRK (const CHAR *s, const CHAR *rej)
+ {
+-  const char *r;
+-  char c;
++  const CHAR *r;
++  CHAR c;
+ 
+   while ((c = *s++) != '\0')
+     for (r = rej; *r != '\0'; ++r)
+       if (*r == c)
+-	return (char *) s - 1;
++	return (CHAR *) s - 1;
+   return NULL;
+ }
+ 
+-char *
+-stupid_strpbrk (const char *s, const char *rej)
++CHAR *
++STUPID_STRPBRK (const CHAR *s, const CHAR *rej)
+ {
+-  size_t ns = strlen (s), nrej = strlen (rej);
++  size_t ns = STRLEN (s), nrej = STRLEN (rej);
+   size_t i, j;
+ 
+   for (i = 0; i < ns; ++i)
+     for (j = 0; j < nrej; ++j)
+       if (s[i] == rej[j])
+-	return (char *) s + i;
++	return (CHAR *) s + i;
+   return NULL;
+ }
+-#endif
++#endif /* !STRPBRK_RESULT */
+ 
+ static void
+-do_one_test (impl_t *impl, const char *s, const char *rej, RES_TYPE exp_res)
++do_one_test (impl_t *impl, const CHAR *s, const CHAR *rej, RES_TYPE exp_res)
+ {
+   RES_TYPE res = CALL (impl, s, rej);
+   if (res != exp_res)
+@@ -78,35 +110,35 @@ do_test (size_t align, size_t pos, size_t len)
+   size_t i;
+   int c;
+   RES_TYPE result;
+-  char *rej, *s;
++  CHAR *rej, *s;
+ 
+   align &= 7;
+-  if (align + pos + 10 >= page_size || len > 240)
++  if ((align + pos + 10) * sizeof (CHAR) >= page_size || len > 240)
+     return;
+ 
+-  rej = (char *) (buf2 + (random () & 255));
+-  s = (char *) (buf1 + align);
++  rej = (CHAR *) (buf2) + (random () & 255);
++  s = (CHAR *) (buf1) + align;
+ 
+   for (i = 0; i < len; ++i)
+     {
+-      rej[i] = random () & 255;
++      rej[i] = random () & BIG_CHAR;
+       if (!rej[i])
+-	rej[i] = random () & 255;
++	rej[i] = random () & BIG_CHAR;
+       if (!rej[i])
+-	rej[i] = 1 + (random () & 127);
++	rej[i] = 1 + (random () & SMALL_CHAR);
+     }
+   rej[len] = '\0';
+-  for (c = 1; c <= 255; ++c)
+-    if (strchr (rej, c) == NULL)
++  for (c = 1; c <= BIG_CHAR; ++c)
++    if (STRCHR (rej, c) == NULL)
+       break;
+ 
+   for (i = 0; i < pos; ++i)
+     {
+-      s[i] = random () & 255;
+-      if (strchr (rej, s[i]))
++      s[i] = random () & BIG_CHAR;
++      if (STRCHR (rej, s[i]))
+ 	{
+-	  s[i] = random () & 255;
+-	  if (strchr (rej, s[i]))
++	  s[i] = random () & BIG_CHAR;
++	  if (STRCHR (rej, s[i]))
+ 	    s[i] = c;
+ 	}
+     }
+@@ -114,7 +146,7 @@ do_test (size_t align, size_t pos, size_t len)
+   if (s[pos])
+     {
+       for (i = pos + 1; i < pos + 10; ++i)
+-	s[i] = random () & 255;
++	s[i] = random () & BIG_CHAR;
+       s[i] = '\0';
+     }
+   result = STRPBRK_RESULT (s, pos);
+@@ -129,8 +161,8 @@ do_random_tests (void)
+   size_t i, j, n, align, pos, len, rlen;
+   RES_TYPE result;
+   int c;
+-  unsigned char *p = buf1 + page_size - 512;
+-  unsigned char *rej;
++  UCHAR *p = (UCHAR *) (buf1 + page_size) - 512;
++  UCHAR *rej;
+ 
+   for (n = 0; n < ITERATIONS; n++)
+     {
+@@ -147,18 +179,18 @@ do_random_tests (void)
+ 	rlen = random () & 63;
+       else
+ 	rlen = random () & 15;
+-      rej = buf2 + page_size - rlen - 1 - (random () & 7);
++      rej = (UCHAR *) (buf2 + page_size) - rlen - 1 - (random () & 7);
+       for (i = 0; i < rlen; ++i)
+ 	{
+-	  rej[i] = random () & 255;
++	  rej[i] = random () & BIG_CHAR;
+ 	  if (!rej[i])
+-	    rej[i] = random () & 255;
++	    rej[i] = random () & BIG_CHAR;
+ 	  if (!rej[i])
+-	    rej[i] = 1 + (random () & 127);
++	    rej[i] = 1 + (random () & SMALL_CHAR);
+ 	}
+       rej[i] = '\0';
+-      for (c = 1; c <= 255; ++c)
+-	if (strchr ((char *) rej, c) == NULL)
++      for (c = 1; c <= BIG_CHAR; ++c)
++	if (STRCHR ((CHAR *) rej, c) == NULL)
+ 	  break;
+       j = (pos > len ? pos : len) + align + 64;
+       if (j > 512)
+@@ -171,27 +203,27 @@ do_random_tests (void)
+ 	  else if (i == pos + align)
+ 	    p[i] = rej[random () % (rlen + 1)];
+ 	  else if (i < align || i > pos + align)
+-	    p[i] = random () & 255;
++	    p[i] = random () & BIG_CHAR;
+ 	  else
+ 	    {
+-	      p[i] = random () & 255;
+-	      if (strchr ((char *) rej, p[i]))
++	      p[i] = random () & BIG_CHAR;
++	      if (STRCHR ((CHAR *) rej, p[i]))
+ 		{
+-		  p[i] = random () & 255;
+-		  if (strchr ((char *) rej, p[i]))
++		  p[i] = random () & BIG_CHAR;
++		  if (STRCHR ((CHAR *) rej, p[i]))
+ 		    p[i] = c;
+ 		}
+ 	    }
+ 	}
+ 
+-      result = STRPBRK_RESULT ((char *) (p + align), pos < len ? pos : len);
++      result = STRPBRK_RESULT ((CHAR *) (p + align), pos < len ? pos : len);
+ 
+       FOR_EACH_IMPL (impl, 1)
+-	if (CALL (impl, (char *) (p + align), (char *) rej) != result)
++	if (CALL (impl, (CHAR *) (p + align), (CHAR *) rej) != result)
+ 	  {
+ 	    error (0, 0, "Iteration %zd - wrong result in function %s (%zd, %p, %zd, %zd, %zd) %p != %p",
+ 		   n, impl->name, align, rej, rlen, pos, len,
+-		   (void *) CALL (impl, (char *) (p + align), (char *) rej),
++		   (void *) CALL (impl, (CHAR *) (p + align), (CHAR *) rej),
+ 		   (void *) result);
+ 	    ret = 1;
+ 	  }
+diff --git a/sysdeps/s390/multiarch/Makefile b/sysdeps/s390/multiarch/Makefile
+index 9403169..5765a8c 100644
+--- a/sysdeps/s390/multiarch/Makefile
++++ b/sysdeps/s390/multiarch/Makefile
+@@ -12,7 +12,8 @@ sysdep_routines += strlen strlen-vx strlen-c \
+ 		   strchr strchr-vx strchr-c \
+ 		   strchrnul strchrnul-vx strchrnul-c \
+ 		   strrchr strrchr-vx strrchr-c \
+-		   strspn strspn-vx strspn-c
++		   strspn strspn-vx strspn-c \
++		   strpbrk strpbrk-vx strpbrk-c
+ endif
+ 
+ ifeq ($(subdir),wcsmbs)
+@@ -29,5 +30,6 @@ sysdep_routines += wcslen wcslen-vx wcslen-c \
+ 		   wcschr wcschr-vx wcschr-c \
+ 		   wcschrnul wcschrnul-vx wcschrnul-c \
+ 		   wcsrchr wcsrchr-vx wcsrchr-c \
+-		   wcsspn wcsspn-vx wcsspn-c
++		   wcsspn wcsspn-vx wcsspn-c \
++		   wcspbrk wcspbrk-vx wcspbrk-c
+ endif
+diff --git a/sysdeps/s390/multiarch/ifunc-impl-list.c b/sysdeps/s390/multiarch/ifunc-impl-list.c
+index cbedf64..b39a5c5 100644
+--- a/sysdeps/s390/multiarch/ifunc-impl-list.c
++++ b/sysdeps/s390/multiarch/ifunc-impl-list.c
+@@ -121,6 +121,9 @@ __libc_ifunc_impl_list (const char *name, struct libc_ifunc_impl *array,
+   IFUNC_VX_IMPL (strspn);
+   IFUNC_VX_IMPL (wcsspn);
+ 
++  IFUNC_VX_IMPL (strpbrk);
++  IFUNC_VX_IMPL (wcspbrk);
++
+ #endif /* HAVE_S390_VX_ASM_SUPPORT */
+ 
+   return i;
+diff --git a/sysdeps/s390/multiarch/strpbrk-c.c b/sysdeps/s390/multiarch/strpbrk-c.c
+new file mode 100644
+index 0000000..1c8bf49
+--- /dev/null
++++ b/sysdeps/s390/multiarch/strpbrk-c.c
+@@ -0,0 +1,28 @@
++/* Default strpbrk implementation for S/390.
++   Copyright (C) 2015 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#if defined HAVE_S390_VX_ASM_SUPPORT && !defined NOT_IN_libc
++# define STRPBRK  __strpbrk_c
++# ifdef SHARED
++#  undef libc_hidden_builtin_def
++#  define libc_hidden_builtin_def(name)				\
++     __hidden_ver1 (__strpbrk_c, __GI_strpbrk, __strpbrk_c);
++# endif /* SHARED */
++
++# include <string/strpbrk.c>
++#endif /* HAVE_S390_VX_ASM_SUPPORT && !defined NOT_IN_libc */
+diff --git a/sysdeps/s390/multiarch/strpbrk-vx.S b/sysdeps/s390/multiarch/strpbrk-vx.S
+new file mode 100644
+index 0000000..c6ad3ef
+--- /dev/null
++++ b/sysdeps/s390/multiarch/strpbrk-vx.S
+@@ -0,0 +1,302 @@
++/* Vector optimized 32/64 bit S/390 version of strpbrk.
++   Copyright (C) 2015 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#if defined HAVE_S390_VX_ASM_SUPPORT && !defined NOT_IN_libc
++
++# include "sysdep.h"
++# include "asm-syntax.h"
++
++	.text
++
++/* char *strpbrk (const char *s, const char * accept)
++   The  strpbrk()  function locates the first occurrence in the string s
++   of any of the characters in the string accept and returns a pointer
++   to that character or NULL if not found.
++
++   This method checks the length of accept string. If it fits entirely
++   in one vector register, a fast algorithm is used, which does not need
++   to check multiple parts of accept-string. Otherwise a slower full
++   check of accept-string is used.
++
++   register overview:
++   r3:  pointer to start of accept-string
++   r2:  pointer to start of search-string
++   r0:  loaded byte count of vlbb search-string (32bit unsigned)
++   r4:  found byte index (32bit unsigned)
++   r1:  current return len (64bit unsigned)
++   v16: search-string
++   v17: accept-string
++   v18: temp-vreg
++
++   ONLY FOR SLOW:
++   v19: first accept-string
++   v20: zero for preparing acc-vector
++   v21: global mask; 1 indicates a match between
++	search-string-vreg and any accept-character
++   v22: current mask; 1 indicates a match between
++	search-string-vreg and any accept-character in current acc-vreg
++   v24: one for result-checking of former string-part
++   v30, v31: for re-/storing registers r6, r8, r9
++   r5:  current len of accept-string
++   r6:  zero-index in search-string or 16 if no zero
++	or min(zero-index, loaded byte count)
++   r8:  >0, if former accept-string-part contains a zero,
++	otherwise =0;
++   r9:  loaded byte count of vlbb accept-string
++*/
++ENTRY(__strpbrk_vx)
++	.machine "z13"
++	.machinemode "zarch_nohighgprs"
++
++	/*
++	  Check if accept-string fits in one vreg:
++	  ----------------------------------------
++	*/
++	vlbb	%v17,0(%r3),6	/* Load accept.  */
++	lghi	%r1,0		/* Zero out current len.  */
++	vlgvb	%r0,%v17,0	/* Get first element.  */
++	clije	%r0,0,.Lfast_end_null /* Return null if accept is empty.  */
++	lcbb	%r0,0(%r3),6
++	jo	.Lcheck_onbb	/* Special case if accept lays
++				   on block-boundary.  */
++.Lcheck_notonbb:
++	vistrbs	%v17,%v17	/* Fill with zeros after first zero.  */
++	je	.Lfast		/* Zero found -> accept fits in one vreg.  */
++	j	.Lslow		/* No zero -> accept exceeds one vreg  */
++
++
++.Lcheck_onbb:
++	/* Accept lays on block-boundary.  */
++	vfenezb	%v18,%v17,%v17	/* Search zero in loaded accept bytes.  */
++	vlgvb	%r4,%v18,7	/* Get index of zero or 16 if not found.  */
++	clrjl	%r4,%r0,.Lcheck_notonbb /* Zero index < loaded bytes count ->
++					    Accept fits in one vreg;
++					    Fill with zeros and proceed
++					    with FAST.  */
++	vl	%v17,0(%r3)	/* Load accept, which exceeds loaded bytes.  */
++	j	.Lcheck_notonbb /* Check if accept fits in one vreg.  */
++
++
++	/*
++	  Search s for accept in one vreg
++	  -------------------------------
++	*/
++.Lfast:
++	/* Complete accept-string in v17 and remaining bytes are zero.  */
++
++	vlbb	%v16,0(%r2),6	/* Load s until next 4k-byte boundary.  */
++	lcbb	%r0,0(%r2),6	/* Get bytes to 4k-byte boundary or 16.  */
++
++	vfaezbs	%v18,%v16,%v17,0 /* Find first element in v16 unequal to any
++				    in v17 or first zero element.  */
++
++	vlgvb	%r4,%v18,7	/* Load byte index of found element.  */
++	/* If found index is within loaded bytes, return with found
++	   element index (=equal count).  */
++	clrjl	%r4,%r0,.Lfast_loop_found2
++
++	/* Align s to 16 byte.  */
++	risbgn	%r4,%r2,60,128+63,0 /* %r3 = bits 60-63 of %r2 'and' 15.  */
++	lghi	%r1,16		/* current_len = 16.  */
++	slr	%r1,%r4		/* Compute bytes to 16bytes boundary.  */
++
++	/* Process s in 16byte aligned loop.  */
++.Lfast_loop:
++	vl	%v16,0(%r1,%r2)	/* Load search-string.  */
++	vfaezbs	%v18,%v16,%v17,0 /* Find first element in v16 equal to any
++				    in v17 or first zero element.  */
++	jno	.Lfast_loop_found
++
++	vl	%v16,16(%r1,%r2)
++	vfaezbs	%v18,%v16,%v17,0
++	jno	.Lfast_loop_found16
++
++	vl	%v16,32(%r1,%r2)
++	vfaezbs	%v18,%v16,%v17,0
++	jno	.Lfast_loop_found32
++
++	vl	%v16,48(%r1,%r2)
++	vfaezbs	%v18,%v16,%v17,0
++	jno	.Lfast_loop_found48
++
++	aghi	%r1,64
++	j	.Lfast_loop	/* Loop if no element was unequal to accept
++				   and not zero.  */
++
++	/* Found equal or zero element.  */
++.Lfast_loop_found48:
++	aghi	%r1,16
++.Lfast_loop_found32:
++	aghi	%r1,16
++.Lfast_loop_found16:
++	aghi	%r1,16
++.Lfast_loop_found:
++	vlgvb	%r4,%v18,7	/* Load byte index of found element.  */
++.Lfast_loop_found2:
++	vlgvb	%r0,%v16,0(%r4)	/* Get found element.  */
++	clije	%r0,0,.Lfast_end_null /* Return null if no accept-char found */
++	algfr	%r1,%r4		/* Add found index of char to current len.  */
++	la	%r2,0(%r1,%r2)	/* And return pointer to first equal char.  */
++	br	%r14
++
++.Lfast_end_null:
++	lghi	%r2,0		/* Return null if no character is equal.  */
++	br	%r14
++
++
++
++
++	/*
++	  Search s for accept in multiple vregs
++	  -------------------------------------
++	*/
++.Lslow:
++	/* Save registers.  */
++	vlvgg	%v30,%r6,0
++	vlvgp	%v31,%r8,%r9
++
++	/* accept in v17 without zero.  */
++	vlr	%v19,%v17	/* Save first acc-part for a fast reload.  */
++	vzero	%v20		/* Zero for preparing acc-vector.  */
++	vone	%v24		/* One for checking result of former string.  */
++
++	/* Align s to 16 byte.  */
++	risbg	%r4,%r2,60,128+63,0 /* Test if s is aligned and
++				       %r4 = bits 60-63 'and' 15.  */
++	je	.Lslow_loop_str /* If s is aligned, loop aligned.  */
++	lghi	%r0,15
++	slr	%r0,%r4		/* Compute highest index to load (15-x).  */
++	vll	%v16,%r0,0(%r2) /* Load up to 16 byte boundary (vll needs
++				   highest index, remaining bytes are 0).  */
++	ahi	%r0,1		/* Work with loaded byte count.  */
++	vzero	%v21		/* Zero out global mask.  */
++	lghi	%r5,0		/* Set current len of accept-string to zero.  */
++	vfenezb	%v18,%v16,%v16	/* Find zero in current string-part.  */
++	lghi	%r8,0		/* There is no zero in first accept-part.  */
++	vlgvb	%r6,%v18,7	/* Load byte index of zero or 16 if no zero.  */
++	clije	%r6,0,.Lslow_end_null /* If first element is zero
++					  (end of string) -> return null */
++	clr	%r0,%r6		/* cc==1 if loaded byte count < zero-index.  */
++	locrl	%r6,%r0		/* Load on cc==1; zero-index = lbc.  */
++	j	.Lslow_loop_acc
++
++
++	/* Process s in 16byte aligned loop.  */
++.Lslow_next_str:
++	/* Check results of former processed str-part.  */
++	vfeeb	%v18,%v21,%v24	/* Find first equal match in global mask
++				   (ones in element).  */
++	vlgvb	%r4,%v18,7	/* Get index of first one (=equal)
++				   or 16 if no match.  */
++	/* Equal-index < min(zero-index, loaded byte count)
++	   -> return pointer to equal element.  */
++	clrjl	%r4,%r6,.Lslow_index_found
++	/* Zero-index < loaded byte count
++	   -> former str-part was last str-part
++	   -> return null */
++	clrjl	%r6,%r0,.Lslow_end_null
++	/* All elements are zero (=no match) -> proceed with next str-part.  */
++
++	vlr	%v17,%v19	/* Load first part of accept (no zero).  */
++	algfr	%r1,%r0		/* Add loaded byte count to current len.  */
++
++.Lslow_loop_str:
++	vl	%v16,0(%r1,%r2)	/* Load search-string */
++	lghi	%r0,16		/* Loaded byte count is 16.  */
++	vzero	%v21		/* Zero out global mask.  */
++	lghi	%r5,0		/* Set current len of accept to zero.  */
++	vfenezb	%v18,%v16,%v16	/* Find zero in current string-part.  */
++	lghi	%r8,0		/* There is no zero in first accept-part.  */
++	vlgvb	%r6,%v18,7	/* Load byte index of zero or 16 if no zero.  */
++	clije	%r6,0,.Lslow_end_null /* If first element is zero
++					  (end of string) -> return null.  */
++
++.Lslow_loop_acc:
++	vfaeb	%v22,%v16,%v17,4 /* Create matching-mask (1 in mask ->
++				    Character matches any accepted character in
++				    this accept-string-part) IN=0, RT=1.  */
++	vlgvb	%r4,%v22,0	/* Get result of first element.  */
++	/* First element is equal to any accepted characters
++	   (all other parts of accept cannot lead to a match before this one)
++	   -> current len is pointing to first element
++	   -> return found  */
++	clijh	%r4,0,.Lslow_end_found
++	vo	%v21,%v21,%v22	/* Global-mask = global-|matching-mask.  */
++	/* Proceed with next acc until end of acc is reached.  */
++
++
++.Lslow_next_acc:
++	clijh	%r8,0,.Lslow_next_str /* There was a zero in the last acc-part
++					  -> add index to current_len and
++					     end.  */
++	vlbb	%v17,16(%r5,%r3),6 /* Load next accept part.  */
++	aghi	%r5,16		/* Increment current len of accept-string.  */
++	lcbb	%r9,0(%r5,%r3),6 /* Get loaded byte count of accept-string.  */
++	jo	.Lslow_next_acc_onbb /* Jump away ifaccept-string is
++					 on block-boundary.  */
++.Lslow_next_acc_notonbb:
++	vistrbs	%v17,%v17	/* Fill with zeros after first zero.  */
++	jo	.Lslow_loop_acc /* No zero found -> no preparation needed.  */
++
++.Lslow_next_acc_prepare_zero:
++	/* Zero in accept-part: fill zeros with first-accept-character.  */
++	vlgvb	%r8,%v17,0	/* Load first element of acc-part.  */
++	clije	%r8,0,.Lslow_next_str /* Proceed with next string-part,
++					  if first char in this part of accept
++					  is a zero.  */
++	/* r8>0 -> zero found in this acc-part.  */
++	vrepb	%v18,%v17,0	/* Replicate first char accross all chars.  */
++	vceqb	%v22,%v20,%v17	/* Create a mask (v22) of null chars
++				   by comparing with 0 (v20).  */
++	vsel	%v17,%v18,%v17,%v22 /* Replace null chars with first char.  */
++	j	.Lslow_loop_acc /* Accept part is prepared -> process.  */
++
++.Lslow_next_acc_onbb:
++	vfenezb	%v18,%v17,%v17	/* Find zero in loaded bytes of accept part.  */
++	vlgvb	%r8,%v18,7	/* Load byte index of zero.  */
++	clrjl	%r8,%r9,.Lslow_next_acc_notonbb /* Found a zero in loaded bytes
++						    -> Prepare vreg.  */
++	vl	%v17,0(%r5,%r3)	/* Load over boundary ...  */
++	lghi	%r8,0		/* r8=0 -> no zero in this part of acc,
++				   check for zero is in jump-target.  */
++	j	.Lslow_next_acc_notonbb /* ... and search for zero in
++					    fully loaded vreg again.  */
++
++.Lslow_end_null:
++	lghi	%r1,0		/* Return null if no character is equal.  */
++	j	.Lslow_end
++
++.Lslow_loop_found:
++	vlgvb	%r4,%v18,7	/* Load byte index of found element.  */
++	vlgvb	%r0,%v16,0(%r4)	/* Get found element.  */
++	clije	%r0,0,.Lslow_end_null /* Return null if no acc-char found.  */
++
++.Lslow_index_found:
++	algfr	%r1,%r4		/* Add found index of char to current len.  */
++.Lslow_end_found:
++	la	%r1,0(%r1,%r2)	/* And return pointer to first equal char.  */
++
++.Lslow_end:
++	/* Restore registers.  */
++	vlgvg	%r6,%v30,0
++	vlgvg	%r8,%v31,0
++	vlgvg	%r9,%v31,1
++	lgr	%r2,%r1
++	br	%r14
++END(__strpbrk_vx)
++#endif /* HAVE_S390_VX_ASM_SUPPORT && !defined NOT_IN_libc */
+diff --git a/sysdeps/s390/multiarch/strpbrk.c b/sysdeps/s390/multiarch/strpbrk.c
+new file mode 100644
+index 0000000..afcb633
+--- /dev/null
++++ b/sysdeps/s390/multiarch/strpbrk.c
+@@ -0,0 +1,27 @@
++/* Multiple versions of strpbrk.
++   Copyright (C) 2015 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#if defined HAVE_S390_VX_ASM_SUPPORT && !defined NOT_IN_libc
++# include <string.h>
++# include <ifunc-resolve.h>
++
++s390_vx_libc_ifunc2 (__strpbrk, strpbrk)
++
++#else
++# include <string/strpbrk.c>
++#endif /* !(defined HAVE_S390_VX_ASM_SUPPORT && !defined NOT_IN_libc) */
+diff --git a/sysdeps/s390/multiarch/wcspbrk-c.c b/sysdeps/s390/multiarch/wcspbrk-c.c
+new file mode 100644
+index 0000000..3a27e60
+--- /dev/null
++++ b/sysdeps/s390/multiarch/wcspbrk-c.c
+@@ -0,0 +1,31 @@
++/* Default wcspbrk implementation for S/390.
++   Copyright (C) 2015 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#if defined HAVE_S390_VX_ASM_SUPPORT && !defined NOT_IN_libc
++# define WCSPBRK  __wcspbrk_c
++
++# include <wchar.h>
++extern __typeof (wcspbrk) __wcspbrk_c;
++# ifdef SHARED
++#  undef libc_hidden_def
++#  define libc_hidden_def(name)				\
++  __hidden_ver1 (__wcspbrk_c, __GI_wcspbrk, __wcspbrk_c);
++# endif /* SHARED */
++
++# include <wcsmbs/wcspbrk.c>
++#endif /* HAVE_S390_VX_ASM_SUPPORT && !defined NOT_IN_libc */
+diff --git a/sysdeps/s390/multiarch/wcspbrk-vx.S b/sysdeps/s390/multiarch/wcspbrk-vx.S
+new file mode 100644
+index 0000000..e6eaf95
+--- /dev/null
++++ b/sysdeps/s390/multiarch/wcspbrk-vx.S
+@@ -0,0 +1,315 @@
++/* Vector optimized 32/64 bit S/390 version of wcspbrk.
++   Copyright (C) 2015 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#if defined HAVE_S390_VX_ASM_SUPPORT && !defined NOT_IN_libc
++
++# include "sysdep.h"
++# include "asm-syntax.h"
++
++	.text
++
++/* wchar_t *wcspbrk (const wchar_t *s, const wchar_t * accept)
++   The  wcspbrk()  function locates the first occurrence in the string s
++   of any of the characters in the string accept and returns a pointer
++   to that character or NULL if not found.
++
++   This method checks the length of accept string. If it fits entirely
++   in one vector register, a fast algorithm is used, which does not need
++   to check multiple parts of accept-string. Otherwise a slower full
++   check of accept-string is used.
++
++   register overview:
++   r3:  pointer to start of accept-string
++   r2:  pointer to start of search-string
++   r0:  loaded byte count of vlbb search-string (32bit unsigned)
++   r4:  found byte index (32bit unsigned)
++   r1:  current return len (64bit unsigned)
++   v16: search-string
++   v17: accept-string
++   v18: temp-vreg
++
++   ONLY FOR SLOW:
++   v19: first accept-string
++   v20: zero for preparing acc-vector
++   v21: global mask; 1 indicates a match between
++	search-string-vreg and any accept-character
++   v22: current mask; 1 indicates a match between
++	search-string-vreg and any accept-character in current acc-vreg
++   v24: one for result-checking of former string-part
++   v30, v31: for re-/storing registers r6, r8, r9
++   r5:  current len of accept-string
++   r6:  zero-index in search-string or 16 if no zero
++	or min(zero-index, loaded byte count)
++   r8:  >0, if former accept-string-part contains a zero,
++	otherwise =0;
++   r9:  loaded byte count of vlbb accept-string
++*/
++ENTRY(__wcspbrk_vx)
++	.machine "z13"
++	.machinemode "zarch_nohighgprs"
++
++	tmll	%r2,3		/* Test if s is 4-byte aligned?  */
++	jne	.Lfallback	/* And use common-code variant if not.  */
++
++	/*
++	  Check if accept-string fits in one vreg:
++	  ----------------------------------------
++	*/
++	vlbb	%v17,0(%r3),6	/* Load accept.  */
++	lcbb	%r0,0(%r3),6
++	jo	.Lcheck_onbb	/* Special case if accept lays
++				   on block-boundary.  */
++
++.Lcheck_notonbb:
++	lghi	%r1,0		/* Zero out current len.  */
++	vlgvf	%r0,%v17,0	/* Get first element.  */
++	clije	%r0,0,.Lfast_end_null /* Return null if accept is empty.  */
++
++	vistrfs	%v17,%v17	/* Fill with zeros after first zero.  */
++	je	.Lfast		/* Zero found -> accept fits in one vreg.  */
++	j	.Lslow		/* No zero -> accept exceeds one vreg  */
++
++
++.Lcheck_onbb:
++	/* Accept lays on block-boundary.  */
++	nill	%r0,65532	/* Recognize only fully loaded characters.  */
++	je	.Lcheck_onbb2	/* Reload vr, if we loaded no full wchar_t.  */
++	vfenezf	%v18,%v17,%v17	/* Search zero in loaded accept bytes.  */
++	vlgvb	%r4,%v18,7	/* Get index of zero or 16 if not found.  */
++	clrjl	%r4,%r0,.Lcheck_notonbb /* Zero index < loaded bytes count ->
++					    accept fits in one vreg;
++					    Fill with zeros and proceed
++					    with FAST.  */
++.Lcheck_onbb2:
++	vl	%v17,0(%r3)	/* Load accept, which exceeds loaded bytes.  */
++	j	.Lcheck_notonbb /* Check if accept fits in one vreg.  */
++
++
++	/*
++	  Search s for accept in one vreg
++	  -------------------------------
++	*/
++.Lfast:
++	/* Complete accept-string in v17 and remaining bytes are zero.  */
++
++	vlbb	%v16,0(%r2),6	/* Load s until next 4k-byte boundary.  */
++	lcbb	%r0,0(%r2),6	/* Get bytes to 4k-byte boundary or 16.  */
++
++	vfaezfs	%v18,%v16,%v17,0 /* Find first element in v16 unequal to any
++				    in v17 or first zero element.  */
++	vlgvb	%r4,%v18,7	/* Load byte index of found element.  */
++	/* If found index is within loaded bytes, return with found
++	   element index (=equal count).  */
++	clrjl	%r4,%r0,.Lfast_loop_found2
++
++	/* Align s to 16 byte.  */
++	risbgn	%r4,%r2,60,128+63,0 /* %r3 = bits 60-63 of %r2 'and' 15.  */
++	lghi	%r1,16		/* current_len = 16.  */
++	slr	%r1,%r4		/* Compute bytes to 16bytes boundary.  */
++
++.Lfast_loop:
++	vl	%v16,0(%r1,%r2)	/* Load search-string.  */
++	vfaezfs	%v18,%v16,%v17,0 /* Find first element in v16 equal to any
++				    in v17 or first zero element.  */
++	jno	.Lfast_loop_found
++
++	vl	%v16,16(%r1,%r2)
++	vfaezfs	%v18,%v16,%v17,0
++	jno	.Lfast_loop_found16
++
++	vl	%v16,32(%r1,%r2)
++	vfaezfs	%v18,%v16,%v17,0
++	jno	.Lfast_loop_found32
++
++	vl	%v16,48(%r1,%r2)
++	vfaezfs	%v18,%v16,%v17,0
++	jno	.Lfast_loop_found48
++
++	aghi	%r1,64
++	j	.Lfast_loop	/* Loop if no element was unequal to accept
++				   and not zero.  */
++
++	/* Found equal or zero element.  */
++.Lfast_loop_found48:
++	aghi	%r1,16
++.Lfast_loop_found32:
++	aghi	%r1,16
++.Lfast_loop_found16:
++	aghi	%r1,16
++.Lfast_loop_found:
++	vlgvb	%r4,%v18,7	/* Load byte index of found element.  */
++.Lfast_loop_found2:
++	srlg	%r5,%r4,2	/* Convert byte-index to character-index.  */
++	vlgvf	%r0,%v16,0(%r5)	/* Get found element.  */
++	clije	%r0,0,.Lfast_end_null /* Return null if no accept-char found */
++	algfr	%r1,%r4		/* Add found index of char to current len.  */
++	la	%r2,0(%r1,%r2)	/* And return pointer to first equal char.  */
++	br	%r14
++
++.Lfast_end_null:
++	lghi	%r2,0		/* Return null if no character is equal.  */
++	br	%r14
++
++
++
++
++	/*
++	  Search s for accept in multiple vregs
++	  -------------------------------------
++	*/
++.Lslow:
++	/* Save registers.  */
++	vlvgg	%v30,%r6,0
++	vlvgp	%v31,%r8,%r9
++
++	/* Accept in v17 without zero */
++	vlr	%v19,%v17	/* Save first acc-part for a fast reload.  */
++	vzero	%v20		/* Zero for preparing acc-vector.  */
++	vone	%v24		/* One for checking result of former string.  */
++
++	/* Align s to 16 byte.  */
++	risbg	%r4,%r2,60,128+63,0 /* Test if s is aligned and
++				       %r4 = bits 60-63 'and' 15.  */
++	je	.Lslow_loop_str /* If s is aligned, loop aligned.  */
++	lghi	%r0,15
++	slr	%r0,%r4		/* Compute highest index to load (15-x).  */
++	vll	%v16,%r0,0(%r2) /* Load up to 16byte boundary;
++				   needs highest index, left bytes are 0.  */
++	ahi	%r0,1		/* Work with loaded byte count.  */
++	vzero	%v21		/* Zero out global mask.  */
++	lghi	%r5,0		/* Set current len of accept-string to zero.  */
++	vfenezf	%v18,%v16,%v16	/* Find zero in current string-part.  */
++	lghi	%r8,0		/* There is no zero in first accept-part.  */
++	vlgvb	%r6,%v18,7	/* Load byte index of zero or 16 if no zero.  */
++	clije	%r6,0,.Lslow_end_null /* If first element is zero
++					  (end of string) -> return null */
++	clr	%r0,%r6		/* cc==1 if loaded byte count < zero-index.  */
++	locrl	%r6,%r0		/* Load on cc==1; zero-index = lbc.  */
++	j	.Lslow_loop_acc
++
++
++	/* Process s in 16byte aligned loop.  */
++.Lslow_next_str:
++	/* Check results of former processed str-part.  */
++	vfeef	%v18,%v21,%v24	/* Find first equal match in global mask
++				   (ones in element).  */
++	vlgvb	%r4,%v18,7	/* Get index of first one (=equal)
++				   or 16 if no match.  */
++	/* Equal-index < min(zero-index, loaded byte count)
++	   -> return pointer to equal element.  */
++	clrjl	%r4,%r6,.Lslow_index_found
++	/* Zero-index < loaded byte count
++	   -> former str-part was last str-part
++	   -> return null */
++	clrjl	%r6,%r0,.Lslow_end_null
++	/* All elements are zero (=no match) -> proceed with next str-part.  */
++
++	vlr	%v17,%v19	/* Load first part of accept (no zero).  */
++	algfr	%r1,%r0		/* Add loaded byte count to current len.  */
++
++.Lslow_loop_str:
++	vl	%v16,0(%r1,%r2)	/* Load search-string */
++	lghi	%r0,16		/* Loaded byte count is 16.  */
++	vzero	%v21		/* Zero out global mask.  */
++	lghi	%r5,0		/* Set current len of accept to zero.  */
++	vfenezf	%v18,%v16,%v16	/* Find zero in current string-part.  */
++	lghi	%r8,0		/* There is no zero in first accept-part.  */
++	vlgvb	%r6,%v18,7	/* Load byte index of zero or 16 if no zero.  */
++	clije	%r6,0,.Lslow_end_null /* If first element is zero
++					  (end of string) -> return null.  */
++
++.Lslow_loop_acc:
++	vfaef	%v22,%v16,%v17,4 /* Create matching-mask (1 in mask ->
++				    Character matches any accepted character in
++				    this accept-string-part) IN=0, RT=1.  */
++	vlgvf	%r4,%v22,0	/* Get result of first element.  */
++	/* First element is equal to any accepted characters
++	   (all other parts of accept cannot lead to a match before this one)
++	   -> current len is pointing to first element
++	   -> return found */
++	clijh	%r4,0,.Lslow_end_found
++	vo	%v21,%v21,%v22	/* Global-mask = global-|matching-mask.  */
++	/* Proceed with next acc until end of acc is reached.  */
++
++
++.Lslow_next_acc:
++	clijh	%r8,0,.Lslow_next_str /* There was a zero in the last acc-part
++					  -> add index to current len and
++					     end.  */
++	vlbb	%v17,16(%r5,%r3),6 /* Load next accept part.  */
++	aghi	%r5,16		/* Increment current len of accept-string.  */
++	lcbb	%r9,0(%r5,%r3),6 /* Get loaded byte count of accept-string.  */
++	jo	.Lslow_next_acc_onbb /* Jump away ifaccept-string is
++					 on block-boundary.  */
++.Lslow_next_acc_notonbb:
++	vistrfs	%v17,%v17	/* Fill with zeros after first zero.  */
++	jo	.Lslow_loop_acc /* No zero found -> no preparation needed.  */
++
++.Lslow_next_acc_prepare_zero:
++	/* Zero in accept-part: fill zeros with first-accept-character.  */
++	vlgvf	%r8,%v17,0	/* Load first element of acc-part.  */
++	clije	%r8,0,.Lslow_next_str /* Proceed with next string-part,
++					  If first char in this part of accept
++					  is a zero.  */
++	/* r8>0 -> zero found in this acc-part.  */
++	vrepf	%v18,%v17,0	/* Replicate first char accross all chars.  */
++	vceqf	%v22,%v20,%v17	/* Create a mask (v22) of null chars
++				   by comparing with 0 (v20).  */
++	vsel	%v17,%v18,%v17,%v22 /* Replace null chars with first char.  */
++	j	.Lslow_loop_acc /* Accept part is prepared -> process.  */
++
++.Lslow_next_acc_onbb:
++	nill	%r9,65532	/* Recognize only fully loaded characters.  */
++	je	.Lslow_next_acc_onbb2 /* Reload vr, if no full wchar_t.  */
++	vfenezf	%v18,%v17,%v17	/* Find zero in loaded bytes of accept part.  */
++	vlgvb	%r8,%v18,7	/* Load byte index of zero.  */
++	clrjl	%r8,%r9,.Lslow_next_acc_notonbb /* Found a zero in loaded bytes
++						    -> Prepare vreg.  */
++.Lslow_next_acc_onbb2:
++	vl	%v17,0(%r5,%r3)	/* Load over boundary ...  */
++	lghi	%r8,0		/* r8=0 -> no zero in this part of acc,
++				   check for zero is in jump-target.  */
++	j	.Lslow_next_acc_notonbb /* ... and search for zero in
++					    fully loaded vreg again.  */
++
++.Lslow_end_null:
++	lghi	%r1,0		/* Return null if no character is equal.  */
++	j	.Lslow_end
++
++.Lslow_loop_found:
++	vlgvb	%r4,%v18,7	/* Load byte index of found element.  */
++	srlg	%r5,%r4,2	/* Convert byte-index to character-index.  */
++	vlgvf	%r0,%v16,0(%r5)	/* Get found element.  */
++	clije	%r0,0,.Lslow_end_null /* Return null if no acc-char found.  */
++
++.Lslow_index_found:
++	algfr	%r1,%r4		/* Add found index of char to current len.  */
++.Lslow_end_found:
++	la	%r1,0(%r1,%r2)	/* And return pointer to first equal char.  */
++
++.Lslow_end:
++	/* Restore registers.  */
++	vlgvg	%r6,%v30,0
++	vlgvg	%r8,%v31,0
++	vlgvg	%r9,%v31,1
++	lgr	%r2,%r1
++	br	%r14
++.Lfallback:
++	jg	__wcspbrk_c
++END(__wcspbrk_vx)
++#endif /* HAVE_S390_VX_ASM_SUPPORT && !defined NOT_IN_libc */
+diff --git a/sysdeps/s390/multiarch/wcspbrk.c b/sysdeps/s390/multiarch/wcspbrk.c
+new file mode 100644
+index 0000000..1a0ef9c
+--- /dev/null
++++ b/sysdeps/s390/multiarch/wcspbrk.c
+@@ -0,0 +1,27 @@
++/* Multiple versions of wcspbrk.
++   Copyright (C) 2015 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#if defined HAVE_S390_VX_ASM_SUPPORT && !defined NOT_IN_libc
++# include <wchar.h>
++# include <ifunc-resolve.h>
++
++s390_vx_libc_ifunc2 (__wcspbrk, wcspbrk)
++
++#else
++# include <wcsmbs/wcspbrk.c>
++#endif /* !(defined HAVE_S390_VX_ASM_SUPPORT && !defined NOT_IN_libc) */
+diff --git a/wcsmbs/Makefile b/wcsmbs/Makefile
+index 843a23c..7ecff8b 100644
+--- a/wcsmbs/Makefile
++++ b/wcsmbs/Makefile
+@@ -42,7 +42,7 @@ routines := wcscat wcschr wcscmp wcscpy wcscspn wcsdup wcslen wcsncat \
+ 	    mbrtoc16 c16rtomb
+ 
+ strop-tests :=  wcscmp wcsncmp wmemcmp wcslen wcschr wcsrchr wcscpy wcsnlen \
+-		wcpcpy wcsncpy wcpncpy wcscat wcsncat wcschrnul wcsspn
++		wcpcpy wcsncpy wcpncpy wcscat wcsncat wcschrnul wcsspn wcspbrk
+ tests := tst-wcstof wcsmbs-tst1 tst-wcsnlen tst-btowc tst-mbrtowc \
+ 	 tst-wcrtomb tst-wcpncpy tst-mbsrtowcs tst-wchar-h tst-mbrtowc2 \
+ 	 tst-c16c32-1 wcsatcliff $(addprefix test-,$(strop-tests))
+diff --git a/wcsmbs/test-wcspbrk-ifunc.c b/wcsmbs/test-wcspbrk-ifunc.c
+new file mode 100644
+index 0000000..af389b6
+--- /dev/null
++++ b/wcsmbs/test-wcspbrk-ifunc.c
+@@ -0,0 +1,20 @@
++/* Test and measure IFUNC implementations of wcspbrk function.
++   Copyright (C) 2015 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#define TEST_IFUNC 1
++#include "test-wcspbrk.c"
+diff --git a/wcsmbs/test-wcspbrk.c b/wcsmbs/test-wcspbrk.c
+new file mode 100644
+index 0000000..98e44e5
+--- /dev/null
++++ b/wcsmbs/test-wcspbrk.c
+@@ -0,0 +1,20 @@
++/* Test wcspbrk functions.
++   Copyright (C) 2015 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#define WIDE 1
++#include "../string/test-strpbrk.c"
+diff --git a/wcsmbs/wcspbrk.c b/wcsmbs/wcspbrk.c
+index a39f148..b769a38 100644
+--- a/wcsmbs/wcspbrk.c
++++ b/wcsmbs/wcspbrk.c
+@@ -18,6 +18,9 @@
+ 
+ #include <wchar.h>
+ 
++#ifdef WCSPBRK
++# define wcspbrk WCSPBRK
++#endif
+ 
+ /* Find the first occurrence in WCS of any wide-character in ACCEPT.  */
+ wchar_t *
+-- 
+2.3.0
+

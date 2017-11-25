@@ -1,0 +1,207 @@
+From aea6303d6c5fa276ea10887dab968ee0f3c79328 Mon Sep 17 00:00:00 2001
+From: Stefan Liebler <stli@linux.vnet.ibm.com>
+Date: Thu, 8 Oct 2015 10:30:00 +0200
+Subject: [PATCH 04/30] S390: Fix handling of DXC-byte in FPC-register.
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+upstream-commit-id: 5d96fe8c0dc3450bafe6c2aae2dabc76819df3e0
+https://www.sourceware.org/ml/libc-alpha/2015-07/msg00074.html
+
+On s390, the DXC(data-exception-code)-byte in FPC(floating-point-control)-
+register contains a code of the last occured exception.
+If bits 6 and 7 of DXC-byte are zero, the bits 0-5 correspond to the
+ieee-exception flag bits.
+The current implementation always uses these bits as ieee-exception flag bits.
+fetestexcept() reports any exception after the first usage of a
+vector-instruction in a process, because it raises an "vector instruction
+exception" with DXC-code 0xFE.
+This patch fixes the handling of the DXC-byte. The DXC-Byte is only handled
+if bits 6 and 7 are zero.
+
+The #define _FPU_RESERVED is extended by the DXC-Byte.
+Otherwise the tests math/test-fpucw-static and math/test-fpucw-ieee-static
+fails, because DXC-Byte contains the vector instruction exception when reaching
+main(). This exception was triggered by strrchr() call in __init_misc().
+__init_misc() is called after __setfpucw () in __libc_init_first().
+
+The field __ieee_instruction_pointer in struct fenv_t is renamed to __unused
+because it is a relict from commit "Remove PTRACE_PEEKUSER"
+(87b9b50f0d4b92248905e95a06a13c513dc45e59) and isn´t used anymore.
+
+ChangeLog:
+
+	[BZ #18610]
+	* sysdeps/s390/fpu/bits/fenv.h (fenv_t): Rename
+	__ieee_instruction_pointer to __unused.
+	* sysdeps/s390/fpu/fesetenv.c (__fesetenv): Remove usage of
+	__ieee_instruction_pointer.
+	* sysdeps/s390/fpu/fclrexcpt.c (feclearexcept): Fix dxc-field handling.
+	* sysdeps/s390/fpu/fgetexcptflg.c (fegetexceptflag): Likewise.
+	* sysdeps/s390/fpu/fsetexcptflg.c (fesetexceptflag): Likewise.
+	* sysdeps/s390/fpu/ftestexcept.c (fetestexcept): Likewise.
+	* sysdeps/s390/fpu/fpu_control.h (_FPU_RESERVED):
+	Mark dxc-field as reserved.
+---
+ sysdeps/s390/fpu/bits/fenv.h    |  6 ++++--
+ sysdeps/s390/fpu/fclrexcpt.c    |  7 ++++++-
+ sysdeps/s390/fpu/fesetenv.c     |  2 --
+ sysdeps/s390/fpu/fgetexcptflg.c |  8 +++++++-
+ sysdeps/s390/fpu/fpu_control.h  |  6 +++---
+ sysdeps/s390/fpu/fsetexcptflg.c | 15 ++++++++++++---
+ sysdeps/s390/fpu/ftestexcept.c  | 12 +++++++++---
+ 7 files changed, 41 insertions(+), 15 deletions(-)
+
+diff --git a/sysdeps/s390/fpu/bits/fenv.h b/sysdeps/s390/fpu/bits/fenv.h
+index 88c6f7a..93177dc 100644
+--- a/sysdeps/s390/fpu/bits/fenv.h
++++ b/sysdeps/s390/fpu/bits/fenv.h
+@@ -77,8 +77,10 @@ typedef unsigned int fexcept_t; /* size of fpc */
+ typedef struct
+ {
+   fexcept_t __fpc;
+-  void *__ieee_instruction_pointer;
+-  /* failing instruction for ieee exceptions */
++  void *__unused;
++  /* The field __unused (formerly __ieee_instruction_pointer) is a relict from
++     commit "Remove PTRACE_PEEKUSER" (87b9b50f0d4b92248905e95a06a13c513dc45e59)
++     and isn´t used anymore.  */
+ } fenv_t;
+ 
+ /* If the default argument is used we use this value.  */
+diff --git a/sysdeps/s390/fpu/fclrexcpt.c b/sysdeps/s390/fpu/fclrexcpt.c
+index 3e8d9bb..c2647ba 100644
+--- a/sysdeps/s390/fpu/fclrexcpt.c
++++ b/sysdeps/s390/fpu/fclrexcpt.c
+@@ -29,7 +29,12 @@ feclearexcept (int excepts)
+ 
+   _FPU_GETCW (temp);
+   /* Clear the relevant bits.  */
+-  temp &= ~((excepts << FPC_DXC_SHIFT)|(excepts << FPC_FLAGS_SHIFT));
++  temp &= ~(excepts << FPC_FLAGS_SHIFT);
++  if ((temp & FPC_NOT_FPU_EXCEPTION) == 0)
++    /* Bits 6, 7 of dxc-byte are zero,
++       thus bits 0-5 of dxc-byte correspond to the flag-bits.
++       Clear the relevant bits in flags and dxc-field.  */
++    temp &= ~(excepts << FPC_DXC_SHIFT);
+ 
+   /* Put the new data in effect.  */
+   _FPU_SETCW (temp);
+diff --git a/sysdeps/s390/fpu/fesetenv.c b/sysdeps/s390/fpu/fesetenv.c
+index b534205..a4a0bb5 100644
+--- a/sysdeps/s390/fpu/fesetenv.c
++++ b/sysdeps/s390/fpu/fesetenv.c
+@@ -32,12 +32,10 @@ fesetenv (const fenv_t *envp)
+   if (envp == FE_DFL_ENV)
+     {
+       env.__fpc = _FPU_DEFAULT;
+-      env.__ieee_instruction_pointer = 0;
+     }
+   else if (envp == FE_NOMASK_ENV)
+     {
+       env.__fpc = FPC_EXCEPTION_MASK;
+-      env.__ieee_instruction_pointer = 0;
+     }
+   else
+     env = (*envp);
+diff --git a/sysdeps/s390/fpu/fgetexcptflg.c b/sysdeps/s390/fpu/fgetexcptflg.c
+index 7457678..7941904 100644
+--- a/sysdeps/s390/fpu/fgetexcptflg.c
++++ b/sysdeps/s390/fpu/fgetexcptflg.c
+@@ -27,7 +27,13 @@ fegetexceptflag (fexcept_t *flagp, int excepts)
+ 
+   /* Get the current exceptions.  */
+   _FPU_GETCW (temp);
+-  newexcepts = (excepts << FPC_DXC_SHIFT) | (excepts << FPC_FLAGS_SHIFT);
++  newexcepts = excepts << FPC_FLAGS_SHIFT;
++  if ((temp & FPC_NOT_FPU_EXCEPTION) == 0)
++    /* Bits 6, 7 of dxc-byte are zero,
++       thus bits 0-5 of dxc-byte correspond to the flag-bits.
++       Evaluate flags and last dxc-exception-code.  */
++    newexcepts |= excepts << FPC_DXC_SHIFT;
++
+   *flagp = temp & newexcepts;
+ 
+   /* Success.  */
+diff --git a/sysdeps/s390/fpu/fpu_control.h b/sysdeps/s390/fpu/fpu_control.h
+index af81bc2..dba904d 100644
+--- a/sysdeps/s390/fpu/fpu_control.h
++++ b/sysdeps/s390/fpu/fpu_control.h
+@@ -19,12 +19,12 @@
+    <http://www.gnu.org/licenses/>.  */
+ 
+ #ifndef _FPU_CONTROL_H
+-# define _FPU_CONTROL_H
++#define _FPU_CONTROL_H
+ 
+-# include <features.h>
++#include <features.h>
+ 
+ /* These bits are reserved are not changed.  */
+-# define _FPU_RESERVED 0x070700FC
++#define _FPU_RESERVED 0x0707FFFC
+ 
+ /* The fdlibm code requires no interrupts for exceptions.  Don't
+    change the rounding mode, it would break long double I/O!  */
+diff --git a/sysdeps/s390/fpu/fsetexcptflg.c b/sysdeps/s390/fpu/fsetexcptflg.c
+index aada675..85c68e8 100644
+--- a/sysdeps/s390/fpu/fsetexcptflg.c
++++ b/sysdeps/s390/fpu/fsetexcptflg.c
+@@ -24,16 +24,25 @@
+ int
+ fesetexceptflag (const fexcept_t *flagp, int excepts)
+ {
+-  fexcept_t temp,newexcepts;
++  fexcept_t temp, newexcepts;
+ 
+   /* Get the current environment.  We have to do this since we cannot
+      separately set the status word.  */
+   _FPU_GETCW (temp);
+   /* Install the new exception bits in the Accrued Exception Byte.  */
+   excepts = excepts & FE_ALL_EXCEPT;
+-  newexcepts = (excepts << FPC_DXC_SHIFT) | (excepts << FPC_FLAGS_SHIFT);
++  newexcepts = excepts << FPC_FLAGS_SHIFT;
+   temp &= ~newexcepts;
+-  temp |= *flagp & newexcepts;
++  if ((temp & FPC_NOT_FPU_EXCEPTION) == 0)
++    /* Bits 6, 7 of dxc-byte are zero,
++       thus bits 0-5 of dxc-byte correspond to the flag-bits.
++       Clear given exceptions in dxc-field.  */
++    temp &= ~(excepts << FPC_DXC_SHIFT);
++
++  /* Integrate dxc-byte of flagp into flags. The dxc-byte of flagp contains
++     either an ieee-exception or 0 (see fegetexceptflag).  */
++  temp |= (*flagp | ((*flagp >> FPC_DXC_SHIFT) << FPC_FLAGS_SHIFT))
++    & newexcepts;
+ 
+   /* Store the new status word (along with the rest of the environment.
+      Possibly new exceptions are set but they won't get executed unless
+diff --git a/sysdeps/s390/fpu/ftestexcept.c b/sysdeps/s390/fpu/ftestexcept.c
+index 5594994..c36aefd 100644
+--- a/sysdeps/s390/fpu/ftestexcept.c
++++ b/sysdeps/s390/fpu/ftestexcept.c
+@@ -23,11 +23,17 @@
+ int
+ fetestexcept (int excepts)
+ {
+-  fexcept_t temp;
++  fexcept_t temp, res;
+ 
+   /* Get current exceptions.  */
+   _FPU_GETCW (temp);
+-  temp = (temp >> FPC_DXC_SHIFT) | (temp >> FPC_FLAGS_SHIFT);
+-  return temp & excepts & FE_ALL_EXCEPT;
++  res = temp >> FPC_FLAGS_SHIFT;
++  if ((temp & FPC_NOT_FPU_EXCEPTION) == 0)
++    /* Bits 6, 7 of dxc-byte are zero,
++       thus bits 0-5 of dxc-byte correspond to the flag-bits.
++       Evaluate flags and last dxc-exception-code.  */
++    res |= temp >> FPC_DXC_SHIFT;
++
++  return res & excepts & FE_ALL_EXCEPT;
+ }
+ libm_hidden_def (fetestexcept)
+-- 
+2.3.0
+

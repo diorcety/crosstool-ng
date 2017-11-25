@@ -1,0 +1,55 @@
+commit 96945714ec61951cc748da2b4b8a80cf02127ee9
+Author: Jeff Law <law@redhat.com>
+Date:   Thu May 23 13:28:00 2013 -0600
+
+           [BZ #14256]
+            * manual/errno.texi (ESTALE): Update to account for more than
+            just NFS file systems.
+            * sysdeps/gnu/errlist.c: Regenerated.
+
+diff --git glibc-2.17-c758a686/manual/errno.texi glibc-2.17-c758a686/manual/errno.texi
+index 2a3c004..6c9fa86 100644
+--- glibc-2.17-c758a686/manual/errno.texi
++++ glibc-2.17-c758a686/manual/errno.texi
+@@ -739,13 +739,14 @@ The user's disk quota was exceeded.
+ @end deftypevr
+ 
+ @comment errno.h
+-@comment BSD: Stale NFS file handle
++@comment BSD: Stale file handle
+ @deftypevr Macro int ESTALE
+ @comment errno 70 @c DO NOT REMOVE
+-Stale NFS file handle.  This indicates an internal confusion in the NFS
+-system which is due to file system rearrangements on the server host.
+-Repairing this condition usually requires unmounting and remounting
+-the NFS file system on the local host.
++Stale file handle.  This indicates an internal confusion in the
++file system which is due to file system rearrangements on the server host
++for NFS file systems or corruption in other file systems.
++Repairing this condition usually requires unmounting, possibly repairing
++and remounting the file system.
+ @end deftypevr
+ 
+ @comment errno.h
+diff --git glibc-2.17-c758a686/sysdeps/gnu/errlist.c glibc-2.17-c758a686/sysdeps/gnu/errlist.c
+index e3d2faf..bbd45f2 100644
+--- glibc-2.17-c758a686/sysdeps/gnu/errlist.c
++++ glibc-2.17-c758a686/sysdeps/gnu/errlist.c
+@@ -780,11 +780,12 @@ TRANS The user's disk quota was exceeded. */
+ #endif
+ #ifdef ESTALE
+ /*
+-TRANS Stale NFS file handle.  This indicates an internal confusion in the NFS
+-TRANS system which is due to file system rearrangements on the server host.
+-TRANS Repairing this condition usually requires unmounting and remounting
+-TRANS the NFS file system on the local host. */
+-    [ERR_REMAP (ESTALE)] = N_("Stale NFS file handle"),
++TRANS Stale file handle.  This indicates an internal confusion in the
++TRANS file system which is due to file system rearrangements on the server host
++TRANS for NFS file systems or corruption in other file systems.
++TRANS Repairing this condition usually requires unmounting, possibly repairing
++TRANS and remounting the file system. */
++    [ERR_REMAP (ESTALE)] = N_("Stale file handle"),
+ # if ESTALE > ERR_MAX
+ # undef ERR_MAX
+ # define ERR_MAX ESTALE

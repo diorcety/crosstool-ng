@@ -1,0 +1,29 @@
+commit 49186d21ef2d87986bccaf0a7c45c48c91b265f3
+Author: Andi Kleen <ak@linux.intel.com>
+Date:   Thu Jun 27 11:15:06 2013 -0700
+
+    Disable elision for any pthread_mutexattr_settype call
+    
+    PTHREAD_MUTEX_NORMAL requires deadlock for nesting, DEFAULT
+    does not. Since glibc uses the same value (0) disable elision
+    for any call to pthread_mutexattr_settype() with a 0 value.
+    This implies that a program can disable elision by doing
+    pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_NORMAL)
+    
+    Based on a original proposal by Rich Felker.
+Index: glibc-2.17-c758a686/nptl/pthread_mutexattr_settype.c
+===================================================================
+--- glibc-2.17-c758a686.orig/nptl/pthread_mutexattr_settype.c
++++ glibc-2.17-c758a686/nptl/pthread_mutexattr_settype.c
+@@ -30,6 +30,11 @@ __pthread_mutexattr_settype (attr, kind)
+   if (kind < PTHREAD_MUTEX_NORMAL || kind > PTHREAD_MUTEX_ADAPTIVE_NP)
+     return EINVAL;
+ 
++  /* Cannot distinguish between DEFAULT and NORMAL. So any settype
++     call disables elision for now.  */
++  if (kind == PTHREAD_MUTEX_DEFAULT)
++    kind |= PTHREAD_MUTEX_NO_ELISION_NP;
++
+   iattr = (struct pthread_mutexattr *) attr;
+ 
+   iattr->mutexkind = (iattr->mutexkind & PTHREAD_MUTEXATTR_FLAG_BITS) | kind;

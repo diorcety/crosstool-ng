@@ -1,0 +1,238 @@
+Description: Makes trimming work consistently across arenas.
+Author: Mel Gorman <mgorman@suse.de>
+Origin: git://sourceware.org/git/glibc.git
+Bug-RHEL: N/A
+Bug-Fedora: N/A
+Bug-Upstream: #17195
+Upstream status: committed
+
+Part of commit 8a35c3fe122d49ba76dff815b3537affb5a50b45 is also included
+to allow the use of ALIGN_UP within malloc/arena.c.
+
+commit c26efef9798914e208329c0e8c3c73bb1135d9e3
+Author: Mel Gorman <mgorman@suse.de>
+Date:   Thu Apr 2 12:14:14 2015 +0530
+
+    malloc: Consistently apply trim_threshold to all heaps [BZ #17195]
+    
+    Trimming heaps is a balance between saving memory and the system overhead
+    required to update page tables and discard allocated pages. The malloc
+    option M_TRIM_THRESHOLD is a tunable that users are meant to use to decide
+    where this balance point is but it is only applied to the main arena.
+    
+    For scalability reasons, glibc malloc has per-thread heaps but these are
+    shrunk with madvise() if there is one page free at the top of the heap.
+    In some circumstances this can lead to high system overhead if a thread
+    has a control flow like
+    
+        while (data_to_process) {
+            buf = malloc(large_size);
+            do_stuff();
+            free(buf);
+        }
+    
+    For a large size, the free() will call madvise (pagetable teardown, page
+    free and TLB flush) every time followed immediately by a malloc (fault,
+    kernel page alloc, zeroing and charge accounting). The kernel overhead
+    can dominate such a workload.
+    
+    This patch allows the user to tune when madvise gets called by applying
+    the trim threshold to the per-thread heaps and using similar logic to the
+    main arena when deciding whether to shrink. Alternatively if the dynamic
+    brk/mmap threshold gets adjusted then the new values will be obeyed by
+    the per-thread heaps.
+    
+    Bug 17195 was a test case motivated by a problem encountered in scientific
+    applications written in python that performance badly due to high page fault
+    overhead. The basic operation of such a program was posted by Julian Taylor
+    https://sourceware.org/ml/libc-alpha/2015-02/msg00373.html
+    
+    With this patch applied, the overhead is eliminated. All numbers in this
+    report are in seconds and were recorded by running Julian's program 30
+    times.
+    
+    pyarray
+                                     glibc               madvise
+                                      2.21                    v2
+    System  min             1.81 (  0.00%)        0.00 (100.00%)
+    System  mean            1.93 (  0.00%)        0.02 ( 99.20%)
+    System  stddev          0.06 (  0.00%)        0.01 ( 88.99%)
+    System  max             2.06 (  0.00%)        0.03 ( 98.54%)
+    Elapsed min             3.26 (  0.00%)        2.37 ( 27.30%)
+    Elapsed mean            3.39 (  0.00%)        2.41 ( 28.84%)
+    Elapsed stddev          0.14 (  0.00%)        0.02 ( 82.73%)
+    Elapsed max             4.05 (  0.00%)        2.47 ( 39.01%)
+    
+                   glibc     madvise
+                    2.21          v2
+    User          141.86      142.28
+    System         57.94        0.60
+    Elapsed       102.02       72.66
+    
+    Note that almost a minutes worth of system time is eliminted and the
+    program completes 28% faster on average.
+    
+    To illustrate the problem without python this is a basic test-case for
+    the worst case scenario where every free is a madvise followed by a an alloc
+    
+    /* gcc bench-free.c -lpthread -o bench-free */
+    static int num = 1024;
+    
+    void __attribute__((noinline,noclone)) dostuff (void *p)
+    {
+    }
+    
+    void *worker (void *data)
+    {
+      int i;
+    
+      for (i = num; i--;)
+        {
+          void *m = malloc (48*4096);
+          dostuff (m);
+          free (m);
+        }
+    
+      return NULL;
+    }
+    
+    int main()
+    {
+      int i;
+      pthread_t t;
+      void *ret;
+      if (pthread_create (&t, NULL, worker, NULL))
+        exit (2);
+      if (pthread_join (t, &ret))
+        exit (3);
+      return 0;
+    }
+    
+    Before the patch, this resulted in 1024 calls to madvise. With the patch applied,
+    madvise is called twice because the default trim threshold is high enough to avoid
+    this.
+    
+    This a more complex case where there is a mix of frees. It's simply a different worker
+    function for the test case above
+    
+    void *worker (void *data)
+    {
+      int i;
+      int j = 0;
+      void *free_index[num];
+    
+      for (i = num; i--;)
+        {
+          void *m = malloc ((i % 58) *4096);
+          dostuff (m);
+          if (i % 2 == 0) {
+            free (m);
+          } else {
+            free_index[j++] = m;
+          }
+        }
+      for (; j >= 0; j--)
+        {
+          free(free_index[j]);
+        }
+    
+      return NULL;
+    }
+    
+    glibc 2.21 calls malloc 90305 times but with the patch applied, it's
+    called 13438. Increasing the trim threshold will decrease the number of
+    times it's called with the option of eliminating the overhead.
+    
+    ebizzy is meant to generate a workload resembling common web application
+    server workloads. It is threaded with a large working set that at its core
+    has an allocation, do_stuff, free loop that also hits this case. The primary
+    metric of the benchmark is records processed per second. This is running on
+    my desktop which is a single socket machine with an I7-4770 and 8 cores.
+    Each thread count was run for 30 seconds. It was only run once as the
+    performance difference is so high that the variation is insignificant.
+    
+                    glibc 2.21              patch
+    threads 1            10230              44114
+    threads 2            19153              84925
+    threads 4            34295             134569
+    threads 8            51007             183387
+    
+    Note that the saving happens to be a concidence as the size allocated
+    by ebizzy was less than the default threshold. If a different number of
+    chunks were specified then it may also be necessary to tune the threshold
+    to compensate
+    
+    This is roughly quadrupling the performance of this benchmark. The difference in
+    system CPU usage illustrates why.
+    
+    ebizzy running 1 thread with glibc 2.21
+    10230 records/s 306904
+    real 30.00 s
+    user  7.47 s
+    sys  22.49 s
+    
+    22.49 seconds was spent in the kernel for a workload runinng 30 seconds. With the
+    patch applied
+    
+    ebizzy running 1 thread with patch applied
+    44126 records/s 1323792
+    real 30.00 s
+    user 29.97 s
+    sys   0.00 s
+    
+    system CPU usage was zero with the patch applied. strace shows that glibc
+    running this workload calls madvise approximately 9000 times a second. With
+    the patch applied madvise was called twice during the workload (or 0.06
+    times per second).
+    
+    2015-02-10  Mel Gorman  <mgorman@suse.de>
+    
+      [BZ #17195]
+      * malloc/arena.c (free): Apply trim threshold to per-thread heaps
+        as well as the main arena.
+
+Index: glibc-2.17-c758a686/malloc/arena.c
+===================================================================
+--- glibc-2.17-c758a686.orig/malloc/arena.c
++++ glibc-2.17-c758a686/malloc/arena.c
+@@ -661,7 +661,7 @@ heap_trim(heap_info *heap, size_t pad)
+   unsigned long pagesz = GLRO(dl_pagesize);
+   mchunkptr top_chunk = top(ar_ptr), p, bck, fwd;
+   heap_info *prev_heap;
+-  long new_size, top_size, extra, prev_size, misalign;
++  long new_size, top_size, top_area, extra, prev_size, misalign;
+ 
+   /* Can this heap go away completely? */
+   while(top_chunk == chunk_at_offset(heap, sizeof(*heap))) {
+@@ -695,9 +695,16 @@ heap_trim(heap_info *heap, size_t pad)
+     set_head(top_chunk, new_size | PREV_INUSE);
+     /*check_chunk(ar_ptr, top_chunk);*/
+   }
++
++  /* Uses similar logic for per-thread arenas as the main arena with systrim
++     by preserving the top pad and at least a page.  */
+   top_size = chunksize(top_chunk);
+-  extra = (top_size - pad - MINSIZE - 1) & ~(pagesz - 1);
+-  if(extra < (long)pagesz)
++  top_area = top_size - MINSIZE - 1;
++  if (top_area <= pad)
++    return 0;
++
++  extra = ALIGN_DOWN(top_area - pad, pagesz);
++  if ((unsigned long) extra < mp_.trim_threshold)
+     return 0;
+   /* Try to shrink. */
+   if(shrink_heap(heap, extra) != 0)
+Index: glibc-2.17-c758a686/malloc/malloc.c
+===================================================================
+--- glibc-2.17-c758a686.orig/malloc/malloc.c
++++ glibc-2.17-c758a686/malloc/malloc.c
+@@ -236,6 +236,8 @@
+ /* For va_arg, va_start, va_end.  */
+ #include <stdarg.h>
+ 
++/* For ALIGN_UP.  */
++#include <libc-internal.h>
+ 
+ /*
+   Debugging:

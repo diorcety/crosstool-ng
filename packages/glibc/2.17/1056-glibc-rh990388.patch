@@ -1,0 +1,191 @@
+diff -pruN glibc-2.17-c758a686/include/libc-internal.h glibc-2.17-c758a686/include/libc-internal.h
+--- glibc-2.17-c758a686/include/libc-internal.h	2012-12-25 08:32:13.000000000 +0530
++++ glibc-2.17-c758a686/include/libc-internal.h	2013-07-30 11:26:37.947943710 +0530
+@@ -50,4 +50,24 @@ extern void __init_misc (int, char **, c
+ /* Cast an integer or a pointer VAL to integer with proper type.  */
+ # define cast_to_integer(val) ((__integer_if_pointer_type (val)) (val))
+ 
++/* Align a value by rounding down to closest size.
++   e.g. Using size of 4096, we get this behavior:
++	{4095, 4096, 4097} = {0, 4096, 4096}.  */
++#define ALIGN_DOWN(base, size)	((base) & -((__typeof__ (base)) (size)))
++
++/* Align a value by rounding up to closest size.
++   e.g. Using size of 4096, we get this behavior:
++	{4095, 4096, 4097} = {4096, 4096, 8192}.
++
++  Note: The size argument has side effects (expanded multiple times).  */
++#define ALIGN_UP(base, size)	ALIGN_DOWN ((base) + (size) - 1, (size))
++
++/* Same as ALIGN_DOWN(), but automatically casts when base is a pointer.  */
++#define PTR_ALIGN_DOWN(base, size) \
++  ((__typeof__ (base)) ALIGN_DOWN ((uintptr_t) (base), (size)))
++
++/* Same as ALIGN_UP(), but automatically casts when base is a pointer.  */
++#define PTR_ALIGN_UP(base, size) \
++  ((__typeof__ (base)) ALIGN_UP ((uintptr_t) (base), (size)))
++
+ #endif /* _LIBC_INTERNAL  */
+diff -pruN glibc-2.17-c758a686/nptl/allocatestack.c glibc-2.17-c758a686/nptl/allocatestack.c
+--- glibc-2.17-c758a686/nptl/allocatestack.c	2012-12-25 08:32:13.000000000 +0530
++++ glibc-2.17-c758a686/nptl/allocatestack.c	2013-07-30 11:26:38.012943707 +0530
+@@ -355,7 +355,7 @@ allocate_stack (const struct pthread_att
+ 
+   /* Get the stack size from the attribute if it is set.  Otherwise we
+      use the default we determined at start time.  */
+-  size = attr->stacksize ?: __default_stacksize;
++  size = attr->stacksize ?: __default_pthread_attr.stacksize;
+ 
+   /* Get memory for the stack.  */
+   if (__builtin_expect (attr->flags & ATTR_FLAG_STACKADDR, 0))
+diff -pruN glibc-2.17-c758a686/nptl/nptl-init.c glibc-2.17-c758a686/nptl/nptl-init.c
+--- glibc-2.17-c758a686/nptl/nptl-init.c	2013-07-30 11:45:16.902904743 +0530
++++ glibc-2.17-c758a686/nptl/nptl-init.c	2013-07-30 11:44:59.538905347 +0530
+@@ -423,7 +423,8 @@ __pthread_initialize_minimal_internal (v
+ 
+   /* Round the resource limit up to page size.  */
+   limit.rlim_cur = (limit.rlim_cur + pagesz - 1) & -pagesz;
+-  __default_stacksize = limit.rlim_cur;
++  __default_pthread_attr.stacksize = limit.rlim_cur;
++  __default_pthread_attr.guardsize = GLRO (dl_pagesize);
+ 
+ #ifdef SHARED
+   /* Transfer the old value from the dynamic linker's internal location.  */
+diff -pruN glibc-2.17-c758a686/nptl/pthread_attr_getstacksize.c glibc-2.17-c758a686/nptl/pthread_attr_getstacksize.c
+--- glibc-2.17-c758a686/nptl/pthread_attr_getstacksize.c	2012-12-25 08:32:13.000000000 +0530
++++ glibc-2.17-c758a686/nptl/pthread_attr_getstacksize.c	2013-07-30 11:26:39.650943650 +0530
+@@ -32,7 +32,7 @@ __pthread_attr_getstacksize (attr, stack
+ 
+   /* If the user has not set a stack size we return what the system
+      will use as the default.  */
+-  *stacksize = iattr->stacksize ?: __default_stacksize;
++  *stacksize = iattr->stacksize ?: __default_pthread_attr.stacksize;
+ 
+   return 0;
+ }
+diff -pruN glibc-2.17-c758a686/nptl/pthread_barrier_init.c glibc-2.17-c758a686/nptl/pthread_barrier_init.c
+--- glibc-2.17-c758a686/nptl/pthread_barrier_init.c	2012-12-25 08:32:13.000000000 +0530
++++ glibc-2.17-c758a686/nptl/pthread_barrier_init.c	2013-07-30 11:26:40.206943631 +0530
+@@ -22,7 +22,7 @@
+ #include <kernel-features.h>
+ 
+ 
+-static const struct pthread_barrierattr default_attr =
++static const struct pthread_barrierattr default_barrierattr =
+   {
+     .pshared = PTHREAD_PROCESS_PRIVATE
+   };
+@@ -42,7 +42,7 @@ pthread_barrier_init (barrier, attr, cou
+   const struct pthread_barrierattr *iattr
+     = (attr != NULL
+        ? iattr = (struct pthread_barrierattr *) attr
+-       : &default_attr);
++       : &default_barrierattr);
+ 
+   if (iattr->pshared != PTHREAD_PROCESS_PRIVATE
+       && __builtin_expect (iattr->pshared != PTHREAD_PROCESS_SHARED, 0))
+diff -pruN glibc-2.17-c758a686/nptl/pthread_create.c glibc-2.17-c758a686/nptl/pthread_create.c
+--- glibc-2.17-c758a686/nptl/pthread_create.c	2012-12-25 08:32:13.000000000 +0530
++++ glibc-2.17-c758a686/nptl/pthread_create.c	2013-07-30 11:26:40.774943611 +0530
+@@ -432,15 +432,6 @@ start_thread (void *arg)
+ }
+ 
+ 
+-/* Default thread attributes for the case when the user does not
+-   provide any.  */
+-static const struct pthread_attr default_attr =
+-  {
+-    /* Just some value > 0 which gets rounded to the nearest page size.  */
+-    .guardsize = 1,
+-  };
+-
+-
+ int
+ __pthread_create_2_1 (newthread, attr, start_routine, arg)
+      pthread_t *newthread;
+@@ -454,7 +445,7 @@ __pthread_create_2_1 (newthread, attr, s
+   if (iattr == NULL)
+     /* Is this the best idea?  On NUMA machines this could mean
+        accessing far-away memory.  */
+-    iattr = &default_attr;
++    iattr = &__default_pthread_attr;
+ 
+   struct pthread *pd = NULL;
+   int err = ALLOCATE_STACK (iattr, &pd);
+diff -pruN glibc-2.17-c758a686/nptl/pthread_mutex_init.c glibc-2.17-c758a686/nptl/pthread_mutex_init.c
+--- glibc-2.17-c758a686/nptl/pthread_mutex_init.c	2012-12-25 08:32:13.000000000 +0530
++++ glibc-2.17-c758a686/nptl/pthread_mutex_init.c	2013-07-30 11:26:42.079943566 +0530
+@@ -24,7 +24,7 @@
+ 
+ #include <stap-probe.h>
+ 
+-static const struct pthread_mutexattr default_attr =
++static const struct pthread_mutexattr default_mutexattr =
+   {
+     /* Default is a normal mutex, not shared between processes.  */
+     .mutexkind = PTHREAD_MUTEX_NORMAL
+@@ -45,7 +45,8 @@ __pthread_mutex_init (mutex, mutexattr)
+ 
+   assert (sizeof (pthread_mutex_t) <= __SIZEOF_PTHREAD_MUTEX_T);
+ 
+-  imutexattr = (const struct pthread_mutexattr *) mutexattr ?: &default_attr;
++  imutexattr = ((const struct pthread_mutexattr *) mutexattr
++		?: &default_mutexattr);
+ 
+   /* Sanity checks.  */
+   switch (__builtin_expect (imutexattr->mutexkind
+diff -pruN glibc-2.17-c758a686/nptl/pthreadP.h glibc-2.17-c758a686/nptl/pthreadP.h
+--- glibc-2.17-c758a686/nptl/pthreadP.h	2012-12-25 08:32:13.000000000 +0530
++++ glibc-2.17-c758a686/nptl/pthreadP.h	2013-07-30 11:26:43.095943530 +0530
+@@ -147,8 +147,8 @@ enum
+ /* Internal variables.  */
+ 
+ 
+-/* Default stack size.  */
+-extern size_t __default_stacksize attribute_hidden;
++/* Default pthread attributes.  */
++extern struct pthread_attr __default_pthread_attr attribute_hidden;
+ 
+ /* Size and alignment of static TLS block.  */
+ extern size_t __static_tls_size attribute_hidden;
+diff -pruN glibc-2.17-c758a686/nptl/pthread_rwlock_init.c glibc-2.17-c758a686/nptl/pthread_rwlock_init.c
+--- glibc-2.17-c758a686/nptl/pthread_rwlock_init.c	2012-12-25 08:32:13.000000000 +0530
++++ glibc-2.17-c758a686/nptl/pthread_rwlock_init.c	2013-07-30 11:26:43.745943508 +0530
+@@ -21,7 +21,7 @@
+ #include <kernel-features.h>
+ 
+ 
+-static const struct pthread_rwlockattr default_attr =
++static const struct pthread_rwlockattr default_rwlockattr =
+   {
+     .lockkind = PTHREAD_RWLOCK_DEFAULT_NP,
+     .pshared = PTHREAD_PROCESS_PRIVATE
+@@ -35,7 +35,7 @@ __pthread_rwlock_init (rwlock, attr)
+ {
+   const struct pthread_rwlockattr *iattr;
+ 
+-  iattr = ((const struct pthread_rwlockattr *) attr) ?: &default_attr;
++  iattr = ((const struct pthread_rwlockattr *) attr) ?: &default_rwlockattr;
+ 
+   memset (rwlock, '\0', sizeof (*rwlock));
+ 
+diff -pruN glibc-2.17-c758a686/nptl/vars.c glibc-2.17-c758a686/nptl/vars.c
+--- glibc-2.17-c758a686/nptl/vars.c	2012-12-25 08:32:13.000000000 +0530
++++ glibc-2.17-c758a686/nptl/vars.c	2013-07-30 11:26:43.763943507 +0530
+@@ -20,13 +20,9 @@
+ #include <tls.h>
+ #include <unistd.h>
+ 
+-/* Default stack size.  */
+-size_t __default_stacksize attribute_hidden
+-#ifdef SHARED
+-;
+-#else
+-  = PTHREAD_STACK_MIN;
+-#endif
++/* Default thread attributes for the case when the user does not
++   provide any.  */
++struct pthread_attr __default_pthread_attr attribute_hidden;
+ 
+ /* Flag whether the machine is SMP or not.  */
+ int __is_smp attribute_hidden;

@@ -1,0 +1,261 @@
+From 071e47e7ff9e64db97d887d8fc12a3aa9433685b Mon Sep 17 00:00:00 2001
+From: Rajalakshmi Srinivasaraghavan <raji@linux.vnet.ibm.com>
+Date: Wed, 30 Jul 2014 10:48:41 -0500
+Subject: [PATCH] PowerPC: multiarch ceil/ceilf for PowerPC64
+
+commit 96770f12b081984f872c84c2b8067e8ed574c25a
+Author: Adhemerval Zanella <azanella@linux.vnet.ibm.com>
+Date:   Fri Dec 13 15:02:32 2013 -0500
+---
+ sysdeps/powerpc/powerpc64/fpu/multiarch/Makefile   |  3 +-
+ .../powerpc64/fpu/multiarch/s_ceil-power5+.S       | 31 +++++++++++++++++
+ .../powerpc/powerpc64/fpu/multiarch/s_ceil-ppc64.S | 31 +++++++++++++++++
+ sysdeps/powerpc/powerpc64/fpu/multiarch/s_ceil.c   | 40 ++++++++++++++++++++++
+ .../powerpc64/fpu/multiarch/s_ceilf-power5+.S      | 26 ++++++++++++++
+ .../powerpc64/fpu/multiarch/s_ceilf-ppc64.S        | 26 ++++++++++++++
+ sysdeps/powerpc/powerpc64/fpu/multiarch/s_ceilf.c  | 32 +++++++++++++++++
+ 7 files changed, 188 insertions(+), 1 deletion(-)
+ create mode 100644 sysdeps/powerpc/powerpc64/fpu/multiarch/s_ceil-power5+.S
+ create mode 100644 sysdeps/powerpc/powerpc64/fpu/multiarch/s_ceil-ppc64.S
+ create mode 100644 sysdeps/powerpc/powerpc64/fpu/multiarch/s_ceil.c
+ create mode 100644 sysdeps/powerpc/powerpc64/fpu/multiarch/s_ceilf-power5+.S
+ create mode 100644 sysdeps/powerpc/powerpc64/fpu/multiarch/s_ceilf-ppc64.S
+ create mode 100644 sysdeps/powerpc/powerpc64/fpu/multiarch/s_ceilf.c
+
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/Makefile glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/Makefile
+index a4636b0..9eb69af 100644
+--- glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/Makefile
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/Makefile
+@@ -4,5 +4,6 @@ sysdep_routines += s_isnan-power7 s_isnan-power6x s_isnan-power6 \
+ 
+ libm-sysdep_routines += s_isnan-power7 s_isnan-power6x s_isnan-power6 \
+                        s_isnan-power5 s_isnan-ppc64 s_llround-power6x \
+-                       s_llround-power5+ s_llround-ppc64
++                       s_llround-power5+ s_llround-ppc64 s_ceil-power5+ \
++                       s_ceil-ppc64 s_ceilf-power5+ s_ceilf-ppc64
+ endif
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_ceil-power5+.S glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_ceil-power5+.S
+new file mode 100644
+index 0000000..cc1316f
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_ceil-power5+.S
+@@ -0,0 +1,31 @@
++/* ceil function.  PowerPC64/power5+ version.
++   Copyright (C) 2013-2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <sysdep.h>
++#include <math_ldbl_opt.h>
++
++#undef weak_alias
++#define weak_alias(a,b)
++#undef strong_alias
++#define strong_alias(a,b)
++#undef compat_symbol
++#define compat_symbol(a,b,c,d)
++
++#define __ceil __ceil_power5plus
++
++#include <sysdeps/powerpc/powerpc64/power5+/fpu/s_ceil.S>
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_ceil-ppc64.S glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_ceil-ppc64.S
+new file mode 100644
+index 0000000..52e5a56
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_ceil-ppc64.S
+@@ -0,0 +1,31 @@
++/* ceil function.  PowerPC64 default version.
++   Copyright (C) 2013-2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <sysdep.h>
++#include <math_ldbl_opt.h>
++
++#undef weak_alias
++#define weak_alias(a,b)
++#undef strong_alias
++#define strong_alias(a,b)
++#undef compat_symbol
++#define compat_symbol(a,b,c,d)
++
++#define __ceil __ceil_ppc64
++
++#include <sysdeps/powerpc/powerpc64/fpu/s_ceil.S>
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_ceil.c glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_ceil.c
+new file mode 100644
+index 0000000..f53df5b
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_ceil.c
+@@ -0,0 +1,40 @@
++/* Multiple versions of ceil.
++   Copyright (C) 2013-2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <math.h>
++#include <math_ldbl_opt.h>
++#include <shlib-compat.h>
++#include "init-arch.h"
++
++extern __typeof (__ceil) __ceil_ppc64 attribute_hidden;
++extern __typeof (__ceil) __ceil_power5plus attribute_hidden;
++
++libc_ifunc (__ceil,
++	    (hwcap & PPC_FEATURE_POWER5_PLUS)
++	    ? __ceil_power5plus
++            : __ceil_ppc64);
++
++weak_alias (__ceil, ceil)
++
++#ifdef NO_LONG_DOUBLE
++strong_alias (__ceil, __ceill)
++weak_alias (__ceil, ceill)
++#endif
++#if LONG_DOUBLE_COMPAT(libm, GLIBC_2_0)
++compat_symbol (libm, __ceil, ceill, GLIBC_2_0);
++#endif
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_ceilf-power5+.S glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_ceilf-power5+.S
+new file mode 100644
+index 0000000..21261e2
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_ceilf-power5+.S
+@@ -0,0 +1,26 @@
++/* ceilf function.  PowerPC64/power5+ version.
++   Copyright (C) 2013-2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <sysdep.h>
++
++#undef weak_alias
++#define weak_alias(a,b)
++
++#define __ceilf __ceilf_power5plus
++
++#include <sysdeps/powerpc/powerpc64/power5+/fpu/s_ceilf.S>
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_ceilf-ppc64.S glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_ceilf-ppc64.S
+new file mode 100644
+index 0000000..8cd869b
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_ceilf-ppc64.S
+@@ -0,0 +1,26 @@
++/* ceilf function.  PowerPC64 default version.
++   Copyright (C) 2013-2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <sysdep.h>
++
++#undef weak_alias
++#define weak_alias(a,b)
++
++#define __ceilf __ceilf_ppc64
++
++#include <sysdeps/powerpc/powerpc64/fpu/s_ceilf.S>
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_ceilf.c glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_ceilf.c
+new file mode 100644
+index 0000000..d951990
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_ceilf.c
+@@ -0,0 +1,32 @@
++/* Multiple versions of ceilf.
++   Copyright (C) 2013-2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <math.h>
++#include <math_ldbl_opt.h>
++#include <shlib-compat.h>
++#include "init-arch.h"
++
++extern __typeof (__ceilf) __ceilf_ppc64 attribute_hidden;
++extern __typeof (__ceilf) __ceilf_power5plus attribute_hidden;
++
++libc_ifunc (__ceilf,
++	    (hwcap & PPC_FEATURE_POWER5_PLUS)
++	    ? __ceilf_power5plus
++            : __ceilf_ppc64);
++
++weak_alias (__ceilf, ceilf)
+-- 
+1.8.3.1
+

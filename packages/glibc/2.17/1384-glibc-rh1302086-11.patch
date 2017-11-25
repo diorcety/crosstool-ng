@@ -1,0 +1,61 @@
+commit 656b84c2ef525e3b69802c9057c5897e327b0332
+Author: Wilco Dijkstra <wdijkstr@arm.com>
+Date:   Thu Aug 7 16:29:55 2014 +0000
+
+    This patch adds new function libc_feholdsetround_noex_aarch64_ctx, enabling
+    further optimization. libc_feholdsetround_aarch64_ctx now only needs to
+    read the FPCR in the typical case, avoiding a redundant FPSR read.
+    Performance results show a good improvement (5-10% on sin()) on cores with
+    expensive FPCR/FPSR instructions.
+
+diff --git a/ports/sysdeps/aarch64/fpu/math_private.h b/ports/sysdeps/aarch64/fpu/math_private.h
+index 023c9d0..b13c030 100644
+--- a/ports/sysdeps/aarch64/fpu/math_private.h
++++ b/ports/sysdeps/aarch64/fpu/math_private.h
+@@ -228,12 +228,9 @@ static __always_inline void
+ libc_feholdsetround_aarch64_ctx (struct rm_ctx *ctx, int r)
+ {
+   fpu_control_t fpcr;
+-  fpu_fpsr_t fpsr;
+   int round;
+ 
+   _FPU_GETCW (fpcr);
+-  _FPU_GETFPSR (fpsr);
+-  ctx->env.__fpsr = fpsr;
+ 
+   /* Check whether rounding modes are different.  */
+   round = (fpcr ^ r) & _FPU_FPCR_RM_MASK;
+@@ -264,6 +261,33 @@ libc_feresetround_aarch64_ctx (struct rm_ctx *ctx)
+ #define libc_feresetroundl_ctx		libc_feresetround_aarch64_ctx
+ 
+ static __always_inline void
++libc_feholdsetround_noex_aarch64_ctx (struct rm_ctx *ctx, int r)
++{
++  fpu_control_t fpcr;
++  fpu_fpsr_t fpsr;
++  int round;
++
++  _FPU_GETCW (fpcr);
++  _FPU_GETFPSR (fpsr);
++  ctx->env.__fpsr = fpsr;
++
++  /* Check whether rounding modes are different.  */
++  round = (fpcr ^ r) & _FPU_FPCR_RM_MASK;
++  ctx->updated_status = round != 0;
++
++  /* Set the rounding mode if changed.  */
++  if (__glibc_unlikely (round != 0))
++    {
++      ctx->env.__fpcr = fpcr;
++      _FPU_SETCW (fpcr ^ round);
++    }
++}
++
++#define libc_feholdsetround_noex_ctx	libc_feholdsetround_noex_aarch64_ctx
++#define libc_feholdsetround_noexf_ctx	libc_feholdsetround_noex_aarch64_ctx
++#define libc_feholdsetround_noexl_ctx	libc_feholdsetround_noex_aarch64_ctx
++
++static __always_inline void
+ libc_feresetround_noex_aarch64_ctx (struct rm_ctx *ctx)
+ {
+   /* Restore the rounding mode if updated.  */

@@ -1,0 +1,61 @@
+Allows testing of AVX512 changes in a chroot (normally as root)
+without build issues.
+
+commit d7e06450b9d730d7b62ba52f611585810fa902df
+Author: Carlos O'Donell <carlos@redhat.com>
+Date:   Tue Jul 16 17:55:43 2013 -0400
+
+    BZ #15711: Avoid circular dependency for syscall.h
+    
+    The generated header is compiled with `-ffreestanding' to avoid any
+    circular dependencies against the installed implementation headers.
+    Such a dependency would require the implementation header to be
+    installed before the generated header could be built (See bug 15711).
+    In current practice the generated header dependencies do not include
+    any of the implementation headers removed by the use of `-ffreestanding'.
+    
+    ---
+    
+    2013-07-15  Carlos O'Donell  <carlos@redhat.com>
+    
+        [BZ #15711]
+        * sysdeps/unix/sysv/linux/Makefile ($(objpfx)bits/syscall%h):
+        Avoid system header dependency with -ffreestanding.
+        ($(objpfx)bits/syscall%d): Likewise.
+
+diff --git a/sysdeps/unix/sysv/linux/Makefile b/sysdeps/unix/sysv/linux/Makefile
+index f580635..94916a2 100644
+--- a/sysdeps/unix/sysv/linux/Makefile
++++ b/sysdeps/unix/sysv/linux/Makefile
+@@ -50,6 +50,13 @@ tests += tst-clone
+ # be the condition for those options to use in a C #if condition.
+ # abi-includes may be defined to a list of headers to include
+ # in the generated header, if the default does not suffice.
++#
++# The generated header is compiled with `-ffreestanding' to avoid any
++# circular dependencies against the installed implementation headers.
++# Such a dependency would require the implementation header to be
++# installed before the generated header could be built (See bug 15711).
++# In current practice the generated header dependencies do not include
++# any of the implementation headers removed by the use of `-ffreestanding'.
+ 
+ $(objpfx)bits/syscall%h $(objpfx)bits/syscall%d: ../sysdeps/unix/sysv/linux/sys/syscall.h
+ 	$(make-target-directory)
+@@ -64,7 +71,7 @@ $(objpfx)bits/syscall%h $(objpfx)bits/syscall%d: ../sysdeps/unix/sysv/linux/sys/
+ 	 echo ''; \
+ 	 $(if $(abi-variants), \
+ 	 $(foreach v,$(abi-variants),\
+-	 $(CC) -E -MD -MP -MF $(@:.h=.d)-t$(v) -MT '$(@:.d=.h) $(@:.h=.d)' \
++	 $(CC) -ffreestanding -E -MD -MP -MF $(@:.h=.d)-t$(v) -MT '$(@:.d=.h) $(@:.h=.d)' \
+ 	       -x c $(sysincludes) $< $(abi-$(v)-options) \
+ 	       -D_LIBC -dM | \
+ 	 sed -n 's@^#define __NR_\([^ ]*\) .*$$@#define SYS_\1 __NR_\1@p' | \
+@@ -75,7 +82,7 @@ $(objpfx)bits/syscall%h $(objpfx)bits/syscall%d: ../sysdeps/unix/sysv/linux/sys/
+ 	 $(if $(abi-$(v)-condition),echo '#endif';) \
+ 	 rm -f $(@:.d=.h).new$(v); \
+ 	 ), \
+-	 $(CC) -E -MD -MP -MF $(@:.h=.d)-t$(v) -MT '$(@:.d=.h) $(@:.h=.d)' \
++	 $(CC) -ffreestanding -E -MD -MP -MF $(@:.h=.d)-t$(v) -MT '$(@:.d=.h) $(@:.h=.d)' \
+ 	       -x c $(sysincludes) $< \
+ 	       -D_LIBC -dM | \
+ 	 sed -n 's@^#define __NR_\([^ ]*\) .*$$@#define SYS_\1 __NR_\1@p' | \

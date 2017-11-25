@@ -1,0 +1,154 @@
+commit a10178bda190a62e7e3f56773f55f23cf06848a7
+Author: Siddhesh Poyarekar <siddhesh@redhat.com>
+Date:   Thu Nov 20 12:03:11 2014 +0530
+
+    Remove IN_LIB
+    
+    Replace with IS_IN and IS_IN_LIB macros instead.  This change results
+    in a change in generated code, because it fixes a subtle bug.  The bug
+    was introduced when systemtap probes were added to lowlevellock.h,
+    which resulted in stap-probe.h being included in a number of places.
+    stap-probe.h always defines IN_LIB, which breaks a check in errno.h
+    and netdb.h since they rely on that macro to decide whether to
+    implement an internal version of a declaration or an external one.
+    
+    The components that see a code change due to this are:
+    
+    iconv_prog
+    libmemusage.so
+    libpcprofile.so
+    libSegFault.so
+    libutil.so.1
+    locale
+    localedef
+    nscd
+    
+    All other built components (i.e. libc, libpthread, etc.) remain
+    unchanged by this on x86_64.
+    
+    	* elf/Makefile (CPPFLAGS-.os): Remove IN_LIB.
+    	* elf/rtld-Rules (rtld-CPPFLAGS): Likewise.
+    	* extra-lib.mk (CPPFLAGS-$(lib)): Likewise.
+    	* include/libc-symbols.h (IS_IN_LIB): New macro.
+    	* include/errno.h: Use IS_IN_LIB instead of IN_LIB.
+    	* include/netdb.h: Likewise.
+    	* include/stap-probe.h: Remove all uses of IN_LIB.
+
+Index: glibc-2.17-c758a686/elf/Makefile
+===================================================================
+--- glibc-2.17-c758a686.orig/elf/Makefile
++++ glibc-2.17-c758a686/elf/Makefile
+@@ -443,7 +443,7 @@ CFLAGS-cache.c = $(SYSCONF-FLAGS)
+ CFLAGS-rtld.c = $(SYSCONF-FLAGS)
+ 
+ CPPFLAGS-.os += $(if $(filter $(@F),$(patsubst %,%.os,$(all-rtld-routines))),\
+-		     -DNOT_IN_libc=1 -DIS_IN_rtld=1 -DIN_LIB=rtld)
++		     -DNOT_IN_libc=1 -DIS_IN_rtld=1)
+ 
+ # Disable any optimization which might result in function calls during early
+ # dynamic loader startup. We disable -ftree-loop-distribute-patterns which
+Index: glibc-2.17-c758a686/elf/rtld-Rules
+===================================================================
+--- glibc-2.17-c758a686.orig/elf/rtld-Rules
++++ glibc-2.17-c758a686/elf/rtld-Rules
+@@ -134,6 +134,6 @@ lib := rtld
+ include $(patsubst %,$(..)cppflags-iterator.mk,$(cpp-srcs-left))
+ 
+ # This here is the whole point of all the shenanigans.
+-rtld-CPPFLAGS := -DNOT_IN_libc=1 -DIS_IN_rtld=1 -DIN_LIB=rtld
++rtld-CPPFLAGS := -DNOT_IN_libc=1 -DIS_IN_rtld=1
+ 
+ endif
+Index: glibc-2.17-c758a686/extra-lib.mk
+===================================================================
+--- glibc-2.17-c758a686.orig/extra-lib.mk
++++ glibc-2.17-c758a686/extra-lib.mk
+@@ -101,4 +101,4 @@ ifneq (,$(cpp-srcs-left))
+ include $(patsubst %,$(..)cppflags-iterator.mk,$(cpp-srcs-left))
+ endif
+ 
+-CPPFLAGS-$(lib) := -DNOT_IN_libc=1 -DIS_IN_$(lib)=1 -DIN_LIB=$(lib)
++CPPFLAGS-$(lib) := -DNOT_IN_libc=1 -DIS_IN_$(lib)=1
+Index: glibc-2.17-c758a686/include/errno.h
+===================================================================
+--- glibc-2.17-c758a686.orig/include/errno.h
++++ glibc-2.17-c758a686/include/errno.h
+@@ -17,7 +17,7 @@
+ #  define errno rtld_errno
+ extern int rtld_errno attribute_hidden;
+ 
+-# elif !defined NOT_IN_libc || defined IN_LIB
++# elif !defined NOT_IN_libc || IS_IN_LIB
+ 
+ #  include <tls.h>
+ 
+@@ -29,7 +29,7 @@ extern int rtld_errno attribute_hidden;
+ #  endif
+ extern __thread int errno attribute_tls_model_ie;
+ 
+-# endif	/* !NOT_IN_libc || IN_LIB */
++# endif	/* !NOT_IN_libc || IS_IN_LIB */
+ 
+ # define __set_errno(val) (errno = (val))
+ 
+Index: glibc-2.17-c758a686/include/libc-symbols.h
+===================================================================
+--- glibc-2.17-c758a686.orig/include/libc-symbols.h
++++ glibc-2.17-c758a686/include/libc-symbols.h
+@@ -23,6 +23,11 @@
+ #define IN_MODULE PASTE_NAME (MODULE_, MODULE_NAME)
+ #define IS_IN(lib) (IN_MODULE == MODULE_##lib)
+ 
++/* Returns true if the current module is a versioned library.  Versioned
++   library names culled from shlib-versions files are assigned a MODULE_*
++   value lower than MODULE_LIBS_BEGIN.  */
++#define IS_IN_LIB (IN_MODULE > MODULE_LIBS_BEGIN)
++
+ #define PASTE_NAME(a,b)      PASTE_NAME1 (a,b)
+ #define PASTE_NAME1(a,b)     a##b
+ 
+Index: glibc-2.17-c758a686/include/netdb.h
+===================================================================
+--- glibc-2.17-c758a686.orig/include/netdb.h
++++ glibc-2.17-c758a686/include/netdb.h
+@@ -3,7 +3,7 @@
+ 
+ #ifndef _ISOMAC
+ /* Macros for accessing h_errno from inside libc.  */
+-# if !defined NOT_IN_libc || defined IN_LIB
++# if !defined NOT_IN_libc || IS_IN_LIB
+ #  undef  h_errno
+ #  ifdef _LIBC_REENTRANT
+ #   include <tls.h>
+@@ -16,7 +16,7 @@ extern __thread int h_errno attribute_tl
+ #  else
+ extern int h_errno;
+ #  endif	/* _LIBC_REENTRANT */
+-# endif /* !NOT_IN_libc || IN_LIB */
++# endif /* !NOT_IN_libc || IS_IN_LIB */
+ # define __set_h_errno(x) (h_errno = (x))
+ 
+ libc_hidden_proto (hstrerror)
+Index: glibc-2.17-c758a686/include/stap-probe.h
+===================================================================
+--- glibc-2.17-c758a686.orig/include/stap-probe.h
++++ glibc-2.17-c758a686/include/stap-probe.h
+@@ -32,18 +32,6 @@
+    STAP_PROBEn (provider, name, arg1, ..., argn).  For "provider" we paste
+    in MODULE_NAME (libc, libpthread, etc.) automagically.  */
+ 
+-# ifndef NOT_IN_libc
+-#  define IN_LIB	libc
+-# elif !defined IN_LIB
+-/* This is intentionally defined with extra unquoted commas in it so
+-   that macro substitution will bomb out when it is used.  We don't
+-   just use #error here, so that this header can be included by
+-   other headers that use LIBC_PROBE inside their own macros.  We
+-   only want such headers to fail to compile if those macros are
+-   actually used in a context where IN_LIB has not been defined.  */
+-#  define IN_LIB	,,,missing -DIN_LIB=... -- not extra-lib.mk?,,,
+-# endif
+-
+ # define LIBC_PROBE(name, n, ...)	\
+   LIBC_PROBE_1 (MODULE_NAME, name, n, ## __VA_ARGS__)
+ 

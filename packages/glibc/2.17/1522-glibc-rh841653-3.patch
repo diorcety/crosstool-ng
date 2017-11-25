@@ -1,0 +1,541 @@
+commit e8c659d74e011346785355eeef03b7fb6f533c61
+Author: Andi Kleen <ak@linux.intel.com>
+Date:   Sat Dec 22 01:03:04 2012 -0800
+
+    Add elision to pthread_mutex_{try,timed,un}lock
+    
+    Add elision paths to the basic mutex locks.
+    
+    The normal path has a check for RTM and upgrades the lock
+    to RTM when available. Trylocks cannot automatically upgrade,
+    so they check for elision every time.
+    
+    We use a 4 byte value in the mutex to store the lock
+    elision adaptation state. This is separate from the adaptive
+    spin state and uses a separate field.
+    
+    Condition variables currently do not support elision.
+    
+    Recursive mutexes and condition variables may be supported at some point,
+    but are not in the current implementation. Also "trylock" will
+    not automatically enable elision unless some other lock call
+    has been already called on the lock.
+    
+    This version does not use IFUNC, so it means every lock has one
+    additional check for elision. Benchmarking showed the overhead
+    to be negligible.
+Index: glibc-2.17-c758a686/nptl/pthreadP.h
+===================================================================
+--- glibc-2.17-c758a686.orig/nptl/pthreadP.h
++++ glibc-2.17-c758a686/nptl/pthreadP.h
+@@ -110,8 +110,10 @@ enum
+ 
+ #define PTHREAD_MUTEX_TYPE(m) \
+   ((m)->__data.__kind & 127)
++/* Don't include NO_ELISION, as that type is always the same
++   as the underlying lock type.  */
+ #define PTHREAD_MUTEX_TYPE_ELISION(m) \
+-  ((m)->__data.__kind & (127|PTHREAD_MUTEX_ELISION_FLAGS_NP))
++  ((m)->__data.__kind & (127|PTHREAD_MUTEX_ELISION_NP))
+ 
+ #if LLL_PRIVATE == 0 && LLL_SHARED == 128
+ # define PTHREAD_MUTEX_PSHARED(m) \
+Index: glibc-2.17-c758a686/nptl/pthread_mutex_lock.c
+===================================================================
+--- glibc-2.17-c758a686.orig/nptl/pthread_mutex_lock.c
++++ glibc-2.17-c758a686/nptl/pthread_mutex_lock.c
+@@ -25,6 +25,14 @@
+ #include <lowlevellock.h>
+ #include <stap-probe.h>
+ 
++#ifndef lll_lock_elision
++#define lll_lock_elision(lock, try_lock, private)	({ \
++      lll_lock (lock, private); 0; })
++#endif
++
++#ifndef lll_trylock_elision
++#define lll_trylock_elision(a,t) lll_trylock(a)
++#endif
+ 
+ #ifndef LLL_MUTEX_LOCK
+ # define LLL_MUTEX_LOCK(mutex) \
+@@ -34,39 +42,60 @@
+ # define LLL_ROBUST_MUTEX_LOCK(mutex, id) \
+   lll_robust_lock ((mutex)->__data.__lock, id, \
+ 		   PTHREAD_ROBUST_MUTEX_PSHARED (mutex))
++# define LLL_MUTEX_LOCK_ELISION(mutex) \
++  lll_lock_elision ((mutex)->__data.__lock, (mutex)->__data.__elision, \
++		   PTHREAD_MUTEX_PSHARED (mutex))
++# define LLL_MUTEX_TRYLOCK_ELISION(mutex) \
++  lll_trylock_elision((mutex)->__data.__lock, (mutex)->__data.__elision, \
++		   PTHREAD_MUTEX_PSHARED (mutex))
+ #endif
+ 
++#ifndef FORCE_ELISION
++#define FORCE_ELISION(m, s)
++#endif
+ 
+ static int __pthread_mutex_lock_full (pthread_mutex_t *mutex)
+      __attribute_noinline__;
+ 
+-
+ int
+ __pthread_mutex_lock (mutex)
+      pthread_mutex_t *mutex;
+ {
+   assert (sizeof (mutex->__size) >= sizeof (mutex->__data));
+ 
+-  unsigned int type = PTHREAD_MUTEX_TYPE (mutex);
++  unsigned int type = PTHREAD_MUTEX_TYPE_ELISION (mutex);
+ 
+   LIBC_PROBE (mutex_entry, 1, mutex);
+ 
+-  if (__builtin_expect (type & ~PTHREAD_MUTEX_KIND_MASK_NP, 0))
++  if (__builtin_expect (type & ~(PTHREAD_MUTEX_KIND_MASK_NP
++				 | PTHREAD_MUTEX_ELISION_FLAGS_NP), 0))
+     return __pthread_mutex_lock_full (mutex);
+ 
+-  pid_t id = THREAD_GETMEM (THREAD_SELF, tid);
+-
+-  if (__builtin_expect (type, PTHREAD_MUTEX_TIMED_NP)
+-      == PTHREAD_MUTEX_TIMED_NP)
++  if (__builtin_expect (type == PTHREAD_MUTEX_TIMED_NP, 1))
+     {
++      FORCE_ELISION (mutex, goto elision);
+     simple:
+       /* Normal mutex.  */
+       LLL_MUTEX_LOCK (mutex);
+       assert (mutex->__data.__owner == 0);
+     }
+-  else if (__builtin_expect (type == PTHREAD_MUTEX_RECURSIVE_NP, 1))
++#ifdef HAVE_ELISION
++  else if (__builtin_expect (type == PTHREAD_MUTEX_TIMED_ELISION_NP, 1))
++    {
++  elision: __attribute__((unused))
++      /* This case can never happen on a system without elision,
++         as the mutex type initialization functions will not
++	 allow to set the elision flags.  */
++      /* Don't record owner or users for elision case. This is a
++         tail call.  */
++      return LLL_MUTEX_LOCK_ELISION (mutex);
++    }
++#endif
++  else if (__builtin_expect (PTHREAD_MUTEX_TYPE (mutex)
++			     == PTHREAD_MUTEX_RECURSIVE_NP, 1))
+     {
+       /* Recursive mutex.  */
++      pid_t id = THREAD_GETMEM (THREAD_SELF, tid);
+ 
+       /* Check whether we already hold the mutex.  */
+       if (mutex->__data.__owner == id)
+@@ -87,7 +116,8 @@ __pthread_mutex_lock (mutex)
+       assert (mutex->__data.__owner == 0);
+       mutex->__data.__count = 1;
+     }
+-  else if (__builtin_expect (type == PTHREAD_MUTEX_ADAPTIVE_NP, 1))
++  else if (__builtin_expect (PTHREAD_MUTEX_TYPE (mutex)
++			  == PTHREAD_MUTEX_ADAPTIVE_NP, 1))
+     {
+       if (! __is_smp)
+ 	goto simple;
+@@ -117,13 +147,16 @@ __pthread_mutex_lock (mutex)
+     }
+   else
+     {
+-      assert (type == PTHREAD_MUTEX_ERRORCHECK_NP);
++      pid_t id = THREAD_GETMEM (THREAD_SELF, tid);
++      assert (PTHREAD_MUTEX_TYPE (mutex) == PTHREAD_MUTEX_ERRORCHECK_NP);
+       /* Check whether we already hold the mutex.  */
+       if (__builtin_expect (mutex->__data.__owner == id, 0))
+ 	return EDEADLK;
+       goto simple;
+     }
+ 
++  pid_t id = THREAD_GETMEM (THREAD_SELF, tid);
++
+   /* Record the ownership.  */
+   mutex->__data.__owner = id;
+ #ifndef NO_INCR
+Index: glibc-2.17-c758a686/nptl/pthread_mutex_timedlock.c
+===================================================================
+--- glibc-2.17-c758a686.orig/nptl/pthread_mutex_timedlock.c
++++ glibc-2.17-c758a686/nptl/pthread_mutex_timedlock.c
+@@ -25,6 +25,17 @@
+ 
+ #include <stap-probe.h>
+ 
++#ifndef lll_timedlock_elision
++#define lll_timedlock_elision(a,dummy,b,c) lll_timedlock(a, b, c)
++#endif
++
++#ifndef lll_trylock_elision
++#define lll_trylock_elision(a,t) lll_trylock(a)
++#endif
++
++#ifndef FORCE_ELISION
++#define FORCE_ELISION(m, s)
++#endif
+ 
+ int
+ pthread_mutex_timedlock (mutex, abstime)
+@@ -40,10 +51,11 @@ pthread_mutex_timedlock (mutex, abstime)
+   /* We must not check ABSTIME here.  If the thread does not block
+      abstime must not be checked for a valid value.  */
+ 
+-  switch (__builtin_expect (PTHREAD_MUTEX_TYPE (mutex),
++  switch (__builtin_expect (PTHREAD_MUTEX_TYPE_ELISION (mutex),
+ 			    PTHREAD_MUTEX_TIMED_NP))
+     {
+       /* Recursive mutex.  */
++    case PTHREAD_MUTEX_RECURSIVE_NP|PTHREAD_MUTEX_ELISION_NP:
+     case PTHREAD_MUTEX_RECURSIVE_NP:
+       /* Check whether we already hold the mutex.  */
+       if (mutex->__data.__owner == id)
+@@ -78,12 +90,22 @@ pthread_mutex_timedlock (mutex, abstime)
+       /* FALLTHROUGH */
+ 
+     case PTHREAD_MUTEX_TIMED_NP:
++      FORCE_ELISION (mutex, goto elision);
+     simple:
+       /* Normal mutex.  */
+       result = lll_timedlock (mutex->__data.__lock, abstime,
+ 			      PTHREAD_MUTEX_PSHARED (mutex));
+       break;
+ 
++    case PTHREAD_MUTEX_TIMED_ELISION_NP:
++    elision: __attribute__((unused))
++      /* Don't record ownership */
++      return lll_timedlock_elision (mutex->__data.__lock,
++				    mutex->__data.__spins,
++				    abstime,
++				    PTHREAD_MUTEX_PSHARED (mutex));
++
++
+     case PTHREAD_MUTEX_ADAPTIVE_NP:
+       if (! __is_smp)
+ 	goto simple;
+Index: glibc-2.17-c758a686/nptl/pthread_mutex_trylock.c
+===================================================================
+--- glibc-2.17-c758a686.orig/nptl/pthread_mutex_trylock.c
++++ glibc-2.17-c758a686/nptl/pthread_mutex_trylock.c
+@@ -22,6 +22,16 @@
+ #include "pthreadP.h"
+ #include <lowlevellock.h>
+ 
++#ifndef lll_trylock_elision
++#define lll_trylock_elision(a,t) lll_trylock(a)
++#endif
++
++#ifndef DO_ELISION
++#define DO_ELISION(m) 0
++#endif
++
++/* We don't force elision in trylock, because this can lead to inconsistent
++   lock state if the lock was actually busy. */
+ 
+ int
+ __pthread_mutex_trylock (mutex)
+@@ -30,10 +40,11 @@ __pthread_mutex_trylock (mutex)
+   int oldval;
+   pid_t id = THREAD_GETMEM (THREAD_SELF, tid);
+ 
+-  switch (__builtin_expect (PTHREAD_MUTEX_TYPE (mutex),
++  switch (__builtin_expect (PTHREAD_MUTEX_TYPE_ELISION (mutex),
+ 			    PTHREAD_MUTEX_TIMED_NP))
+     {
+       /* Recursive mutex.  */
++    case PTHREAD_MUTEX_RECURSIVE_NP|PTHREAD_MUTEX_ELISION_NP:
+     case PTHREAD_MUTEX_RECURSIVE_NP:
+       /* Check whether we already hold the mutex.  */
+       if (mutex->__data.__owner == id)
+@@ -57,10 +68,20 @@ __pthread_mutex_trylock (mutex)
+ 	}
+       break;
+ 
+-    case PTHREAD_MUTEX_ERRORCHECK_NP:
++    case PTHREAD_MUTEX_TIMED_ELISION_NP:
++    elision:
++      if (lll_trylock_elision (mutex->__data.__lock,
++			       mutex->__data.__elision) != 0)
++        break;
++      /* Don't record the ownership. */
++      return 0;
++
+     case PTHREAD_MUTEX_TIMED_NP:
++      if (DO_ELISION (mutex))
++	goto elision;
++      /*FALL THROUGH*/
+     case PTHREAD_MUTEX_ADAPTIVE_NP:
+-      /* Normal mutex.  */
++    case PTHREAD_MUTEX_ERRORCHECK_NP:
+       if (lll_trylock (mutex->__data.__lock) != 0)
+ 	break;
+ 
+@@ -378,4 +399,9 @@ __pthread_mutex_trylock (mutex)
+ 
+   return EBUSY;
+ }
++
++#ifndef __pthread_mutex_trylock
++#ifndef pthread_mutex_trylock
+ strong_alias (__pthread_mutex_trylock, pthread_mutex_trylock)
++#endif
++#endif
+Index: glibc-2.17-c758a686/nptl/pthread_mutex_unlock.c
+===================================================================
+--- glibc-2.17-c758a686.orig/nptl/pthread_mutex_unlock.c
++++ glibc-2.17-c758a686/nptl/pthread_mutex_unlock.c
+@@ -23,6 +23,10 @@
+ #include <lowlevellock.h>
+ #include <stap-probe.h>
+ 
++#ifndef lll_unlock_elision
++#define lll_unlock_elision(a,b) ({ lll_unlock (a,b); 0; })
++#endif
++
+ static int
+ internal_function
+ __pthread_mutex_unlock_full (pthread_mutex_t *mutex, int decr)
+@@ -34,8 +38,9 @@ __pthread_mutex_unlock_usercnt (mutex, d
+      pthread_mutex_t *mutex;
+      int decr;
+ {
+-  int type = PTHREAD_MUTEX_TYPE (mutex);
+-  if (__builtin_expect (type & ~PTHREAD_MUTEX_KIND_MASK_NP, 0))
++  int type = PTHREAD_MUTEX_TYPE_ELISION (mutex);
++  if (__builtin_expect (type &
++		~(PTHREAD_MUTEX_KIND_MASK_NP|PTHREAD_MUTEX_ELISION_FLAGS_NP), 0))
+     return __pthread_mutex_unlock_full (mutex, decr);
+ 
+   if (__builtin_expect (type, PTHREAD_MUTEX_TIMED_NP)
+@@ -55,7 +60,14 @@ __pthread_mutex_unlock_usercnt (mutex, d
+ 
+       return 0;
+     }
+-  else if (__builtin_expect (type == PTHREAD_MUTEX_RECURSIVE_NP, 1))
++  else if (__builtin_expect (type == PTHREAD_MUTEX_TIMED_ELISION_NP, 1))
++    {
++      /* Don't reset the owner/users fields for elision.  */
++      return lll_unlock_elision (mutex->__data.__lock,
++				      PTHREAD_MUTEX_PSHARED (mutex));
++    }
++  else if (__builtin_expect (PTHREAD_MUTEX_TYPE (mutex)
++			      == PTHREAD_MUTEX_RECURSIVE_NP, 1))
+     {
+       /* Recursive mutex.  */
+       if (mutex->__data.__owner != THREAD_GETMEM (THREAD_SELF, tid))
+@@ -66,7 +78,8 @@ __pthread_mutex_unlock_usercnt (mutex, d
+ 	return 0;
+       goto normal;
+     }
+-  else if (__builtin_expect (type == PTHREAD_MUTEX_ADAPTIVE_NP, 1))
++  else if (__builtin_expect (PTHREAD_MUTEX_TYPE (mutex)
++			      == PTHREAD_MUTEX_ADAPTIVE_NP, 1))
+     goto normal;
+   else
+     {
+Index: glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/pthread_mutex_cond_lock.c
+===================================================================
+--- glibc-2.17-c758a686.orig/nptl/sysdeps/unix/sysv/linux/pthread_mutex_cond_lock.c
++++ glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/pthread_mutex_cond_lock.c
+@@ -2,8 +2,15 @@
+ 
+ #define LLL_MUTEX_LOCK(mutex) \
+   lll_cond_lock ((mutex)->__data.__lock, PTHREAD_MUTEX_PSHARED (mutex))
++
++/* Not actually elided so far. Needed? */
++#define LLL_MUTEX_LOCK_ELISION(mutex)  \
++  ({ lll_cond_lock ((mutex)->__data.__lock, PTHREAD_MUTEX_PSHARED (mutex)); 0; })
++
+ #define LLL_MUTEX_TRYLOCK(mutex) \
+   lll_cond_trylock ((mutex)->__data.__lock)
++#define LLL_MUTEX_TRYLOCK_ELISION(mutex) LLL_MUTEX_TRYLOCK(mutex)
++
+ #define LLL_ROBUST_MUTEX_LOCK(mutex, id) \
+   lll_robust_cond_lock ((mutex)->__data.__lock, id, \
+ 			PTHREAD_ROBUST_MUTEX_PSHARED (mutex))
+Index: glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/x86/bits/pthreadtypes.h
+===================================================================
+--- glibc-2.17-c758a686.orig/nptl/sysdeps/unix/sysv/linux/x86/bits/pthreadtypes.h
++++ glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/x86/bits/pthreadtypes.h
+@@ -101,14 +101,23 @@ typedef union
+        binary compatibility.  */
+     int __kind;
+ #ifdef __x86_64__
+-    int __spins;
++    short __spins;
++    short __elision;
+     __pthread_list_t __list;
+ # define __PTHREAD_MUTEX_HAVE_PREV	1
++# define __PTHREAD_MUTEX_HAVE_ELISION   1
+ #else
+     unsigned int __nusers;
+     __extension__ union
+     {
+-      int __spins;
++      struct
++      {
++        short __espins;
++	short __elision;
++# define __spins d.__espins
++# define __elision d.__elision
++# define __PTHREAD_MUTEX_HAVE_ELISION   2
++      } d;
+       __pthread_slist_t __list;
+     };
+ #endif
+Index: glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/x86/elision-trylock.c
+===================================================================
+--- glibc-2.17-c758a686.orig/nptl/sysdeps/unix/sysv/linux/x86/elision-trylock.c
++++ glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/x86/elision-trylock.c
+@@ -24,9 +24,8 @@
+ 
+ #define aconf __elision_aconf
+ 
+-/* Try to elide a futex trylock. FUTEX is the futex variable. TRY_LOCK is the
+-   adaptation counter in the mutex. UPGRADED is != 0 when this is for an
+-   automatically upgraded lock.  */
++/* Try to elide a futex trylock. FUTEX is the futex variable. ADAPT_COUNT is the
++   adaptation counter in the mutex.  */
+ 
+ int
+ __lll_trylock_elision (int *futex, short *adapt_count)
+Index: glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/x86/force-elision.h
+===================================================================
+--- /dev/null
++++ glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/x86/force-elision.h
+@@ -0,0 +1,31 @@
++/* force-elision.h: Automatic enabling of elision for mutexes
++   Copyright (C) 2013 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>. */
++
++/* Check for elision on this lock without upgrading.  */
++#define DO_ELISION(m)							\
++  (__pthread_force_elision						\
++   && (m->__data.__kind & PTHREAD_MUTEX_NO_ELISION_NP) == 0)		\
++
++/* Automatically enable elision for existing user lock kinds.  */
++#define FORCE_ELISION(m, s)						\
++  if (__pthread_force_elision						\
++      && (m->__data.__kind & PTHREAD_MUTEX_ELISION_FLAGS_NP) == 0)	\
++    {									\
++      mutex->__data.__kind |= PTHREAD_MUTEX_ELISION_NP;			\
++      s;								\
++    }
+Index: glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/x86/pthread_mutex_cond_lock.c
+===================================================================
+--- /dev/null
++++ glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/x86/pthread_mutex_cond_lock.c
+@@ -0,0 +1,21 @@
++/* Copyright (C) 2013 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>. */
++
++/* The cond lock is not actually elided yet, but we still need to handle
++   already elided locks.  */
++#include <elision-conf.h>
++#include "sysdeps/unix/sysv/linux/pthread_mutex_cond_lock.c"
+Index: glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/x86/pthread_mutex_lock.c
+===================================================================
+--- /dev/null
++++ glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/x86/pthread_mutex_lock.c
+@@ -0,0 +1,21 @@
++/* Elided version of pthread_mutex_lock.
++   Copyright (C) 2011, 2012, 2013 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>. */
++#include <elision-conf.h>
++#include "force-elision.h"
++
++#include "nptl/pthread_mutex_lock.c"
+Index: glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/x86/pthread_mutex_timedlock.c
+===================================================================
+--- /dev/null
++++ glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/x86/pthread_mutex_timedlock.c
+@@ -0,0 +1,20 @@
++/* Elided version of pthread_mutex_timedlock.
++   Copyright (C) 2011, 2012, 2013 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>. */
++#include <elision-conf.h>
++#include "force-elision.h"
++#include "nptl/pthread_mutex_timedlock.c"
+Index: glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/x86/pthread_mutex_trylock.c
+===================================================================
+--- /dev/null
++++ glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/x86/pthread_mutex_trylock.c
+@@ -0,0 +1,21 @@
++/* Elided version of pthread_mutex_trylock.
++   Copyright (C) 2011, 2012, 2013 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>. */
++#include <elision-conf.h>
++#include "force-elision.h"
++
++#include "nptl/pthread_mutex_trylock.c"

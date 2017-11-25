@@ -1,0 +1,1239 @@
+commit a38484851aa244e1d5c48405f0e26fe93fa8d3b5
+Author: Siddhesh Poyarekar <siddhesh@redhat.com>
+Date:   Thu Nov 20 21:09:43 2014 +0530
+
+    Remove IS_IN_rtld
+    
+    Replace with IS_IN (rtld).  Generated code is unchanged on
+    x86_64.
+    
+            * elf/Makefile (CPPFLAGS-.os): Remove IS_IN_rtld.
+            * elf/dl-open.c: Use IS_IN (rtld) instead if IS_IN_rtld.
+            * elf/rtld-Rules: Likewise.
+            * elf/setup-vdso.h: Likewise.
+            * include/assert.h: Likewise.
+            * include/bits/stdlib-float.h: Likewise.
+            * include/errno.h: Likewise.
+            * include/sys/stat.h: Likewise.
+            * include/unistd.h: Likewise.
+            * sysdeps/aarch64/setjmp.S: Likewise.
+            * sysdeps/alpha/setjmp.S: Likewise.
+            * sysdeps/arm/__longjmp.S: Likewise.
+            * sysdeps/arm/aeabi_unwind_cpp_pr1.c: Likewise.
+            * sysdeps/arm/setjmp.S: Likewise.
+            * sysdeps/arm/sysdep.h: Likewise.
+            * sysdeps/generic/_itoa.h: Likewise.
+            * sysdeps/generic/dl-sysdep.h: Likewise.
+            * sysdeps/generic/ldsodefs.h: Likewise.
+            * sysdeps/i386/dl-tls.h: Likewise.
+            * sysdeps/i386/setjmp.S: Likewise.
+            * sysdeps/m68k/setjmp.c: Likewise.
+            * sysdeps/mach/hurd/dl-execstack.c: Likewise.
+            * sysdeps/mach/hurd/opendir.c: Likewise.
+            * sysdeps/posix/getcwd.c: Likewise.
+            * sysdeps/posix/opendir.c: Likewise.
+            * sysdeps/posix/profil.c: Likewise.
+            * sysdeps/powerpc/dl-procinfo.h: Likewise.
+            * sysdeps/powerpc/powerpc32/fpu/__longjmp-common.S: Likewise.
+            * sysdeps/powerpc/powerpc32/fpu/setjmp-common.S: Likewise.
+            * sysdeps/powerpc/powerpc32/power4/multiarch/init-arch.h: Likewise.
+            * sysdeps/powerpc/powerpc32/setjmp-common.S: Likewise.
+            * sysdeps/powerpc/powerpc64/__longjmp-common.S: Likewise.
+            * sysdeps/powerpc/powerpc64/setjmp-common.S: Likewise.
+            * sysdeps/s390/dl-tls.h: Likewise.
+            * sysdeps/s390/s390-32/setjmp.S: Likewise.
+            * sysdeps/s390/s390-64/setjmp.S: Likewise.
+            * sysdeps/sh/sh3/setjmp.S: Likewise.
+            * sysdeps/sh/sh4/setjmp.S: Likewise.
+            * sysdeps/unix/alpha/sysdep.h: Likewise.
+            * sysdeps/unix/arm/sysdep.S: Likewise.
+            * sysdeps/unix/i386/sysdep.S: Likewise.
+            * sysdeps/unix/sysv/linux/aarch64/sysdep.h: Likewise.
+            * sysdeps/unix/sysv/linux/getcwd.c: Likewise.
+            * sysdeps/unix/sysv/linux/hppa/nptl/lowlevellock.h: Likewise.
+            * sysdeps/unix/sysv/linux/i386/lowlevellock.h: Likewise.
+            * sysdeps/unix/sysv/linux/i386/sysdep.h: Likewise.
+            * sysdeps/unix/sysv/linux/ia64/lowlevellock.h: Likewise.
+            * sysdeps/unix/sysv/linux/ia64/setjmp.S: Likewise.
+            * sysdeps/unix/sysv/linux/ia64/sysdep.h: Likewise.
+            * sysdeps/unix/sysv/linux/lowlevellock-futex.h: Likewise.
+            * sysdeps/unix/sysv/linux/m68k/bits/m68k-vdso.h: Likewise.
+            * sysdeps/unix/sysv/linux/m68k/m68k-helpers.S: Likewise.
+            * sysdeps/unix/sysv/linux/microblaze/lowlevellock.h: Likewise.
+            * sysdeps/unix/sysv/linux/powerpc/lowlevellock.h: Likewise.
+            * sysdeps/unix/sysv/linux/powerpc/powerpc32/sysdep.h: Likewise.
+            * sysdeps/unix/sysv/linux/powerpc/powerpc64/sysdep.h: Likewise.
+            * sysdeps/unix/sysv/linux/s390/lowlevellock.h: Likewise.
+            * sysdeps/unix/sysv/linux/s390/s390-32/sysdep.h: Likewise.
+            * sysdeps/unix/sysv/linux/s390/s390-64/sysdep.h: Likewise.
+            * sysdeps/unix/sysv/linux/sh/lowlevellock.h: Likewise.
+            * sysdeps/unix/sysv/linux/sh/sysdep.h: Likewise.
+            * sysdeps/unix/sysv/linux/sparc/lowlevellock.h: Likewise.
+            * sysdeps/unix/sysv/linux/sparc/sparc32/sysdep.h: Likewise.
+            * sysdeps/unix/sysv/linux/sparc/sparc64/sysdep.h: Likewise.
+            * sysdeps/unix/sysv/linux/tile/lowlevellock.h: Likewise.
+            * sysdeps/unix/sysv/linux/tile/sysdep.h: Likewise.
+            * sysdeps/unix/sysv/linux/x86_64/lowlevellock.h: Likewise.
+            * sysdeps/unix/sysv/linux/x86_64/sysdep.h: Likewise.
+            * sysdeps/unix/x86_64/sysdep.S: Likewise.
+            * sysdeps/x86_64/setjmp.S: Likewise.
+
+Index: glibc-2.17-c758a686/elf/Makefile
+===================================================================
+--- glibc-2.17-c758a686.orig/elf/Makefile
++++ glibc-2.17-c758a686/elf/Makefile
+@@ -444,7 +444,7 @@ CFLAGS-cache.c = $(SYSCONF-FLAGS)
+ CFLAGS-rtld.c = $(SYSCONF-FLAGS)
+ 
+ CPPFLAGS-.os += $(if $(filter $(@F),$(patsubst %,%.os,$(all-rtld-routines))),\
+-		     -DNOT_IN_libc=1 -DIS_IN_rtld=1)
++		     -DNOT_IN_libc=1)
+ 
+ # Disable any optimization which might result in function calls during early
+ # dynamic loader startup. We disable -ftree-loop-distribute-patterns which
+Index: glibc-2.17-c758a686/elf/dl-open.c
+===================================================================
+--- glibc-2.17-c758a686.orig/elf/dl-open.c
++++ glibc-2.17-c758a686/elf/dl-open.c
+@@ -741,7 +741,7 @@ _dl_show_scope (struct link_map *l, int
+   _dl_debug_printf ("\n");
+ }
+ 
+-#ifdef IS_IN_rtld
++#if IS_IN (rtld)
+ /* Return non-zero if ADDR lies within one of L's segments.  */
+ int
+ internal_function
+Index: glibc-2.17-c758a686/elf/rtld-Rules
+===================================================================
+--- glibc-2.17-c758a686.orig/elf/rtld-Rules
++++ glibc-2.17-c758a686/elf/rtld-Rules
+@@ -134,6 +134,6 @@ lib := rtld
+ include $(patsubst %,$(..)cppflags-iterator.mk,$(cpp-srcs-left))
+ 
+ # This here is the whole point of all the shenanigans.
+-rtld-CPPFLAGS := -DNOT_IN_libc=1 -DIS_IN_rtld=1
++rtld-CPPFLAGS := -DNOT_IN_libc=1
+ 
+ endif
+Index: glibc-2.17-c758a686/elf/setup-vdso.h
+===================================================================
+--- glibc-2.17-c758a686.orig/elf/setup-vdso.h
++++ glibc-2.17-c758a686/elf/setup-vdso.h
+@@ -101,7 +101,7 @@ setup_vdso (struct link_map *main_map __
+       /* Add the vDSO to the object list.  */
+       _dl_add_to_namespace_list (l, LM_ID_BASE);
+ 
+-# ifdef IS_IN_rtld
++# if IS_IN (rtld)
+       /* Rearrange the list so this DSO appears after rtld_map.  */
+       assert (l->l_next == NULL);
+       assert (l->l_prev == main_map);
+Index: glibc-2.17-c758a686/include/assert.h
+===================================================================
+--- glibc-2.17-c758a686.orig/include/assert.h
++++ glibc-2.17-c758a686/include/assert.h
+@@ -20,7 +20,7 @@ extern void __assert_fail_base (const ch
+ 				const char *function)
+      __THROW  __attribute__ ((__noreturn__));
+ 
+-# if !defined NOT_IN_libc || defined IS_IN_rtld
++# if !defined NOT_IN_libc || IS_IN (rtld)
+ hidden_proto (__assert_fail)
+ hidden_proto (__assert_perror_fail)
+ # endif
+Index: glibc-2.17-c758a686/include/bits/stdlib-float.h
+===================================================================
+--- glibc-2.17-c758a686.orig/include/bits/stdlib-float.h
++++ glibc-2.17-c758a686/include/bits/stdlib-float.h
+@@ -1,4 +1,4 @@
+ /* No floating-point inline functions in rtld.  */
+-#ifndef IS_IN_rtld
++#if !IS_IN (rtld)
+ # include <stdlib/bits/stdlib-float.h>
+ #endif
+Index: glibc-2.17-c758a686/include/errno.h
+===================================================================
+--- glibc-2.17-c758a686.orig/include/errno.h
++++ glibc-2.17-c758a686/include/errno.h
+@@ -4,7 +4,7 @@
+ 
+ #if defined _ERRNO_H && !defined _ISOMAC && !defined __cplusplus
+ 
+-# ifdef IS_IN_rtld
++# if IS_IN (rtld)
+ #  include <dl-sysdep.h>
+ # endif
+ 
+Index: glibc-2.17-c758a686/include/sys/stat.h
+===================================================================
+--- glibc-2.17-c758a686.orig/include/sys/stat.h
++++ glibc-2.17-c758a686/include/sys/stat.h
+@@ -12,7 +12,7 @@ extern __mode_t __umask (__mode_t __mask
+ extern int __mkdir (const char *__path, __mode_t __mode);
+ extern int __mknod (const char *__path,
+ 		    __mode_t __mode, __dev_t __dev);
+-#if !defined NOT_IN_libc || defined IS_IN_rtld
++#if !defined NOT_IN_libc || IS_IN (rtld)
+ hidden_proto (__fxstat)
+ hidden_proto (__fxstat64)
+ hidden_proto (__lxstat)
+Index: glibc-2.17-c758a686/ports/sysdeps/aarch64/setjmp.S
+===================================================================
+--- glibc-2.17-c758a686.orig/ports/sysdeps/aarch64/setjmp.S
++++ glibc-2.17-c758a686/ports/sysdeps/aarch64/setjmp.S
+@@ -58,7 +58,7 @@ ENTRY (__sigsetjmp)
+ 	mov	x2,  sp
+ 	str	x2,  [x0, #JB_SP<<3]
+ #endif
+-#ifdef IS_IN_rtld
++#if IS_IN (rtld)
+ 	/* In ld.so we never save the signal mask */
+ 	mov	w0, #0
+ 	RET
+Index: glibc-2.17-c758a686/ports/sysdeps/alpha/setjmp.S
+===================================================================
+--- glibc-2.17-c758a686.orig/ports/sysdeps/alpha/setjmp.S
++++ glibc-2.17-c758a686/ports/sysdeps/alpha/setjmp.S
+@@ -86,7 +86,7 @@ $sigsetjmp_local:
+ 	ldq	ra, 0(sp)
+ 	addq	sp, 16, sp
+ 	ret
+-#elif defined IS_IN_rtld
++#elif IS_IN (rtld)
+ 	/* In ld.so we never save the signal mask.  */
+ 	mov	0, v0
+ 	ret
+Index: glibc-2.17-c758a686/ports/sysdeps/arm/__longjmp.S
+===================================================================
+--- glibc-2.17-c758a686.orig/ports/sysdeps/arm/__longjmp.S
++++ glibc-2.17-c758a686/ports/sysdeps/arm/__longjmp.S
+@@ -52,7 +52,7 @@ ENTRY (__longjmp)
+ #endif
+ 
+ #ifdef NEED_HWCAP
+-# ifdef IS_IN_rtld
++# if IS_IN (rtld)
+ 	ldr	a2, 1f
+ 	ldr	a3, .Lrtld_local_ro
+ 0:	add	a2, pc, a2
+@@ -104,7 +104,7 @@ ENTRY (__longjmp)
+ 	DO_RET(lr)
+ 
+ #ifdef NEED_HWCAP
+-# ifdef IS_IN_rtld
++# if IS_IN (rtld)
+ 1:	.long	_GLOBAL_OFFSET_TABLE_ - 0b - 8
+ .Lrtld_local_ro:
+ 	.long	C_SYMBOL_NAME(_rtld_local_ro)(GOTOFF)
+Index: glibc-2.17-c758a686/ports/sysdeps/arm/aeabi_unwind_cpp_pr1.c
+===================================================================
+--- glibc-2.17-c758a686.orig/ports/sysdeps/arm/aeabi_unwind_cpp_pr1.c
++++ glibc-2.17-c758a686/ports/sysdeps/arm/aeabi_unwind_cpp_pr1.c
+@@ -27,7 +27,7 @@ attribute_hidden
+ void
+ __aeabi_unwind_cpp_pr0 (void)
+ {
+-#ifndef IS_IN_rtld
++#if !IS_IN (rtld)
+   abort ();
+ #endif
+ }
+@@ -36,7 +36,7 @@ attribute_hidden
+ void
+ __aeabi_unwind_cpp_pr1 (void)
+ {
+-#ifndef IS_IN_rtld
++#if !IS_IN (rtld)
+   abort ();
+ #endif
+ }
+@@ -45,7 +45,7 @@ attribute_hidden
+ void
+ __aeabi_unwind_cpp_pr2 (void)
+ {
+-#ifndef IS_IN_rtld
++#if !IS_IN (rtld)
+   abort ();
+ #endif
+ }
+Index: glibc-2.17-c758a686/ports/sysdeps/arm/setjmp.S
+===================================================================
+--- glibc-2.17-c758a686.orig/ports/sysdeps/arm/setjmp.S
++++ glibc-2.17-c758a686/ports/sysdeps/arm/setjmp.S
+@@ -35,7 +35,7 @@ ENTRY (__sigsetjmp)
+ 
+ #ifdef NEED_HWCAP
+ 	/* Check if we have a VFP unit.  */
+-# ifdef IS_IN_rtld
++# if IS_IN (rtld)
+ 	ldr	a3, 1f
+ 	ldr	a4, .Lrtld_local_ro
+ 0:	add	a3, pc, a3
+@@ -90,7 +90,7 @@ ENTRY (__sigsetjmp)
+ 	B	PLTJMP(C_SYMBOL_NAME(__sigjmp_save))
+ 
+ #ifdef NEED_HWCAP
+-# ifdef IS_IN_rtld
++# if IS_IN (rtld)
+ 1:	.long	_GLOBAL_OFFSET_TABLE_ - 0b - 8
+ .Lrtld_local_ro:
+ 	.long	C_SYMBOL_NAME(_rtld_local_ro)(GOTOFF)
+Index: glibc-2.17-c758a686/sysdeps/generic/_itoa.h
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/generic/_itoa.h
++++ glibc-2.17-c758a686/sysdeps/generic/_itoa.h
+@@ -46,7 +46,7 @@ extern char *_itoa (unsigned long long i
+ 
+ extern const char _itoa_upper_digits[];
+ extern const char _itoa_lower_digits[];
+-#if !defined NOT_IN_libc || defined IS_IN_rtld
++#if !defined NOT_IN_libc || IS_IN (rtld)
+ hidden_proto (_itoa_upper_digits)
+ hidden_proto (_itoa_lower_digits)
+ #endif
+Index: glibc-2.17-c758a686/sysdeps/generic/dl-sysdep.h
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/generic/dl-sysdep.h
++++ glibc-2.17-c758a686/sysdeps/generic/dl-sysdep.h
+@@ -27,7 +27,7 @@
+    all the libc functions that ld.so uses are called without PLT and always
+    get the versions linked into ld.so rather than the libc ones.  */
+ 
+-#ifdef IS_IN_rtld
++#if IS_IN (rtld)
+ # define RTLD_PRIVATE_ERRNO 1
+ #else
+ # define RTLD_PRIVATE_ERRNO 0
+Index: glibc-2.17-c758a686/sysdeps/generic/ldsodefs.h
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/generic/ldsodefs.h
++++ glibc-2.17-c758a686/sysdeps/generic/ldsodefs.h
+@@ -246,7 +246,7 @@ typedef void (*receiver_fct) (int, const
+ # define GL(name) _##name
+ #else
+ # define EXTERN
+-# ifdef IS_IN_rtld
++# if IS_IN (rtld)
+ #  define GL(name) _rtld_local._##name
+ # else
+ #  define GL(name) _rtld_global._##name
+@@ -415,7 +415,7 @@ struct rtld_global
+ #ifdef SHARED
+ };
+ # define __rtld_global_attribute__
+-# ifdef IS_IN_rtld
++# if IS_IN (rtld)
+ #  ifdef HAVE_SDATA_SECTION
+ #   define __rtld_local_attribute__ \
+ 	    __attribute__ ((visibility ("hidden"), section (".sdata")))
+@@ -434,7 +434,7 @@ extern struct rtld_global _rtld_global _
+ #ifndef SHARED
+ # define GLRO(name) _##name
+ #else
+-# ifdef IS_IN_rtld
++# if IS_IN (rtld)
+ #  define GLRO(name) _rtld_local_ro._##name
+ # else
+ #  define GLRO(name) _rtld_global_ro._##name
+@@ -593,7 +593,7 @@ struct rtld_global_ro
+   EXTERN int _dl_pointer_guard;
+ };
+ # define __rtld_global_attribute__
+-# ifdef IS_IN_rtld
++# if IS_IN (rtld)
+ #  define __rtld_local_attribute__ __attribute__ ((visibility ("hidden")))
+ extern struct rtld_global_ro _rtld_local_ro
+     attribute_relro __rtld_local_attribute__;
+@@ -610,7 +610,7 @@ extern const struct rtld_global_ro _rtld
+ #endif
+ #undef EXTERN
+ 
+-#ifdef IS_IN_rtld
++#if IS_IN (rtld)
+ /* This is the initial value of GL(dl_error_catch_tsd).
+    A non-TLS libpthread will change it.  */
+ extern void **_dl_initial_error_catch_tsd (void) __attribute__ ((const))
+@@ -641,7 +641,7 @@ extern char **_dl_argv
+      attribute_relro
+ #endif
+      ;
+-#ifdef IS_IN_rtld
++#if IS_IN (rtld)
+ extern char **_dl_argv_internal attribute_hidden
+ # ifndef DL_ARGV_NOT_RELRO
+      attribute_relro
+@@ -655,7 +655,7 @@ extern char **_dl_argv_internal attribut
+ /* Flag set at startup and cleared when the last initializer has run.  */
+ extern int _dl_starting_up;
+ weak_extern (_dl_starting_up)
+-#ifdef IS_IN_rtld
++#if IS_IN (rtld)
+ extern int _dl_starting_up_internal attribute_hidden;
+ #endif
+ 
+Index: glibc-2.17-c758a686/sysdeps/i386/dl-tls.h
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/i386/dl-tls.h
++++ glibc-2.17-c758a686/sysdeps/i386/dl-tls.h
+@@ -32,7 +32,7 @@ extern void *___tls_get_addr (tls_index
+ extern void *___tls_get_addr_internal (tls_index *ti)
+      __attribute__ ((__regparm__ (1))) attribute_hidden;
+ 
+-# ifdef IS_IN_rtld
++# if IS_IN (rtld)
+ /* The special thing about the x86 TLS ABI is that we have two
+    variants of the __tls_get_addr function with different calling
+    conventions.  The GNU version, which we are mostly concerned here,
+Index: glibc-2.17-c758a686/sysdeps/i386/setjmp.S
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/i386/setjmp.S
++++ glibc-2.17-c758a686/sysdeps/i386/setjmp.S
+@@ -51,7 +51,7 @@ ENTRY (BP_SYM (__sigsetjmp))
+ 	LEAVE /* pop frame pointer to prepare for tail-call.  */
+ 	movl %ebp, (JB_BP*4)(%eax) /* Save caller's frame pointer.  */
+ 
+-#ifdef IS_IN_rtld
++#if IS_IN (rtld)
+ 	/* In ld.so we never save the signal mask.  */
+ 	xorl %eax, %eax
+ 	ret
+Index: glibc-2.17-c758a686/ports/sysdeps/m68k/setjmp.c
+===================================================================
+--- glibc-2.17-c758a686.orig/ports/sysdeps/m68k/setjmp.c
++++ glibc-2.17-c758a686/ports/sysdeps/m68k/setjmp.c
+@@ -57,7 +57,7 @@ __sigsetjmp (jmp_buf env, int savemask)
+ 		: : "m" (env[0].__jmpbuf[0].__fpregs[0]));
+ #endif
+ 
+-#ifdef IS_IN_rtld
++#if IS_IN (rtld)
+   /* In ld.so we never save the signal mask.  */
+   return 0;
+ #else
+Index: glibc-2.17-c758a686/sysdeps/mach/hurd/dl-execstack.c
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/mach/hurd/dl-execstack.c
++++ glibc-2.17-c758a686/sysdeps/mach/hurd/dl-execstack.c
+@@ -34,7 +34,7 @@ _dl_make_stack_executable (void **stack_
+     return EPERM;
+   *stack_endp = NULL;
+ 
+-#ifdef IS_IN_rtld
++#if IS_IN (rtld)
+   if (__mprotect ((void *)_dl_hurd_data->stack_base, _dl_hurd_data->stack_size,
+ 		  PROT_READ|PROT_WRITE|PROT_EXEC) != 0)
+     return errno;
+Index: glibc-2.17-c758a686/sysdeps/mach/hurd/opendir.c
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/mach/hurd/opendir.c
++++ glibc-2.17-c758a686/sysdeps/mach/hurd/opendir.c
+@@ -82,7 +82,7 @@ __opendirat (int dfd, const char *name)
+ 
+   int flags = O_RDONLY | O_NONBLOCK | O_DIRECTORY | O_CLOEXEC;
+   int fd;
+-#ifdef IS_IN_rtld
++#if IS_IN (rtld)
+   assert (dfd == AT_FDCWD);
+   fd = open_not_cancel_2 (name, flags);
+ #else
+Index: glibc-2.17-c758a686/sysdeps/posix/getcwd.c
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/posix/getcwd.c
++++ glibc-2.17-c758a686/sysdeps/posix/getcwd.c
+@@ -206,7 +206,7 @@ extern char *alloca ();
+ 
+ #ifdef __ASSUME_ATFCTS
+ # define __have_atfcts 1
+-#elif defined IS_IN_rtld
++#elif IS_IN (rtld)
+ static int __rtld_have_atfcts;
+ # define __have_atfcts __rtld_have_atfcts
+ #endif
+Index: glibc-2.17-c758a686/sysdeps/posix/opendir.c
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/posix/opendir.c
++++ glibc-2.17-c758a686/sysdeps/posix/opendir.c
+@@ -121,7 +121,7 @@ __opendirat (int dfd, const char *name)
+   flags |= O_CLOEXEC;
+ #endif
+   int fd;
+-#ifdef IS_IN_rtld
++#if IS_IN (rtld)
+   assert (dfd == AT_FDCWD);
+   fd = open_not_cancel_2 (name, flags);
+ #else
+Index: glibc-2.17-c758a686/sysdeps/posix/profil.c
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/posix/profil.c
++++ glibc-2.17-c758a686/sysdeps/posix/profil.c
+@@ -65,7 +65,7 @@ __profil (u_short *sample_buffer, size_t
+ {
+   struct sigaction act;
+   struct itimerval timer;
+-#ifndef IS_IN_rtld
++#if !IS_IN (rtld)
+   static struct sigaction oact;
+   static struct itimerval otimer;
+ # define oact_ptr &oact
+Index: glibc-2.17-c758a686/sysdeps/powerpc/dl-procinfo.h
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/powerpc/dl-procinfo.h
++++ glibc-2.17-c758a686/sysdeps/powerpc/dl-procinfo.h
+@@ -166,7 +166,7 @@ _dl_string_platform (const char *str)
+   return -1;
+ }
+ 
+-#ifdef IS_IN_rtld
++#if IS_IN (rtld)
+ static inline int
+ __attribute__ ((unused))
+ _dl_procinfo (unsigned int type, unsigned long int word)
+Index: glibc-2.17-c758a686/sysdeps/powerpc/powerpc32/fpu/__longjmp-common.S
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/powerpc/powerpc32/fpu/__longjmp-common.S
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc32/fpu/__longjmp-common.S
+@@ -37,7 +37,7 @@ ENTRY (BP_SYM (__longjmp))
+ 	addis	r5,r5,_GLOBAL_OFFSET_TABLE_-got_label@ha
+ 	addi	r5,r5,_GLOBAL_OFFSET_TABLE_-got_label@l
+ #  ifdef SHARED
+-#   ifdef IS_IN_rtld
++#   if IS_IN (rtld)
+ 	/* Inside ld.so we use the local alias to avoid runtime GOT
+ 	   relocations.  */
+ 	lwz     r5,_rtld_local_ro@got(r5)
+Index: glibc-2.17-c758a686/sysdeps/powerpc/powerpc32/fpu/setjmp-common.S
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/powerpc/powerpc32/fpu/setjmp-common.S
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc32/fpu/setjmp-common.S
+@@ -90,7 +90,7 @@ ENTRY (BP_SYM (__sigsetjmp))
+ 	mtlr	r6
+ 	cfi_same_value (lr)
+ #  ifdef SHARED
+-#   ifdef IS_IN_rtld
++#   if IS_IN (rtld)
+ 	/* Inside ld.so we use the local alias to avoid runtime GOT
+ 	   relocations.  */
+ 	lwz     r5,_rtld_local_ro@got(r5)
+Index: glibc-2.17-c758a686/sysdeps/powerpc/powerpc32/power4/multiarch/init-arch.h
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/powerpc/powerpc32/power4/multiarch/init-arch.h
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc32/power4/multiarch/init-arch.h
+@@ -21,7 +21,7 @@
+    the dl_hwcap field. The assembly is to make the compiler not optimize the
+    test (&_rtld_global_ro != NULL), which is always true in ISO C (but not
+    in that case since _rtld_global_ro might not been realocated yet).  */
+-#if defined(SHARED) && !defined(IS_IN_rtld)
++#if defined(SHARED) && !IS_IN (rtld)
+ # define __GLRO(value) \
+   ({ volatile void **__p = (volatile void**)(&_rtld_global_ro);	\
+     unsigned long int __ret;					\
+Index: glibc-2.17-c758a686/sysdeps/powerpc/powerpc32/setjmp-common.S
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/powerpc/powerpc32/setjmp-common.S
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc32/setjmp-common.S
+@@ -64,7 +64,7 @@ ENTRY (BP_SYM (__sigsetjmp))
+ 	stw  r29,((JB_GPRS+15)*4)(3)
+ 	stw  r30,((JB_GPRS+16)*4)(3)
+ 	stw  r31,((JB_GPRS+17)*4)(3)
+-#ifdef IS_IN_rtld
++#if IS_IN (rtld)
+ 	li   r3,0
+ 	blr
+ #else
+Index: glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/__longjmp-common.S
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/powerpc/powerpc64/__longjmp-common.S
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/__longjmp-common.S
+@@ -31,7 +31,7 @@
+ 	.section	".toc","aw"
+ .LC__dl_hwcap:
+ # ifdef SHARED
+-#  ifdef IS_IN_rtld
++#  if IS_IN (rtld)
+ 	/* Inside ld.so we use the local alias to avoid runtime GOT
+ 	   relocations.  */
+ 	.tc _rtld_local_ro[TC],_rtld_local_ro
+@@ -132,7 +132,7 @@ L(no_vmx):
+ 	ld r0,(JB_LR*8)(r3)
+ 	ld r14,((JB_GPRS+0)*8)(r3)
+ 	lfd fp14,((JB_FPRS+0)*8)(r3)
+-#if defined SHARED && !defined IS_IN_rtld
++#if defined SHARED && !IS_IN (rtld)
+ 	std r2,FRAME_TOC_SAVE(r1)	/* Restore the callers TOC save area.  */
+ #endif
+ 	ld r15,((JB_GPRS+1)*8)(r3)
+Index: glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/setjmp-common.S
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/powerpc/powerpc64/setjmp-common.S
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/setjmp-common.S
+@@ -30,7 +30,7 @@
+ 	.section	".toc","aw"
+ .LC__dl_hwcap:
+ # ifdef SHARED
+-#  ifdef IS_IN_rtld
++#  if IS_IN (rtld)
+ 	/* Inside ld.so we use the local alias to avoid runtime GOT
+ 	   relocations.  */
+ 	.tc _rtld_local_ro[TC],_rtld_local_ro
+@@ -50,7 +50,7 @@ ENTRY (setjmp)
+ 	b JUMPTARGET (GLUE(__sigsetjmp,_ent))
+ END (setjmp)
+ 
+-#if defined SHARED && !defined IS_IN_rtld && !defined __NO_VMX__
++#if defined SHARED && !IS_IN (rtld) && !defined __NO_VMX__
+ /* When called from within libc we need a special version of _setjmp
+    that saves r2 since the call won't go via a plt call stub.  See
+    bugz #269.  __GI__setjmp is used in csu/libc-start.c when
+@@ -82,7 +82,7 @@ JUMPTARGET(GLUE(__sigsetjmp,_ent)):
+ 	std  r1,(JB_GPR1*8)(3)
+ #endif
+ 	mflr r0
+-#if defined SHARED && !defined IS_IN_rtld
++#if defined SHARED && !IS_IN (rtld)
+ 	ld   r5,FRAME_TOC_SAVE(r1)	/* Retrieve the callers TOC.  */
+ 	std  r5,(JB_GPR2*8)(3)
+ #else
+@@ -212,7 +212,7 @@ L(no_vmx):
+ #else
+ 	li	r6,0
+ #endif
+-#ifdef IS_IN_rtld
++#if IS_IN (rtld)
+ 	li	r3,0
+ 	blr
+ #elif defined SHARED
+Index: glibc-2.17-c758a686/sysdeps/s390/dl-tls.h
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/s390/dl-tls.h
++++ glibc-2.17-c758a686/sysdeps/s390/dl-tls.h
+@@ -29,7 +29,7 @@ typedef struct
+ 
+ extern unsigned long __tls_get_offset (unsigned long got_offset);
+ 
+-# ifdef IS_IN_rtld
++# if IS_IN (rtld)
+ 
+ #  include <shlib-compat.h>
+ 
+@@ -78,9 +78,9 @@ __tls_get_offset:\n\
+ 1:	.long	__tls_get_addr - 0b\n\
+ ");
+ #  endif
+-# else /* IS_IN_rtld */
++# else /* IS_IN (rtld) */
+ extern void *__tls_get_addr_internal (tls_index *ti);
+-# endif /* !IS_IN_rtld */
++# endif /* !IS_IN (rtld) */
+ 
+ # define GET_ADDR_OFFSET \
+   (ti->ti_offset - (unsigned long) __builtin_thread_pointer ())
+Index: glibc-2.17-c758a686/sysdeps/s390/s390-32/setjmp.S
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/s390/s390-32/setjmp.S
++++ glibc-2.17-c758a686/sysdeps/s390/s390-32/setjmp.S
+@@ -57,7 +57,7 @@ ENTRY(__sigsetjmp)
+ #endif
+ 	std    %f4,40(%r2)
+ 	std    %f6,48(%r2)
+-#ifdef IS_IN_rtld
++#if IS_IN (rtld)
+ 	/* In ld.so we never save the signal mask.  */
+ 	lhi    %r2,0
+ 	br     %r14
+Index: glibc-2.17-c758a686/sysdeps/s390/s390-64/setjmp.S
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/s390/s390-64/setjmp.S
++++ glibc-2.17-c758a686/sysdeps/s390/s390-64/setjmp.S
+@@ -63,7 +63,7 @@ ENTRY(__sigsetjmp)
+ 	std    %f13,120(%r2)
+ 	std    %f14,128(%r2)
+ 	std    %f15,136(%r2)
+-#ifdef IS_IN_rtld
++#if IS_IN (rtld)
+ 	/* In ld.so we never save the signal mask.  */
+ 	lghi   %r2,0
+ 	br     %r14
+Index: glibc-2.17-c758a686/sysdeps/sh/sh3/setjmp.S
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/sh/sh3/setjmp.S
++++ glibc-2.17-c758a686/sysdeps/sh/sh3/setjmp.S
+@@ -46,7 +46,7 @@ ENTRY (__sigsetjmp)
+ 	mov.l	r9, @-r4
+ 	mov.l	r8, @-r4
+ 
+-#ifdef IS_IN_rtld
++#if IS_IN (rtld)
+ 	/* In ld.so we never save the signal mask.  */
+ 	rts
+ 	 mov	#0, r0
+Index: glibc-2.17-c758a686/sysdeps/sh/sh4/setjmp.S
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/sh/sh4/setjmp.S
++++ glibc-2.17-c758a686/sysdeps/sh/sh4/setjmp.S
+@@ -55,7 +55,7 @@ ENTRY (__sigsetjmp)
+ 	mov.l	r9, @-r4
+ 	mov.l	r8, @-r4
+ 
+-#ifdef IS_IN_rtld
++#if IS_IN (rtld)
+ 	/* In ld.so we never save the signal mask.  */
+ 	rts
+ 	 mov	#0, r0
+Index: glibc-2.17-c758a686/ports/sysdeps/unix/alpha/sysdep.h
+===================================================================
+--- glibc-2.17-c758a686.orig/ports/sysdeps/unix/alpha/sysdep.h
++++ glibc-2.17-c758a686/ports/sysdeps/unix/alpha/sysdep.h
+@@ -26,7 +26,7 @@
+ # include <regdef.h>
+ #endif
+ 
+-#ifdef IS_IN_rtld
++#if IS_IN (rtld)
+ # include <dl-sysdep.h>         /* Defines RTLD_PRIVATE_ERRNO.  */
+ #endif
+ 
+@@ -346,7 +346,7 @@ __LABEL(name)						\
+ 
+ #include <stdint.h>
+ 
+-#ifdef IS_IN_rtld
++#if IS_IN (rtld)
+ # ifdef __ASSEMBLER__
+ #  define PTR_MANGLE(dst, src, tmp)				\
+ 	ldah	tmp, __pointer_chk_guard_local($29) !gprelhigh;	\
+Index: glibc-2.17-c758a686/ports/sysdeps/unix/arm/sysdep.S
+===================================================================
+--- glibc-2.17-c758a686.orig/ports/sysdeps/unix/arm/sysdep.S
++++ glibc-2.17-c758a686/ports/sysdeps/unix/arm/sysdep.S
+@@ -21,7 +21,7 @@
+ #define _ERRNO_H
+ #include <bits/errno.h>
+ 
+-#ifdef IS_IN_rtld
++#if IS_IN (rtld)
+ # include <dl-sysdep.h>			/* Defines RTLD_PRIVATE_ERRNO.  */
+ #endif
+ 
+Index: glibc-2.17-c758a686/sysdeps/unix/i386/sysdep.S
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/unix/i386/sysdep.S
++++ glibc-2.17-c758a686/sysdeps/unix/i386/sysdep.S
+@@ -22,7 +22,7 @@
+ #include <bp-asm.h>
+ #include <bp-sym.h>
+ 
+-#ifdef IS_IN_rtld
++#if IS_IN (rtld)
+ # include <dl-sysdep.h>		/* Defines RTLD_PRIVATE_ERRNO.  */
+ #endif
+ 
+Index: glibc-2.17-c758a686/ports/sysdeps/unix/sysv/linux/aarch64/sysdep.h
+===================================================================
+--- glibc-2.17-c758a686.orig/ports/sysdeps/unix/sysv/linux/aarch64/sysdep.h
++++ glibc-2.17-c758a686/ports/sysdeps/unix/sysv/linux/aarch64/sysdep.h
+@@ -324,7 +324,7 @@
+ #endif	/* __ASSEMBLER__ */
+ 
+ /* Pointer mangling is supported for AArch64.  */
+-#if (defined IS_IN_rtld) || \
++#if (IS_IN (rtld)) || \
+      (!defined SHARED && (!defined NOT_IN_libc \
+ 			  || IS_IN (libpthread)))
+ # ifdef __ASSEMBLER__
+Index: glibc-2.17-c758a686/sysdeps/unix/sysv/linux/getcwd.c
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/unix/sysv/linux/getcwd.c
++++ glibc-2.17-c758a686/sysdeps/unix/sysv/linux/getcwd.c
+@@ -33,7 +33,7 @@
+ 
+ /* If we compile the file for use in ld.so we don't need the feature
+    that getcwd() allocates the buffers itself.  */
+-#ifdef IS_IN_rtld
++#if IS_IN (rtld)
+ # define NO_ALLOCATION	1
+ #endif
+ 
+Index: glibc-2.17-c758a686/ports/sysdeps/unix/sysv/linux/hppa/nptl/lowlevellock.h
+===================================================================
+--- glibc-2.17-c758a686.orig/ports/sysdeps/unix/sysv/linux/hppa/nptl/lowlevellock.h
++++ glibc-2.17-c758a686/ports/sysdeps/unix/sysv/linux/hppa/nptl/lowlevellock.h
+@@ -56,7 +56,7 @@
+ /* Initialize locks to zero.  */
+ #define LLL_MUTEX_LOCK_INITIALIZER (0)
+ 
+-#if !defined NOT_IN_libc || defined IS_IN_rtld
++#if !defined NOT_IN_libc || IS_IN (rtld)
+ /* In libc.so or ld.so all futexes are private.  */
+ # ifdef __ASSUME_PRIVATE_FUTEX
+ #  define __lll_private_flag(fl, private) \
+Index: glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/i386/lowlevellock.h
+===================================================================
+--- glibc-2.17-c758a686.orig/nptl/sysdeps/unix/sysv/linux/i386/lowlevellock.h
++++ glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/i386/lowlevellock.h
+@@ -71,7 +71,7 @@
+ #define LLL_SHARED	FUTEX_PRIVATE_FLAG
+ 
+ 
+-#if !defined NOT_IN_libc || defined IS_IN_rtld
++#if !defined NOT_IN_libc || IS_IN (rtld)
+ /* In libc.so or ld.so all futexes are private.  */
+ # ifdef __ASSUME_PRIVATE_FUTEX
+ #  define __lll_private_flag(fl, private) \
+Index: glibc-2.17-c758a686/sysdeps/unix/sysv/linux/i386/sysdep.h
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/unix/sysv/linux/i386/sysdep.h
++++ glibc-2.17-c758a686/sysdeps/unix/sysv/linux/i386/sysdep.h
+@@ -521,7 +521,7 @@ asm (".L__X'%ebx = 1\n\t"
+ 
+ 
+ /* Pointer mangling support.  */
+-#ifdef IS_IN_rtld
++#if IS_IN (rtld)
+ /* We cannot use the thread descriptor because in ld.so we use setjmp
+    earlier than the descriptor is initialized.  Using a global variable
+    is too complicated here since we have no PC-relative addressing mode.  */
+Index: glibc-2.17-c758a686/ports/sysdeps/unix/sysv/linux/ia64/nptl/lowlevellock.h
+===================================================================
+--- glibc-2.17-c758a686.orig/ports/sysdeps/unix/sysv/linux/ia64/nptl/lowlevellock.h
++++ glibc-2.17-c758a686/ports/sysdeps/unix/sysv/linux/ia64/nptl/lowlevellock.h
+@@ -50,7 +50,7 @@
+ #define LLL_SHARED	FUTEX_PRIVATE_FLAG
+ 
+ 
+-#if !defined NOT_IN_libc || defined IS_IN_rtld
++#if !defined NOT_IN_libc || IS_IN (rtld)
+ /* In libc.so or ld.so all futexes are private.  */
+ # ifdef __ASSUME_PRIVATE_FUTEX
+ #  define __lll_private_flag(fl, private) \
+Index: glibc-2.17-c758a686/ports/sysdeps/unix/sysv/linux/ia64/setjmp.S
+===================================================================
+--- glibc-2.17-c758a686.orig/ports/sysdeps/unix/sysv/linux/ia64/setjmp.S
++++ glibc-2.17-c758a686/ports/sysdeps/unix/sysv/linux/ia64/setjmp.S
+@@ -179,7 +179,7 @@ ENTRY(__sigsetjmp)
+ 	;;
+ 	st8.nta [r2]=r25		// ar.unat
+ 	st8.nta [r3]=in0		// &__jmp_buf
+-#ifdef IS_IN_rtld
++#if IS_IN (rtld)
+ 	/* In ld.so we never save the signal mask.  */
+ 	;;
+ #else
+Index: glibc-2.17-c758a686/ports/sysdeps/unix/sysv/linux/ia64/sysdep.h
+===================================================================
+--- glibc-2.17-c758a686.orig/ports/sysdeps/unix/sysv/linux/ia64/sysdep.h
++++ glibc-2.17-c758a686/ports/sysdeps/unix/sysv/linux/ia64/sysdep.h
+@@ -361,7 +361,7 @@
+ #endif /* not __ASSEMBLER__ */
+ 
+ /* Pointer mangling support.  */
+-#ifdef IS_IN_rtld
++#if IS_IN (rtld)
+ /* We cannot use the thread descriptor because in ld.so we use setjmp
+    earlier than the descriptor is initialized.  */
+ #else
+Index: glibc-2.17-c758a686/ports/sysdeps/unix/sysv/linux/m68k/bits/m68k-vdso.h
+===================================================================
+--- glibc-2.17-c758a686.orig/ports/sysdeps/unix/sysv/linux/m68k/bits/m68k-vdso.h
++++ glibc-2.17-c758a686/ports/sysdeps/unix/sysv/linux/m68k/bits/m68k-vdso.h
+@@ -23,7 +23,7 @@
+ 
+ #ifdef SHARED
+ 
+-# ifdef IS_IN_rtld
++# if IS_IN (rtld)
+ # define M68K_VDSO_SYMBOL(name) __rtld_##name
+ # define STR_M68K_VDSO_SYMBOL(name) "__rtld_" #name
+ # else
+@@ -35,7 +35,7 @@
+ 
+ /* We define __rtld_* copies for rtld.
+    We need them visible in libc to initialize.  */
+-#  if defined IS_IN_rtld || !defined NOT_IN_libc
++#  if IS_IN (rtld) || !defined NOT_IN_libc
+ extern void *__rtld___vdso_read_tp;
+ extern void *__rtld___vdso_atomic_cmpxchg_32;
+ extern void *__rtld___vdso_atomic_barrier;
+@@ -44,14 +44,14 @@ extern void *__rtld___vdso_atomic_barrie
+ extern void __vdso_read_tp_stub (void);
+ extern void __vdso_atomic_cmpxchg_32_stub (void);
+ extern void __vdso_atomic_barrier_stub (void);
+-#  endif /* IS_IN_rtld || !NOT_IN_libc */
++#  endif /* IS_IN (rtld) || !NOT_IN_libc */
+ 
+ /* RTLD should only use its own copies.  */
+-#  ifndef IS_IN_rtld
++#  if !IS_IN (rtld)
+ extern void *__vdso_read_tp;
+ extern void *__vdso_atomic_cmpxchg_32;
+ extern void *__vdso_atomic_barrier;
+-#  endif /* !IS_IN_rtld */
++#  endif /* !IS_IN (rtld) */
+ 
+ # endif /* !__ASSEMBLER__ */
+ 
+Index: glibc-2.17-c758a686/ports/sysdeps/unix/sysv/linux/m68k/m68k-helpers.S
+===================================================================
+--- glibc-2.17-c758a686.orig/ports/sysdeps/unix/sysv/linux/m68k/m68k-helpers.S
++++ glibc-2.17-c758a686/ports/sysdeps/unix/sysv/linux/m68k/m68k-helpers.S
+@@ -51,7 +51,7 @@ END (__vdso_read_tp_stub)
+    equivalent helper function (which clobbers fewer registers than
+    a normal function call) in a vdso; tail call to the
+    helper.  */
+-# ifdef IS_IN_rtld
++# if IS_IN (rtld)
+ /* rtld gets a hidden copy of __m68k_read_tp.  */
+ 	.hidden __m68k_read_tp
+ # endif
+Index: glibc-2.17-c758a686/sysdeps/unix/sysv/linux/powerpc/powerpc32/sysdep.h
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/unix/sysv/linux/powerpc/powerpc32/sysdep.h
++++ glibc-2.17-c758a686/sysdeps/unix/sysv/linux/powerpc/powerpc32/sysdep.h
+@@ -272,7 +272,7 @@
+ 
+ 
+ /* Pointer mangling support.  */
+-#ifdef IS_IN_rtld
++#if IS_IN (rtld)
+ /* We cannot use the thread descriptor because in ld.so we use setjmp
+    earlier than the descriptor is initialized.  */
+ #else
+Index: glibc-2.17-c758a686/sysdeps/unix/sysv/linux/powerpc/powerpc64/sysdep.h
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/unix/sysv/linux/powerpc/powerpc64/sysdep.h
++++ glibc-2.17-c758a686/sysdeps/unix/sysv/linux/powerpc/powerpc64/sysdep.h
+@@ -282,7 +282,7 @@
+ 
+ 
+ /* Pointer mangling support.  */
+-#ifdef IS_IN_rtld
++#if IS_IN (rtld)
+ /* We cannot use the thread descriptor because in ld.so we use setjmp
+    earlier than the descriptor is initialized.  */
+ #else
+Index: glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/s390/lowlevellock.h
+===================================================================
+--- glibc-2.17-c758a686.orig/nptl/sysdeps/unix/sysv/linux/s390/lowlevellock.h
++++ glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/s390/lowlevellock.h
+@@ -51,7 +51,7 @@
+ #define LLL_SHARED	FUTEX_PRIVATE_FLAG
+ 
+ 
+-#if !defined NOT_IN_libc || defined IS_IN_rtld
++#if !defined NOT_IN_libc || IS_IN (rtld)
+ /* In libc.so or ld.so all futexes are private.  */
+ # ifdef __ASSUME_PRIVATE_FUTEX
+ #  define __lll_private_flag(fl, private) \
+Index: glibc-2.17-c758a686/sysdeps/unix/sysv/linux/s390/s390-32/sysdep.h
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/unix/sysv/linux/s390/s390-32/sysdep.h
++++ glibc-2.17-c758a686/sysdeps/unix/sysv/linux/s390/s390-32/sysdep.h
+@@ -367,7 +367,7 @@
+     _ret; })
+ 
+ /* Pointer mangling support.  */
+-#ifdef IS_IN_rtld
++#if IS_IN (rtld)
+ /* We cannot use the thread descriptor because in ld.so we use setjmp
+    earlier than the descriptor is initialized.  */
+ #else
+Index: glibc-2.17-c758a686/sysdeps/unix/sysv/linux/s390/s390-64/sysdep.h
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/unix/sysv/linux/s390/s390-64/sysdep.h
++++ glibc-2.17-c758a686/sysdeps/unix/sysv/linux/s390/s390-64/sysdep.h
+@@ -373,7 +373,7 @@
+     _ret; })
+ 
+ /* Pointer mangling support.  */
+-#ifdef IS_IN_rtld
++#if IS_IN (rtld)
+ /* We cannot use the thread descriptor because in ld.so we use setjmp
+    earlier than the descriptor is initialized.  */
+ #else
+Index: glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/sh/lowlevellock.h
+===================================================================
+--- glibc-2.17-c758a686.orig/nptl/sysdeps/unix/sysv/linux/sh/lowlevellock.h
++++ glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/sh/lowlevellock.h
+@@ -50,7 +50,7 @@
+ #define LLL_SHARED     FUTEX_PRIVATE_FLAG
+ 
+ 
+-#if !defined NOT_IN_libc || defined IS_IN_rtld
++#if !defined NOT_IN_libc || IS_IN (rtld)
+ /* In libc.so or ld.so all futexes are private.  */
+ # ifdef __ASSUME_PRIVATE_FUTEX
+ #  define __lll_private_flag(fl, private) \
+Index: glibc-2.17-c758a686/sysdeps/unix/sysv/linux/sh/sysdep.h
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/unix/sysv/linux/sh/sysdep.h
++++ glibc-2.17-c758a686/sysdeps/unix/sysv/linux/sh/sysdep.h
+@@ -338,7 +338,7 @@
+ #endif	/* __ASSEMBLER__ */
+ 
+ /* Pointer mangling support.  */
+-#ifdef IS_IN_rtld
++#if IS_IN (rtld)
+ /* We cannot use the thread descriptor because in ld.so we use setjmp
+    earlier than the descriptor is initialized.  Using a global variable
+    is too complicated here since we have no PC-relative addressing mode.  */
+Index: glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/sparc/lowlevellock.h
+===================================================================
+--- glibc-2.17-c758a686.orig/nptl/sysdeps/unix/sysv/linux/sparc/lowlevellock.h
++++ glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/sparc/lowlevellock.h
+@@ -56,7 +56,7 @@ extern void __cpu_relax (void);
+ #define BUSY_WAIT_NOP	__cpu_relax ()
+ #endif
+ 
+-#if !defined NOT_IN_libc || defined IS_IN_rtld
++#if !defined NOT_IN_libc || IS_IN (rtld)
+ /* In libc.so or ld.so all futexes are private.  */
+ # ifdef __ASSUME_PRIVATE_FUTEX
+ #  define __lll_private_flag(fl, private) \
+Index: glibc-2.17-c758a686/sysdeps/unix/sysv/linux/sparc/sparc32/sysdep.h
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/unix/sysv/linux/sparc/sparc32/sysdep.h
++++ glibc-2.17-c758a686/sysdeps/unix/sysv/linux/sparc/sparc32/sysdep.h
+@@ -22,7 +22,7 @@
+ 
+ #include <sysdeps/unix/sysv/linux/sparc/sysdep.h>
+ 
+-#ifdef IS_IN_rtld
++#if IS_IN (rtld)
+ # include <dl-sysdep.h>		/* Defines RTLD_PRIVATE_ERRNO.  */
+ #endif
+ #include <tls.h>
+@@ -126,7 +126,7 @@ ENTRY(name);					\
+ #endif	/* __ASSEMBLER__ */
+ 
+ /* Pointer mangling support.  */
+-#ifdef IS_IN_rtld
++#if IS_IN (rtld)
+ /* We cannot use the thread descriptor because in ld.so we use setjmp
+    earlier than the descriptor is initialized.  */
+ #else
+Index: glibc-2.17-c758a686/sysdeps/unix/sysv/linux/sparc/sparc64/sysdep.h
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/unix/sysv/linux/sparc/sparc64/sysdep.h
++++ glibc-2.17-c758a686/sysdeps/unix/sysv/linux/sparc/sparc64/sysdep.h
+@@ -22,7 +22,7 @@
+ 
+ #include <sysdeps/unix/sysv/linux/sparc/sysdep.h>
+ 
+-#ifdef IS_IN_rtld
++#if IS_IN (rtld)
+ # include <dl-sysdep.h>		/* Defines RTLD_PRIVATE_ERRNO.  */
+ #endif
+ #include <tls.h>
+@@ -141,7 +141,7 @@ ENTRY(name);					\
+ #define STACK_BIAS	2047
+ 
+ /* Pointer mangling support.  */
+-#ifdef IS_IN_rtld
++#if IS_IN (rtld)
+ /* We cannot use the thread descriptor because in ld.so we use setjmp
+    earlier than the descriptor is initialized.  */
+ #else
+Index: glibc-2.17-c758a686/ports/sysdeps/unix/sysv/linux/tile/sysdep.h
+===================================================================
+--- glibc-2.17-c758a686.orig/ports/sysdeps/unix/sysv/linux/tile/sysdep.h
++++ glibc-2.17-c758a686/ports/sysdeps/unix/sysv/linux/tile/sysdep.h
+@@ -205,7 +205,7 @@
+ #endif /* not __ASSEMBLER__ */
+ 
+ /* Pointer mangling support.  */
+-#if defined NOT_IN_libc && defined IS_IN_rtld
++#if defined NOT_IN_libc && IS_IN (rtld)
+ /* We cannot use the thread descriptor because in ld.so we use setjmp
+    earlier than the descriptor is initialized.  */
+ #else
+Index: glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/x86_64/lowlevellock.h
+===================================================================
+--- glibc-2.17-c758a686.orig/nptl/sysdeps/unix/sysv/linux/x86_64/lowlevellock.h
++++ glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/x86_64/lowlevellock.h
+@@ -72,7 +72,7 @@
+ 
+ #ifndef __ASSEMBLER__
+ 
+-#if !defined NOT_IN_libc || defined IS_IN_rtld
++#if !defined NOT_IN_libc || IS_IN (rtld)
+ /* In libc.so or ld.so all futexes are private.  */
+ # ifdef __ASSUME_PRIVATE_FUTEX
+ #  define __lll_private_flag(fl, private) \
+Index: glibc-2.17-c758a686/sysdeps/unix/sysv/linux/x86_64/sysdep.h
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/unix/sysv/linux/x86_64/sysdep.h
++++ glibc-2.17-c758a686/sysdeps/unix/sysv/linux/x86_64/sysdep.h
+@@ -24,7 +24,7 @@
+ #include <bp-asm.h>
+ #include <tls.h>
+ 
+-#ifdef IS_IN_rtld
++#if IS_IN (rtld)
+ # include <dl-sysdep.h>		/* Defines RTLD_PRIVATE_ERRNO.  */
+ #endif
+ 
+@@ -395,7 +395,7 @@
+ 
+ 
+ /* Pointer mangling support.  */
+-#ifdef IS_IN_rtld
++#if IS_IN (rtld)
+ /* We cannot use the thread descriptor because in ld.so we use setjmp
+    earlier than the descriptor is initialized.  */
+ # ifdef __ASSEMBLER__
+Index: glibc-2.17-c758a686/sysdeps/unix/x86_64/sysdep.S
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/unix/x86_64/sysdep.S
++++ glibc-2.17-c758a686/sysdeps/unix/x86_64/sysdep.S
+@@ -22,7 +22,7 @@
+ #include <bp-sym.h>
+ #include <tls.h>
+ 
+-#ifdef IS_IN_rtld
++#if IS_IN (rtld)
+ # include <dl-sysdep.h>		/* Defines RTLD_PRIVATE_ERRNO.  */
+ #endif
+ 
+Index: glibc-2.17-c758a686/sysdeps/x86_64/setjmp.S
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/x86_64/setjmp.S
++++ glibc-2.17-c758a686/sysdeps/x86_64/setjmp.S
+@@ -54,7 +54,7 @@ ENTRY (__sigsetjmp)
+ #endif
+ 	movq %rax, (JB_PC*8)(%rdi)
+ 
+-#ifdef IS_IN_rtld
++#if IS_IN (rtld)
+ 	/* In ld.so we never save the signal mask.  */
+ 	xorl %eax, %eax
+ 	retq
+Index: glibc-2.17-c758a686/include/unistd.h
+===================================================================
+--- glibc-2.17-c758a686.orig/include/unistd.h
++++ glibc-2.17-c758a686/include/unistd.h
+@@ -151,7 +151,7 @@ libc_hidden_proto (__sbrk)
+    environment variables that normally affect them.  */
+ extern int __libc_enable_secure attribute_relro;
+ extern int __libc_enable_secure_decided;
+-#ifdef IS_IN_rtld
++#if IS_IN (rtld)
+ /* XXX The #ifdef should go.  */
+ extern int __libc_enable_secure_internal attribute_relro attribute_hidden;
+ #endif
+Index: glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/i386/i686/dl-sysdep.h
+===================================================================
+--- glibc-2.17-c758a686.orig/nptl/sysdeps/unix/sysv/linux/i386/i686/dl-sysdep.h
++++ glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/i386/i686/dl-sysdep.h
+@@ -27,7 +27,7 @@
+    all the libc functions that ld.so uses are called without PLT and always
+    get the versions linked into ld.so rather than the libc ones.  */
+ 
+-#ifdef IS_IN_rtld
++#if IS_IN (rtld)
+ # define RTLD_PRIVATE_ERRNO 1
+ #else
+ # define RTLD_PRIVATE_ERRNO 0
+Index: glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/powerpc/lowlevellock.h
+===================================================================
+--- glibc-2.17-c758a686.orig/nptl/sysdeps/unix/sysv/linux/powerpc/lowlevellock.h
++++ glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/powerpc/lowlevellock.h
+@@ -52,7 +52,7 @@
+ #define LLL_PRIVATE	0
+ #define LLL_SHARED	FUTEX_PRIVATE_FLAG
+ 
+-#if !defined NOT_IN_libc || defined IS_IN_rtld
++#if !defined NOT_IN_libc || IS_IN (rtld)
+ /* In libc.so or ld.so all futexes are private.  */
+ # ifdef __ASSUME_PRIVATE_FUTEX
+ #  define __lll_private_flag(fl, private) \
+Index: glibc-2.17-c758a686/ports/sysdeps/unix/sysv/linux/aarch64/nptl/lowlevellock.h
+===================================================================
+--- glibc-2.17-c758a686.orig/ports/sysdeps/unix/sysv/linux/aarch64/nptl/lowlevellock.h
++++ glibc-2.17-c758a686/ports/sysdeps/unix/sysv/linux/aarch64/nptl/lowlevellock.h
+@@ -49,7 +49,7 @@
+ #define LLL_SHARED	FUTEX_PRIVATE_FLAG
+ 
+ 
+-#if !defined NOT_IN_libc || defined IS_IN_rtld
++#if !defined NOT_IN_libc || IS_IN (rtld)
+ /* In libc.so or ld.so all futexes are private.  */
+ # ifdef __ASSUME_PRIVATE_FUTEX
+ #  define __lll_private_flag(fl, private) \
+Index: glibc-2.17-c758a686/ports/sysdeps/unix/sysv/linux/alpha/nptl/lowlevellock.h
+===================================================================
+--- glibc-2.17-c758a686.orig/ports/sysdeps/unix/sysv/linux/alpha/nptl/lowlevellock.h
++++ glibc-2.17-c758a686/ports/sysdeps/unix/sysv/linux/alpha/nptl/lowlevellock.h
+@@ -50,7 +50,7 @@
+ #define LLL_SHARED	FUTEX_PRIVATE_FLAG
+ 
+ 
+-#if !defined NOT_IN_libc || defined IS_IN_rtld
++#if !defined NOT_IN_libc || IS_IN (rtld)
+ /* In libc.so or ld.so all futexes are private.  */
+ # ifdef __ASSUME_PRIVATE_FUTEX
+ #  define __lll_private_flag(fl, private) \
+Index: glibc-2.17-c758a686/ports/sysdeps/unix/sysv/linux/arm/nptl/lowlevellock.h
+===================================================================
+--- glibc-2.17-c758a686.orig/ports/sysdeps/unix/sysv/linux/arm/nptl/lowlevellock.h
++++ glibc-2.17-c758a686/ports/sysdeps/unix/sysv/linux/arm/nptl/lowlevellock.h
+@@ -48,7 +48,7 @@
+ #define LLL_SHARED	FUTEX_PRIVATE_FLAG
+ 
+ 
+-#if !defined NOT_IN_libc || defined IS_IN_rtld
++#if !defined NOT_IN_libc || IS_IN (rtld)
+ /* In libc.so or ld.so all futexes are private.  */
+ # ifdef __ASSUME_PRIVATE_FUTEX
+ #  define __lll_private_flag(fl, private) \
+Index: glibc-2.17-c758a686/ports/sysdeps/unix/sysv/linux/ia64/nptl/dl-sysdep.h
+===================================================================
+--- glibc-2.17-c758a686.orig/ports/sysdeps/unix/sysv/linux/ia64/nptl/dl-sysdep.h
++++ glibc-2.17-c758a686/ports/sysdeps/unix/sysv/linux/ia64/nptl/dl-sysdep.h
+@@ -27,7 +27,7 @@
+    all the libc functions that ld.so uses are called without PLT and always
+    get the versions linked into ld.so rather than the libc ones.  */
+ 
+-#ifdef IS_IN_rtld
++#if IS_IN (rtld)
+ # define RTLD_PRIVATE_ERRNO 1
+ #else
+ # define RTLD_PRIVATE_ERRNO 0
+Index: glibc-2.17-c758a686/ports/sysdeps/unix/sysv/linux/m68k/nptl/lowlevellock.h
+===================================================================
+--- glibc-2.17-c758a686.orig/ports/sysdeps/unix/sysv/linux/m68k/nptl/lowlevellock.h
++++ glibc-2.17-c758a686/ports/sysdeps/unix/sysv/linux/m68k/nptl/lowlevellock.h
+@@ -50,7 +50,7 @@
+ #define LLL_SHARED	FUTEX_PRIVATE_FLAG
+ 
+ 
+-#if !defined NOT_IN_libc || defined IS_IN_rtld
++#if !defined NOT_IN_libc || IS_IN (rtld)
+ /* In libc.so or ld.so all futexes are private.  */
+ # ifdef __ASSUME_PRIVATE_FUTEX
+ #  define __lll_private_flag(fl, private) \
+Index: glibc-2.17-c758a686/ports/sysdeps/unix/sysv/linux/mips/nptl/lowlevellock.h
+===================================================================
+--- glibc-2.17-c758a686.orig/ports/sysdeps/unix/sysv/linux/mips/nptl/lowlevellock.h
++++ glibc-2.17-c758a686/ports/sysdeps/unix/sysv/linux/mips/nptl/lowlevellock.h
+@@ -48,7 +48,7 @@
+ #define LLL_SHARED	FUTEX_PRIVATE_FLAG
+ 
+ 
+-#if !defined NOT_IN_libc || defined IS_IN_rtld
++#if !defined NOT_IN_libc || IS_IN (rtld)
+ /* In libc.so or ld.so all futexes are private.  */
+ # ifdef __ASSUME_PRIVATE_FUTEX
+ #  define __lll_private_flag(fl, private) \
+Index: glibc-2.17-c758a686/ports/sysdeps/unix/sysv/linux/tile/nptl/lowlevellock.h
+===================================================================
+--- glibc-2.17-c758a686.orig/ports/sysdeps/unix/sysv/linux/tile/nptl/lowlevellock.h
++++ glibc-2.17-c758a686/ports/sysdeps/unix/sysv/linux/tile/nptl/lowlevellock.h
+@@ -50,7 +50,7 @@
+ #define LLL_SHARED	FUTEX_PRIVATE_FLAG
+ 
+ 
+-#if !defined NOT_IN_libc || defined IS_IN_rtld
++#if !defined NOT_IN_libc || IS_IN (rtld)
+ /* In libc.so or ld.so all futexes are private.  */
+ # ifdef __ASSUME_PRIVATE_FUTEX
+ #  define __lll_private_flag(fl, private) \

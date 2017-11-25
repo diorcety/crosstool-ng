@@ -1,0 +1,74 @@
+commit 85f36372aa9b7c4f8e1ebb6a3bf2c0785a019612
+Author: Siddhesh Poyarekar <siddhesh@redhat.com>
+Date:   Thu Nov 20 13:12:02 2014 +0530
+
+    Remove IS_IN_nscd
+    
+    Replace with IS_IN (nscd).  Generated code unchanged on x86_64.
+    
+    	* include/ifaddrs.h: Use IS_IN.
+    	* inet/check_pf.c: Likewise.
+    	* sysdeps/unix/sysv/linux/check_pf.c: Likewise.
+    	* nscd/Makefile (CPPFLAGS-nscd): Remove IS_IN_nscd.
+
+Index: glibc-2.17-c758a686/include/ifaddrs.h
+===================================================================
+--- glibc-2.17-c758a686.orig/include/ifaddrs.h
++++ glibc-2.17-c758a686/include/ifaddrs.h
+@@ -26,7 +26,7 @@ extern void __check_native (uint32_t a1_
+ 			    uint32_t a2_index, int *a2_native)
+   attribute_hidden;
+ 
+-#ifdef IS_IN_nscd
++#if IS_IN (nscd)
+ extern uint32_t __bump_nl_timestamp (void) attribute_hidden;
+ #endif
+ 
+Index: glibc-2.17-c758a686/inet/check_pf.c
+===================================================================
+--- glibc-2.17-c758a686.orig/inet/check_pf.c
++++ glibc-2.17-c758a686/inet/check_pf.c
+@@ -62,7 +62,7 @@ __free_in6ai (struct in6addrinfo *in6ai)
+ }
+ 
+ 
+-#ifdef IS_IN_nscd
++#if IS_IN (nscd)
+ uint32_t
+ __bump_nl_timestamp (void)
+ {
+Index: glibc-2.17-c758a686/nscd/Makefile
+===================================================================
+--- glibc-2.17-c758a686.orig/nscd/Makefile
++++ glibc-2.17-c758a686/nscd/Makefile
+@@ -79,7 +79,7 @@ CFLAGS-nscd_gethst_r.c = -fexceptions
+ CFLAGS-nscd_getai.c = -fexceptions
+ CFLAGS-nscd_initgroups.c = -fexceptions
+ 
+-CPPFLAGS-nscd += -DIS_IN_nscd=1 -D_FORTIFY_SOURCE=2 -DNOT_IN_libc=1
++CPPFLAGS-nscd += -D_FORTIFY_SOURCE=2 -DNOT_IN_libc
+ 
+ ifeq (yesyes,$(have-fpie)$(build-shared))
+ CFLAGS-nscd += $(pie-ccflag)
+Index: glibc-2.17-c758a686/sysdeps/unix/sysv/linux/check_pf.c
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/unix/sysv/linux/check_pf.c
++++ glibc-2.17-c758a686/sysdeps/unix/sysv/linux/check_pf.c
+@@ -65,7 +65,7 @@ libc_freeres_ptr (static struct cached_d
+ __libc_lock_define_initialized (static, lock);
+ 
+ 
+-#ifdef IS_IN_nscd
++#if IS_IN (nscd)
+ static uint32_t nl_timestamp;
+ 
+ uint32_t
+@@ -81,7 +81,7 @@ __bump_nl_timestamp (void)
+ static inline uint32_t
+ get_nl_timestamp (void)
+ {
+-#ifdef IS_IN_nscd
++#if IS_IN (nscd)
+   return nl_timestamp;
+ #elif defined USE_NSCD
+   return __nscd_get_nl_timestamp ();

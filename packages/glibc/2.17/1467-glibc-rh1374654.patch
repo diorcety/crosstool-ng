@@ -1,0 +1,209 @@
+From 0f58539030e436449f79189b6edab17d7479796e Mon Sep 17 00:00:00 2001
+From: Paul Pluzhnikov <ppluzhnikov@google.com>
+Date: Sat, 8 Aug 2015 15:53:03 -0700
+Subject: [PATCH] Fix BZ #17905
+
+diff -rupN a/catgets/Makefile b/catgets/Makefile
+--- a/catgets/Makefile	2017-03-03 17:54:39.000000000 -0500
++++ b/catgets/Makefile	2017-03-03 18:05:02.506889588 -0500
+@@ -44,13 +44,15 @@ catgets-CPPFLAGS := -DNLSPATH='"$(msgcat
+ 
+ generated = de.msg test1.cat test1.h test2.cat test2.h sample.SJIS.cat \
+ 	    test-gencat.h
++generated += tst-catgets.mtrace tst-catgets-mem.out
++
+ generated-dirs = de
+ 
+-tst-catgets-ENV = NLSPATH="$(objpfx)%l/%N.cat" LANG=de
++tst-catgets-ENV = NLSPATH="$(objpfx)%l/%N.cat" LANG=de MALLOC_TRACE=$(objpfx)tst-catgets.mtrace
+ 
+ ifeq ($(run-built-tests),yes)
+ tests: $(objpfx)de/libc.cat $(objpfx)test1.cat $(objpfx)test2.cat \
+-       $(objpfx)test-gencat.out
++       $(objpfx)test-gencat.out $(objpfx)tst-catgets-mem.out
+ # This test just checks whether the program produces any error or not.
+ # The result is not tested.
+ $(objpfx)test1.cat: test1.msg $(objpfx)gencat
+@@ -78,4 +80,8 @@ $(objpfx)test-gencat.out: test-gencat.sh
+ $(objpfx)sample.SJIS.cat: sample.SJIS $(objpfx)gencat
+ 	GCONV_PATH=$(common-objpfx)iconvdata LC_ALL=C \
+ 	$(built-program-cmd) -H $(objpfx)test-gencat.h < $(word 1,$^) > $@
++
++$(objpfx)tst-catgets-mem.out: $(objpfx)tst-catgets.out
++	$(common-objpfx)malloc/mtrace $(objpfx)tst-catgets.mtrace > $@; \
++	$(evaluate-test)
+ endif
+diff -rupN a/catgets/catgets.c b/catgets/catgets.c
+--- a/catgets/catgets.c	2012-12-24 22:02:13.000000000 -0500
++++ b/catgets/catgets.c	2017-03-03 17:55:43.750147349 -0500
+@@ -16,7 +16,6 @@
+    License along with the GNU C Library; if not, see
+    <http://www.gnu.org/licenses/>.  */
+ 
+-#include <alloca.h>
+ #include <errno.h>
+ #include <locale.h>
+ #include <nl_types.h>
+@@ -35,6 +34,7 @@ catopen (const char *cat_name, int flag)
+   __nl_catd result;
+   const char *env_var = NULL;
+   const char *nlspath = NULL;
++  char *tmp = NULL;
+ 
+   if (strchr (cat_name, '/') == NULL)
+     {
+@@ -54,7 +54,10 @@ catopen (const char *cat_name, int flag)
+ 	{
+ 	  /* Append the system dependent directory.  */
+ 	  size_t len = strlen (nlspath) + 1 + sizeof NLSPATH;
+-	  char *tmp = alloca (len);
++	  tmp = malloc (len);
++
++	  if (__glibc_unlikely (tmp == NULL))
++	    return (nl_catd) -1;
+ 
+ 	  __stpcpy (__stpcpy (__stpcpy (tmp, nlspath), ":"), NLSPATH);
+ 	  nlspath = tmp;
+@@ -65,16 +68,18 @@ catopen (const char *cat_name, int flag)
+ 
+   result = (__nl_catd) malloc (sizeof (*result));
+   if (result == NULL)
+-    /* We cannot get enough memory.  */
+-    return (nl_catd) -1;
+-
+-  if (__open_catalog (cat_name, nlspath, env_var, result) != 0)
++    {
++      /* We cannot get enough memory.  */
++      result = (nl_catd) -1;
++    }
++  else if (__open_catalog (cat_name, nlspath, env_var, result) != 0)
+     {
+       /* Couldn't open the file.  */
+       free ((void *) result);
+-      return (nl_catd) -1;
++      result = (nl_catd) -1;
+     }
+ 
++  free (tmp);
+   return (nl_catd) result;
+ }
+ 
+diff -rupN a/catgets/open_catalog.c b/catgets/open_catalog.c
+--- a/catgets/open_catalog.c	2012-12-24 22:02:13.000000000 -0500
++++ b/catgets/open_catalog.c	2017-03-03 17:55:43.753147332 -0500
+@@ -47,6 +47,7 @@ __open_catalog (const char *cat_name, co
+   size_t tab_size;
+   const char *lastp;
+   int result = -1;
++  char *buf = NULL;
+ 
+   if (strchr (cat_name, '/') != NULL || nlspath == NULL)
+     fd = open_not_cancel_2 (cat_name, O_RDONLY);
+@@ -57,23 +58,23 @@ __open_catalog (const char *cat_name, co
+   if (__builtin_expect (bufact + (n) >= bufmax, 0))			      \
+     {									      \
+       char *old_buf = buf;						      \
+-      bufmax += 256 + (n);						      \
+-      buf = (char *) alloca (bufmax);					      \
+-      memcpy (buf, old_buf, bufact);					      \
++      bufmax += (bufmax < 256 + (n)) ? 256 + (n) : bufmax;		      \
++      buf = realloc (buf, bufmax);					      \
++      if (__glibc_unlikely (buf == NULL))				      \
++	{								      \
++	  free (old_buf);						      \
++	  return -1;							      \
++	}								      \
+     }
+ 
+       /* The RUN_NLSPATH variable contains a colon separated list of
+ 	 descriptions where we expect to find catalogs.  We have to
+ 	 recognize certain % substitutions and stop when we found the
+ 	 first existing file.  */
+-      char *buf;
+       size_t bufact;
+-      size_t bufmax;
++      size_t bufmax = 0;
+       size_t len;
+ 
+-      buf = NULL;
+-      bufmax = 0;
+-
+       fd = -1;
+       while (*run_nlspath != '\0')
+ 	{
+@@ -188,7 +189,10 @@ __open_catalog (const char *cat_name, co
+ 
+   /* Avoid dealing with directories and block devices */
+   if (__builtin_expect (fd, 0) < 0)
+-    return -1;
++    {
++      free (buf);
++      return -1;
++    }
+ 
+   if (__builtin_expect (__fxstat64 (_STAT_VER, fd, &st), 0) < 0)
+     goto close_unlock_return;
+@@ -325,6 +329,7 @@ __open_catalog (const char *cat_name, co
+   /* Release the lock again.  */
+  close_unlock_return:
+   close_not_cancel_no_status (fd);
++  free (buf);
+ 
+   return result;
+ }
+diff -rupN a/catgets/tst-catgets.c b/catgets/tst-catgets.c
+--- a/catgets/tst-catgets.c	2017-03-03 17:54:38.000000000 -0500
++++ b/catgets/tst-catgets.c	2017-03-03 17:55:43.755147321 -0500
+@@ -1,7 +1,10 @@
++#include <assert.h>
+ #include <mcheck.h>
+ #include <nl_types.h>
+ #include <stdio.h>
++#include <stdlib.h>
+ #include <string.h>
++#include <sys/resource.h>
+ 
+ 
+ static const char *msgs[] =
+@@ -12,6 +15,33 @@ static const char *msgs[] =
+ };
+ #define nmsgs (sizeof (msgs) / sizeof (msgs[0]))
+ 
++
++/* Test for unbounded alloca.  */
++static int
++do_bz17905 (void)
++{
++  char *buf;
++  struct rlimit rl;
++  nl_catd result;
++
++  const int sz = 1024 * 1024;
++
++  getrlimit (RLIMIT_STACK, &rl);
++  rl.rlim_cur = sz;
++  setrlimit (RLIMIT_STACK, &rl);
++
++  buf = malloc (sz + 1); 
++  memset (buf, 'A', sz);
++  buf[sz] = '\0';
++  setenv ("NLSPATH", buf, 1);
++
++  result = catopen (buf, NL_CAT_LOCALE);
++  assert (result == (nl_catd) -1);
++
++  free (buf);
++  return 0;
++}
++
+ #define ROUNDS 5
+ 
+ static int
+@@ -62,6 +92,7 @@ do_test (void)
+ 	}
+     }
+ 
++  result += do_bz17905 ();
+   return result;
+ }
+ 

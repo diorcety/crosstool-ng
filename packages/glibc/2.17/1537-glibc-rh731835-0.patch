@@ -1,0 +1,761 @@
+commit 8d2c0a593bdefd220be0822fb70de6b8d3bfd39d
+Author: Adhemerval Zanella <azanella@linux.vnet.ibm.com>
+Date:   Fri Nov 7 12:25:32 2014 -0500
+
+    powerpc: Add the lock elision using HTM
+    
+    This patch adds support for lock elision using ISA 2.07 hardware
+    transactional memory instructions for pthread_mutex primitives.
+    Similar to s390 version, the for elision logic defined in
+    'force-elision.h' is only enabled if ENABLE_LOCK_ELISION is defined.
+    
+    Also, the lock elision code should be able to be built even with
+    a compiler that does not provide HTM support with builtins.
+    However I have noted the performance is sub-optimal due scheduling
+    pressures.
+
+Index: glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/powerpc/elision-conf.c
+===================================================================
+--- /dev/null
++++ glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/powerpc/elision-conf.c
+@@ -0,0 +1,80 @@
++/* elision-conf.c: Lock elision tunable parameters.
++   Copyright (C) 2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include "config.h"
++#include <pthreadP.h>
++#include <elision-conf.h>
++#include <unistd.h>
++#include <dl-procinfo.h>
++
++/* Reasonable initial tuning values, may be revised in the future.
++   This is a conservative initial value.  */
++
++struct elision_config __elision_aconf =
++  {
++    /* How many times to use a non-transactional lock after a transactional
++       failure has occurred because the lock is already acquired.  Expressed
++       in number of lock acquisition attempts.  */
++    .skip_lock_busy = 3,
++    /* How often to not attempt to use elision if a transaction aborted due
++       to reasons other than other threads' memory accesses.  Expressed in
++       number of lock acquisition attempts.  */
++    .skip_lock_internal_abort = 3,
++    /* How often to not attempt to use elision if a lock used up all retries
++       without success.  Expressed in number of lock acquisition attempts.  */
++    .skip_lock_out_of_tbegin_retries = 3,
++    /* How often we retry using elision if there is chance for the transaction
++       to finish execution (e.g., it wasn't aborted due to the lock being
++       already acquired.  */
++    .try_tbegin = 3,
++    /* Same as SKIP_LOCK_INTERNAL_ABORT but for trylock.  */
++    .skip_trylock_internal_abort = 3,
++  };
++
++/* Force elision for all new locks.  This is used to decide whether existing
++   DEFAULT locks should be automatically use elision in pthread_mutex_lock().
++   Disabled for suid programs.  Only used when elision is available.  */
++
++int __pthread_force_elision attribute_hidden;
++
++/* Initialize elision.  */
++
++static void
++elision_init (int argc __attribute__ ((unused)),
++	      char **argv  __attribute__ ((unused)),
++	      char **environ)
++{
++#ifdef ENABLE_LOCK_ELISION
++  int elision_available = (GLRO (dl_hwcap2) & PPC_FEATURE2_HAS_HTM) ? 1 : 0;
++  __pthread_force_elision = __libc_enable_secure ? 0 : elision_available;
++#endif
++}
++
++#ifdef SHARED
++# define INIT_SECTION ".init_array"
++# define MAYBE_CONST
++#else
++# define INIT_SECTION ".preinit_array"
++# define MAYBE_CONST const
++#endif
++
++void (*MAYBE_CONST __pthread_init_array []) (int, char **, char **)
++  __attribute__ ((section (INIT_SECTION), aligned (sizeof (void *)))) =
++{
++  &elision_init
++};
+Index: glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/powerpc/elision-conf.h
+===================================================================
+--- /dev/null
++++ glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/powerpc/elision-conf.h
+@@ -0,0 +1,42 @@
++/* elision-conf.h: Lock elision tunable parameters.
++   Copyright (C) 2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#ifndef _ELISION_CONF_H
++#define _ELISION_CONF_H 1
++
++#include <pthread.h>
++#include <time.h>
++
++/* Should make sure there is no false sharing on this.  */
++struct elision_config
++{
++  int skip_lock_busy;
++  int skip_lock_internal_abort;
++  int skip_lock_out_of_tbegin_retries;
++  int try_tbegin;
++  int skip_trylock_internal_abort;
++} __attribute__ ((__aligned__ (128)));
++
++extern struct elision_config __elision_aconf attribute_hidden;
++
++extern int __pthread_force_elision attribute_hidden;
++
++/* Tell the test suite to test elision for this architecture.  */
++#define HAVE_ELISION 1
++
++#endif
+Index: glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/powerpc/elision-lock.c
+===================================================================
+--- /dev/null
++++ glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/powerpc/elision-lock.c
+@@ -0,0 +1,107 @@
++/* elision-lock.c: Elided pthread mutex lock.
++   Copyright (C) 2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <stdio.h>
++#include <pthread.h>
++#include <pthreadP.h>
++#include <lowlevellock.h>
++#include <elision-conf.h>
++#include "htm.h"
++
++/* PowerISA 2.0.7 Section B.5.5 defines isync to be insufficient as a
++   barrier in acquire mechanism for HTM operations, a strong 'sync' is
++   required.  */
++#undef __arch_compare_and_exchange_val_32_acq
++#define __arch_compare_and_exchange_val_32_acq(mem, newval, oldval)           \
++  ({                                                                          \
++      __typeof (*(mem)) __tmp;                                                \
++      __typeof (mem)  __memp = (mem);                                         \
++      __asm __volatile (                                                      \
++                        "1:     lwarx   %0,0,%1" MUTEX_HINT_ACQ "\n"          \
++                        "       cmpw    %0,%2\n"                              \
++                        "       bne     2f\n"                                 \
++                        "       stwcx.  %3,0,%1\n"                            \
++                        "       bne-    1b\n"                                 \
++                        "2:     sync"                                         \
++                        : "=&r" (__tmp)                                       \
++                        : "b" (__memp), "r" (oldval), "r" (newval)            \
++                        : "cr0", "memory");                                   \
++      __tmp;                                                                  \
++  })
++
++#if !defined(LLL_LOCK) && !defined(EXTRAARG)
++/* Make sure the configuration code is always linked in for static
++   libraries.  */
++#include "elision-conf.c"
++#endif
++
++#ifndef EXTRAARG
++# define EXTRAARG
++#endif
++#ifndef LLL_LOCK
++# define LLL_LOCK(a,b) lll_lock(a,b), 0
++#endif
++
++#define aconf __elision_aconf
++
++/* Adaptive lock using transactions.
++   By default the lock region is run as a transaction, and when it
++   aborts or the lock is busy the lock adapts itself.  */
++
++int
++__lll_lock_elision (int *lock, short *adapt_count, EXTRAARG int pshared)
++{
++  if (*adapt_count > 0)
++    {
++      (*adapt_count)--;
++      goto use_lock;
++    }
++
++  int try_begin = aconf.try_tbegin;
++  while (1)
++    {
++      if (__builtin_tbegin (0))
++	{
++	  if (*lock == 0)
++	    return 0;
++	  /* Lock was busy.  Fall back to normal locking.  */
++	  __builtin_tabort (_ABORT_LOCK_BUSY);
++	}
++      else
++	{
++	  /* A persistent failure indicates that a retry will probably
++	     result in another failure.  Use normal locking now and
++	     for the next couple of calls.  */
++	  if (try_begin-- <= 0
++	      || _TEXASRU_FAILURE_PERSISTENT (__builtin_get_texasru ()))
++	    {
++	      if (aconf.skip_lock_internal_abort > 0)
++		*adapt_count = aconf.skip_lock_internal_abort;
++	      goto use_lock;
++	    }
++	  /* Same logic as above, but for for a number of temporary failures
++	     in a row.  */
++	  else if (aconf.skip_lock_out_of_tbegin_retries > 0
++                   && aconf.try_tbegin > 0)
++	    *adapt_count = aconf.skip_lock_out_of_tbegin_retries;
++	}
++     }
++
++use_lock:
++  return LLL_LOCK ((*lock), pshared);
++}
+Index: glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/powerpc/elision-timed.c
+===================================================================
+--- /dev/null
++++ glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/powerpc/elision-timed.c
+@@ -0,0 +1,28 @@
++/* elision-timed.c: Lock elision timed lock.
++   Copyright (C) 2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <time.h>
++#include <elision-conf.h>
++#include <lowlevellock.h>
++
++#define __lll_lock_elision __lll_timedlock_elision
++#define EXTRAARG const struct timespec *t,
++#undef LLL_LOCK
++#define LLL_LOCK(a, b) lll_timedlock(a, t, b)
++
++#include "elision-lock.c"
+Index: glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/powerpc/elision-trylock.c
+===================================================================
+--- /dev/null
++++ glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/powerpc/elision-trylock.c
+@@ -0,0 +1,68 @@
++/* elision-trylock.c: Lock eliding trylock for pthreads.
++   Copyright (C) 2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <pthread.h>
++#include <pthreadP.h>
++#include <lowlevellock.h>
++#include <elision-conf.h>
++#include "htm.h"
++
++#define aconf __elision_aconf
++
++/* Try to elide a futex trylock.  FUTEX is the futex variable.  ADAPT_COUNT is
++   the adaptation counter in the mutex.  */
++
++int
++__lll_trylock_elision (int *futex, short *adapt_count)
++{
++  /* Implement POSIX semantics by forbiding nesting elided trylocks.  */
++  __builtin_tabort (_ABORT_NESTED_TRYLOCK);
++
++  /* Only try a transaction if it's worth it.  */
++  if (*adapt_count > 0)
++    {
++      (*adapt_count)--;
++      goto use_lock;
++    }
++
++  if (__builtin_tbegin (0))
++    {
++      if (*futex == 0)
++	return 0;
++
++      /* Lock was busy.  Fall back to normal locking.  */
++      __builtin_tabort (_ABORT_LOCK_BUSY);
++    }
++  else
++    {
++      if (_TEXASRU_FAILURE_PERSISTENT (__builtin_get_texasru ()))
++	{
++	  /* A persistent failure indicates that a retry will probably
++	     result in another failure.  Use normal locking now and
++	     for the next couple of calls.  */
++	  if (aconf.skip_trylock_internal_abort > 0)
++	    *adapt_count = aconf.skip_trylock_internal_abort;
++	}
++
++	if (aconf.skip_lock_busy > 0)
++	  *adapt_count = aconf.skip_lock_busy;
++    }
++
++use_lock:
++  return lll_trylock (*futex);
++}
+Index: glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/powerpc/elision-unlock.c
+===================================================================
+--- /dev/null
++++ glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/powerpc/elision-unlock.c
+@@ -0,0 +1,32 @@
++/* elision-unlock.c: Commit an elided pthread lock.
++   Copyright (C) 2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include "pthreadP.h"
++#include <lowlevellock.h>
++#include "htm.h"
++
++int
++__lll_unlock_elision(int *lock, int pshared)
++{
++  /* When the lock was free we're in a transaction.  */
++  if (*lock == 0)
++    __builtin_tend (0);
++  else
++    lll_unlock ((*lock), pshared);
++  return 0;
++}
+Index: glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/powerpc/force-elision.h
+===================================================================
+--- /dev/null
++++ glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/powerpc/force-elision.h
+@@ -0,0 +1,28 @@
++/* force-elision.h: Automatic enabling of elision for mutexes
++   Copyright (C) 2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#ifdef ENABLE_LOCK_ELISION
++/* Automatically enable elision for existing user lock kinds.  */
++#define FORCE_ELISION(m, s)						\
++  if (__pthread_force_elision						\
++      && (m->__data.__kind & PTHREAD_MUTEX_ELISION_FLAGS_NP) == 0)	\
++    {									\
++      mutex->__data.__kind |= PTHREAD_MUTEX_ELISION_NP;			\
++      s;								\
++    }
++#endif
+Index: glibc-2.17-c758a686/sysdeps/unix/sysv/linux/powerpc/htm.h
+===================================================================
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/unix/sysv/linux/powerpc/htm.h
+@@ -0,0 +1,138 @@
++/* Shared HTM header.  Emulate transactional execution facility intrinsics for
++   compilers and assemblers that do not support the intrinsics and instructions
++   yet.
++
++   Copyright (C) 2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#ifndef _HTM_H
++#define _HTM_H 1
++
++#ifdef __ASSEMBLER__
++
++/* tbegin.  */
++.macro TBEGIN
++	.long 0x7c00051d
++.endm
++
++/* tend. 0  */
++.macro TEND
++	.long 0x7c00055d
++.endm
++
++/* tabort. code  */
++.macro TABORT code
++	.byte 0x7c
++	.byte \code
++	.byte 0x07
++	.byte 0x1d
++.endm
++
++/*"TEXASR - Transaction EXception And Summary Register"
++   mfspr %dst,130  */
++.macro TEXASR dst
++	mfspr \dst,130
++.endm
++
++#else
++
++#include <endian.h>
++
++/* Official HTM intrinsics interface matching GCC, but works
++   on older GCC compatible compilers and binutils.
++   We should somehow detect if the compiler supports it, because
++   it may be able to generate slightly better code.  */
++
++#define TBEGIN ".long 0x7c00051d"
++#define TEND   ".long 0x7c00055d"
++#if __BYTE_ORDER == __LITTLE_ENDIAN
++# define TABORT ".byte 0x1d,0x07,%1,0x1d"
++#else
++# define TABORT ".byte 0x7c,%1,0x07,0x1d"
++#endif
++
++#define __force_inline        inline __attribute__((__always_inline__))
++
++#ifndef __HTM__
++
++#define _TEXASRU_EXTRACT_BITS(TEXASR,BITNUM,SIZE) \
++  (((TEXASR) >> (31-(BITNUM))) & ((1<<(SIZE))-1))
++#define _TEXASRU_FAILURE_PERSISTENT(TEXASRU) \
++  _TEXASRU_EXTRACT_BITS(TEXASRU, 7, 1)
++
++#define _tbegin()			\
++  ({ unsigned int __ret;		\
++     asm volatile (			\
++       TBEGIN "\t\n"			\
++       "mfcr   %0\t\n"			\
++       "rlwinm %0,%0,3,1\t\n"		\
++       "xori %0,%0,1\t\n"		\
++       : "=r" (__ret) :			\
++       : "cr0", "memory");		\
++     __ret;				\
++  })
++
++#define _tend()				\
++  ({ unsigned int __ret;		\
++     asm volatile (			\
++       TEND "\t\n"			\
++       "mfcr   %0\t\n"			\
++       "rlwinm %0,%0,3,1\t\n"		\
++       "xori %0,%0,1\t\n"		\
++       : "=r" (__ret) :			\
++       : "cr0", "memory");		\
++     __ret;				\
++  })
++
++#define _tabort(__code)			\
++  ({ unsigned int __ret;		\
++     asm volatile (			\
++       TABORT "\t\n"			\
++       "mfcr   %0\t\n"			\
++       "rlwinm %0,%0,3,1\t\n"		\
++       "xori %0,%0,1\t\n"		\
++       : "=r" (__ret) : "r" (__code)	\
++       : "cr0", "memory");		\
++     __ret;				\
++  })
++
++#define _texasru()			\
++  ({ unsigned long __ret;		\
++     asm volatile (			\
++       "mfspr %0,131\t\n"		\
++       : "=r" (__ret));			\
++     __ret;				\
++  })
++
++#define __builtin_tbegin(tdb)       _tbegin ()
++#define __builtin_tend(nested)      _tend ()
++#define __builtin_tabort(abortcode) _tabort (abortcode)
++#define __builtin_get_texasru()     _texasru ()
++
++#else
++# include <htmintrin.h>
++#endif /* __HTM__  */
++
++#endif /* __ASSEMBLER__ */
++
++/* Definitions used for TEXASR Failure code (bits 0:6), they need to be even
++   because tabort. always sets the first bit.  */
++#define _ABORT_LOCK_BUSY       0x3f   /* Lock already used.  */
++#define _ABORT_NESTED_TRYLOCK  0x3e   /* Write operation in trylock.  */
++#define _ABORT_SYSCALL         0x3d   /* Syscall issued.  */
++
++#endif
+Index: glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/powerpc/lowlevellock.h
+===================================================================
+--- glibc-2.17-c758a686.orig/nptl/sysdeps/unix/sysv/linux/powerpc/lowlevellock.h
++++ glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/powerpc/lowlevellock.h
+@@ -326,4 +326,28 @@ extern int __lll_timedwait_tid (int *, c
+     __res;								      \
+   })
+ 
++/* Transactional lock elision definitions.  */
++extern int __lll_timedlock_elision
++  (int *futex, short *adapt_count, const struct timespec *timeout, int private)
++  attribute_hidden;
++
++#define lll_timedlock_elision(futex, adapt_count, timeout, private)	      \
++  __lll_timedlock_elision(&(futex), &(adapt_count), timeout, private)
++
++extern int __lll_lock_elision (int *futex, short *adapt_count, int private)
++  attribute_hidden;
++
++extern int __lll_unlock_elision(int *lock, int private)
++  attribute_hidden;
++
++extern int __lll_trylock_elision(int *lock, short *adapt_count)
++  attribute_hidden;
++
++#define lll_lock_elision(futex, adapt_count, private) \
++  __lll_lock_elision (&(futex), &(adapt_count), private)
++#define lll_unlock_elision(futex, private) \
++  __lll_unlock_elision (&(futex), private)
++#define lll_trylock_elision(futex, adapt_count) \
++  __lll_trylock_elision (&(futex), &(adapt_count))
++
+ #endif	/* lowlevellock.h */
+Index: glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/powerpc/pthread_mutex_cond_lock.c
+===================================================================
+--- /dev/null
++++ glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/powerpc/pthread_mutex_cond_lock.c
+@@ -0,0 +1,22 @@
++/* Copyright (C) 2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++/* The cond lock is not actually elided yet, but we still need to handle
++   already elided locks.  */
++#include <elision-conf.h>
++
++#include "sysdeps/unix/sysv/linux/pthread_mutex_cond_lock.c"
+Index: glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/powerpc/pthread_mutex_lock.c
+===================================================================
+--- /dev/null
++++ glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/powerpc/pthread_mutex_lock.c
+@@ -0,0 +1,22 @@
++/* Elided version of pthread_mutex_lock.
++   Copyright (C) 2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <elision-conf.h>
++#include <force-elision.h>
++
++#include <nptl/pthread_mutex_lock.c>
+Index: glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/powerpc/pthread_mutex_timedlock.c
+===================================================================
+--- /dev/null
++++ glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/powerpc/pthread_mutex_timedlock.c
+@@ -0,0 +1,22 @@
++/* Elided version of pthread_mutex_timedlock.
++   Copyright (C) 2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <elision-conf.h>
++#include <force-elision.h>
++
++#include <nptl/pthread_mutex_timedlock.c>
+Index: glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/powerpc/pthread_mutex_trylock.c
+===================================================================
+--- /dev/null
++++ glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/powerpc/pthread_mutex_trylock.c
+@@ -0,0 +1,22 @@
++/* Elided version of pthread_mutex_trylock.
++   Copyright (C) 2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <elision-conf.h>
++#include <force-elision.h>
++
++#include <nptl/pthread_mutex_trylock.c>
+Index: glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/powerpc/bits/pthreadtypes.h
+===================================================================
+--- glibc-2.17-c758a686.orig/nptl/sysdeps/unix/sysv/linux/powerpc/bits/pthreadtypes.h
++++ glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/powerpc/bits/pthreadtypes.h
+@@ -90,14 +90,25 @@ typedef union
+        binary compatibility.  */
+     int __kind;
+ #if __WORDSIZE == 64
+-    int __spins;
++    short __spins;
++    short __elision;
+     __pthread_list_t __list;
+ # define __PTHREAD_MUTEX_HAVE_PREV	1
++# define __PTHREAD_SPINS             0, 0
++# define __PTHREAD_MUTEX_HAVE_ELISION	1
+ #else
+     unsigned int __nusers;
+     __extension__ union
+     {
+-      int __spins;
++      struct
++      {
++	short __espins;
++	short __elision;
++# define __spins __elision_data.__espins
++# define __elision __elision_data.__elision
++# define __PTHREAD_SPINS         { 0, 0 }
++# define __PTHREAD_MUTEX_HAVE_ELISION	2
++      } __elision_data;
+       __pthread_slist_t __list;
+     };
+ #endif
+Index: glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/powerpc/Makefile
+===================================================================
+--- glibc-2.17-c758a686.orig/nptl/sysdeps/unix/sysv/linux/powerpc/Makefile
++++ glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/powerpc/Makefile
+@@ -1,2 +1,4 @@
+ # pull in __syscall_error routine
+ libpthread-routines += sysdep
++libpthread-sysdep_routines += elision-lock elision-unlock elision-timed \
++			      elision-trylock

@@ -1,0 +1,26 @@
+commit c9afcaaafaf9126a973883528eed8d0058a264c0
+Author: H.J. Lu <hjl.tools@gmail.com>
+Date:   Tue Dec 15 11:46:54 2015 -0800
+
+    Enable Silvermont optimizations for Knights Landing
+
+    Knights Landing processor is based on Silvermont.  This patch enables
+    Silvermont optimizations for Knights Landing.
+
+        * sysdeps/x86/cpu-features.c (init_cpu_features): Enable
+        Silvermont optimizations for Knights Landing.
+
+diff --git a/sysdeps/x86/cpu-features.c b/sysdeps/x86/cpu-features.c
+index fba3ef0..aff894c 100644
+--- a/sysdeps/x86/cpu-features.c
++++ b/sysdeps/x86/cpu-features.c
+@@ -78,6 +78,9 @@ init_cpu_features (struct cpu_features *cpu_features)
+ 	      cpu_features->feature[index_Slow_BSF] |= bit_Slow_BSF;
+ 	      break;
+ 
++	    case 0x57:
++	      /* Knights Landing.  Enable Silvermont optimizations.  */
++
+ 	    case 0x37:
+ 	    case 0x4a:
+ 	    case 0x4d:

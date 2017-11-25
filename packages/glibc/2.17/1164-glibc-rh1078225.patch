@@ -1,0 +1,46 @@
+From 3a3acb6afc753475675b5724f206e619d0c9590d Mon Sep 17 00:00:00 2001
+From: Tom Tromey <tromey@redhat.com>
+Date: Mon, 20 Jan 2014 12:58:03 +0000
+Subject: [PATCH] [AArch64] BZ #16169 Add CFI directives to clone.S
+
+[BZ #16169] Add CFI directives to the AArch64 clone.S implementation
+and ensure that the FP in the child is zero'd in order to comply with
+AAPCS.
+---
+ NEWS                                          |    8 ++++----
+ ports/ChangeLog.aarch64                       |    6 ++++++
+ ports/sysdeps/unix/sysv/linux/aarch64/clone.S |    7 ++++++-
+ 3 files changed, 16 insertions(+), 5 deletions(-)
+
+Index: glibc-2.17-c758a686/ports/sysdeps/unix/sysv/linux/aarch64/clone.S
+===================================================================
+--- glibc-2.17-c758a686/ports/sysdeps/unix/sysv/linux/aarch64/clone.S
++++ glibc-2.17-c758a686/ports/sysdeps/unix/sysv/linux/aarch64/clone.S
+@@ -63,6 +63,7 @@ ENTRY(__clone)
+ 	mov	x8, #SYS_ify(clone)
+ 	/* X0:flags, x1:newsp, x2:parenttidptr, x3:newtls, x4:childtid.  */
+ 	svc	0x0
++	cfi_endproc
+ 	cmp	x0, #0
+ 	beq	2f
+ 	blt	C_SYMBOL_NAME(__syscall_error)
+@@ -71,6 +72,9 @@ ENTRY(__clone)
+ 	b	syscall_error
+ 
+ 2:
++	cfi_startproc
++	cfi_undefined (x30)
++	mov	x29, 0
+ #ifdef RESET_PID
+ 	tbnz	x5, #CLONE_THREAD_BIT, 3f
+ 	mov	x0, #-1
+@@ -92,7 +96,8 @@ ENTRY(__clone)
+ 
+ 	/* We are done, pass the return value through x0.  */
+ 	b	HIDDEN_JUMPTARGET(_exit)
+-
++	cfi_endproc
++	cfi_startproc
+ PSEUDO_END (__clone)
+ 
+ weak_alias (__clone, clone)

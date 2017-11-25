@@ -1,0 +1,522 @@
+commit a1b85ae88b1a664e93ca0182c82f7763dd5a1754
+Author: Florian Weimer <fweimer@redhat.com>
+Date:   Mon Nov 9 16:52:31 2015 +0100
+
+    ld.so: Add original DSO name if overridden by audit module [BZ #18251]
+
+Index: b/elf/Makefile
+===================================================================
+--- a/elf/Makefile
++++ b/elf/Makefile
+@@ -119,7 +119,8 @@ $(inst_auditdir)/sotruss-lib.so: $(objpf
+ endif
+ 
+ tests = tst-tls1 tst-tls2 tst-tls9 tst-leaks1 \
+-	tst-array1 tst-array2 tst-array3 tst-array4 tst-array5
++	tst-array1 tst-array2 tst-array3 tst-array4 tst-array5 \
++	tst-audit11 tst-audit12
+ tests-static = tst-tls1-static tst-tls2-static tst-stackguard1-static \
+ 	       tst-leaks1-static tst-array1-static tst-array5-static \
+ 	       tst-ptrguard1-static
+@@ -216,7 +217,9 @@ modules-names = testobj1 testobj2 testob
+ 		tst-initorder2a tst-initorder2b tst-initorder2c \
+ 		tst-initorder2d \
+ 		tst-relsort1mod1 tst-relsort1mod2 tst-array2dep \
+-		tst-array5dep
++		tst-array5dep \
++		tst-audit11mod1 tst-audit11mod2 tst-auditmod11 \
++		tst-audit12mod1 tst-audit12mod2 tst-audit12mod3 tst-auditmod12
+ ifeq (yesyes,$(have-fpie)$(build-shared))
+ modules-names += tst-piemod1
+ tests += tst-pie1
+@@ -1210,3 +1213,15 @@ $(objpfx)tst-unused-dep.out: $(objpfx)te
+ 	  --library-path $(rpath-link)$(patsubst %,:%,$(sysdep-library-path)) \
+ 	  $< > $@
+ 	cmp $@ /dev/null > /dev/null
++
++$(objpfx)tst-audit11.out: $(objpfx)tst-auditmod11.so $(objpfx)tst-audit11mod1.so
++$(objpfx)tst-audit11: $(libdl)
++tst-audit11-ENV = LD_AUDIT=$(objpfx)tst-auditmod11.so
++$(objpfx)tst-audit11mod1.so: $(objpfx)tst-audit11mod2.so
++LDFLAGS-tst-audit11mod2.so = -Wl,--version-script=tst-audit11mod2.map,-soname,tst-audit11mod2.so
++
++$(objpfx)tst-audit12.out: $(objpfx)tst-auditmod12.so $(objpfx)tst-audit12mod1.so $(objpfx)tst-audit12mod3.so
++$(objpfx)tst-audit12: $(libdl)
++tst-audit12-ENV = LD_AUDIT=$(objpfx)tst-auditmod12.so
++$(objpfx)tst-audit12mod1.so: $(objpfx)tst-audit12mod2.so
++LDFLAGS-tst-audit12mod2.so = -Wl,--version-script=tst-audit12mod2.map
+Index: b/elf/dl-load.c
+===================================================================
+--- a/elf/dl-load.c
++++ b/elf/dl-load.c
+@@ -909,9 +909,10 @@ lose (int code, int fd, const char *name
+ static
+ #endif
+ struct link_map *
+-_dl_map_object_from_fd (const char *name, int fd, struct filebuf *fbp,
+-			char *realname, struct link_map *loader, int l_type,
+-			int mode, void **stack_endp, Lmid_t nsid)
++_dl_map_object_from_fd (const char *name, const char *origname, int fd,
++			struct filebuf *fbp, char *realname,
++			struct link_map *loader, int l_type, int mode,
++			void **stack_endp, Lmid_t nsid)
+ {
+   struct link_map *l = NULL;
+   const ElfW(Ehdr) *header;
+@@ -1582,6 +1583,17 @@ cannot enable executable stack as shared
+   l->l_dev = st.st_dev;
+   l->l_ino = st.st_ino;
+ 
++#ifdef SHARED
++  /* When auditing is used the recorded names might not include the
++     name by which the DSO is actually known.  Add that as well.  */
++  if (__glibc_unlikely (origname != NULL))
++    add_name_to_object (l, origname);
++#else
++  /* Audit modules only exist when linking is dynamic so ORIGNAME
++     cannot be non-NULL.  */
++  assert (origname == NULL);
++#endif
++
+   /* When we profile the SONAME might be needed for something else but
+      loading.  Add it right away.  */
+   if (__builtin_expect (GLRO(dl_profile) != NULL, 0)
+@@ -2081,6 +2093,7 @@ _dl_map_object (struct link_map *loader,
+ 		int type, int trace_mode, int mode, Lmid_t nsid)
+ {
+   int fd;
++  const char *origname = NULL;
+   char *realname;
+   char *name_copy;
+   struct link_map *l;
+@@ -2144,6 +2157,7 @@ _dl_map_object (struct link_map *loader,
+ 	{
+ 	  if (afct->objsearch != NULL)
+ 	    {
++	      const char *before = name;
+ 	      name = afct->objsearch (name, &loader->l_audit[cnt].cookie,
+ 				      LA_SER_ORIG);
+ 	      if (name == NULL)
+@@ -2152,6 +2166,15 @@ _dl_map_object (struct link_map *loader,
+ 		  fd = -1;
+ 		  goto no_file;
+ 		}
++	      if (before != name && strcmp (before, name) != 0)
++		{
++		  if (__glibc_unlikely (GLRO(dl_debug_mask) & DL_DEBUG_FILES))
++		    _dl_debug_printf ("audit changed filename %s -> %s\n",
++				      before, name);
++
++		  if (origname == NULL)
++		    origname = before;
++		}
+ 	    }
+ 
+ 	  afct = afct->next;
+@@ -2371,8 +2394,8 @@ _dl_map_object (struct link_map *loader,
+     }
+ 
+   void *stack_end = __libc_stack_end;
+-  return _dl_map_object_from_fd (name, fd, &fb, realname, loader, type, mode,
+-				 &stack_end, nsid);
++  return _dl_map_object_from_fd (name, origname, fd, &fb, realname, loader,
++				 type, mode, &stack_end, nsid);
+ }
+ 
+ 
+Index: b/elf/tst-audit11.c
+===================================================================
+--- /dev/null
++++ b/elf/tst-audit11.c
+@@ -0,0 +1,36 @@
++/* Test version symbol binding can find a DSO replaced by la_objsearch.
++   Copyright (C) 2015 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <dlfcn.h>
++#include <stdio.h>
++
++int
++do_test (void)
++{
++  puts ("Start");
++  if (dlopen ("$ORIGIN/tst-audit11mod1.so", RTLD_LAZY) == NULL)
++    {
++      printf ("module not loaded: %s\n", dlerror ());
++      return 1;
++    }
++  puts ("OK");
++  return 0;
++}
++
++#define TEST_FUNCTION do_test ()
++#include "../test-skeleton.c"
+Index: b/elf/tst-audit11mod1.c
+===================================================================
+--- /dev/null
++++ b/elf/tst-audit11mod1.c
+@@ -0,0 +1,24 @@
++/* DSO directly opened by tst-audit11.
++   Copyright (C) 2015 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++extern int f2 (void);
++int
++f1 (void)
++{
++  return f2 ();
++}
+Index: b/elf/tst-audit11mod2.c
+===================================================================
+--- /dev/null
++++ b/elf/tst-audit11mod2.c
+@@ -0,0 +1,23 @@
++/* DSO indirectly opened by tst-audit11, with symbol versioning.
++   Copyright (C) 2015 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++int
++f2 (void)
++{
++  return 42;
++}
+Index: b/elf/tst-audit11mod2.map
+===================================================================
+--- /dev/null
++++ b/elf/tst-audit11mod2.map
+@@ -0,0 +1,22 @@
++/* Symbol versioning for the DSO indirectly opened by tst-audit11.
++   Copyright (C) 2015 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++V1 {
++  global: f2;
++  local: *;
++};
+Index: b/elf/tst-audit12.c
+===================================================================
+--- /dev/null
++++ b/elf/tst-audit12.c
+@@ -0,0 +1,49 @@
++/* Test that symbol is bound to a DSO replaced by la_objsearch.
++   Copyright (C) 2015 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <dlfcn.h>
++#include <stdio.h>
++
++int
++do_test (void)
++{
++  puts ("Start");
++  void *h = dlopen ("$ORIGIN/tst-audit12mod1.so", RTLD_LAZY);
++  if (h == NULL)
++    {
++      printf ("module not loaded: %s\n", dlerror ());
++      return 1;
++    }
++  int (*fp) (void) = (int (*) (void)) dlsym (h, "f1");
++  if (fp == NULL)
++    {
++      printf ("function f1 not found: %s\n", dlerror ());
++      return 1;
++    }
++  int res = fp ();
++  if (res != 43)
++    {
++      puts ("incorrect function f2 called");
++      return 1;
++    }
++  printf ("%d is OK\n", res);
++  return 0;
++}
++
++#define TEST_FUNCTION do_test ()
++#include "../test-skeleton.c"
+Index: b/elf/tst-audit12mod1.c
+===================================================================
+--- /dev/null
++++ b/elf/tst-audit12mod1.c
+@@ -0,0 +1,24 @@
++/* DSO directly opened by tst-audit12.
++   Copyright (C) 2015 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++extern int f2 (void);
++int
++f1 (void)
++{
++  return f2 ();
++}
+Index: b/elf/tst-audit12mod2.c
+===================================================================
+--- /dev/null
++++ b/elf/tst-audit12mod2.c
+@@ -0,0 +1,23 @@
++/* Replaced DSO referenced by tst-audit12mod1.so, for tst-audit12.
++   Copyright (C) 2015 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++int
++f2 (void)
++{
++  return 42;
++}
+Index: b/elf/tst-audit12mod2.map
+===================================================================
+--- /dev/null
++++ b/elf/tst-audit12mod2.map
+@@ -0,0 +1,22 @@
++/* Symbol versioning for tst-audit12mod2.so used by tst-audit12.
++   Copyright (C) 2015 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++V1 {
++  global: f2;
++  local: *;
++};
+Index: b/elf/tst-audit12mod3.c
+===================================================================
+--- /dev/null
++++ b/elf/tst-audit12mod3.c
+@@ -0,0 +1,23 @@
++/* Replacement DSO loaded by the audit module, for tst-audit12.
++   Copyright (C) 2015 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++int
++f2 (void)
++{
++  return 43;
++}
+Index: b/elf/tst-auditmod11.c
+===================================================================
+--- /dev/null
++++ b/elf/tst-auditmod11.c
+@@ -0,0 +1,39 @@
++/* Audit module for tst-audit11.
++   Copyright (C) 2015 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <link.h>
++#include <stdio.h>
++#include <stdlib.h>
++#include <string.h>
++#include <unistd.h>
++
++unsigned int
++la_version (unsigned int version)
++{
++  return version;
++}
++
++char *
++la_objsearch (const char *name, uintptr_t *cookie, unsigned int flag)
++{
++  if (strcmp (name, "tst-audit11mod2.so") == 0)
++    {
++      return (char *) "$ORIGIN/tst-audit11mod2.so";
++    }
++  return (char *) name;
++}
+Index: b/elf/tst-auditmod12.c
+===================================================================
+--- /dev/null
++++ b/elf/tst-auditmod12.c
+@@ -0,0 +1,43 @@
++/* Audit module for tst-audit12.
++   Copyright (C) 2015 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <link.h>
++#include <stdio.h>
++#include <stdlib.h>
++#include <string.h>
++#include <unistd.h>
++
++unsigned int
++la_version (unsigned int version)
++{
++  return version;
++}
++
++char *
++la_objsearch (const char *name, uintptr_t *cookie, unsigned int flag)
++{
++  const char target[] = "tst-audit12mod2.so";
++
++  size_t namelen = strlen (name);
++  if (namelen >= sizeof (target) - 1
++      && strcmp (name + namelen - (sizeof (target) - 1), target) == 0)
++    {
++      return (char *) "$ORIGIN/tst-audit12mod3.so";
++    }
++  return (char *) name;
++}
+Index: b/sysdeps/mach/hurd/dl-sysdep.c
+===================================================================
+--- a/sysdeps/mach/hurd/dl-sysdep.c
++++ b/sysdeps/mach/hurd/dl-sysdep.c
+@@ -187,7 +187,7 @@ unfmh();			/* XXX */
+ 	    assert_perror (err);
+ 
+ 	    lastslash = strrchr (p, '/');
+-	    l = _dl_map_object_from_fd (lastslash ? lastslash + 1 : p,
++	    l = _dl_map_object_from_fd (lastslash ? lastslash + 1 : p, NULL,
+ 					memobj, strdup (p), 0);
+ 
+ 	    /* Squirrel away the memory object port where it

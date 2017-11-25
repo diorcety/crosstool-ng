@@ -1,0 +1,23 @@
+commit f6c44d475104e931bab2b4ffa499961088de673c
+Author: Alan Modra <amodra@gmail.com>
+Date:   Mon Jul 14 21:14:50 2014 +0930
+
+    Correct DT_PPC64_NUM
+    
+    	[BZ #17153]
+    	* elf/elf.h (DT_PPC64_NUM): Correct value.
+    	* NEWS: Add to fixed bug list.
+
+diff --git glibc-2.17-c758a686/elf/elf.h glibc-2.17-c758a686/elf/elf.h
+index 40e87b2..78815e8 100644
+--- glibc-2.17-c758a686/elf/elf.h
++++ glibc-2.17-c758a686/elf/elf.h
+@@ -2283,7 +2283,7 @@ typedef Elf32_Addr Elf32_Conflict;
+ #define DT_PPC64_OPD	(DT_LOPROC + 1)
+ #define DT_PPC64_OPDSZ	(DT_LOPROC + 2)
+ #define DT_PPC64_OPT	(DT_LOPROC + 3)
+-#define DT_PPC64_NUM    3
++#define DT_PPC64_NUM    4
+ 
+ /* PowerPC64 specific values for the DT_PPC64_OPT Dyn entry.  */
+ #define PPC64_OPT_TLS		1

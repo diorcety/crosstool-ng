@@ -1,0 +1,89 @@
+commit 1c1e7fb65828c99d6e0f0f3857089b559a0c8189
+Author: Carlos O'Donell <carlos@redhat.com>
+Date:   Thu Jun 2 23:30:11 2016 -0400
+
+    Fix macro API for __USE_KERNEL_IPV6_DEFS.
+    
+    The use of __USE_KERNEL_IPV6_DEFS with ifndef is bad
+    practice per: https://sourceware.org/glibc/wiki/Wundef.
+    This change moves it to use 'if' and always define the
+    macro.
+    
+    Please note that this is not the only problem with this
+    code. I have a series of fixes after this one to resolve
+    breakage with this code and add regression tests for it
+    via compile-only source testing (to be discussed in another
+    thread).
+    
+    Unfortunately __USE_KERNEL_XATTR_DEFS is set by the kernel
+    and not glibc, and uses 'define', so we can't fix that yet.
+
+Index: glibc-2.17-c758a686/inet/netinet/in.h
+===================================================================
+--- glibc-2.17-c758a686.orig/inet/netinet/in.h
++++ glibc-2.17-c758a686/inet/netinet/in.h
+@@ -91,10 +91,10 @@ enum
+     IPPROTO_MAX
+   };
+ 
+-/* If __USER_KERNEL_IPV6_DEFS is defined then the user has included the kernel
++/* If __USE_KERNEL_IPV6_DEFS is 1 then the user has included the kernel
+    network headers first and we should use those ABI-identical definitions
+-   instead of our own.  */
+-#ifndef __USE_KERNEL_IPV6_DEFS
++   instead of our own, otherwise 0.  */
++#if !__USE_KERNEL_IPV6_DEFS
+ enum
+   {
+     IPPROTO_HOPOPTS = 0,   /* IPv6 Hop-by-Hop options.  */
+@@ -205,7 +205,7 @@ enum
+ #define INADDR_ALLRTRS_GROUP    ((in_addr_t) 0xe0000002) /* 224.0.0.2 */
+ #define INADDR_MAX_LOCAL_GROUP  ((in_addr_t) 0xe00000ff) /* 224.0.0.255 */
+ 
+-#ifndef __USE_KERNEL_IPV6_DEFS
++#if !__USE_KERNEL_IPV6_DEFS
+ /* IPv6 address */
+ struct in6_addr
+   {
+@@ -248,7 +248,7 @@ struct sockaddr_in
+ 			   sizeof (struct in_addr)];
+   };
+ 
+-#ifndef __USE_KERNEL_IPV6_DEFS
++#if !__USE_KERNEL_IPV6_DEFS
+ /* Ditto, for IPv6.  */
+ struct sockaddr_in6
+   {
+@@ -284,7 +284,7 @@ struct ip_mreq_source
+   };
+ #endif
+ 
+-#ifndef __USE_KERNEL_IPV6_DEFS
++#if !__USE_KERNEL_IPV6_DEFS
+ /* Likewise, for IPv6.  */
+ struct ipv6_mreq
+   {
+@@ -531,7 +531,7 @@ extern int bindresvport6 (int __sockfd,
+ #ifdef __USE_GNU
+ struct cmsghdr;			/* Forward declaration.  */
+ 
+-#ifndef __USE_KERNEL_IPV6_DEFS
++#if !__USE_KERNEL_IPV6_DEFS
+ /* IPv6 packet information.  */
+ struct in6_pktinfo
+   {
+Index: glibc-2.17-c758a686/sysdeps/unix/sysv/linux/bits/in.h
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/unix/sysv/linux/bits/in.h
++++ glibc-2.17-c758a686/sysdeps/unix/sysv/linux/bits/in.h
+@@ -30,7 +30,9 @@
+ /* This is not quite the same API since the kernel always defines s6_addr16 and
+    s6_addr32. This is not a violation of POSIX since POSIX says "at least the
+    following member" and that holds true.  */
+-# define __USE_KERNEL_IPV6_DEFS
++# define __USE_KERNEL_IPV6_DEFS 1
++#else
++# define __USE_KERNEL_IPV6_DEFS 0
+ #endif
+ 
+ /* Options for use with `getsockopt' and `setsockopt' at the IP level.

@@ -1,0 +1,378 @@
+diff -u --new-file glibc-2.17-c758a686/sysdeps/unix/sysv/linux/powerpc/powerpc64/nptl/librtkaio-le.abilist glibc-2.17-c758a686/sysdeps/unix/sysv/linux/powerpc/powerpc64/nptl/librtkaio-le.abilist
+--- glibc-2.17-c758a686/sysdeps/unix/sysv/linux/powerpc/powerpc64/nptl/librtkaio-le.abilist                 1969-12-31 19:00:00.000000000 -0500
++++ glibc-2.17-c758a686/sysdeps/unix/sysv/linux/powerpc/powerpc64/nptl/librtkaio-le.abilist 2015-04-28 19:44:03.038050864 -0400
+@@ -0,0 +1,41 @@
++GLIBC_2.17
++ GLIBC_2.17 A
++ aio_cancel F
++ aio_cancel64 F
++ aio_error F
++ aio_error64 F
++ aio_fsync F
++ aio_fsync64 F
++ aio_init F
++ aio_read F
++ aio_read64 F
++ aio_return F
++ aio_return64 F
++ aio_suspend F
++ aio_suspend64 F
++ aio_write F
++ aio_write64 F
++ clock_getcpuclockid F
++ clock_getres F
++ clock_gettime F
++ clock_nanosleep F
++ clock_settime F
++ lio_listio F
++ lio_listio64 F
++ mq_close F
++ mq_getattr F
++ mq_notify F
++ mq_open F
++ mq_receive F
++ mq_send F
++ mq_setattr F
++ mq_timedreceive F
++ mq_timedsend F
++ mq_unlink F
++ shm_open F
++ shm_unlink F
++ timer_create F
++ timer_delete F
++ timer_getoverrun F
++ timer_gettime F
++ timer_settime F
+diff -ru --new-file glibc-2.17-c758a686/sysdeps/unix/sysv/linux/i386/nptl/librtkaio.abilist glibc-2.17-c758a686/sysdeps/unix/sysv/linux/i386/nptl/librtkaio.abilist
+--- glibc-2.17-c758a686/sysdeps/unix/sysv/linux/i386/nptl/librtkaio.abilist	1969-12-31 17:00:00.000000000 -0700
++++ glibc-2.17-c758a686/sysdeps/unix/sysv/linux/i386/nptl/librtkaio.abilist	2015-04-23 17:51:48.159155741 -0600
+@@ -0,0 +1,49 @@
++GLIBC_2.1
++ GLIBC_2.1 A
++ aio_cancel F
++ aio_cancel64 F
++ aio_error F
++ aio_error64 F
++ aio_fsync F
++ aio_fsync64 F
++ aio_init F
++ aio_read F
++ aio_read64 F
++ aio_return F
++ aio_return64 F
++ aio_suspend F
++ aio_suspend64 F
++ aio_write F
++ aio_write64 F
++ lio_listio F
++ lio_listio64 F
++GLIBC_2.2
++ GLIBC_2.2 A
++ clock_getcpuclockid F
++ clock_getres F
++ clock_gettime F
++ clock_nanosleep F
++ clock_settime F
++ shm_open F
++ shm_unlink F
++ timer_create F
++ timer_delete F
++ timer_getoverrun F
++ timer_gettime F
++ timer_settime F
++GLIBC_2.3.4
++ GLIBC_2.3.4 A
++ mq_close F
++ mq_getattr F
++ mq_notify F
++ mq_open F
++ mq_receive F
++ mq_send F
++ mq_setattr F
++ mq_timedreceive F
++ mq_timedsend F
++ mq_unlink F
++GLIBC_2.4
++ GLIBC_2.4 A
++ lio_listio F
++ lio_listio64 F
+diff -ru --new-file glibc-2.17-c758a686/sysdeps/unix/sysv/linux/powerpc/powerpc32/fpu/nptl/librtkaio.abilist glibc-2.17-c758a686/sysdeps/unix/sysv/linux/powerpc/powerpc32/fpu/nptl/librtkaio.abilist
+--- glibc-2.17-c758a686/sysdeps/unix/sysv/linux/powerpc/powerpc32/fpu/nptl/librtkaio.abilist	1969-12-31 17:00:00.000000000 -0700
++++ glibc-2.17-c758a686/sysdeps/unix/sysv/linux/powerpc/powerpc32/fpu/nptl/librtkaio.abilist	2015-04-23 17:50:38.059113789 -0600
+@@ -0,0 +1,49 @@
++GLIBC_2.1
++ GLIBC_2.1 A
++ aio_cancel F
++ aio_cancel64 F
++ aio_error F
++ aio_error64 F
++ aio_fsync F
++ aio_fsync64 F
++ aio_init F
++ aio_read F
++ aio_read64 F
++ aio_return F
++ aio_return64 F
++ aio_suspend F
++ aio_suspend64 F
++ aio_write F
++ aio_write64 F
++ lio_listio F
++ lio_listio64 F
++GLIBC_2.2
++ GLIBC_2.2 A
++ clock_getcpuclockid F
++ clock_getres F
++ clock_gettime F
++ clock_nanosleep F
++ clock_settime F
++ shm_open F
++ shm_unlink F
++ timer_create F
++ timer_delete F
++ timer_getoverrun F
++ timer_gettime F
++ timer_settime F
++GLIBC_2.3.4
++ GLIBC_2.3.4 A
++ mq_close F
++ mq_getattr F
++ mq_notify F
++ mq_open F
++ mq_receive F
++ mq_send F
++ mq_setattr F
++ mq_timedreceive F
++ mq_timedsend F
++ mq_unlink F
++GLIBC_2.4
++ GLIBC_2.4 A
++ lio_listio F
++ lio_listio64 F
+diff -ru --new-file glibc-2.17-c758a686/sysdeps/unix/sysv/linux/powerpc/powerpc64/nptl/librtkaio.abilist glibc-2.17-c758a686/sysdeps/unix/sysv/linux/powerpc/powerpc64/nptl/librtkaio.abilist
+--- glibc-2.17-c758a686/sysdeps/unix/sysv/linux/powerpc/powerpc64/nptl/librtkaio.abilist	1969-12-31 17:00:00.000000000 -0700
++++ glibc-2.17-c758a686/sysdeps/unix/sysv/linux/powerpc/powerpc64/nptl/librtkaio.abilist	2015-04-23 21:19:41.204953576 -0600
+@@ -0,0 +1,54 @@
++GLIBC_2.3
++ GLIBC_2.3 A
++ aio_cancel F
++ aio_cancel64 F
++ aio_error F
++ aio_error64 F
++ aio_fsync F
++ aio_fsync64 F
++ aio_init F
++ aio_read F
++ aio_read64 F
++ aio_return F
++ aio_return64 F
++ aio_suspend F
++ aio_suspend64 F
++ aio_write F
++ aio_write64 F
++ clock_getcpuclockid F
++ clock_getres F
++ clock_gettime F
++ clock_nanosleep F
++ clock_settime F
++ lio_listio F
++ lio_listio64 F
++ shm_open F
++ shm_unlink F
++ timer_create F
++ timer_delete F
++ timer_getoverrun F
++ timer_gettime F
++ timer_settime F
++GLIBC_2.3.3
++ GLIBC_2.3.3 A
++ timer_create F
++ timer_delete F
++ timer_getoverrun F
++ timer_gettime F
++ timer_settime F
++GLIBC_2.3.4
++ GLIBC_2.3.4 A
++ mq_close F
++ mq_getattr F
++ mq_notify F
++ mq_open F
++ mq_receive F
++ mq_send F
++ mq_setattr F
++ mq_timedreceive F
++ mq_timedsend F
++ mq_unlink F
++GLIBC_2.4
++ GLIBC_2.4 A
++ lio_listio F
++ lio_listio64 F
+diff -ru --new-file glibc-2.17-c758a686/sysdeps/unix/sysv/linux/s390/s390-32/nptl/librtkaio.abilist glibc-2.17-c758a686/sysdeps/unix/sysv/linux/s390/s390-32/nptl/librtkaio.abilist
+--- glibc-2.17-c758a686/sysdeps/unix/sysv/linux/s390/s390-32/nptl/librtkaio.abilist	1969-12-31 17:00:00.000000000 -0700
++++ glibc-2.17-c758a686/sysdeps/unix/sysv/linux/s390/s390-32/nptl/librtkaio.abilist	2015-04-23 17:50:54.671886744 -0600
+@@ -0,0 +1,49 @@
++GLIBC_2.1
++ GLIBC_2.1 A
++ aio_cancel F
++ aio_cancel64 F
++ aio_error F
++ aio_error64 F
++ aio_fsync F
++ aio_fsync64 F
++ aio_init F
++ aio_read F
++ aio_read64 F
++ aio_return F
++ aio_return64 F
++ aio_suspend F
++ aio_suspend64 F
++ aio_write F
++ aio_write64 F
++ lio_listio F
++ lio_listio64 F
++GLIBC_2.2
++ GLIBC_2.2 A
++ clock_getcpuclockid F
++ clock_getres F
++ clock_gettime F
++ clock_nanosleep F
++ clock_settime F
++ shm_open F
++ shm_unlink F
++ timer_create F
++ timer_delete F
++ timer_getoverrun F
++ timer_gettime F
++ timer_settime F
++GLIBC_2.3.4
++ GLIBC_2.3.4 A
++ mq_close F
++ mq_getattr F
++ mq_notify F
++ mq_open F
++ mq_receive F
++ mq_send F
++ mq_setattr F
++ mq_timedreceive F
++ mq_timedsend F
++ mq_unlink F
++GLIBC_2.4
++ GLIBC_2.4 A
++ lio_listio F
++ lio_listio64 F
+diff -ru --new-file glibc-2.17-c758a686/sysdeps/unix/sysv/linux/s390/s390-64/nptl/librtkaio.abilist glibc-2.17-c758a686/sysdeps/unix/sysv/linux/s390/s390-64/nptl/librtkaio.abilist
+--- glibc-2.17-c758a686/sysdeps/unix/sysv/linux/s390/s390-64/nptl/librtkaio.abilist	1969-12-31 17:00:00.000000000 -0700
++++ glibc-2.17-c758a686/sysdeps/unix/sysv/linux/s390/s390-64/nptl/librtkaio.abilist	2015-04-23 17:52:01.366975232 -0600
+@@ -0,0 +1,54 @@
++GLIBC_2.2
++ GLIBC_2.2 A
++ aio_cancel F
++ aio_cancel64 F
++ aio_error F
++ aio_error64 F
++ aio_fsync F
++ aio_fsync64 F
++ aio_init F
++ aio_read F
++ aio_read64 F
++ aio_return F
++ aio_return64 F
++ aio_suspend F
++ aio_suspend64 F
++ aio_write F
++ aio_write64 F
++ clock_getcpuclockid F
++ clock_getres F
++ clock_gettime F
++ clock_nanosleep F
++ clock_settime F
++ lio_listio F
++ lio_listio64 F
++ shm_open F
++ shm_unlink F
++ timer_create F
++ timer_delete F
++ timer_getoverrun F
++ timer_gettime F
++ timer_settime F
++GLIBC_2.3.3
++ GLIBC_2.3.3 A
++ timer_create F
++ timer_delete F
++ timer_getoverrun F
++ timer_gettime F
++ timer_settime F
++GLIBC_2.3.4
++ GLIBC_2.3.4 A
++ mq_close F
++ mq_getattr F
++ mq_notify F
++ mq_open F
++ mq_receive F
++ mq_send F
++ mq_setattr F
++ mq_timedreceive F
++ mq_timedsend F
++ mq_unlink F
++GLIBC_2.4
++ GLIBC_2.4 A
++ lio_listio F
++ lio_listio64 F
+diff -ru --new-file glibc-2.17-c758a686/sysdeps/unix/sysv/linux/x86_64/64/nptl/librtkaio.abilist glibc-2.17-c758a686/sysdeps/unix/sysv/linux/x86_64/64/nptl/librtkaio.abilist
+--- glibc-2.17-c758a686/sysdeps/unix/sysv/linux/x86_64/64/nptl/librtkaio.abilist	1969-12-31 17:00:00.000000000 -0700
++++ glibc-2.17-c758a686/sysdeps/unix/sysv/linux/x86_64/64/nptl/librtkaio.abilist	2015-04-23 17:51:12.091648671 -0600
+@@ -0,0 +1,54 @@
++GLIBC_2.2.5
++ GLIBC_2.2.5 A
++ aio_cancel F
++ aio_cancel64 F
++ aio_error F
++ aio_error64 F
++ aio_fsync F
++ aio_fsync64 F
++ aio_init F
++ aio_read F
++ aio_read64 F
++ aio_return F
++ aio_return64 F
++ aio_suspend F
++ aio_suspend64 F
++ aio_write F
++ aio_write64 F
++ clock_getcpuclockid F
++ clock_getres F
++ clock_gettime F
++ clock_nanosleep F
++ clock_settime F
++ lio_listio F
++ lio_listio64 F
++ shm_open F
++ shm_unlink F
++ timer_create F
++ timer_delete F
++ timer_getoverrun F
++ timer_gettime F
++ timer_settime F
++GLIBC_2.3.3
++ GLIBC_2.3.3 A
++ timer_create F
++ timer_delete F
++ timer_getoverrun F
++ timer_gettime F
++ timer_settime F
++GLIBC_2.3.4
++ GLIBC_2.3.4 A
++ mq_close F
++ mq_getattr F
++ mq_notify F
++ mq_open F
++ mq_receive F
++ mq_send F
++ mq_setattr F
++ mq_timedreceive F
++ mq_timedsend F
++ mq_unlink F
++GLIBC_2.4
++ GLIBC_2.4 A
++ lio_listio F
++ lio_listio64 F

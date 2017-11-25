@@ -1,0 +1,18 @@
+commit f8bdf1f0b623f05a80cb23890f165cb0cf8bd8c3
+Author: Stefan Liebler <stli@linux.vnet.ibm.com>
+Date:   Mon May 26 11:12:44 2014 +0200
+
+    Fix typo in tst-mutex5 ifndef -> ifdef
+Index: glibc-2.17-c758a686/nptl/tst-mutex5.c
+===================================================================
+--- glibc-2.17-c758a686.orig/nptl/tst-mutex5.c
++++ glibc-2.17-c758a686/nptl/tst-mutex5.c
+@@ -87,7 +87,7 @@ do_test (void)
+     }
+ 
+   /* Elided locks do not time out.  */
+-#ifdef ENABLE_LOCK_ELISION
++#ifndef ENABLE_LOCK_ELISION
+   if (pthread_mutex_trylock (&m) == 0)
+     {
+       puts ("mutex_trylock succeeded");

@@ -1,0 +1,186 @@
+From 5c616c0a75792d2836412d6c4ed5c71e8e754992 Mon Sep 17 00:00:00 2001
+From: Adhemerval Zanella <azanella@linux.vnet.ibm.com>
+Date: Thu, 20 Jun 2013 19:40:55 -0500
+Subject: [PATCH 41/42] Fix loop construction to functions calls
+
+Check wheter the compiler has the option -fno-tree-loop-distribute-patterns
+to inhibit loop transformation to library calls and uses it on memset
+and memmove default implementation to avoid recursive calls.
+(backported from commit 85c2e6110c9a01ec817c30f1b7e20549d7229987)
+
+This backport excluded the benchmark tests from the original commit.
+---
+ config.h.in            |  3 +++
+ configure              | 33 +++++++++++++++++++++++++++++++++
+ configure.in           | 18 ++++++++++++++++++
+ include/libc-symbols.h | 10 ++++++++++
+ string/memmove.c       |  1 +
+ string/memset.c        |  1 +
+ string/test-memmove.c  |  1 +
+ string/test-memset.c   |  1 +
+ 9 files changed, 82 insertions(+)
+
+diff --git glibc-2.17-c758a686/config.h.in glibc-2.17-c758a686/config.h.in
+index f3fe6b8..b34aac2 100644
+--- glibc-2.17-c758a686/config.h.in
++++ glibc-2.17-c758a686/config.h.in
+@@ -69,6 +69,9 @@
+ /* Define if the compiler supports __builtin_memset.  */
+ #undef	HAVE_BUILTIN_MEMSET
+ 
++/* Define if compiler accepts -ftree-loop-distribute-patterns.  */
++#undef  HAVE_CC_INHIBIT_LOOP_TO_LIBCALL
++
+ /* Define if the regparm attribute shall be used for local functions
+    (gcc on ix86 only).  */
+ #undef	USE_REGPARMS
+diff --git glibc-2.17-c758a686/configure glibc-2.17-c758a686/configure
+index 8799b7d..99e85be 100755
+--- glibc-2.17-c758a686/configure
++++ glibc-2.17-c758a686/configure
+@@ -605,6 +605,7 @@ have_selinux
+ have_libcap
+ have_libaudit
+ LIBGD
++libc_cv_cc_loop_to_function
+ libc_cv_cc_submachine
+ exceptions
+ gnu89_inline
+@@ -7164,6 +7165,38 @@ $as_echo "$libc_cv_cc_submachine" >&6; }
+ fi
+ 
+ 
++{ $as_echo "$as_me:${as_lineno-$LINENO}: checking if $CC accepts -fno-tree-loop-distribute-patterns with \
++__attribute__ ((__optimize__))" >&5
++$as_echo_n "checking if $CC accepts -fno-tree-loop-distribute-patterns with \
++__attribute__ ((__optimize__))... " >&6; }
++if ${libc_cv_cc_loop_to_function+:} false; then :
++  $as_echo_n "(cached) " >&6
++else
++  cat > conftest.c <<EOF
++void
++__attribute__ ((__optimize__ ("-fno-tree-loop-distribute-patterns")))
++foo (void) {}
++EOF
++libc_cv_cc_loop_to_function=no
++if { ac_try='${CC-cc} $CFLAGS $CPPFLAGS -c conftest.c'
++  { { eval echo "\"\$as_me\":${as_lineno-$LINENO}: \"$ac_try\""; } >&5
++  (eval $ac_try) 2>&5
++  ac_status=$?
++  $as_echo "$as_me:${as_lineno-$LINENO}: \$? = $ac_status" >&5
++  test $ac_status = 0; }; }
++then
++  libc_cv_cc_loop_to_function=yes
++fi
++rm -f conftest*
++fi
++{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $libc_cv_cc_loop_to_function" >&5
++$as_echo "$libc_cv_cc_loop_to_function" >&6; }
++if test $libc_cv_cc_loop_to_function = yes; then
++  $as_echo "#define HAVE_CC_INHIBIT_LOOP_TO_LIBCALL 1" >>confdefs.h
++
++fi
++
++
+ { $as_echo "$as_me:${as_lineno-$LINENO}: checking for libgd" >&5
+ $as_echo_n "checking for libgd... " >&6; }
+ if test "$with_gd" != "no"; then
+diff --git glibc-2.17-c758a686/configure.in glibc-2.17-c758a686/configure.in
+index d369382..379e77a 100644
+--- glibc-2.17-c758a686/configure.in
++++ glibc-2.17-c758a686/configure.in
+@@ -1928,6 +1928,24 @@ if test -n "$submachine"; then
+ fi
+ AC_SUBST(libc_cv_cc_submachine)
+ 
++AC_CACHE_CHECK(if $CC accepts -fno-tree-loop-distribute-patterns with \
++__attribute__ ((__optimize__)), libc_cv_cc_loop_to_function, [dnl
++cat > conftest.c <<EOF
++void
++__attribute__ ((__optimize__ ("-fno-tree-loop-distribute-patterns")))
++foo (void) {}
++EOF
++libc_cv_cc_loop_to_function=no
++if AC_TRY_COMMAND([${CC-cc} $CFLAGS $CPPFLAGS -c conftest.c])
++then
++  libc_cv_cc_loop_to_function=yes
++fi
++rm -f conftest*])
++if test $libc_cv_cc_loop_to_function = yes; then
++  AC_DEFINE(HAVE_CC_INHIBIT_LOOP_TO_LIBCALL)
++fi
++AC_SUBST(libc_cv_cc_loop_to_function)
++
+ dnl Check whether we have the gd library available.
+ AC_MSG_CHECKING(for libgd)
+ if test "$with_gd" != "no"; then
+diff --git glibc-2.17-c758a686/include/libc-symbols.h glibc-2.17-c758a686/include/libc-symbols.h
+index a626d59..8f2c046 100644
+--- glibc-2.17-c758a686/include/libc-symbols.h
++++ glibc-2.17-c758a686/include/libc-symbols.h
+@@ -783,4 +783,14 @@ for linking")
+ #define libc_ifunc_hidden_def(name) \
+   libc_ifunc_hidden_def1 (__GI_##name, name)
+ 
++/* Add the compiler optimization to inhibit loop transformation to library
++   calls.  This is used to avoid recursive calls in memset and memmove
++   default implementations.  */
++#ifdef HAVE_CC_INHIBIT_LOOP_TO_LIBCALL
++# define inhibit_loop_to_libcall \
++    __attribute__ ((__optimize__ ("-fno-tree-loop-distribute-patterns")))
++#else
++# define inhibit_loop_to_libcall
++#endif
++
+ #endif /* libc-symbols.h */
+diff --git glibc-2.17-c758a686/string/memmove.c glibc-2.17-c758a686/string/memmove.c
+index bf7dcc1..c59e7a9 100644
+--- glibc-2.17-c758a686/string/memmove.c
++++ glibc-2.17-c758a686/string/memmove.c
+@@ -41,6 +41,7 @@
+ #endif
+ 
+ rettype
++inhibit_loop_to_libcall
+ MEMMOVE (a1, a2, len)
+      a1const void *a1;
+      a2const void *a2;
+diff --git glibc-2.17-c758a686/string/memset.c glibc-2.17-c758a686/string/memset.c
+index 036cb5f..eb83c1b 100644
+--- glibc-2.17-c758a686/string/memset.c
++++ glibc-2.17-c758a686/string/memset.c
+@@ -21,6 +21,7 @@
+ #undef memset
+ 
+ void *
++inhibit_loop_to_libcall
+ memset (dstpp, c, len)
+      void *dstpp;
+      int c;
+diff --git glibc-2.17-c758a686/string/test-memmove.c glibc-2.17-c758a686/string/test-memmove.c
+index 13c5aff..0a969c3 100644
+--- glibc-2.17-c758a686/string/test-memmove.c
++++ glibc-2.17-c758a686/string/test-memmove.c
+@@ -47,6 +47,7 @@ IMPL (memmove, 1)
+ #endif
+ 
+ char *
++inhibit_loop_to_libcall
+ simple_memmove (char *dst, const char *src, size_t n)
+ {
+   char *ret = dst;
+diff --git glibc-2.17-c758a686/string/test-memset.c glibc-2.17-c758a686/string/test-memset.c
+index af85a28..0432030 100644
+--- glibc-2.17-c758a686/string/test-memset.c
++++ glibc-2.17-c758a686/string/test-memset.c
+@@ -64,6 +64,7 @@ builtin_memset (char *s, int c, size_t n)
+ #endif
+ 
+ char *
++inhibit_loop_to_libcall
+ simple_memset (char *s, int c, size_t n)
+ {
+   char *r = s, *end = s + n;
+-- 
+1.7.11.7
+

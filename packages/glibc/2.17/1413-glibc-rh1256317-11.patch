@@ -1,0 +1,41 @@
+commit 2886d2d14dd7de6339b04505c5d2f9fc5c844751
+Author: Siddhesh Poyarekar <siddhesh@redhat.com>
+Date:   Thu Nov 20 12:21:01 2014 +0530
+
+    Remove IS_IN_libc
+    
+    Replace it with IS_IN (libc) and remove the one place that it
+    is defined in.  The generated code remains unchanged on x86_64.
+    
+    	* include/shlib-compat.h [!NOT_IN_libc]: Remove.
+    	* nss/nss_files/files-parse.c (IS_IN_libc): Replace with
+    	IS_IN (libc).
+
+Index: glibc-2.17-c758a686/include/shlib-compat.h
+===================================================================
+--- glibc-2.17-c758a686.orig/include/shlib-compat.h
++++ glibc-2.17-c758a686/include/shlib-compat.h
+@@ -49,10 +49,6 @@
+    && (!(ABI_##lib##_##obsoleted - 0)					      \
+        || ((ABI_##lib##_##introduced - 0) < (ABI_##lib##_##obsoleted - 0))))
+ 
+-# ifndef NOT_IN_libc
+-#  define IS_IN_libc 1
+-# endif
+-
+ /* That header also defines symbols like `VERSION_libm_GLIBC_2_1' to
+    the version set name to use for e.g. symbols first introduced into
+    libm in the GLIBC_2.1 version.  Definitions of symbols with explicit
+Index: glibc-2.17-c758a686/nss/nss_files/files-parse.c
+===================================================================
+--- glibc-2.17-c758a686.orig/nss/nss_files/files-parse.c
++++ glibc-2.17-c758a686/nss/nss_files/files-parse.c
+@@ -72,7 +72,7 @@ struct parser_data
+ /* Export the line parser function so it can be used in nss_db.  */
+ # define parser_stclass /* Global */
+ # define parse_line CONCAT(_nss_files_parse_,ENTNAME)
+-# ifdef IS_IN_libc
++# if IS_IN (libc)
+ /* We are defining one of the functions that actually lives in libc
+    because it is used to implement fget*ent and suchlike.  */
+ #  define nss_files_parse_hidden_def(name) libc_hidden_def (name)

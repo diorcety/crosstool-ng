@@ -1,0 +1,26 @@
+commit 2307e1261e7ee784afd424a46ad08d3fbed33ba3
+Author: Siddhesh Poyarekar <siddhesh@redhat.com>
+Date:   Tue Jun 24 22:40:07 2014 +0530
+
+    Fix namespace violation in pthreadtypes.h (BZ #17084)
+    
+    This was causing conformtest failures on i386.
+
+Index: glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/x86/bits/pthreadtypes.h
+===================================================================
+--- glibc-2.17-c758a686.orig/nptl/sysdeps/unix/sysv/linux/x86/bits/pthreadtypes.h
++++ glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/x86/bits/pthreadtypes.h
+@@ -114,10 +114,10 @@ typedef union
+       {
+ 	short __espins;
+ 	short __elision;
+-# define __spins d.__espins
+-# define __elision d.__elision
++# define __spins __elision_data.__espins
++# define __elision __elision_data.__elision
+ # define __PTHREAD_MUTEX_HAVE_ELISION   2
+-      } d;
++      } __elision_data;
+       __pthread_slist_t __list;
+     };
+ #endif

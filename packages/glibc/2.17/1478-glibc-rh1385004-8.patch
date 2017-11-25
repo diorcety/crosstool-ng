@@ -1,0 +1,137 @@
+From c2b54e66e194405a1ff062bb442ede9a8c4b913a Mon Sep 17 00:00:00 2001
+From: Carlos Eduardo Seo <cseo@linux.vnet.ibm.com>
+Date: Wed, 4 Nov 2015 19:30:49 -0200
+Subject: [PATCH] powerpc: Add basic support for POWER9 sans hwcap.
+
+This patch adds the minimum changes for supporting the POWER9 processor.
+
+(cherry picked from commit b1f19b8ef1003f202424ca222003a18b880bf914)
+---
+ ChangeLog                                              | 13 +++++++++++++
+ sysdeps/powerpc/dl-procinfo.c                          |  3 ++-
+ sysdeps/powerpc/dl-procinfo.h                          |  6 +++++-
+ sysdeps/powerpc/powerpc32/power9/Implies               |  2 ++
+ sysdeps/powerpc/powerpc32/power9/fpu/multiarch/Implies |  1 +
+ sysdeps/powerpc/powerpc32/power9/multiarch/Implies     |  1 +
+ sysdeps/powerpc/powerpc64/power9/Implies               |  2 ++
+ sysdeps/powerpc/powerpc64/power9/fpu/Implies           |  2 ++
+ sysdeps/powerpc/powerpc64/power9/fpu/multiarch/Implies |  1 +
+ sysdeps/powerpc/powerpc64/power9/multiarch/Implies     |  1 +
+ 10 files changed, 30 insertions(+), 2 deletions(-)
+ create mode 100644 sysdeps/powerpc/powerpc32/power9/Implies
+ create mode 100644 sysdeps/powerpc/powerpc32/power9/fpu/multiarch/Implies
+ create mode 100644 sysdeps/powerpc/powerpc32/power9/multiarch/Implies
+ create mode 100644 sysdeps/powerpc/powerpc64/power9/Implies
+ create mode 100644 sysdeps/powerpc/powerpc64/power9/fpu/Implies
+ create mode 100644 sysdeps/powerpc/powerpc64/power9/fpu/multiarch/Implies
+ create mode 100644 sysdeps/powerpc/powerpc64/power9/multiarch/Implies
+
+diff --git a/ChangeLog b/ChangeLog
+index 079da2a..cecd77c 100644
+diff --git a/sysdeps/powerpc/dl-procinfo.c b/sysdeps/powerpc/dl-procinfo.c
+index 770c1f3..a8df5b8 100644
+--- a/sysdeps/powerpc/dl-procinfo.c
++++ b/sysdeps/powerpc/dl-procinfo.c
+@@ -75,7 +75,7 @@ PROCINFO_CLASS const char _dl_powerpc_cap_flags[60][10]
+ #if !defined PROCINFO_DECL && defined SHARED
+   ._dl_powerpc_platforms
+ #else
+-PROCINFO_CLASS const char _dl_powerpc_platforms[14][12]
++PROCINFO_CLASS const char _dl_powerpc_platforms[15][12]
+ #endif
+ #ifndef PROCINFO_DECL
+ = {
+@@ -93,6 +93,7 @@ PROCINFO_CLASS const char _dl_powerpc_platforms[14][12]
+     [PPC_PLATFORM_PPC464] = "ppc464",
+     [PPC_PLATFORM_PPC476] = "ppc476",
+     [PPC_PLATFORM_POWER8] = "power8",
++    [PPC_PLATFORM_POWER9] = "power9"
+   }
+ #endif
+ #if !defined SHARED || defined PROCINFO_DECL
+diff --git a/sysdeps/powerpc/dl-procinfo.h b/sysdeps/powerpc/dl-procinfo.h
+index 36873cf..407149b 100644
+--- a/sysdeps/powerpc/dl-procinfo.h
++++ b/sysdeps/powerpc/dl-procinfo.h
+@@ -40,7 +40,7 @@
+ #define HWCAP_IMPORTANT		(PPC_FEATURE_HAS_ALTIVEC \
+ 				+ PPC_FEATURE_HAS_DFP)
+ 
+-#define _DL_PLATFORMS_COUNT	14
++#define _DL_PLATFORMS_COUNT	15
+ 
+ #define _DL_FIRST_PLATFORM	32
+ /* Mask to filter out platforms.  */
+@@ -62,6 +62,7 @@
+ #define PPC_PLATFORM_PPC464		11
+ #define PPC_PLATFORM_PPC476		12
+ #define PPC_PLATFORM_POWER8		13
++#define PPC_PLATFORM_POWER9		14
+ 
+ static inline const char *
+ __attribute__ ((unused))
+@@ -125,6 +126,9 @@ _dl_string_platform (const char *str)
+ 	case '8':
+ 	  ret = _DL_FIRST_PLATFORM + PPC_PLATFORM_POWER8;
+ 	  break;
++	case '9':
++	  ret = _DL_FIRST_PLATFORM + PPC_PLATFORM_POWER9;
++	  break;
+ 	default:
+ 	  return -1;
+ 	}
+diff --git a/sysdeps/powerpc/powerpc32/power9/Implies b/sysdeps/powerpc/powerpc32/power9/Implies
+new file mode 100644
+index 0000000..066dea2
+--- /dev/null
++++ b/sysdeps/powerpc/powerpc32/power9/Implies
+@@ -0,0 +1,2 @@
++powerpc/powerpc32/power8/fpu
++powerpc/powerpc32/power8
+diff --git a/sysdeps/powerpc/powerpc32/power9/fpu/multiarch/Implies b/sysdeps/powerpc/powerpc32/power9/fpu/multiarch/Implies
+new file mode 100644
+index 0000000..4393b56
+--- /dev/null
++++ b/sysdeps/powerpc/powerpc32/power9/fpu/multiarch/Implies
+@@ -0,0 +1 @@
++powerpc/powerpc32/power8/fpu/multiarch
+diff --git a/sysdeps/powerpc/powerpc32/power9/multiarch/Implies b/sysdeps/powerpc/powerpc32/power9/multiarch/Implies
+new file mode 100644
+index 0000000..4393b56
+--- /dev/null
++++ b/sysdeps/powerpc/powerpc32/power9/multiarch/Implies
+@@ -0,0 +1 @@
++powerpc/powerpc32/power8/fpu/multiarch
+diff --git a/sysdeps/powerpc/powerpc64/power9/Implies b/sysdeps/powerpc/powerpc64/power9/Implies
+new file mode 100644
+index 0000000..fad2505
+--- /dev/null
++++ b/sysdeps/powerpc/powerpc64/power9/Implies
+@@ -0,0 +1,2 @@
++powerpc/powerpc64/power8/fpu
++powerpc/powerpc64/power8
+diff --git a/sysdeps/powerpc/powerpc64/power9/fpu/Implies b/sysdeps/powerpc/powerpc64/power9/fpu/Implies
+new file mode 100644
+index 0000000..fad2505
+--- /dev/null
++++ b/sysdeps/powerpc/powerpc64/power9/fpu/Implies
+@@ -0,0 +1,2 @@
++powerpc/powerpc64/power8/fpu
++powerpc/powerpc64/power8
+diff --git a/sysdeps/powerpc/powerpc64/power9/fpu/multiarch/Implies b/sysdeps/powerpc/powerpc64/power9/fpu/multiarch/Implies
+new file mode 100644
+index 0000000..f11e1bd
+--- /dev/null
++++ b/sysdeps/powerpc/powerpc64/power9/fpu/multiarch/Implies
+@@ -0,0 +1 @@
++powerpc/powerpc64/power8/fpu/multiarch
+diff --git a/sysdeps/powerpc/powerpc64/power9/multiarch/Implies b/sysdeps/powerpc/powerpc64/power9/multiarch/Implies
+new file mode 100644
+index 0000000..dd6bca4
+--- /dev/null
++++ b/sysdeps/powerpc/powerpc64/power9/multiarch/Implies
+@@ -0,0 +1 @@
++powerpc/powerpc64/power8/multiarch
+-- 
+2.1.0
+

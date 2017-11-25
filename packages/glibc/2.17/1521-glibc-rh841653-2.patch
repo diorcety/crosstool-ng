@@ -1,0 +1,122 @@
+commit 68cc29355f3334c7ad18f648ff9a6383a0916d23
+Author: Andi Kleen <ak@linux.intel.com>
+Date:   Fri Jun 28 05:19:37 2013 -0700
+
+    Add minimal test suite changes for elision enabled kernels
+    
+    tst-mutex5 and 8 test some behaviour not required by POSIX,
+    that elision changes. This changes these tests to not check
+    this when elision is enabled at configure time.
+Index: glibc-2.17-c758a686/nptl/tst-mutex5.c
+===================================================================
+--- glibc-2.17-c758a686.orig/nptl/tst-mutex5.c
++++ glibc-2.17-c758a686/nptl/tst-mutex5.c
+@@ -22,6 +22,7 @@
+ #include <time.h>
+ #include <unistd.h>
+ #include <sys/time.h>
++#include <config.h>
+ 
+ 
+ #ifndef TYPE
+@@ -85,6 +86,8 @@ do_test (void)
+       return 1;
+     }
+ 
++  /* Elided locks do not time out.  */
++#ifdef ENABLE_LOCK_ELISION
+   if (pthread_mutex_trylock (&m) == 0)
+     {
+       puts ("mutex_trylock succeeded");
+@@ -180,6 +183,7 @@ do_test (void)
+       puts ("3rd timedlock didn't return right away");
+       return 1;
+     }
++#endif
+ 
+   if (pthread_mutex_unlock (&m) != 0)
+     {
+Index: glibc-2.17-c758a686/nptl/tst-mutex8.c
+===================================================================
+--- glibc-2.17-c758a686.orig/nptl/tst-mutex8.c
++++ glibc-2.17-c758a686/nptl/tst-mutex8.c
+@@ -93,6 +93,8 @@ tf (void *arg)
+ static int
+ check_type (const char *mas, pthread_mutexattr_t *ma)
+ {
++  int e __attribute__((unused));
++
+   if (pthread_mutex_init (m, ma) != 0)
+     {
+       printf ("1st mutex_init failed for %s\n", mas);
+@@ -117,7 +119,10 @@ check_type (const char *mas, pthread_mut
+       return 1;
+     }
+ 
+-  int e = pthread_mutex_destroy (m);
++  /* Elided mutexes don't fail destroy. If elision is not explicitly disabled
++     we don't know, so can also not check this.  */
++#ifndef ENABLE_LOCK_ELISION
++  e = pthread_mutex_destroy (m);
+   if (e == 0)
+     {
+       printf ("mutex_destroy of self-locked mutex succeeded for %s\n", mas);
+@@ -129,6 +134,7 @@ check_type (const char *mas, pthread_mut
+ 	      mas);
+       return 1;
+     }
++#endif
+ 
+   if (pthread_mutex_unlock (m) != 0)
+     {
+@@ -142,6 +148,8 @@ check_type (const char *mas, pthread_mut
+       return 1;
+     }
+ 
++  /* Elided mutexes don't fail destroy.  */
++#ifndef ENABLE_LOCK_ELISION
+   e = pthread_mutex_destroy (m);
+   if (e == 0)
+     {
+@@ -155,6 +163,7 @@ mutex_destroy of self-trylocked mutex di
+ 	      mas);
+       return 1;
+     }
++#endif
+ 
+   if (pthread_mutex_unlock (m) != 0)
+     {
+@@ -189,6 +198,8 @@ mutex_destroy of self-trylocked mutex di
+       return 1;
+     }
+ 
++  /* Elided mutexes don't fail destroy.  */
++#ifndef ENABLE_LOCK_ELISION
+   e = pthread_mutex_destroy (m);
+   if (e == 0)
+     {
+@@ -201,6 +212,7 @@ mutex_destroy of self-trylocked mutex di
+ mutex_destroy of condvar-used mutex did not return EBUSY for %s\n", mas);
+       return 1;
+     }
++#endif
+ 
+   done = true;
+   if (pthread_cond_signal (&c) != 0)
+@@ -259,6 +271,8 @@ mutex_destroy of condvar-used mutex did
+       return 1;
+     }
+ 
++  /* Elided mutexes don't fail destroy.  */
++#ifndef ENABLE_LOCK_ELISION
+   e = pthread_mutex_destroy (m);
+   if (e == 0)
+     {
+@@ -273,6 +287,7 @@ mutex_destroy of condvar-used mutex did
+ 	      mas);
+       return 1;
+     }
++#endif
+ 
+   if (pthread_cancel (th) != 0)
+     {

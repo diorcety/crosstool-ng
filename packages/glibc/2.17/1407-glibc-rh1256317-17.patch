@@ -1,0 +1,467 @@
+commit 9cd4747089e6b0d6ed6b2b6c75798912489c7bab
+Author: Siddhesh Poyarekar <siddhesh@redhat.com>
+Date:   Wed Nov 19 12:13:54 2014 +0530
+
+    Add new macro IN_MODULE to identify module in which source is built
+    
+    The current scheme to identify which module a translation unit is
+    built in depends on defining multiple macros IS_IN_* and also defining
+    NOT_IN_libc if we're building a non-libc module.  In addition, there
+    is an IN_LIB macro that does effectively the same thing, but for
+    different modules (notably the systemtap probes).  This macro scheme
+    unifies both ideas to use just one macro IN_MODULE and assign it a
+    value depending on the module it is being built into.  If the module
+    is not defined, it defaults to MODULE_libc.
+    
+    Patches that follow will replace uses of IS_IN_* variables with the
+    IS_IN() macro.  libc-symbols.h has been converted already to give an
+    example of how such a transition will look.
+    
+    Verified that there are no relevant binary changes.  One source change
+    that will crop up repeatedly is that of nscd_stat, since it uses the
+    build timestamp as a constant in its logic.
+    
+    	* Makeconfig (in-module): Get value of libof set for the
+    	translation unit.
+    	(CPPFLAGS): Use $(in-module).
+    	* Makerules: Don't suffix routine names for nonlib.
+    	* include/libc-modules.h: New file.
+    	* include/libc-symbols.h: Include libc-modules.h
+    	(IS_IN): New macro to replace IS_IN_* macros.
+    	* elf/Makefile: Set libof-* for each routine.
+    	* elf/rtld-Rules: Likewise.
+    	* extra-modules.mk: Likewise.
+    	* iconv/Makefile: Likewise.
+    	* iconvdata/Makefile: Likewise.
+    	* locale/Makefile: Likewise.
+    	* malloc/Makefile: Likewise.
+    	* nss/Makefile: Likewise.
+    	* sysdeps/gnu/Makefile: Likewise.
+    	* sysdeps/ieee754/ldbl-opt/Makefile: Likewise.
+    	* sysdeps/unix/sysv/linux/Makefile: Likewise.
+    	* sysdeps/s390/s390-64/Makefile: Likewise.
+    	* nscd/Makefile: Set libof-* for each routine.  Set CFLAGS and
+    	CPPFLAGS for nscd instead of nonlib.
+
+Index: glibc-2.17-c758a686/Makeconfig
+===================================================================
+--- glibc-2.17-c758a686.orig/Makeconfig
++++ glibc-2.17-c758a686/Makeconfig
+@@ -730,6 +730,11 @@ endif	# $(+cflags) == ""
+ # of many little headers in the include directory.
+ libio-include = -I$(..)libio
+ 
++in-module = $(subst -,_,$(firstword $(libof-$(basename $(@F))) \
++				    $(libof-$(<F)) \
++				    $(libof-$(@F)) \
++				    libc))
++
+ # These are the variables that the implicit compilation rules use.
+ # Note that we can't use -std=* in CPPFLAGS, because it overrides
+ # the implicit -lang-asm and breaks cpp behavior for .S files--notably
+@@ -737,7 +742,7 @@ libio-include = -I$(..)libio
+ CPPFLAGS = $(CPPUNDEFS) $(CPPFLAGS-config) $($(subdir)-CPPFLAGS) \
+ 	   $(+includes) $(defines) \
+ 	   -include $(..)include/libc-symbols.h $(sysdep-CPPFLAGS) \
+-	   $(CPPFLAGS-$(suffix $@)) \
++	   $(CPPFLAGS-$(suffix $@)) -DIN_MODULE=MODULE_$(in-module) \
+ 	   $(foreach lib,$(libof-$(basename $(@F))) \
+ 			 $(libof-$(<F)) $(libof-$(@F)),$(CPPFLAGS-$(lib))) \
+ 	   $(CPPFLAGS-$(<F)) $(CPPFLAGS-$(@F)) $(CPPFLAGS-$(basename $(@F)))
+Index: glibc-2.17-c758a686/Makerules
+===================================================================
+--- glibc-2.17-c758a686.orig/Makerules
++++ glibc-2.17-c758a686/Makerules
+@@ -1151,7 +1151,7 @@ xcheck: xtests
+ 
+ all-nonlib = $(strip $(tests) $(xtests) $(test-srcs) $(test-extras) $(others))
+ ifneq (,$(all-nonlib))
+-cpp-srcs-left = $(all-nonlib:=.c) $(all-nonlib:=.cc)
++cpp-srcs-left = $(all-nonlib)
+ lib := nonlib
+ include $(patsubst %,$(..)cppflags-iterator.mk,$(cpp-srcs-left))
+ endif
+Index: glibc-2.17-c758a686/elf/Makefile
+===================================================================
+--- glibc-2.17-c758a686.orig/elf/Makefile
++++ glibc-2.17-c758a686/elf/Makefile
+@@ -436,7 +436,8 @@ $(objpfx)pldd: $(pldd-modules:%=$(objpfx
+ 
+ SYSCONF-FLAGS := -D'SYSCONFDIR="$(sysconfdir)"'
+ CFLAGS-ldconfig.c = $(SYSCONF-FLAGS) -D'LIBDIR="$(libdir)"' \
+-		    -D'SLIBDIR="$(slibdir)"' -DIS_IN_ldconfig=1
++		    -D'SLIBDIR="$(slibdir)"' -DIS_IN_ldconfig=1 -DNOT_IN_libc=1
++libof-ldconfig = ldconfig
+ CFLAGS-dl-cache.c = $(SYSCONF-FLAGS)
+ CFLAGS-cache.c = $(SYSCONF-FLAGS)
+ CFLAGS-rtld.c = $(SYSCONF-FLAGS)
+@@ -454,6 +455,10 @@ CFLAGS-.op += -fno-tree-loop-distribute-
+ CFLAGS-.ob += -fno-tree-loop-distribute-patterns
+ CFLAGS-.oS += -fno-tree-loop-distribute-patterns
+ 
++cpp-srcs-left := $(all-rtld-routines:=.os)
++lib := rtld
++include $(patsubst %,$(..)cppflags-iterator.mk,$(cpp-srcs-left))
++
+ test-modules = $(addprefix $(objpfx),$(addsuffix .so,$(strip $(modules-names))))
+ generated += $(addsuffix .so,$(strip $(modules-names)))
+ 
+Index: glibc-2.17-c758a686/elf/rtld-Rules
+===================================================================
+--- glibc-2.17-c758a686.orig/elf/rtld-Rules
++++ glibc-2.17-c758a686/elf/rtld-Rules
+@@ -128,6 +128,11 @@ ifdef rtld-depfiles
+ -include $(rtld-depfiles)
+ endif
+ 
++# Set libof-* for each routine.
++cpp-srcs-left := $(rtld-modules:%.os=%)
++lib := rtld
++include $(patsubst %,$(..)cppflags-iterator.mk,$(cpp-srcs-left))
++
+ # This here is the whole point of all the shenanigans.
+ rtld-CPPFLAGS := -DNOT_IN_libc=1 -DIS_IN_rtld=1 -DIN_LIB=rtld
+ 
+Index: glibc-2.17-c758a686/extra-modules.mk
+===================================================================
+--- glibc-2.17-c758a686.orig/extra-modules.mk
++++ glibc-2.17-c758a686/extra-modules.mk
+@@ -6,4 +6,5 @@
+ module := $(firstword $(extra-modules-left))
+ extra-modules-left := $(filter-out $(module),$(extra-modules-left))
+ 
++libof-$(notdir $(module)) := extramodules
+ CPPFLAGS-$(module).c += -DNOT_IN_libc
+Index: glibc-2.17-c758a686/iconv/Makefile
+===================================================================
+--- glibc-2.17-c758a686.orig/iconv/Makefile
++++ glibc-2.17-c758a686/iconv/Makefile
+@@ -53,11 +53,12 @@ CFLAGS-gconv_cache.c += -DGCONV_DIR='"$(
+ CFLAGS-gconv_conf.c = -DGCONV_PATH='"$(gconvdir)"'
+ CFLAGS-iconvconfig.c = -DGCONV_PATH='"$(gconvdir)"' -DGCONV_DIR='"$(gconvdir)"'
+ 
+-CPPFLAGS-iconv_charmap = -DNOT_IN_libc
+-CPPFLAGS-linereader = -DNOT_IN_libc
+-CPPFLAGS-strtab = -DNOT_IN_libc
+-CPPFLAGS-charmap = -DNOT_IN_libc
+-CPPFLAGS-charmap-dir = -DNOT_IN_libc
++CPPFLAGS-iconvprogs = -DNOT_IN_libc
++
++# Set libof-* for each routine.
++cpp-srcs-left := $(iconv_prog-modules) $(iconvconfig-modules)
++lib := iconvprogs
++include $(patsubst %,$(..)cppflags-iterator.mk,$(cpp-srcs-left))
+ 
+ include ../Rules
+ 
+Index: glibc-2.17-c758a686/iconvdata/Makefile
+===================================================================
+--- glibc-2.17-c758a686.orig/iconvdata/Makefile
++++ glibc-2.17-c758a686/iconvdata/Makefile
+@@ -212,6 +212,7 @@ $(objpfx)iconv-rules: Makefile
+ 	$(AWK) 'NR == 1 { \
+ 		  for (i = 1; i <= NF; i++) { \
+ 		    printf "%s-routines := %s\n", $$i, tolower($$i); \
++		    printf "libof-%s := iconvdata\n", tolower($$i); \
+ 		    printf "%s-map := gconv.map\n", $$i; \
+ 		  } \
+ 		}; \
+@@ -265,6 +266,11 @@ endif # build-shared = yes
+ 
+ include ../Rules
+ 
++# Set libof-* for each routine.
++cpp-srcs-left := $(modules) $(generated-modules)
++lib := iconvdata
++include $(patsubst %,$(..)cppflags-iterator.mk,$(cpp-srcs-left))
++
+ ifeq ($(run-built-tests),yes)
+ ifeq (yes,$(build-shared))
+ tests: $(objpfx)iconv-test.out $(objpfx)tst-tables.out
+Index: glibc-2.17-c758a686/include/libc-modules.h
+===================================================================
+--- /dev/null
++++ glibc-2.17-c758a686/include/libc-modules.h
+@@ -0,0 +1,41 @@
++/* Valid values for the IN_MODULE macro, which is defined for each source file
++   during compilation to indicate which module it is to be built into.
++
++   TODO: This file should eventually be auto-generated.  */
++#define MODULE_libc		1
++#define MODULE_libpthread	2
++#define MODULE_rtld		3
++#define MODULE_libdl		4
++#define MODULE_libm		5
++#define MODULE_iconvprogs	6
++#define MODULE_iconvdata	7
++#define MODULE_lddlibc4		8
++#define MODULE_locale_programs	9
++#define MODULE_memusagestat	10
++#define MODULE_libutil		12
++#define MODULE_libBrokenLocale	13
++#define MODULE_libmemusage	15
++#define MODULE_libresolv	16
++#define MODULE_libnss_db	17
++#define MODULE_libnss_files	18
++#define	MODULE_libnss_dns	19
++#define MODULE_libnss_compat	20
++#define MODULE_libnss_hesiod	21
++#define MODULE_libnss_nis	22
++#define MODULE_libnss_nisplus	23
++#define MODULE_libanl		24
++#define MODULE_librt		25
++#define MODULE_libSegFault	26
++#define MODULE_libthread_db	27
++#define MODULE_libcidn		28
++#define MODULE_libcrypt		29
++#define MODULE_libnsl		30
++#define MODULE_libpcprofile	31
++#define MODULE_librpcsvc	32
++#define MODULE_nscd		33
++#define MODULE_ldconfig 	34
++#define MODULE_libnldbl 	35
++
++/* Catch-all for test modules and other binaries.  */
++#define MODULE_nonlib		98
++#define MODULE_extramodules	99
+Index: glibc-2.17-c758a686/include/libc-symbols.h
+===================================================================
+--- glibc-2.17-c758a686.orig/include/libc-symbols.h
++++ glibc-2.17-c758a686/include/libc-symbols.h
+@@ -20,6 +20,11 @@
+ #ifndef _LIBC_SYMBOLS_H
+ #define _LIBC_SYMBOLS_H	1
+ 
++/* Pull in definitions for the MODULE_* macros.  */
++#include <libc-modules.h>
++
++#define IS_IN(lib) (IN_MODULE == MODULE_##lib)
++
+ /* This file's macros are included implicitly in the compilation of every
+    file in the C library by -imacros.
+ 
+@@ -450,7 +455,7 @@ for linking")
+    If the function should be internal to multiple objects, say ld.so and
+    libc.so, the best way is to use:
+ 
+-   #if !defined NOT_IN_libc || defined IS_IN_rtld
++   #if IS_IN (libc) || IS_IN (rtld)
+    hidden_proto (foo)
+    #endif
+ 
+@@ -561,7 +566,7 @@ for linking")
+ # define libc_hidden_data_ver(local, name)
+ #endif
+ 
+-#ifdef IS_IN_rtld
++#if IS_IN (rtld)
+ # define rtld_hidden_proto(name, attrs...) hidden_proto (name, ##attrs)
+ # define rtld_hidden_def(name) hidden_def (name)
+ # define rtld_hidden_weak(name) hidden_weak (name)
+@@ -579,7 +584,7 @@ for linking")
+ # define rtld_hidden_data_ver(local, name)
+ #endif
+ 
+-#ifdef IS_IN_libm
++#if IS_IN (libm)
+ # define libm_hidden_proto(name, attrs...) hidden_proto (name, ##attrs)
+ # define libm_hidden_def(name) hidden_def (name)
+ # define libm_hidden_weak(name) hidden_weak (name)
+@@ -597,7 +602,7 @@ for linking")
+ # define libm_hidden_data_ver(local, name)
+ #endif
+ 
+-#ifdef IS_IN_libresolv
++#if IS_IN (libresolv)
+ # define libresolv_hidden_proto(name, attrs...) hidden_proto (name, ##attrs)
+ # define libresolv_hidden_def(name) hidden_def (name)
+ # define libresolv_hidden_weak(name) hidden_weak (name)
+@@ -615,7 +620,7 @@ for linking")
+ # define libresolv_hidden_data_ver(local, name)
+ #endif
+ 
+-#ifdef IS_IN_librt
++#if IS_IN (librt)
+ # define librt_hidden_proto(name, attrs...) hidden_proto (name, ##attrs)
+ # define librt_hidden_def(name) hidden_def (name)
+ # define librt_hidden_weak(name) hidden_weak (name)
+@@ -633,7 +638,7 @@ for linking")
+ # define librt_hidden_data_ver(local, name)
+ #endif
+ 
+-#ifdef IS_IN_libdl
++#if IS_IN (libdl)
+ # define libdl_hidden_proto(name, attrs...) hidden_proto (name, ##attrs)
+ # define libdl_hidden_def(name) hidden_def (name)
+ # define libdl_hidden_weak(name) hidden_weak (name)
+@@ -651,7 +656,7 @@ for linking")
+ # define libdl_hidden_data_ver(local, name)
+ #endif
+ 
+-#ifdef IS_IN_libnss_files
++#if IS_IN (libnss_files)
+ # define libnss_files_hidden_proto(name, attrs...) hidden_proto (name, ##attrs)
+ # define libnss_files_hidden_def(name) hidden_def (name)
+ # define libnss_files_hidden_weak(name) hidden_weak (name)
+@@ -669,7 +674,7 @@ for linking")
+ # define libnss_files_hidden_data_ver(local, name)
+ #endif
+ 
+-#ifdef IS_IN_libnsl
++#if IS_IN (libnsl)
+ # define libnsl_hidden_proto(name, attrs...) hidden_proto (name, ##attrs)
+ # define libnsl_hidden_def(name) hidden_def (name)
+ # define libnsl_hidden_weak(name) hidden_weak (name)
+@@ -687,7 +692,7 @@ for linking")
+ # define libnsl_hidden_data_ver(local, name)
+ #endif
+ 
+-#ifdef IS_IN_libnss_nisplus
++#if IS_IN (libnss_nisplus)
+ # define libnss_nisplus_hidden_proto(name, attrs...) hidden_proto (name, ##attrs)
+ # define libnss_nisplus_hidden_def(name) hidden_def (name)
+ # define libnss_nisplus_hidden_weak(name) hidden_weak (name)
+@@ -713,7 +718,7 @@ for linking")
+ # define HIDDEN_BUILTIN_JUMPTARGET(name) HIDDEN_JUMPTARGET(name)
+ #endif
+ 
+-#ifdef IS_IN_libutil
++#if IS_IN (libutil)
+ # define libutil_hidden_proto(name, attrs...) hidden_proto (name, ##attrs)
+ # define libutil_hidden_def(name) hidden_def (name)
+ # define libutil_hidden_weak(name) hidden_weak (name)
+Index: glibc-2.17-c758a686/locale/Makefile
+===================================================================
+--- glibc-2.17-c758a686.orig/locale/Makefile
++++ glibc-2.17-c758a686/locale/Makefile
+@@ -95,8 +95,8 @@ CFLAGS-locfile.c = -Wno-write-strings -W
+ CFLAGS-charmap-dir.c = -Wno-write-strings
+ 
+ # This makes sure -DNOT_IN_libc et al are passed for all these modules.
+-cpp-srcs-left := $(addsuffix .c,$(localedef-modules) $(localedef-aux) \
+-				$(locale-modules) $(lib-modules))
++cpp-srcs-left := $(localedef-modules) $(localedef-aux) $(locale-modules) \
++		 $(lib-modules)
+ lib := locale-programs
+ include $(patsubst %,$(..)cppflags-iterator.mk,$(cpp-srcs-left))
+ 
+Index: glibc-2.17-c758a686/malloc/Makefile
+===================================================================
+--- glibc-2.17-c758a686.orig/malloc/Makefile
++++ glibc-2.17-c758a686/malloc/Makefile
+@@ -97,6 +97,11 @@ endif
+ do-memusagestat: $(objpfx)memusagestat
+ 
+ memusagestat-modules = memusagestat
++
++cpp-srcs-left := $(memusagestat-modules)
++lib := memusagestat
++include $(patsubst %,$(..)cppflags-iterator.mk,$(cpp-srcs-left))
++
+ $(objpfx)memusagestat: $(memusagestat-modules:%=$(objpfx)%.o)
+ 	$(LINK.o) -o $@ $^ $(libgd-LDFLAGS) -lgd -lpng -lz -lm
+ 
+Index: glibc-2.17-c758a686/nscd/Makefile
+===================================================================
+--- glibc-2.17-c758a686.orig/nscd/Makefile
++++ glibc-2.17-c758a686/nscd/Makefile
+@@ -79,26 +79,25 @@ CFLAGS-nscd_gethst_r.c = -fexceptions
+ CFLAGS-nscd_getai.c = -fexceptions
+ CFLAGS-nscd_initgroups.c = -fexceptions
+ 
+-CPPFLAGS-nonlib += -DIS_IN_nscd=1 -D_FORTIFY_SOURCE=2
++CPPFLAGS-nscd += -DIS_IN_nscd=1 -D_FORTIFY_SOURCE=2 -DNOT_IN_libc=1
+ 
+ ifeq (yesyes,$(have-fpie)$(build-shared))
+-CFLAGS-nonlib += $(pie-ccflag)
++CFLAGS-nscd += $(pie-ccflag)
+ endif
+ ifeq (yes,$(have-ssp))
+-CFLAGS-nonlib += -fstack-protector
++CFLAGS-nscd += -fstack-protector
+ endif
+ ifeq (yes,$(have-ssp-strong))
+-CFLAGS-nonlib += -fstack-protector-strong
++CFLAGS-nscd += -fstack-protector-strong
+ endif
+ 
+ ifeq (yesyes,$(have-fpie)$(build-shared))
+ LDFLAGS-nscd = -Wl,-z,now
+ endif
+ 
+-# This makes sure CPPFLAGS-nonlib and CFLAGS-nonlib are passed
+-# for all these modules.
+-cpp-srcs-left := $(nscd-modules:=.c)
+-lib := nonlib
++# Set libof-nscd.
++cpp-srcs-left := $(nscd-modules)
++lib := nscd
+ include $(patsubst %,$(..)cppflags-iterator.mk,$(cpp-srcs-left))
+ 
+ $(objpfx)nscd: $(nscd-modules:%=$(objpfx)%.o)
+Index: glibc-2.17-c758a686/nss/Makefile
+===================================================================
+--- glibc-2.17-c758a686.orig/nss/Makefile
++++ glibc-2.17-c758a686/nss/Makefile
+@@ -108,7 +108,8 @@ $(objpfx)makedb: $(makedb-modules:%=$(ob
+ $(inst_vardbdir)/Makefile: db-Makefile $(+force)
+ 	$(do-install)
+ 
+-CFLAGS-nss_test1.c = -DNOT_IN_libc=1
++libof-nss_test1 = extramodules
++CPPFLAGS-nss_test1 = -DNOT_IN_libc=1
+ $(objpfx)/libnss_test1.so: $(objpfx)nss_test1.os $(common-objpfx)libc.so \
+ 			   $(common-objpfx)libc_nonshared.a
+ 	$(build-module)
+Index: glibc-2.17-c758a686/stdlib/Makefile
+===================================================================
+--- glibc-2.17-c758a686.orig/stdlib/Makefile
++++ glibc-2.17-c758a686/stdlib/Makefile
+@@ -138,6 +138,7 @@ LDFLAGS-tst-putenv = $(no-as-needed)
+ 
+ $(objpfx)tst-putenvmod.so: $(objpfx)tst-putenvmod.os
+ 	$(build-module)
++libof-tst-putenvmod = extramodules
+ CFLAGS-tst-putenvmod.c = -DNOT_IN_libc=1
+ 
+ ifeq ($(build-shared),yes)
+Index: glibc-2.17-c758a686/sysdeps/gnu/Makefile
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/gnu/Makefile
++++ glibc-2.17-c758a686/sysdeps/gnu/Makefile
+@@ -30,6 +30,8 @@ ifeq ($(subdir),stdio-common)
+ 
+ errlist-c = $(firstword $(wildcard $(addsuffix /errlist.c,$(sysdirs) .)))
+ 
++libof-errlist-compat = extramodules
++
+ ifeq ($(versioning),yes)
+ $(objpfx)errlist-compat.c: $(errlist-c) $(..)sysdeps/gnu/errlist-compat.awk \
+ 			   $(common-objpfx)Versions.v.i $(before-compile)
+Index: glibc-2.17-c758a686/sysdeps/s390/s390-64/Makefile
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/s390/s390-64/Makefile
++++ glibc-2.17-c758a686/sysdeps/s390/s390-64/Makefile
+@@ -28,6 +28,10 @@ s390x-iconv-modules = ISO-8859-1_CP037_Z
+ extra-modules-left += $(s390x-iconv-modules)
+ include extra-module.mk
+ 
++cpp-srcs-left := $(foreach mod,$(s390x-iconv-modules),$($(mod)-routines))
++lib := iconvdata
++include $(patsubst %,$(..)cppflags-iterator.mk,$(cpp-srcs-left))
++
+ extra-objs      += $(addsuffix .so, $(s390x-iconv-modules))
+ install-others  += $(patsubst %, $(inst_gconvdir)/%.so, $(s390x-iconv-modules))
+ 
+Index: glibc-2.17-c758a686/sysdeps/unix/sysv/linux/Makefile
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/unix/sysv/linux/Makefile
++++ glibc-2.17-c758a686/sysdeps/unix/sysv/linux/Makefile
+@@ -159,6 +159,7 @@ ifeq ($(subdir),elf)
+ sysdep-rtld-routines += dl-brk dl-sbrk dl-getcwd dl-openat64 dl-opendir \
+ 			dl-fxstatat64
+ 
++libof-lddlibc4 = lddlibc4
+ CPPFLAGS-lddlibc4 += -DNOT_IN_libc
+ endif
+ 

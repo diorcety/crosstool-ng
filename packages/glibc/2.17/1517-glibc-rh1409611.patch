@@ -1,0 +1,3262 @@
+Partial backports of:
+=====================
+
+commit c5d5d574cbfa96d0f6c1db24d1e072c472627e41
+Author: Ondřej Bílka <neleai@seznam.cz>
+Date:   Thu Oct 17 16:03:24 2013 +0200
+
+    Format floating routines.
+
+commit da08f647d58d674db08cdb3e61c8826c89470e2e
+Author: Siddhesh Poyarekar <siddhesh@redhat.com>
+Date:   Fri Dec 21 09:15:10 2012 +0530
+
+    Move more constants into static variables
+    
+    Code cleanup.
+
+commit f93a8d15699ee699282465dc1e03e033f3fabb52
+Author: Siddhesh Poyarekar <siddhesh@redhat.com>
+Date:   Wed Jan 16 16:06:48 2013 +0530
+
+    Consolidate constant defines into mpa.h
+
+commit caa99d06e7f1403887294442af520b0f8c6f3de0
+Author: Siddhesh Poyarekar <siddhesh@redhat.com>
+Date:   Fri Jan 18 11:18:13 2013 +0530
+
+    Simplify calculation of 2^-m in __mpexp
+
+commit 107a5bf085f5c4ef8c28266a34d476724cfc3475
+Author: Joseph Myers <joseph@codesourcery.com>
+Date:   Tue Nov 18 15:40:56 2014 +0000
+
+    Fix libm mpone, mptwo namespace (bug 17616).
+
+To provided __mptwo for __inv.
+
+Full backports of the following:
+================================
+
+commit 44e0d4c20ce5bf3825897e5d4b7caae94016214d
+Author: Siddhesh Poyarekar <siddhesh@redhat.com>
+Date:   Wed Jan 2 11:44:13 2013 +0530
+
+    Split mantissa calculation loop and add branch prediction
+
+commit f8af25d218202ff2f5d167b8e44e4b79f91d147f
+Author: Siddhesh Poyarekar <siddhesh@redhat.com>
+Date:   Fri Jan 4 15:09:33 2013 +0530
+
+    Remove commented declarations
+
+commit a9e48ab40e230c7fe34e4892bec8af4f3f975a20
+Author: Siddhesh Poyarekar <siddhesh@redhat.com>
+Date:   Fri Jan 4 15:42:09 2013 +0530
+
+    Clean up comment for MP_NO
+
+commit fffb407f4668b40b3df1eb8ee3ae3bc64ee79e20
+Author: Siddhesh Poyarekar <siddhesh@redhat.com>
+Date:   Fri Jan 4 22:52:12 2013 +0530
+
+    Remove unused __cr and __cpymn
+
+commit 950c99ca9094e7dc6394e90395f51e12093393aa
+Author: Siddhesh Poyarekar <siddhesh@redhat.com>
+Date:   Wed Jan 9 19:07:15 2013 +0530
+
+    Update comments in mpa.c
+    
+    Fixed comment style and clearer wording in some cases.
+
+commit 1066a53440d2744566e97c59bcd0d422186b3e90
+Author: Siddhesh Poyarekar <siddhesh@redhat.com>
+Date:   Mon Jan 14 21:31:25 2013 +0530
+
+    Fix code formatting in mpa.c
+    
+    This includes the overridden mpa.c in power4.
+
+commit 2a91b5735ac1bc65ce5c2a3646d75ba7208e26e9
+Author: Siddhesh Poyarekar <siddhesh@redhat.com>
+Date:   Mon Jan 14 21:36:58 2013 +0530
+
+    Minor tweak to mp multiplication
+    
+    Add a local variable to remove extra copies to/from memory in the Z
+    array.
+
+ommit 45f058844c33f670475bd02f266942746bcb332b
+Author: Siddhesh Poyarekar <siddhesh@redhat.com>
+Date:   Tue Feb 26 21:28:16 2013 +0530
+
+    Another tweak to the multiplication algorithm
+    
+    Reduce the formula to calculate mantissa so that we reduce the net
+    number of multiplications performed.
+
+commit bab8a695ee79a5a6e9b2b699938952b006fcbbec
+Author: Siddhesh Poyarekar <siddhesh@redhat.com>
+Date:   Thu Feb 21 14:29:18 2013 +0530
+
+    Fix whitespace differences between generic and powerpc mpa.c
+
+
+commit 2d0e0f29f85036d1189231cb7c1f19f27ba14a89
+Author: Siddhesh Poyarekar <siddhesh@redhat.com>
+Date:   Fri Feb 15 23:56:20 2013 +0530
+
+    Fix determination of lower precision in __mul
+
+commit 909279a5cfa938c989c9b01c8f48a0276291ec45
+Author: Siddhesh Poyarekar <siddhesh@redhat.com>
+Date:   Wed Feb 13 14:16:23 2013 +0530
+
+    Optimized mp multiplication
+    
+    Don't bother multiplying zeroes since that only wastes cycles.
+
+commit bdf028142eb77d6ae59500db875068fa5d7b059d
+Author: Siddhesh Poyarekar <siddhesh@redhat.com>
+Date:   Wed Feb 13 13:55:29 2013 +0530
+
+    Clean up add_magnitudes and sub_magnitudes
+
+commit d6752ccd696c71d23cd3df8fb9cc60b61c32e65a
+Author: Siddhesh Poyarekar <siddhesh@redhat.com>
+Date:   Thu Feb 14 10:31:09 2013 +0530
+
+    New __sqr function as a faster special case of __mul
+
+commit 4709fe7602b56e9f6ee1ab6afb4067409a784f29
+Author: Siddhesh Poyarekar <siddhesh@redhat.com>
+Date:   Sat Feb 16 00:09:29 2013 +0530
+
+    Use intermediate variable to compute exponent in __mul
+
+commit 20cd7fb3ae63795ae7c9a464abf5ed19b364ade0
+Author: Siddhesh Poyarekar <siddhesh@redhat.com>
+Date:   Wed Feb 20 18:56:20 2013 +0530
+
+    Copy comment about inner loop from powerpc mpa.c to the default one
+
+commit e69804d14e43f14c3c65dc570afdbfb822c9838b
+Author: Siddhesh Poyarekar <siddhesh@redhat.com>
+Date:   Mon Feb 25 16:43:02 2013 +0530
+
+    Use long wherever possible in mpa.c
+    
+    Using long throughout like powerpc does is beneficial since it reduces
+    the need to switch to 32-bit instructions.  It gives a very minor
+    performance improvement.
+
+commit 82a9811d29c00161c7c8ea7f70e2cc30988e192e
+Author: Siddhesh Poyarekar <siddhesh@redhat.com>
+Date:   Thu Mar 7 12:23:29 2013 +0530
+
+    Use generic mpa.c code for everything except __mul and __sqr
+
+commit 6f2e90e78f151bab153c2b38492505ae2012db06
+Author: Siddhesh Poyarekar <siddhesh@redhat.com>
+Date:   Tue Mar 26 19:28:50 2013 +0530
+
+    Make mantissa type of mp_no configurable
+
+    The mantissa of mp_no is intended to take only integral values.  This
+    is a relatively good choice for powerpc due to its 4 fpus, but not for
+    other architectures, which suffer due to this choice.  This change
+    makes the default mantissa a long integer and allows powerpc to
+    override it.  Additionally, some operations have been optimized for
+    integer manipulation, resulting in a significant improvement in
+    performance.
+
+commit 5739f705eed5cf58e7b439e5983542e06d7fc2da
+Author: Siddhesh Poyarekar <siddhesh@redhat.com>
+Date:   Tue Mar 26 20:24:04 2013 +0530
+
+    Use integral constants
+    
+    The compiler is smart enough to convert those into double for powerpc,
+    but if we put them as doubles, it adds overhead by performing those
+    operations in floating point mode.
+
+commit 89f3b6e18c6e7833438789746fcfc2e7189f7cac
+Author: Joseph Myers <joseph@codesourcery.com>
+Date:   Thu May 21 23:05:45 2015 +0000
+
+    Fix sysdeps/ieee754/dbl-64/mpa.c for -Wuninitialized.
+    
+    If you remove the "override CFLAGS += -Wno-uninitialized" in
+    math/Makefile, one of the errors you get is:
+    
+    ../sysdeps/ieee754/dbl-64/mpa.c: In function '__mp_dbl.part.0':
+    ../sysdeps/ieee754/dbl-64/mpa.c:183:5: error: 'c' may be used uninitialized in this function [-Werror=maybe-uninitialized]
+       c *= X[0];
+    
+    The problem is that the p < 5 case initializes c if p is 1, 2, 3 or 4
+    but not otherwise, and in fact p is positive for all calls to this
+    function so the uninitialized case can't actually occur.  This patch
+    replaces the "if (p == 4)" last case with a comment so the compiler
+    can see that all paths do initialize c.
+
+    Tested for x86_64.
+
+            * sysdeps/ieee754/dbl-64/mpa.c (norm): Remove if condition on
+            (p == 4) case.
+
+Index: glibc-2.17-c758a686/sysdeps/ieee754/dbl-64/mpa.c
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/ieee754/dbl-64/mpa.c
++++ glibc-2.17-c758a686/sysdeps/ieee754/dbl-64/mpa.c
+@@ -1,7 +1,7 @@
+ /*
+  * IBM Accurate Mathematical Library
+  * written by International Business Machines Corp.
+- * Copyright (C) 2001, 2011 Free Software Foundation
++ * Copyright (C) 2001-2017 Free Software Foundation, Inc.
+  *
+  * This program is free software; you can redistribute it and/or modify
+  * it under the terms of the GNU Lesser General Public License as published by
+@@ -22,9 +22,7 @@
+ /*  FUNCTIONS:                                                          */
+ /*               mcr                                                    */
+ /*               acr                                                    */
+-/*               cr                                                     */
+ /*               cpy                                                    */
+-/*               cpymn                                                  */
+ /*               norm                                                   */
+ /*               denorm                                                 */
+ /*               mp_dbl                                                 */
+@@ -44,479 +42,868 @@
+ 
+ #include "endian.h"
+ #include "mpa.h"
+-#include "mpa2.h"
+-#include <sys/param.h>	/* For MIN() */
++#include <sys/param.h>
++#include <alloca.h>
+ 
+ #ifndef SECTION
+ # define SECTION
+ #endif
+ 
++#ifndef NO__CONST
++/* TODO: With only a partial backport of the constant cleanup from
++	 upstream we limit the definition of these two constants to
++	 this file.  */
++static const mp_no __mpone = { 1, { 1.0, 1.0 } };
++static const mp_no __mptwo = { 1, { 1.0, 2.0 } };
++#endif
++
+ #ifndef NO___ACR
+-/* mcr() compares the sizes of the mantissas of two multiple precision  */
+-/* numbers. Mantissas are compared regardless of the signs of the       */
+-/* numbers, even if x->d[0] or y->d[0] are zero. Exponents are also     */
+-/* disregarded.                                                         */
++/* Compare mantissa of two multiple precision numbers regardless of the sign
++   and exponent of the numbers.  */
+ static int
+-mcr(const mp_no *x, const mp_no *y, int p) {
+-  int i;
+-  for (i=1; i<=p; i++) {
+-    if      (X[i] == Y[i])  continue;
+-    else if (X[i] >  Y[i])  return  1;
+-    else                    return -1; }
++mcr (const mp_no *x, const mp_no *y, int p)
++{
++  long i;
++  long p2 = p;
++  for (i = 1; i <= p2; i++)
++    {
++      if (X[i] == Y[i])
++	continue;
++      else if (X[i] > Y[i])
++	return 1;
++      else
++	return -1;
++    }
+   return 0;
+ }
+ 
+-
+-/* acr() compares the absolute values of two multiple precision numbers */
++/* Compare the absolute values of two multiple precision numbers.  */
+ int
+-__acr(const mp_no *x, const mp_no *y, int p) {
+-  int i;
+-
+-  if      (X[0] == ZERO) {
+-    if    (Y[0] == ZERO) i= 0;
+-    else                 i=-1;
+-  }
+-  else if (Y[0] == ZERO) i= 1;
+-  else {
+-    if      (EX >  EY)   i= 1;
+-    else if (EX <  EY)   i=-1;
+-    else                 i= mcr(x,y,p);
+-  }
+-
+-  return i;
+-}
+-#endif
+-
++__acr (const mp_no *x, const mp_no *y, int p)
++{
++  long i;
+ 
+-#if 0
+-/* cr() compares the values of two multiple precision numbers           */
+-static int  __cr(const mp_no *x, const mp_no *y, int p) {
+-  int i;
+-
+-  if      (X[0] > Y[0])  i= 1;
+-  else if (X[0] < Y[0])  i=-1;
+-  else if (X[0] < ZERO ) i= __acr(y,x,p);
+-  else                   i= __acr(x,y,p);
++  if (X[0] == 0)
++    {
++      if (Y[0] == 0)
++	i = 0;
++      else
++	i = -1;
++    }
++  else if (Y[0] == 0)
++    i = 1;
++  else
++    {
++      if (EX > EY)
++	i = 1;
++      else if (EX < EY)
++	i = -1;
++      else
++	i = mcr (x, y, p);
++    }
+ 
+   return i;
+ }
+ #endif
+ 
+-
+ #ifndef NO___CPY
+-/* Copy a multiple precision number. Set *y=*x. x=y is permissible.      */
+-void __cpy(const mp_no *x, mp_no *y, int p) {
++/* Copy multiple precision number X into Y.  They could be the same
++   number.  */
++void
++__cpy (const mp_no *x, mp_no *y, int p)
++{
++  long i;
++
+   EY = EX;
+-  for (int i=0; i <= p; i++)    Y[i] = X[i];
++  for (i = 0; i <= p; i++)
++    Y[i] = X[i];
+ }
+ #endif
+ 
++#ifndef NO___MP_DBL
++/* Convert a multiple precision number *X into a double precision
++   number *Y, normalized case (|x| >= 2**(-1022))).  X has precision
++   P, which is positive.  */
++static void
++norm (const mp_no *x, double *y, int p)
++{
++# define R RADIXI
++  long i;
++  double c;
++  mantissa_t a, u, v, z[5];
++  if (p < 5)
++    {
++      if (p == 1)
++	c = X[1];
++      else if (p == 2)
++	c = X[1] + R * X[2];
++      else if (p == 3)
++	c = X[1] + R * (X[2] + R * X[3]);
++      else /* p == 4.  */
++	c = (X[1] + R * X[2]) + R * R * (X[3] + R * X[4]);
++    }
++  else
++    {
++      for (a = 1, z[1] = X[1]; z[1] < TWO23; )
++	{
++	  a *= 2;
++	  z[1] *= 2;
++	}
+ 
+-#if 0
+-/* Copy a multiple precision number x of precision m into a */
+-/* multiple precision number y of precision n. In case n>m, */
+-/* the digits of y beyond the m'th are set to zero. In case */
+-/* n<m, the digits of x beyond the n'th are ignored.        */
+-/* x=y is permissible.                                      */
+-
+-static void __cpymn(const mp_no *x, int m, mp_no *y, int n) {
+-
+-  int i,k;
+-
+-  EY = EX;     k=MIN(m,n);
+-  for (i=0; i <= k; i++)    Y[i] = X[i];
+-  for (   ; i <= n; i++)    Y[i] = ZERO;
+-}
+-#endif
++      for (i = 2; i < 5; i++)
++	{
++	  mantissa_store_t d, r;
++	  d = X[i] * (mantissa_store_t) a;
++	  DIV_RADIX (d, r);
++	  z[i] = r;
++	  z[i - 1] += d;
++	}
+ 
++      u = ALIGN_DOWN_TO (z[3], TWO19);
++      v = z[3] - u;
+ 
+-#ifndef NO___MP_DBL
+-/* Convert a multiple precision number *x into a double precision */
+-/* number *y, normalized case  (|x| >= 2**(-1022))) */
+-static void norm(const mp_no *x, double *y, int p)
+-{
+-  #define R  radixi.d
+-  int i;
+-#if 0
+-  int k;
+-#endif
+-  double a,c,u,v,z[5];
+-  if (p<5) {
+-    if      (p==1) c = X[1];
+-    else if (p==2) c = X[1] + R* X[2];
+-    else if (p==3) c = X[1] + R*(X[2]  +   R* X[3]);
+-    else if (p==4) c =(X[1] + R* X[2]) + R*R*(X[3] + R*X[4]);
+-  }
+-  else {
+-    for (a=ONE, z[1]=X[1]; z[1] < TWO23; )
+-	{a *= TWO;   z[1] *= TWO; }
+-
+-    for (i=2; i<5; i++) {
+-      z[i] = X[i]*a;
+-      u = (z[i] + CUTTER)-CUTTER;
+-      if  (u > z[i])  u -= RADIX;
+-      z[i] -= u;
+-      z[i-1] += u*RADIXI;
+-    }
+-
+-    u = (z[3] + TWO71) - TWO71;
+-    if (u > z[3])   u -= TWO19;
+-    v = z[3]-u;
+-
+-    if (v == TWO18) {
+-      if (z[4] == ZERO) {
+-	for (i=5; i <= p; i++) {
+-	  if (X[i] == ZERO)   continue;
+-	  else                {z[3] += ONE;   break; }
++      if (v == TWO18)
++	{
++	  if (z[4] == 0)
++	    {
++	      for (i = 5; i <= p; i++)
++		{
++		  if (X[i] == 0)
++		    continue;
++		  else
++		    {
++		      z[3] += 1;
++		      break;
++		    }
++		}
++	    }
++	  else
++	    z[3] += 1;
+ 	}
+-      }
+-      else              z[3] += ONE;
+-    }
+ 
+-    c = (z[1] + R *(z[2] + R * z[3]))/a;
+-  }
++      c = (z[1] + R * (z[2] + R * z[3])) / a;
++    }
+ 
+   c *= X[0];
+ 
+-  for (i=1; i<EX; i++)   c *= RADIX;
+-  for (i=1; i>EX; i--)   c *= RADIXI;
++  for (i = 1; i < EX; i++)
++    c *= RADIX;
++  for (i = 1; i > EX; i--)
++    c *= RADIXI;
+ 
+   *y = c;
+-#undef R
++# undef R
+ }
+ 
+-/* Convert a multiple precision number *x into a double precision */
+-/* number *y, denormalized case  (|x| < 2**(-1022))) */
+-static void denorm(const mp_no *x, double *y, int p)
++/* Convert a multiple precision number *X into a double precision
++   number *Y, Denormal case  (|x| < 2**(-1022))).  */
++static void
++denorm (const mp_no *x, double *y, int p)
+ {
+-  int i,k;
+-  double c,u,z[5];
+-#if 0
+-  double a,v;
+-#endif
++  long i, k;
++  long p2 = p;
++  double c;
++  mantissa_t u, z[5];
++
++# define R RADIXI
++  if (EX < -44 || (EX == -44 && X[1] < TWO5))
++    {
++      *y = 0;
++      return;
++    }
+ 
+-#define R  radixi.d
+-  if (EX<-44 || (EX==-44 && X[1]<TWO5))
+-     { *y=ZERO; return; }
+-
+-  if      (p==1) {
+-    if      (EX==-42) {z[1]=X[1]+TWO10;  z[2]=ZERO;  z[3]=ZERO;  k=3;}
+-    else if (EX==-43) {z[1]=     TWO10;  z[2]=X[1];  z[3]=ZERO;  k=2;}
+-    else              {z[1]=     TWO10;  z[2]=ZERO;  z[3]=X[1];  k=1;}
+-  }
+-  else if (p==2) {
+-    if      (EX==-42) {z[1]=X[1]+TWO10;  z[2]=X[2];  z[3]=ZERO;  k=3;}
+-    else if (EX==-43) {z[1]=     TWO10;  z[2]=X[1];  z[3]=X[2];  k=2;}
+-    else              {z[1]=     TWO10;  z[2]=ZERO;  z[3]=X[1];  k=1;}
+-  }
+-  else {
+-    if      (EX==-42) {z[1]=X[1]+TWO10;  z[2]=X[2];  k=3;}
+-    else if (EX==-43) {z[1]=     TWO10;  z[2]=X[1];  k=2;}
+-    else              {z[1]=     TWO10;  z[2]=ZERO;  k=1;}
+-    z[3] = X[k];
+-  }
+-
+-  u = (z[3] + TWO57) - TWO57;
+-  if  (u > z[3])   u -= TWO5;
+-
+-  if (u==z[3]) {
+-    for (i=k+1; i <= p; i++) {
+-      if (X[i] == ZERO)   continue;
+-      else {z[3] += ONE;   break; }
+-    }
+-  }
+-
+-  c = X[0]*((z[1] + R*(z[2] + R*z[3])) - TWO10);
+-
+-  *y = c*TWOM1032;
+-#undef R
+-}
+-
+-/* Convert a multiple precision number *x into a double precision number *y. */
+-/* The result is correctly rounded to the nearest/even. *x is left unchanged */
+-
+-void __mp_dbl(const mp_no *x, double *y, int p) {
+-#if 0
+-  int i,k;
+-  double a,c,u,v,z[5];
+-#endif
++  if (p2 == 1)
++    {
++      if (EX == -42)
++	{
++	  z[1] = X[1] + TWO10;
++	  z[2] = 0;
++	  z[3] = 0;
++	  k = 3;
++	}
++      else if (EX == -43)
++	{
++	  z[1] = TWO10;
++	  z[2] = X[1];
++	  z[3] = 0;
++	  k = 2;
++	}
++      else
++	{
++	  z[1] = TWO10;
++	  z[2] = 0;
++	  z[3] = X[1];
++	  k = 1;
++	}
++    }
++  else if (p2 == 2)
++    {
++      if (EX == -42)
++	{
++	  z[1] = X[1] + TWO10;
++	  z[2] = X[2];
++	  z[3] = 0;
++	  k = 3;
++	}
++      else if (EX == -43)
++	{
++	  z[1] = TWO10;
++	  z[2] = X[1];
++	  z[3] = X[2];
++	  k = 2;
++	}
++      else
++	{
++	  z[1] = TWO10;
++	  z[2] = 0;
++	  z[3] = X[1];
++	  k = 1;
++	}
++    }
++  else
++    {
++      if (EX == -42)
++	{
++	  z[1] = X[1] + TWO10;
++	  z[2] = X[2];
++	  k = 3;
++	}
++      else if (EX == -43)
++	{
++	  z[1] = TWO10;
++	  z[2] = X[1];
++	  k = 2;
++	}
++      else
++	{
++	  z[1] = TWO10;
++	  z[2] = 0;
++	  k = 1;
++	}
++      z[3] = X[k];
++    }
+ 
+-  if (X[0] == ZERO)  {*y = ZERO;  return; }
++  u = ALIGN_DOWN_TO (z[3], TWO5);
+ 
+-  if      (EX> -42)                 norm(x,y,p);
+-  else if (EX==-42 && X[1]>=TWO10)  norm(x,y,p);
+-  else                              denorm(x,y,p);
++  if (u == z[3])
++    {
++      for (i = k + 1; i <= p2; i++)
++	{
++	  if (X[i] == 0)
++	    continue;
++	  else
++	    {
++	      z[3] += 1;
++	      break;
++	    }
++	}
++    }
++
++  c = X[0] * ((z[1] + R * (z[2] + R * z[3])) - TWO10);
++
++  *y = c * TWOM1032;
++# undef R
+ }
+-#endif
+ 
++/* Convert multiple precision number *X into double precision number *Y.  The
++   result is correctly rounded to the nearest/even.  */
++void
++__mp_dbl (const mp_no *x, double *y, int p)
++{
++  if (X[0] == 0)
++    {
++      *y = 0;
++      return;
++    }
+ 
+-/* dbl_mp() converts a double precision number x into a multiple precision  */
+-/* number *y. If the precision p is too small the result is truncated. x is */
+-/* left unchanged.                                                          */
++  if (__glibc_likely (EX > -42 || (EX == -42 && X[1] >= TWO10)))
++    norm (x, y, p);
++  else
++    denorm (x, y, p);
++}
++#endif
+ 
++/* Get the multiple precision equivalent of X into *Y.  If the precision is too
++   small, the result is truncated.  */
+ void
+ SECTION
+-__dbl_mp(double x, mp_no *y, int p) {
++__dbl_mp (double x, mp_no *y, int p)
++{
++  long i, n;
++  long p2 = p;
+ 
+-  int i,n;
+-  double u;
++  /* Sign.  */
++  if (x == 0)
++    {
++      Y[0] = 0;
++      return;
++    }
++  else if (x > 0)
++    Y[0] = 1;
++  else
++    {
++      Y[0] = -1;
++      x = -x;
++    }
+ 
+-  /* Sign */
+-  if      (x == ZERO)  {Y[0] = ZERO;  return; }
+-  else if (x >  ZERO)   Y[0] = ONE;
+-  else                 {Y[0] = MONE;  x=-x;   }
+-
+-  /* Exponent */
+-  for (EY=ONE; x >= RADIX; EY += ONE)   x *= RADIXI;
+-  for (      ; x <  ONE;   EY -= ONE)   x *= RADIX;
+-
+-  /* Digits */
+-  n=MIN(p,4);
+-  for (i=1; i<=n; i++) {
+-    u = (x + TWO52) - TWO52;
+-    if (u>x)   u -= ONE;
+-    Y[i] = u;     x -= u;    x *= RADIX; }
+-  for (   ; i<=p; i++)     Y[i] = ZERO;
++  /* Exponent.  */
++  for (EY = 1; x >= RADIX; EY += 1)
++    x *= RADIXI;
++  for (; x < 1; EY -= 1)
++    x *= RADIX;
++
++  /* Digits.  */
++  n = MIN (p2, 4);
++  for (i = 1; i <= n; i++)
++    {
++      INTEGER_OF (x, Y[i]);
++      x *= RADIX;
++    }
++  for (; i <= p2; i++)
++    Y[i] = 0;
+ }
+ 
+-
+-/*  add_magnitudes() adds the magnitudes of *x & *y assuming that           */
+-/*  abs(*x) >= abs(*y) > 0.                                                 */
+-/* The sign of the sum *z is undefined. x&y may overlap but not x&z or y&z. */
+-/* No guard digit is used. The result equals the exact sum, truncated.      */
+-/* *x & *y are left unchanged.                                              */
+-
++/* Add magnitudes of *X and *Y assuming that abs (*X) >= abs (*Y) > 0.  The
++   sign of the sum *Z is not changed.  X and Y may overlap but not X and Z or
++   Y and Z.  No guard digit is used.  The result equals the exact sum,
++   truncated.  */
+ static void
+ SECTION
+-add_magnitudes(const mp_no *x, const mp_no *y, mp_no *z, int p) {
+-
+-  int i,j,k;
++add_magnitudes (const mp_no *x, const mp_no *y, mp_no *z, int p)
++{
++  long i, j, k;
++  long p2 = p;
++  mantissa_t zk;
+ 
+   EZ = EX;
+ 
+-  i=p;    j=p+ EY - EX;    k=p+1;
++  i = p2;
++  j = p2 + EY - EX;
++  k = p2 + 1;
++
++  if (__glibc_unlikely (j < 1))
++    {
++      __cpy (x, z, p);
++      return;
++    }
+ 
+-  if (j<1)
+-     {__cpy(x,z,p);  return; }
+-  else   Z[k] = ZERO;
+-
+-  for (; j>0; i--,j--) {
+-    Z[k] += X[i] + Y[j];
+-    if (Z[k] >= RADIX) {
+-      Z[k]  -= RADIX;
+-      Z[--k] = ONE; }
+-    else
+-      Z[--k] = ZERO;
+-  }
+-
+-  for (; i>0; i--) {
+-    Z[k] += X[i];
+-    if (Z[k] >= RADIX) {
+-      Z[k]  -= RADIX;
+-      Z[--k] = ONE; }
+-    else
+-      Z[--k] = ZERO;
+-  }
+-
+-  if (Z[1] == ZERO) {
+-    for (i=1; i<=p; i++)    Z[i] = Z[i+1]; }
+-  else   EZ += ONE;
+-}
++  zk = 0;
+ 
++  for (; j > 0; i--, j--)
++    {
++      zk += X[i] + Y[j];
++      if (zk >= RADIX)
++	{
++	  Z[k--] = zk - RADIX;
++	  zk = 1;
++	}
++      else
++	{
++	  Z[k--] = zk;
++	  zk = 0;
++	}
++    }
+ 
+-/*  sub_magnitudes() subtracts the magnitudes of *x & *y assuming that      */
+-/*  abs(*x) > abs(*y) > 0.                                                  */
+-/* The sign of the difference *z is undefined. x&y may overlap but not x&z  */
+-/* or y&z. One guard digit is used. The error is less than one ulp.         */
+-/* *x & *y are left unchanged.                                              */
++  for (; i > 0; i--)
++    {
++      zk += X[i];
++      if (zk >= RADIX)
++	{
++	  Z[k--] = zk - RADIX;
++	  zk = 1;
++	}
++      else
++	{
++	  Z[k--] = zk;
++	  zk = 0;
++	}
++    }
+ 
++  if (zk == 0)
++    {
++      for (i = 1; i <= p2; i++)
++	Z[i] = Z[i + 1];
++    }
++  else
++    {
++      Z[1] = zk;
++      EZ += 1;
++    }
++}
++
++/* Subtract the magnitudes of *X and *Y assuming that abs (*x) > abs (*y) > 0.
++   The sign of the difference *Z is not changed.  X and Y may overlap but not X
++   and Z or Y and Z.  One guard digit is used.  The error is less than one
++   ULP.  */
+ static void
+ SECTION
+-sub_magnitudes(const mp_no *x, const mp_no *y, mp_no *z, int p) {
+-
+-  int i,j,k;
++sub_magnitudes (const mp_no *x, const mp_no *y, mp_no *z, int p)
++{
++  long i, j, k;
++  long p2 = p;
++  mantissa_t zk;
+ 
+   EZ = EX;
++  i = p2;
++  j = p2 + EY - EX;
++  k = p2;
++
++  /* Y is too small compared to X, copy X over to the result.  */
++  if (__glibc_unlikely (j < 1))
++    {
++      __cpy (x, z, p);
++      return;
++    }
++
++  /* The relevant least significant digit in Y is non-zero, so we factor it in
++     to enhance accuracy.  */
++  if (j < p2 && Y[j + 1] > 0)
++    {
++      Z[k + 1] = RADIX - Y[j + 1];
++      zk = -1;
++    }
++  else
++    zk = Z[k + 1] = 0;
+ 
+-  if (EX == EY) {
+-    i=j=k=p;
+-    Z[k] = Z[k+1] = ZERO; }
+-  else {
+-    j= EX - EY;
+-    if (j > p)  {__cpy(x,z,p);  return; }
+-    else {
+-      i=p;   j=p+1-j;   k=p;
+-      if (Y[j] > ZERO) {
+-	Z[k+1] = RADIX - Y[j--];
+-	Z[k]   = MONE; }
+-      else {
+-	Z[k+1] = ZERO;
+-	Z[k]   = ZERO;   j--;}
+-    }
+-  }
+-
+-  for (; j>0; i--,j--) {
+-    Z[k] += (X[i] - Y[j]);
+-    if (Z[k] < ZERO) {
+-      Z[k]  += RADIX;
+-      Z[--k] = MONE; }
+-    else
+-      Z[--k] = ZERO;
+-  }
+-
+-  for (; i>0; i--) {
+-    Z[k] += X[i];
+-    if (Z[k] < ZERO) {
+-      Z[k]  += RADIX;
+-      Z[--k] = MONE; }
+-    else
+-      Z[--k] = ZERO;
+-  }
++  /* Subtract and borrow.  */
++  for (; j > 0; i--, j--)
++    {
++      zk += (X[i] - Y[j]);
++      if (zk < 0)
++	{
++	  Z[k--] = zk + RADIX;
++	  zk = -1;
++	}
++      else
++	{
++	  Z[k--] = zk;
++	  zk = 0;
++	}
++    }
+ 
+-  for (i=1; Z[i] == ZERO; i++) ;
++  /* We're done with digits from Y, so it's just digits in X.  */
++  for (; i > 0; i--)
++    {
++      zk += X[i];
++      if (zk < 0)
++	{
++	  Z[k--] = zk + RADIX;
++	  zk = -1;
++	}
++      else
++	{
++	  Z[k--] = zk;
++	  zk = 0;
++	}
++    }
++
++  /* Normalize.  */
++  for (i = 1; Z[i] == 0; i++)
++    ;
+   EZ = EZ - i + 1;
+-  for (k=1; i <= p+1; )
++  for (k = 1; i <= p2 + 1; )
+     Z[k++] = Z[i++];
+-  for (; k <= p; )
+-    Z[k++] = ZERO;
++  for (; k <= p2; )
++    Z[k++] = 0;
+ }
+ 
+-
+-/* Add two multiple precision numbers. Set *z = *x + *y. x&y may overlap  */
+-/* but not x&z or y&z. One guard digit is used. The error is less than    */
+-/* one ulp. *x & *y are left unchanged.                                   */
+-
++/* Add *X and *Y and store the result in *Z.  X and Y may overlap, but not X
++   and Z or Y and Z.  One guard digit is used.  The error is less than one
++   ULP.  */
+ void
+ SECTION
+-__add(const mp_no *x, const mp_no *y, mp_no *z, int p) {
+-
++__add (const mp_no *x, const mp_no *y, mp_no *z, int p)
++{
+   int n;
+ 
+-  if      (X[0] == ZERO)     {__cpy(y,z,p);  return; }
+-  else if (Y[0] == ZERO)     {__cpy(x,z,p);  return; }
++  if (X[0] == 0)
++    {
++      __cpy (y, z, p);
++      return;
++    }
++  else if (Y[0] == 0)
++    {
++      __cpy (x, z, p);
++      return;
++    }
+ 
+-  if (X[0] == Y[0])   {
+-    if (__acr(x,y,p) > 0)      {add_magnitudes(x,y,z,p);  Z[0] = X[0]; }
+-    else                     {add_magnitudes(y,x,z,p);  Z[0] = Y[0]; }
+-  }
+-  else                       {
+-    if ((n=__acr(x,y,p)) == 1) {sub_magnitudes(x,y,z,p);  Z[0] = X[0]; }
+-    else if (n == -1)        {sub_magnitudes(y,x,z,p);  Z[0] = Y[0]; }
+-    else                      Z[0] = ZERO;
+-  }
++  if (X[0] == Y[0])
++    {
++      if (__acr (x, y, p) > 0)
++	{
++	  add_magnitudes (x, y, z, p);
++	  Z[0] = X[0];
++	}
++      else
++	{
++	  add_magnitudes (y, x, z, p);
++	  Z[0] = Y[0];
++	}
++    }
++  else
++    {
++      if ((n = __acr (x, y, p)) == 1)
++	{
++	  sub_magnitudes (x, y, z, p);
++	  Z[0] = X[0];
++	}
++      else if (n == -1)
++	{
++	  sub_magnitudes (y, x, z, p);
++	  Z[0] = Y[0];
++	}
++      else
++	Z[0] = 0;
++    }
+ }
+ 
++/* Subtract *Y from *X and return the result in *Z.  X and Y may overlap but
++   not X and Z or Y and Z.  One guard digit is used.  The error is less than
++   one ULP.  */
++void
++SECTION
++__sub (const mp_no *x, const mp_no *y, mp_no *z, int p)
++{
++  int n;
++
++  if (X[0] == 0)
++    {
++      __cpy (y, z, p);
++      Z[0] = -Z[0];
++      return;
++    }
++  else if (Y[0] == 0)
++    {
++      __cpy (x, z, p);
++      return;
++    }
+ 
+-/* Subtract two multiple precision numbers. *z is set to *x - *y. x&y may */
+-/* overlap but not x&z or y&z. One guard digit is used. The error is      */
+-/* less than one ulp. *x & *y are left unchanged.                         */
++  if (X[0] != Y[0])
++    {
++      if (__acr (x, y, p) > 0)
++	{
++	  add_magnitudes (x, y, z, p);
++	  Z[0] = X[0];
++	}
++      else
++	{
++	  add_magnitudes (y, x, z, p);
++	  Z[0] = -Y[0];
++	}
++    }
++  else
++    {
++      if ((n = __acr (x, y, p)) == 1)
++	{
++	  sub_magnitudes (x, y, z, p);
++	  Z[0] = X[0];
++	}
++      else if (n == -1)
++	{
++	  sub_magnitudes (y, x, z, p);
++	  Z[0] = -Y[0];
++	}
++      else
++	Z[0] = 0;
++    }
++}
+ 
++#ifndef NO__MUL
++/* Multiply *X and *Y and store result in *Z.  X and Y may overlap but not X
++   and Z or Y and Z.  For P in [1, 2, 3], the exact result is truncated to P
++   digits.  In case P > 3 the error is bounded by 1.001 ULP.  */
+ void
+ SECTION
+-__sub(const mp_no *x, const mp_no *y, mp_no *z, int p) {
++__mul (const mp_no *x, const mp_no *y, mp_no *z, int p)
++{
++  long i, j, k, ip, ip2;
++  long p2 = p;
++  mantissa_store_t zk;
++  const mp_no *a;
++  mantissa_store_t *diag;
++
++  /* Is z=0?  */
++  if (__glibc_unlikely (X[0] * Y[0] == 0))
++    {
++      Z[0] = 0;
++      return;
++    }
+ 
+-  int n;
++  /* We need not iterate through all X's and Y's since it's pointless to
++     multiply zeroes.  Here, both are zero...  */
++  for (ip2 = p2; ip2 > 0; ip2--)
++    if (X[ip2] != 0 || Y[ip2] != 0)
++      break;
++
++  a = X[ip2] != 0 ? y : x;
++
++  /* ... and here, at least one of them is still zero.  */
++  for (ip = ip2; ip > 0; ip--)
++    if (a->d[ip] != 0)
++      break;
++
++  /* The product looks like this for p = 3 (as an example):
++
++
++				a1    a2    a3
++		 x		b1    b2    b3
++		 -----------------------------
++			     a1*b3 a2*b3 a3*b3
++		       a1*b2 a2*b2 a3*b2
++		 a1*b1 a2*b1 a3*b1
++
++     So our K needs to ideally be P*2, but we're limiting ourselves to P + 3
++     for P >= 3.  We compute the above digits in two parts; the last P-1
++     digits and then the first P digits.  The last P-1 digits are a sum of
++     products of the input digits from P to P-k where K is 0 for the least
++     significant digit and increases as we go towards the left.  The product
++     term is of the form X[k]*X[P-k] as can be seen in the above example.
++
++     The first P digits are also a sum of products with the same product term,
++     except that the sum is from 1 to k.  This is also evident from the above
++     example.
++
++     Another thing that becomes evident is that only the most significant
++     ip+ip2 digits of the result are non-zero, where ip and ip2 are the
++     'internal precision' of the input numbers, i.e. digits after ip and ip2
++     are all 0.  */
++
++  k = (__glibc_unlikely (p2 < 3)) ? p2 + p2 : p2 + 3;
++
++  while (k > ip + ip2 + 1)
++    Z[k--] = 0;
++
++  zk = 0;
++
++  /* Precompute sums of diagonal elements so that we can directly use them
++     later.  See the next comment to know we why need them.  */
++  diag = alloca (k * sizeof (mantissa_store_t));
++  mantissa_store_t d = 0;
++  for (i = 1; i <= ip; i++)
++    {
++      d += X[i] * (mantissa_store_t) Y[i];
++      diag[i] = d;
++    }
++  while (i < k)
++    diag[i++] = d;
+ 
+-  if      (X[0] == ZERO)     {__cpy(y,z,p);  Z[0] = -Z[0];  return; }
+-  else if (Y[0] == ZERO)     {__cpy(x,z,p);                 return; }
++  while (k > p2)
++    {
++      long lim = k / 2;
+ 
+-  if (X[0] != Y[0])    {
+-    if (__acr(x,y,p) > 0)      {add_magnitudes(x,y,z,p);  Z[0] =  X[0]; }
+-    else                     {add_magnitudes(y,x,z,p);  Z[0] = -Y[0]; }
+-  }
+-  else                       {
+-    if ((n=__acr(x,y,p)) == 1) {sub_magnitudes(x,y,z,p);  Z[0] =  X[0]; }
+-    else if (n == -1)        {sub_magnitudes(y,x,z,p);  Z[0] = -Y[0]; }
+-    else                      Z[0] = ZERO;
+-  }
+-}
++      if (k % 2 == 0)
++	/* We want to add this only once, but since we subtract it in the sum
++	   of products above, we add twice.  */
++	zk += 2 * X[lim] * (mantissa_store_t) Y[lim];
+ 
++      for (i = k - p2, j = p2; i < j; i++, j--)
++	zk += (X[i] + X[j]) * (mantissa_store_t) (Y[i] + Y[j]);
+ 
+-/* Multiply two multiple precision numbers. *z is set to *x * *y. x&y      */
+-/* may overlap but not x&z or y&z. In case p=1,2,3 the exact result is     */
+-/* truncated to p digits. In case p>3 the error is bounded by 1.001 ulp.   */
+-/* *x & *y are left unchanged.                                             */
++      zk -= diag[k - 1];
+ 
+-void
+-SECTION
+-__mul(const mp_no *x, const mp_no *y, mp_no *z, int p) {
++      DIV_RADIX (zk, Z[k]);
++      k--;
++    }
+ 
+-  int i, i1, i2, j, k, k2;
+-  double u;
++  /* The real deal.  Mantissa digit Z[k] is the sum of all X[i] * Y[j] where i
++     goes from 1 -> k - 1 and j goes the same range in reverse.  To reduce the
++     number of multiplications, we halve the range and if k is an even number,
++     add the diagonal element X[k/2]Y[k/2].  Through the half range, we compute
++     X[i] * Y[j] as (X[i] + X[j]) * (Y[i] + Y[j]) - X[i] * Y[i] - X[j] * Y[j].
++
++     This reduction tells us that we're summing two things, the first term
++     through the half range and the negative of the sum of the product of all
++     terms of X and Y in the full range.  i.e.
++
++     SUM(X[i] * Y[i]) for k terms.  This is precalculated above for each k in
++     a single loop so that it completes in O(n) time and can hence be directly
++     used in the loop below.  */
++  while (k > 1)
++    {
++      long lim = k / 2;
++
++      if (k % 2 == 0)
++	/* We want to add this only once, but since we subtract it in the sum
++	   of products above, we add twice.  */
++        zk += 2 * X[lim] * (mantissa_store_t) Y[lim];
+ 
+-		      /* Is z=0? */
+-  if (X[0]*Y[0]==ZERO)
+-     { Z[0]=ZERO;  return; }
+-
+-		       /* Multiply, add and carry */
+-  k2 = (p<3) ? p+p : p+3;
+-  Z[k2]=ZERO;
+-  for (k=k2; k>1; ) {
+-    if (k > p)  {i1=k-p; i2=p+1; }
+-    else        {i1=1;   i2=k;   }
+-    for (i=i1,j=i2-1; i<i2; i++,j--)  Z[k] += X[i]*Y[j];
+-
+-    u = (Z[k] + CUTTER)-CUTTER;
+-    if  (u > Z[k])  u -= RADIX;
+-    Z[k]  -= u;
+-    Z[--k] = u*RADIXI;
+-  }
+-
+-		 /* Is there a carry beyond the most significant digit? */
+-  if (Z[1] == ZERO) {
+-    for (i=1; i<=p; i++)  Z[i]=Z[i+1];
+-    EZ = EX + EY - 1; }
+-  else
+-    EZ = EX + EY;
++      for (i = 1, j = k - 1; i < j; i++, j--)
++	zk += (X[i] + X[j]) * (mantissa_store_t) (Y[i] + Y[j]);
++
++      zk -= diag[k - 1];
++
++      DIV_RADIX (zk, Z[k]);
++      k--;
++    }
++  Z[k] = zk;
++
++  /* Get the exponent sum into an intermediate variable.  This is a subtle
++     optimization, where given enough registers, all operations on the exponent
++     happen in registers and the result is written out only once into EZ.  */
++  int e = EX + EY;
++
++  /* Is there a carry beyond the most significant digit?  */
++  if (__glibc_unlikely (Z[1] == 0))
++    {
++      for (i = 1; i <= p2; i++)
++	Z[i] = Z[i + 1];
++      e--;
++    }
+ 
++  EZ = e;
+   Z[0] = X[0] * Y[0];
+ }
++#endif
++
++#ifndef NO__SQR
++/* Square *X and store result in *Y.  X and Y may not overlap.  For P in
++   [1, 2, 3], the exact result is truncated to P digits.  In case P > 3 the
++   error is bounded by 1.001 ULP.  This is a faster special case of
++   multiplication.  */
++void
++SECTION
++__sqr (const mp_no *x, mp_no *y, int p)
++{
++  long i, j, k, ip;
++  mantissa_store_t yk;
+ 
++  /* Is z=0?  */
++  if (__glibc_unlikely (X[0] == 0))
++    {
++      Y[0] = 0;
++      return;
++    }
+ 
+-/* Invert a multiple precision number. Set *y = 1 / *x.                     */
+-/* Relative error bound = 1.001*r**(1-p) for p=2, 1.063*r**(1-p) for p=3,   */
+-/* 2.001*r**(1-p) for p>3.                                                  */
+-/* *x=0 is not permissible. *x is left unchanged.                           */
++  /* We need not iterate through all X's since it's pointless to
++     multiply zeroes.  */
++  for (ip = p; ip > 0; ip--)
++    if (X[ip] != 0)
++      break;
+ 
+-static
+-SECTION
+-void __inv(const mp_no *x, mp_no *y, int p) {
+-  int i;
+-#if 0
+-  int l;
++  k = (__glibc_unlikely (p < 3)) ? p + p : p + 3;
++
++  while (k > 2 * ip + 1)
++    Y[k--] = 0;
++
++  yk = 0;
++
++  while (k > p)
++    {
++      mantissa_store_t yk2 = 0;
++      long lim = k / 2;
++
++      if (k % 2 == 0)
++	yk += X[lim] * (mantissa_store_t) X[lim];
++
++      /* In __mul, this loop (and the one within the next while loop) run
++         between a range to calculate the mantissa as follows:
++
++         Z[k] = X[k] * Y[n] + X[k+1] * Y[n-1] ... + X[n-1] * Y[k+1]
++		+ X[n] * Y[k]
++
++         For X == Y, we can get away with summing halfway and doubling the
++	 result.  For cases where the range size is even, the mid-point needs
++	 to be added separately (above).  */
++      for (i = k - p, j = p; i < j; i++, j--)
++	yk2 += X[i] * (mantissa_store_t) X[j];
++
++      yk += 2 * yk2;
++
++      DIV_RADIX (yk, Y[k]);
++      k--;
++    }
++
++  while (k > 1)
++    {
++      mantissa_store_t yk2 = 0;
++      long lim = k / 2;
++
++      if (k % 2 == 0)
++	yk += X[lim] * (mantissa_store_t) X[lim];
++
++      /* Likewise for this loop.  */
++      for (i = 1, j = k - 1; i < j; i++, j--)
++	yk2 += X[i] * (mantissa_store_t) X[j];
++
++      yk += 2 * yk2;
++
++      DIV_RADIX (yk, Y[k]);
++      k--;
++    }
++  Y[k] = yk;
++
++  /* Squares are always positive.  */
++  Y[0] = 1;
++
++  /* Get the exponent sum into an intermediate variable.  This is a subtle
++     optimization, where given enough registers, all operations on the exponent
++     happen in registers and the result is written out only once into EZ.  */
++  int e = EX * 2;
++
++  /* Is there a carry beyond the most significant digit?  */
++  if (__glibc_unlikely (Y[1] == 0))
++    {
++      for (i = 1; i <= p; i++)
++	Y[i] = Y[i + 1];
++      e--;
++    }
++
++  EY = e;
++}
+ #endif
++
++/* Invert *X and store in *Y.  Relative error bound:
++   - For P = 2: 1.001 * R ^ (1 - P)
++   - For P = 3: 1.063 * R ^ (1 - P)
++   - For P > 3: 2.001 * R ^ (1 - P)
++
++   *X = 0 is not permissible.  */
++static void
++SECTION
++__inv (const mp_no *x, mp_no *y, int p)
++{
++  long i;
+   double t;
+-  mp_no z,w;
+-  static const int np1[] = {0,0,0,0,1,2,2,2,2,3,3,3,3,3,3,3,3,3,
+-			    4,4,4,4,4,4,4,4,4,4,4,4,4,4,4};
+-  const mp_no mptwo = {1,{1.0,2.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,
+-			 0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,
+-			 0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,
+-			 0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0}};
+-
+-  __cpy(x,&z,p);  z.e=0;  __mp_dbl(&z,&t,p);
+-  t=ONE/t;   __dbl_mp(t,y,p);    EY -= EX;
+-
+-  for (i=0; i<np1[p]; i++) {
+-    __cpy(y,&w,p);
+-    __mul(x,&w,y,p);
+-    __sub(&mptwo,y,&z,p);
+-    __mul(&w,&z,y,p);
+-  }
++  mp_no z, w;
++  static const int np1[] =
++    { 0, 0, 0, 0, 1, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3, 3,
++    4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4
++  };
++
++  __cpy (x, &z, p);
++  z.e = 0;
++  __mp_dbl (&z, &t, p);
++  t = 1 / t;
++  __dbl_mp (t, y, p);
++  EY -= EX;
++
++  for (i = 0; i < np1[p]; i++)
++    {
++      __cpy (y, &w, p);
++      __mul (x, &w, y, p);
++      __sub (&__mptwo, y, &z, p);
++      __mul (&w, &z, y, p);
++    }
+ }
+ 
++/* Divide *X by *Y and store result in *Z.  X and Y may overlap but not X and Z
++   or Y and Z.  Relative error bound:
++   - For P = 2: 2.001 * R ^ (1 - P)
++   - For P = 3: 2.063 * R ^ (1 - P)
++   - For P > 3: 3.001 * R ^ (1 - P)
+ 
+-/* Divide one multiple precision number by another.Set *z = *x / *y. *x & *y */
+-/* are left unchanged. x&y may overlap but not x&z or y&z.                   */
+-/* Relative error bound = 2.001*r**(1-p) for p=2, 2.063*r**(1-p) for p=3     */
+-/* and 3.001*r**(1-p) for p>3. *y=0 is not permissible.                      */
+-
++   *X = 0 is not permissible.  */
+ void
+ SECTION
+-__dvd(const mp_no *x, const mp_no *y, mp_no *z, int p) {
+-
++__dvd (const mp_no *x, const mp_no *y, mp_no *z, int p)
++{
+   mp_no w;
+ 
+-  if (X[0] == ZERO)    Z[0] = ZERO;
+-  else                {__inv(y,&w,p);   __mul(x,&w,z,p);}
++  if (X[0] == 0)
++    Z[0] = 0;
++  else
++    {
++      __inv (y, &w, p);
++      __mul (x, &w, z, p);
++    }
+ }
+Index: glibc-2.17-c758a686/sysdeps/ieee754/dbl-64/mpa.h
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/ieee754/dbl-64/mpa.h
++++ glibc-2.17-c758a686/sysdeps/ieee754/dbl-64/mpa.h
+@@ -1,7 +1,7 @@
+ /*
+  * IBM Accurate Mathematical Library
+  * Written by International Business Machines Corp.
+- * Copyright (C) 2001, 2011 Free Software Foundation, Inc.
++ * Copyright (C) 2001-2017 Free Software Foundation, Inc.
+  *
+  * This program is free software; you can redistribute it and/or modify
+  * it under the terms of the GNU Lesser General Public License as published by
+@@ -23,36 +23,58 @@
+ /*  FUNCTIONS:                                                          */
+ /*               mcr                                                    */
+ /*               acr                                                    */
+-/*               cr                                                     */
+ /*               cpy                                                    */
+-/*               cpymn                                                  */
+ /*               mp_dbl                                                 */
+ /*               dbl_mp                                                 */
+ /*               add                                                    */
+ /*               sub                                                    */
+ /*               mul                                                    */
+-/*               inv                                                    */
+ /*               dvd                                                    */
+ /*                                                                      */
+ /* Arithmetic functions for multiple precision numbers.                 */
+ /* Common types and definition                                          */
+ /************************************************************************/
+ 
++#include <mpa-arch.h>
+ 
+-typedef struct {/* This structure holds the details of a multi-precision     */
+-  int e;        /* floating point number, x: d[0] holds its sign (-1,0 or 1) */
+-  double d[40]; /* e holds its exponent (...,-2,-1,0,1,2,...) and            */
+-} mp_no;        /* d[1]...d[p] hold its mantissa digits. The value of x is,  */
+-		/* x = d[1]*r**(e-1) + d[2]*r**(e-2) + ... + d[p]*r**(e-p).  */
+-		/* Here   r = 2**24,   0 <= d[i] < r  and  1 <= p <= 32.     */
+-		/* p is a global variable. A multi-precision number is       */
+-		/* always normalized. Namely, d[1] > 0. An exception is      */
+-		/* a zero which is characterized by d[0] = 0. The terms      */
+-		/* d[p+1], d[p+2], ... of a none zero number have no         */
+-		/* significance and so are the terms e, d[1],d[2],...        */
+-		/* of a zero.                                                */
++/* The mp_no structure holds the details of a multi-precision floating point
++   number.
+ 
+-typedef union { int i[2]; double d; } number;
++   - The radix of the number (R) is 2 ^ 24.
++
++   - E: The exponent of the number.
++
++   - D[0]: The sign (-1, 1) or 0 if the value is 0.  In the latter case, the
++     values of the remaining members of the structure are ignored.
++
++   - D[1] - D[p]: The mantissa of the number where:
++
++	0 <= D[i] < R and
++	P is the precision of the number and 1 <= p <= 32
++
++     D[p+1] ... D[39] have no significance.
++
++   - The value of the number is:
++
++	D[1] * R ^ (E - 1) + D[2] * R ^ (E - 2) ... D[p] * R ^ (E - p)
++
++   */
++typedef struct
++{
++  int e;
++  mantissa_t d[40];
++} mp_no;
++
++typedef union
++{
++  int i[2];
++  double d;
++} number;
++
++/* TODO: With only a partial backport of the constant cleanup we don't
++         define __mpone or __mptwo here for other code to use.  */
++/* extern const mp_no __mpone;
++extern const mp_no __mptwo;  */
+ 
+ #define  X   x->d
+ #define  Y   y->d
+@@ -63,21 +85,73 @@ typedef union { int i[2]; double d; } nu
+ 
+ #define ABS(x)   ((x) <  0  ? -(x) : (x))
+ 
+-int __acr(const mp_no *, const mp_no *, int);
+-// int  __cr(const mp_no *, const mp_no *, int);
+-void __cpy(const mp_no *, mp_no *, int);
+-// void __cpymn(const mp_no *, int, mp_no *, int);
+-void __mp_dbl(const mp_no *, double *, int);
+-void __dbl_mp(double, mp_no *, int);
+-void __add(const mp_no *, const mp_no *, mp_no *, int);
+-void __sub(const mp_no *, const mp_no *, mp_no *, int);
+-void __mul(const mp_no *, const mp_no *, mp_no *, int);
+-// void __inv(const mp_no *, mp_no *, int);
+-void __dvd(const mp_no *, const mp_no *, mp_no *, int);
++#ifndef RADIXI
++# define  RADIXI    0x1.0p-24		/* 2^-24   */
++#endif
++
++#ifndef TWO52
++# define  TWO52     0x1.0p52		/* 2^52    */
++#endif
++
++#define  TWO5      TWOPOW (5)		/* 2^5     */
++#define  TWO8      TWOPOW (8)		/* 2^52    */
++#define  TWO10     TWOPOW (10)		/* 2^10    */
++#define  TWO18     TWOPOW (18)		/* 2^18    */
++#define  TWO19     TWOPOW (19)		/* 2^19    */
++#define  TWO23     TWOPOW (23)		/* 2^23    */
++
++#define  TWO57     0x1.0p57            /* 2^57    */
++#define  TWO71     0x1.0p71            /* 2^71    */
++#define  TWOM1032  0x1.0p-1032         /* 2^-1032 */
++#define  TWOM1022  0x1.0p-1022         /* 2^-1022 */
++
++#define  HALF      0x1.0p-1            /* 1/2 */
++#define  MHALF     -0x1.0p-1           /* -1/2 */
++#define  HALFRAD   0x1.0p23            /* 2^23 */
++
++int __acr (const mp_no *, const mp_no *, int);
++void __cpy (const mp_no *, mp_no *, int);
++void __mp_dbl (const mp_no *, double *, int);
++void __dbl_mp (double, mp_no *, int);
++void __add (const mp_no *, const mp_no *, mp_no *, int);
++void __sub (const mp_no *, const mp_no *, mp_no *, int);
++void __mul (const mp_no *, const mp_no *, mp_no *, int);
++void __sqr (const mp_no *, mp_no *, int);
++void __dvd (const mp_no *, const mp_no *, mp_no *, int);
+ 
+ extern void __mpatan (mp_no *, mp_no *, int);
+ extern void __mpatan2 (mp_no *, mp_no *, mp_no *, int);
+ extern void __mpsqrt (mp_no *, mp_no *, int);
+-extern void __mpexp (mp_no *, mp_no *__y, int);
++extern void __mpexp (mp_no *, mp_no *, int);
+ extern void __c32 (mp_no *, mp_no *, mp_no *, int);
+ extern int __mpranred (double, mp_no *, int);
++
++/* Given a power POW, build a multiprecision number 2^POW.  */
++static inline void
++__pow_mp (int pow, mp_no *y, int p)
++{
++  int i, rem;
++
++  /* The exponent is E such that E is a factor of 2^24.  The remainder (of the
++     form 2^x) goes entirely into the first digit of the mantissa as it is
++     always less than 2^24.  */
++  EY = pow / 24;
++  rem = pow - EY * 24;
++  EY++;
++
++  /* If the remainder is negative, it means that POW was negative since
++     |EY * 24| <= |pow|.  Adjust so that REM is positive and still less than
++     24 because of which, the mantissa digit is less than 2^24.  */
++  if (rem < 0)
++    {
++      EY--;
++      rem += 24;
++    }
++  /* The sign of any 2^x is always positive.  */
++  Y[0] = 1;
++  Y[1] = 1 << rem;
++
++  /* Everything else is 0.  */
++  for (i = 2; i <= p; i++)
++    Y[i] = 0;
++}
+Index: glibc-2.17-c758a686/sysdeps/ieee754/dbl-64/mpexp.c
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/ieee754/dbl-64/mpexp.c
++++ glibc-2.17-c758a686/sysdeps/ieee754/dbl-64/mpexp.c
+@@ -69,13 +69,13 @@ __mpexp(mp_no *x, mp_no *y, int p) {
+   for (i=0; i<EX; i++)  a *= RADIXI;
+   for (   ; i>EX; i--)  a *= RADIX;
+   b = X[1]*RADIXI;   m2 = 24*EX;
+-  for (; b<HALF; m2--)  { a *= TWO;   b *= TWO; }
++  for (; b<HALF; m2--)  { a *= 2;   b *= 2; }
+   if (b == HALF) {
+-    for (i=2; i<=p; i++) { if (X[i]!=ZERO)  break; }
+-    if (i==p+1)  { m2--;  a *= TWO; }
++    for (i=2; i<=p; i++) { if (X[i]!=0)  break; }
++    if (i==p+1)  { m2--;  a *= 2; }
+   }
+   if ((m=m1+m2) <= 0) {
+-    m=0;  a=ONE;
++    m=0;  a=1;
+     for (i=n-1; i>0; i--,n--) { if (m1np[i][p]+m2>0)  break; }
+   }
+ 
+@@ -84,8 +84,8 @@ __mpexp(mp_no *x, mp_no *y, int p) {
+   __mul(x,&mpt1,&mps,p);
+ 
+   /* Evaluate the polynomial. Put result in mpt2 */
+-  mpone.e=1;   mpone.d[0]=ONE;   mpone.d[1]=ONE;
+-  mpk.e = 1;   mpk.d[0] = ONE;   mpk.d[1]=__mpexp_nn[n].d;
++  mpone.e=1;   mpone.d[0]=1;   mpone.d[1]=1;
++  mpk.e = 1;   mpk.d[0] = 1;   mpk.d[1]=__mpexp_nn[n].d;
+   __dvd(&mps,&mpk,&mpt1,p);
+   __add(&mpone,&mpt1,&mpak,p);
+   for (k=n-1; k>1; k--) {
+@@ -99,9 +99,9 @@ __mpexp(mp_no *x, mp_no *y, int p) {
+ 
+   /* Raise polynomial value to the power of 2**m. Put result in y */
+   for (k=0,j=0; k<m; ) {
+-    __mul(&mpt2,&mpt2,&mpt1,p);  k++;
++    __sqr (&mpt2, &mpt1, p);  k++;
+     if (k==m)  { j=1;  break; }
+-    __mul(&mpt1,&mpt1,&mpt2,p);  k++;
++    __sqr (&mpt1, &mpt2, p);  k++;
+   }
+   if (j)  __cpy(&mpt1,y,p);
+   else    __cpy(&mpt2,y,p);
+Index: glibc-2.17-c758a686/sysdeps/x86_64/fpu/multiarch/mpa-avx.c
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/x86_64/fpu/multiarch/mpa-avx.c
++++ glibc-2.17-c758a686/sysdeps/x86_64/fpu/multiarch/mpa-avx.c
+@@ -1,5 +1,6 @@
+ #define __add __add_avx
+ #define __mul __mul_avx
++#define __sqr __sqr_avx
+ #define __sub __sub_avx
+ #define __dbl_mp __dbl_mp_avx
+ #define __dvd __dvd_avx
+Index: glibc-2.17-c758a686/sysdeps/x86_64/fpu/multiarch/mpa-fma4.c
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/x86_64/fpu/multiarch/mpa-fma4.c
++++ glibc-2.17-c758a686/sysdeps/x86_64/fpu/multiarch/mpa-fma4.c
+@@ -1,5 +1,6 @@
+ #define __add __add_fma4
+ #define __mul __mul_fma4
++#define __sqr __sqr_fma4
+ #define __sub __sub_fma4
+ #define __dbl_mp __dbl_mp_fma4
+ #define __dvd __dvd_fma4
+Index: glibc-2.17-c758a686/sysdeps/powerpc/power4/fpu/mpa.c
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/powerpc/power4/fpu/mpa.c
++++ glibc-2.17-c758a686/sysdeps/powerpc/power4/fpu/mpa.c
+@@ -2,7 +2,7 @@
+ /*
+  * IBM Accurate Mathematical Library
+  * written by International Business Machines Corp.
+- * Copyright (C) 2001, 2006 Free Software Foundation
++ * Copyright (C) 2001-2017 Free Software Foundation, Inc.
+  *
+  * This program is free software; you can redistribute it and/or modify
+  * it under the terms of the GNU Lesser General Public License as published by
+@@ -17,532 +17,198 @@
+  * You should have received a copy of the GNU Lesser General Public License
+  * along with this program; if not, see <http://www.gnu.org/licenses/>.
+  */
+-/************************************************************************/
+-/*  MODULE_NAME: mpa.c                                                  */
+-/*                                                                      */
+-/*  FUNCTIONS:                                                          */
+-/*               mcr                                                    */
+-/*               acr                                                    */
+-/*               cr                                                     */
+-/*               cpy                                                    */
+-/*               cpymn                                                  */
+-/*               norm                                                   */
+-/*               denorm                                                 */
+-/*               mp_dbl                                                 */
+-/*               dbl_mp                                                 */
+-/*               add_magnitudes                                         */
+-/*               sub_magnitudes                                         */
+-/*               add                                                    */
+-/*               sub                                                    */
+-/*               mul                                                    */
+-/*               inv                                                    */
+-/*               dvd                                                    */
+-/*                                                                      */
+-/* Arithmetic functions for multiple precision numbers.                 */
+-/* Relative errors are bounded                                          */
+-/************************************************************************/
+-
+-
+-#include "endian.h"
+-#include "mpa.h"
+-#include "mpa2.h"
+-#include <sys/param.h>	/* For MIN() */
+-/* mcr() compares the sizes of the mantissas of two multiple precision  */
+-/* numbers. Mantissas are compared regardless of the signs of the       */
+-/* numbers, even if x->d[0] or y->d[0] are zero. Exponents are also     */
+-/* disregarded.                                                         */
+-static int mcr(const mp_no *x, const mp_no *y, int p) {
+-  long i;
+-  long p2 = p;
+-  for (i=1; i<=p2; i++) {
+-    if      (X[i] == Y[i])  continue;
+-    else if (X[i] >  Y[i])  return  1;
+-    else                    return -1; }
+-  return 0;
+-}
+-
+-
+-
+-/* acr() compares the absolute values of two multiple precision numbers */
+-int __acr(const mp_no *x, const mp_no *y, int p) {
+-  long i;
+-
+-  if      (X[0] == ZERO) {
+-    if    (Y[0] == ZERO) i= 0;
+-    else                 i=-1;
+-  }
+-  else if (Y[0] == ZERO) i= 1;
+-  else {
+-    if      (EX >  EY)   i= 1;
+-    else if (EX <  EY)   i=-1;
+-    else                 i= mcr(x,y,p);
+-  }
+-
+-  return i;
+-}
+-
+-
+-/* cr90 compares the values of two multiple precision numbers           */
+-int  __cr(const mp_no *x, const mp_no *y, int p) {
+-  int i;
+-
+-  if      (X[0] > Y[0])  i= 1;
+-  else if (X[0] < Y[0])  i=-1;
+-  else if (X[0] < ZERO ) i= __acr(y,x,p);
+-  else                   i= __acr(x,y,p);
+-
+-  return i;
+-}
+-
+-
+-/* Copy a multiple precision number. Set *y=*x. x=y is permissible.      */
+-void __cpy(const mp_no *x, mp_no *y, int p) {
+-  long i;
+-
+-  EY = EX;
+-  for (i=0; i <= p; i++)    Y[i] = X[i];
+-
+-  return;
+-}
+-
+-
+-/* Copy a multiple precision number x of precision m into a */
+-/* multiple precision number y of precision n. In case n>m, */
+-/* the digits of y beyond the m'th are set to zero. In case */
+-/* n<m, the digits of x beyond the n'th are ignored.        */
+-/* x=y is permissible.                                      */
+-
+-void __cpymn(const mp_no *x, int m, mp_no *y, int n) {
+-
+-  long i,k;
+-  long n2 = n;
+-  long m2 = m;
+-
+-  EY = EX;     k=MIN(m2,n2);
+-  for (i=0; i <= k; i++)    Y[i] = X[i];
+-  for (   ; i <= n2; i++)    Y[i] = ZERO;
+-
+-  return;
+-}
+-
+-/* Convert a multiple precision number *x into a double precision */
+-/* number *y, normalized case  (|x| >= 2**(-1022))) */
+-static void norm(const mp_no *x, double *y, int p)
+-{
+-  #define R  radixi.d
+-  long i;
+-#if 0
+-  int k;
+-#endif
+-  double a,c,u,v,z[5];
+-  if (p<5) {
+-    if      (p==1) c = X[1];
+-    else if (p==2) c = X[1] + R* X[2];
+-    else if (p==3) c = X[1] + R*(X[2]  +   R* X[3]);
+-    else if (p==4) c =(X[1] + R* X[2]) + R*R*(X[3] + R*X[4]);
+-  }
+-  else {
+-    for (a=ONE, z[1]=X[1]; z[1] < TWO23; )
+-        {a *= TWO;   z[1] *= TWO; }
+-
+-    for (i=2; i<5; i++) {
+-      z[i] = X[i]*a;
+-      u = (z[i] + CUTTER)-CUTTER;
+-      if  (u > z[i])  u -= RADIX;
+-      z[i] -= u;
+-      z[i-1] += u*RADIXI;
+-    }
+-
+-    u = (z[3] + TWO71) - TWO71;
+-    if (u > z[3])   u -= TWO19;
+-    v = z[3]-u;
+-
+-    if (v == TWO18) {
+-      if (z[4] == ZERO) {
+-        for (i=5; i <= p; i++) {
+-          if (X[i] == ZERO)   continue;
+-          else                {z[3] += ONE;   break; }
+-        }
+-      }
+-      else              z[3] += ONE;
+-    }
+-
+-    c = (z[1] + R *(z[2] + R * z[3]))/a;
+-  }
+ 
+-  c *= X[0];
+-
+-  for (i=1; i<EX; i++)   c *= RADIX;
+-  for (i=1; i>EX; i--)   c *= RADIXI;
+-
+-  *y = c;
+-  return;
+-#undef R
+-}
+-
+-/* Convert a multiple precision number *x into a double precision */
+-/* number *y, denormalized case  (|x| < 2**(-1022))) */
+-static void denorm(const mp_no *x, double *y, int p)
++/* Define __mul and __sqr and use the rest from generic code.  */
++#define NO__MUL
++#define NO__SQR
++
++#include <sysdeps/ieee754/dbl-64/mpa.c>
++
++/* Multiply *X and *Y and store result in *Z.  X and Y may overlap but not X
++   and Z or Y and Z.  For P in [1, 2, 3], the exact result is truncated to P
++   digits.  In case P > 3 the error is bounded by 1.001 ULP.  */
++void
++__mul (const mp_no *x, const mp_no *y, mp_no *z, int p)
+ {
+-  long i,k;
++  long i, i1, i2, j, k, k2;
+   long p2 = p;
+-  double c,u,z[5];
+-#if 0
+-  double a,v;
+-#endif
++  double u, zk, zk2;
+ 
+-#define R  radixi.d
+-  if (EX<-44 || (EX==-44 && X[1]<TWO5))
+-     { *y=ZERO; return; }
+-
+-  if      (p2==1) {
+-    if      (EX==-42) {z[1]=X[1]+TWO10;  z[2]=ZERO;  z[3]=ZERO;  k=3;}
+-    else if (EX==-43) {z[1]=     TWO10;  z[2]=X[1];  z[3]=ZERO;  k=2;}
+-    else              {z[1]=     TWO10;  z[2]=ZERO;  z[3]=X[1];  k=1;}
+-  }
+-  else if (p2==2) {
+-    if      (EX==-42) {z[1]=X[1]+TWO10;  z[2]=X[2];  z[3]=ZERO;  k=3;}
+-    else if (EX==-43) {z[1]=     TWO10;  z[2]=X[1];  z[3]=X[2];  k=2;}
+-    else              {z[1]=     TWO10;  z[2]=ZERO;  z[3]=X[1];  k=1;}
+-  }
+-  else {
+-    if      (EX==-42) {z[1]=X[1]+TWO10;  z[2]=X[2];  k=3;}
+-    else if (EX==-43) {z[1]=     TWO10;  z[2]=X[1];  k=2;}
+-    else              {z[1]=     TWO10;  z[2]=ZERO;  k=1;}
+-    z[3] = X[k];
+-  }
+-
+-  u = (z[3] + TWO57) - TWO57;
+-  if  (u > z[3])   u -= TWO5;
+-
+-  if (u==z[3]) {
+-    for (i=k+1; i <= p2; i++) {
+-      if (X[i] == ZERO)   continue;
+-      else {z[3] += ONE;   break; }
++  /* Is z=0?  */
++  if (__glibc_unlikely (X[0] * Y[0] == 0))
++    {
++      Z[0] = 0;
++      return;
+     }
+-  }
+-
+-  c = X[0]*((z[1] + R*(z[2] + R*z[3])) - TWO10);
+ 
+-  *y = c*TWOM1032;
+-  return;
+-
+-#undef R
+-}
+-
+-/* Convert a multiple precision number *x into a double precision number *y. */
+-/* The result is correctly rounded to the nearest/even. *x is left unchanged */
+-
+-void __mp_dbl(const mp_no *x, double *y, int p) {
+-#if 0
+-  int i,k;
+-  double a,c,u,v,z[5];
++  /* Multiply, add and carry */
++  k2 = (p2 < 3) ? p2 + p2 : p2 + 3;
++  zk = Z[k2] = 0;
++  for (k = k2; k > 1;)
++    {
++      if (k > p2)
++	{
++	  i1 = k - p2;
++	  i2 = p2 + 1;
++	}
++      else
++	{
++	  i1 = 1;
++	  i2 = k;
++	}
++#if 1
++      /* Rearrange this inner loop to allow the fmadd instructions to be
++         independent and execute in parallel on processors that have
++         dual symmetrical FP pipelines.  */
++      if (i1 < (i2 - 1))
++	{
++	  /* Make sure we have at least 2 iterations.  */
++	  if (((i2 - i1) & 1L) == 1L)
++	    {
++	      /* Handle the odd iterations case.  */
++	      zk2 = x->d[i2 - 1] * y->d[i1];
++	    }
++	  else
++	    zk2 = 0.0;
++	  /* Do two multiply/adds per loop iteration, using independent
++	     accumulators; zk and zk2.  */
++	  for (i = i1, j = i2 - 1; i < i2 - 1; i += 2, j -= 2)
++	    {
++	      zk += x->d[i] * y->d[j];
++	      zk2 += x->d[i + 1] * y->d[j - 1];
++	    }
++	  zk += zk2;		/* Final sum.  */
++	}
++      else
++	{
++	  /* Special case when iterations is 1.  */
++	  zk += x->d[i1] * y->d[i1];
++	}
++#else
++      /* The original code.  */
++      for (i = i1, j = i2 - 1; i < i2; i++, j--)
++	zk += X[i] * Y[j];
+ #endif
+ 
+-  if (X[0] == ZERO)  {*y = ZERO;  return; }
+-
+-  if      (EX> -42)                 norm(x,y,p);
+-  else if (EX==-42 && X[1]>=TWO10)  norm(x,y,p);
+-  else                              denorm(x,y,p);
+-}
+-
+-
+-/* dbl_mp() converts a double precision number x into a multiple precision  */
+-/* number *y. If the precision p is too small the result is truncated. x is */
+-/* left unchanged.                                                          */
+-
+-void __dbl_mp(double x, mp_no *y, int p) {
++      u = (zk + CUTTER) - CUTTER;
++      if (u > zk)
++	u -= RADIX;
++      Z[k] = zk - u;
++      zk = u * RADIXI;
++      --k;
++    }
++  Z[k] = zk;
+ 
+-  long i,n;
+-  long p2 = p;
+-  double u;
++  int e = EX + EY;
++  /* Is there a carry beyond the most significant digit?  */
++  if (Z[1] == 0)
++    {
++      for (i = 1; i <= p2; i++)
++	Z[i] = Z[i + 1];
++      e--;
++    }
+ 
+-  /* Sign */
+-  if      (x == ZERO)  {Y[0] = ZERO;  return; }
+-  else if (x >  ZERO)   Y[0] = ONE;
+-  else                 {Y[0] = MONE;  x=-x;   }
+-
+-  /* Exponent */
+-  for (EY=ONE; x >= RADIX; EY += ONE)   x *= RADIXI;
+-  for (      ; x <  ONE;   EY -= ONE)   x *= RADIX;
+-
+-  /* Digits */
+-  n=MIN(p2,4);
+-  for (i=1; i<=n; i++) {
+-    u = (x + TWO52) - TWO52;
+-    if (u>x)   u -= ONE;
+-    Y[i] = u;     x -= u;    x *= RADIX; }
+-  for (   ; i<=p2; i++)     Y[i] = ZERO;
+-  return;
++  EZ = e;
++  Z[0] = X[0] * Y[0];
+ }
+ 
++/* Square *X and store result in *Y.  X and Y may not overlap.  For P in
++   [1, 2, 3], the exact result is truncated to P digits.  In case P > 3 the
++   error is bounded by 1.001 ULP.  This is a faster special case of
++   multiplication.  */
++void
++__sqr (const mp_no *x, mp_no *y, int p)
++{
++  long i, j, k, ip;
++  double u, yk;
+ 
+-/*  add_magnitudes() adds the magnitudes of *x & *y assuming that           */
+-/*  abs(*x) >= abs(*y) > 0.                                                 */
+-/* The sign of the sum *z is undefined. x&y may overlap but not x&z or y&z. */
+-/* No guard digit is used. The result equals the exact sum, truncated.      */
+-/* *x & *y are left unchanged.                                              */
++  /* Is z=0?  */
++  if (__glibc_unlikely (X[0] == 0))
++    {
++      Y[0] = 0;
++      return;
++    }
+ 
+-static void add_magnitudes(const mp_no *x, const mp_no *y, mp_no *z, int p) {
++  /* We need not iterate through all X's since it's pointless to
++     multiply zeroes.  */
++  for (ip = p; ip > 0; ip--)
++    if (X[ip] != 0)
++      break;
+ 
+-  long i,j,k;
+-  long p2 = p;
++  k = (__glibc_unlikely (p < 3)) ? p + p : p + 3;
+ 
+-  EZ = EX;
++  while (k > 2 * ip + 1)
++    Y[k--] = 0;
+ 
+-  i=p2;    j=p2+ EY - EX;    k=p2+1;
++  yk = 0;
+ 
+-  if (j<1)
+-     {__cpy(x,z,p);  return; }
+-  else   Z[k] = ZERO;
+-
+-  for (; j>0; i--,j--) {
+-    Z[k] += X[i] + Y[j];
+-    if (Z[k] >= RADIX) {
+-      Z[k]  -= RADIX;
+-      Z[--k] = ONE; }
+-    else
+-      Z[--k] = ZERO;
+-  }
+-
+-  for (; i>0; i--) {
+-    Z[k] += X[i];
+-    if (Z[k] >= RADIX) {
+-      Z[k]  -= RADIX;
+-      Z[--k] = ONE; }
+-    else
+-      Z[--k] = ZERO;
+-  }
+-
+-  if (Z[1] == ZERO) {
+-    for (i=1; i<=p2; i++)    Z[i] = Z[i+1]; }
+-  else   EZ += ONE;
+-}
++  while (k > p)
++    {
++      double yk2 = 0.0;
++      long lim = k / 2;
+ 
++      if (k % 2 == 0)
++        {
++	  yk += X[lim] * X[lim];
++	  lim--;
++	}
+ 
+-/*  sub_magnitudes() subtracts the magnitudes of *x & *y assuming that      */
+-/*  abs(*x) > abs(*y) > 0.                                                  */
+-/* The sign of the difference *z is undefined. x&y may overlap but not x&z  */
+-/* or y&z. One guard digit is used. The error is less than one ulp.         */
+-/* *x & *y are left unchanged.                                              */
++      /* In __mul, this loop (and the one within the next while loop) run
++         between a range to calculate the mantissa as follows:
+ 
+-static void sub_magnitudes(const mp_no *x, const mp_no *y, mp_no *z, int p) {
++         Z[k] = X[k] * Y[n] + X[k+1] * Y[n-1] ... + X[n-1] * Y[k+1]
++		+ X[n] * Y[k]
+ 
+-  long i,j,k;
+-  long p2 = p;
++         For X == Y, we can get away with summing halfway and doubling the
++	 result.  For cases where the range size is even, the mid-point needs
++	 to be added separately (above).  */
++      for (i = k - p, j = p; i <= lim; i++, j--)
++	yk2 += X[i] * X[j];
+ 
+-  EZ = EX;
++      yk += 2.0 * yk2;
+ 
+-  if (EX == EY) {
+-    i=j=k=p2;
+-    Z[k] = Z[k+1] = ZERO; }
+-  else {
+-    j= EX - EY;
+-    if (j > p2)  {__cpy(x,z,p);  return; }
+-    else {
+-      i=p2;   j=p2+1-j;   k=p2;
+-      if (Y[j] > ZERO) {
+-        Z[k+1] = RADIX - Y[j--];
+-        Z[k]   = MONE; }
+-      else {
+-        Z[k+1] = ZERO;
+-        Z[k]   = ZERO;   j--;}
++      u = (yk + CUTTER) - CUTTER;
++      if (u > yk)
++	u -= RADIX;
++      Y[k--] = yk - u;
++      yk = u * RADIXI;
+     }
+-  }
+-
+-  for (; j>0; i--,j--) {
+-    Z[k] += (X[i] - Y[j]);
+-    if (Z[k] < ZERO) {
+-      Z[k]  += RADIX;
+-      Z[--k] = MONE; }
+-    else
+-      Z[--k] = ZERO;
+-  }
+-
+-  for (; i>0; i--) {
+-    Z[k] += X[i];
+-    if (Z[k] < ZERO) {
+-      Z[k]  += RADIX;
+-      Z[--k] = MONE; }
+-    else
+-      Z[--k] = ZERO;
+-  }
+-
+-  for (i=1; Z[i] == ZERO; i++) ;
+-  EZ = EZ - i + 1;
+-  for (k=1; i <= p2+1; )
+-    Z[k++] = Z[i++];
+-  for (; k <= p2; )
+-    Z[k++] = ZERO;
+-
+-  return;
+-}
+-
+-
+-/* Add two multiple precision numbers. Set *z = *x + *y. x&y may overlap  */
+-/* but not x&z or y&z. One guard digit is used. The error is less than    */
+-/* one ulp. *x & *y are left unchanged.                                   */
+-
+-void __add(const mp_no *x, const mp_no *y, mp_no *z, int p) {
+-
+-  int n;
+-
+-  if      (X[0] == ZERO)     {__cpy(y,z,p);  return; }
+-  else if (Y[0] == ZERO)     {__cpy(x,z,p);  return; }
+-
+-  if (X[0] == Y[0])   {
+-    if (__acr(x,y,p) > 0)      {add_magnitudes(x,y,z,p);  Z[0] = X[0]; }
+-    else                     {add_magnitudes(y,x,z,p);  Z[0] = Y[0]; }
+-  }
+-  else                       {
+-    if ((n=__acr(x,y,p)) == 1) {sub_magnitudes(x,y,z,p);  Z[0] = X[0]; }
+-    else if (n == -1)        {sub_magnitudes(y,x,z,p);  Z[0] = Y[0]; }
+-    else                      Z[0] = ZERO;
+-  }
+-  return;
+-}
+-
+-
+-/* Subtract two multiple precision numbers. *z is set to *x - *y. x&y may */
+-/* overlap but not x&z or y&z. One guard digit is used. The error is      */
+-/* less than one ulp. *x & *y are left unchanged.                         */
+-
+-void __sub(const mp_no *x, const mp_no *y, mp_no *z, int p) {
+-
+-  int n;
+-
+-  if      (X[0] == ZERO)     {__cpy(y,z,p);  Z[0] = -Z[0];  return; }
+-  else if (Y[0] == ZERO)     {__cpy(x,z,p);                 return; }
+-
+-  if (X[0] != Y[0])    {
+-    if (__acr(x,y,p) > 0)      {add_magnitudes(x,y,z,p);  Z[0] =  X[0]; }
+-    else                     {add_magnitudes(y,x,z,p);  Z[0] = -Y[0]; }
+-  }
+-  else                       {
+-    if ((n=__acr(x,y,p)) == 1) {sub_magnitudes(x,y,z,p);  Z[0] =  X[0]; }
+-    else if (n == -1)        {sub_magnitudes(y,x,z,p);  Z[0] = -Y[0]; }
+-    else                      Z[0] = ZERO;
+-  }
+-  return;
+-}
+-
+-
+-/* Multiply two multiple precision numbers. *z is set to *x * *y. x&y      */
+-/* may overlap but not x&z or y&z. In case p=1,2,3 the exact result is     */
+-/* truncated to p digits. In case p>3 the error is bounded by 1.001 ulp.   */
+-/* *x & *y are left unchanged.                                             */
+ 
+-void __mul(const mp_no *x, const mp_no *y, mp_no *z, int p) {
+-
+-  long i, i1, i2, j, k, k2;
+-  long p2 = p;
+-  double u, zk, zk2;
+-
+-                      /* Is z=0? */
+-  if (X[0]*Y[0]==ZERO)
+-     { Z[0]=ZERO;  return; }
+-
+-                       /* Multiply, add and carry */
+-  k2 = (p2<3) ? p2+p2 : p2+3;
+-  zk = Z[k2]=ZERO;
+-  for (k=k2; k>1; ) {
+-    if (k > p2)  {i1=k-p2; i2=p2+1; }
+-    else        {i1=1;   i2=k;   }
+-#if 1
+-    /* rearange this inner loop to allow the fmadd instructions to be
+-       independent and execute in parallel on processors that have
+-       dual symetrical FP pipelines.  */
+-    if (i1 < (i2-1))
++  while (k > 1)
+     {
+-	/* make sure we have at least 2 iterations */
+-	if (((i2 - i1) & 1L) == 1L)
+-	{
+-                /* Handle the odd iterations case.  */
+-		zk2 = x->d[i2-1]*y->d[i1];
+-	}
+-	else
+-		zk2 = zero.d;
+-	/* Do two multiply/adds per loop iteration, using independent
+-           accumulators; zk and zk2.  */
+-	for (i=i1,j=i2-1; i<i2-1; i+=2,j-=2) 
+-	{
+-		zk += x->d[i]*y->d[j];
+-		zk2 += x->d[i+1]*y->d[j-1];
++      double yk2 = 0.0;
++      long lim = k / 2;
++
++      if (k % 2 == 0)
++        {
++	  yk += X[lim] * X[lim];
++	  lim--;
+ 	}
+-	zk += zk2; /* final sum.  */
+-    }
+-    else
++
++      /* Likewise for this loop.  */
++      for (i = 1, j = k - 1; i <= lim; i++, j--)
++	yk2 += X[i] * X[j];
++
++      yk += 2.0 * yk2;
++
++      u = (yk + CUTTER) - CUTTER;
++      if (u > yk)
++	u -= RADIX;
++      Y[k--] = yk - u;
++      yk = u * RADIXI;
++    }
++  Y[k] = yk;
++
++  /* Squares are always positive.  */
++  Y[0] = 1.0;
++
++  int e = EX * 2;
++  /* Is there a carry beyond the most significant digit?  */
++  if (__glibc_unlikely (Y[1] == 0))
+     {
+-        /* Special case when iterations is 1.  */
+-	zk += x->d[i1]*y->d[i1];
++      for (i = 1; i <= p; i++)
++	Y[i] = Y[i + 1];
++      e--;
+     }
+-#else
+-    /* The orginal code.  */
+-    for (i=i1,j=i2-1; i<i2; i++,j--)  zk += X[i]*Y[j];
+-#endif
+-
+-    u = (zk + CUTTER)-CUTTER;
+-    if  (u > zk)  u -= RADIX;
+-    Z[k]  = zk - u;
+-    zk = u*RADIXI;
+-    --k;
+-  }
+-  Z[k] = zk;
+-
+-                 /* Is there a carry beyond the most significant digit? */
+-  if (Z[1] == ZERO) {
+-    for (i=1; i<=p2; i++)  Z[i]=Z[i+1];
+-    EZ = EX + EY - 1; }
+-  else
+-    EZ = EX + EY;
+-
+-  Z[0] = X[0] * Y[0];
+-  return;
+-}
+-
+-
+-/* Invert a multiple precision number. Set *y = 1 / *x.                     */
+-/* Relative error bound = 1.001*r**(1-p) for p=2, 1.063*r**(1-p) for p=3,   */
+-/* 2.001*r**(1-p) for p>3.                                                  */
+-/* *x=0 is not permissible. *x is left unchanged.                           */
+-
+-void __inv(const mp_no *x, mp_no *y, int p) {
+-  long i;
+-#if 0
+-  int l;
+-#endif
+-  double t;
+-  mp_no z,w;
+-  static const int np1[] = {0,0,0,0,1,2,2,2,2,3,3,3,3,3,3,3,3,3,
+-                            4,4,4,4,4,4,4,4,4,4,4,4,4,4,4};
+-  const mp_no mptwo = {1,{1.0,2.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,
+-                         0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,
+-                         0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,
+-                         0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0}};
+-
+-  __cpy(x,&z,p);  z.e=0;  __mp_dbl(&z,&t,p);
+-  t=ONE/t;   __dbl_mp(t,y,p);    EY -= EX;
+-
+-  for (i=0; i<np1[p]; i++) {
+-    __cpy(y,&w,p);
+-    __mul(x,&w,y,p);
+-    __sub(&mptwo,y,&z,p);
+-    __mul(&w,&z,y,p);
+-  }
+-  return;
+-}
+-
+-
+-/* Divide one multiple precision number by another.Set *z = *x / *y. *x & *y */
+-/* are left unchanged. x&y may overlap but not x&z or y&z.                   */
+-/* Relative error bound = 2.001*r**(1-p) for p=2, 2.063*r**(1-p) for p=3     */
+-/* and 3.001*r**(1-p) for p>3. *y=0 is not permissible.                      */
+-
+-void __dvd(const mp_no *x, const mp_no *y, mp_no *z, int p) {
+-
+-  mp_no w;
+-
+-  if (X[0] == ZERO)    Z[0] = ZERO;
+-  else                {__inv(y,&w,p);   __mul(x,&w,z,p);}
+-  return;
++  EY = e;
+ }
+Index: glibc-2.17-c758a686/sysdeps/ieee754/dbl-64/atnat.h
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/ieee754/dbl-64/atnat.h
++++ glibc-2.17-c758a686/sysdeps/ieee754/dbl-64/atnat.h
+@@ -138,8 +138,6 @@
+ #endif
+ #endif
+ 
+-#define  ZERO      zero.d
+-#define  ONE       one.d
+ #define  A         a.d
+ #define  B         b.d
+ #define  C         c.d
+@@ -160,7 +158,5 @@
+ #define  U6        u6.d
+ #define  U7        u7.d
+ #define  U8        u8.d
+-#define  TWO8      two8.d
+-#define  TWO52     two52.d
+ 
+ #endif
+Index: glibc-2.17-c758a686/sysdeps/ieee754/dbl-64/atnat2.h
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/ieee754/dbl-64/atnat2.h
++++ glibc-2.17-c758a686/sysdeps/ieee754/dbl-64/atnat2.h
+@@ -174,11 +174,4 @@
+ #endif
+ #endif
+ 
+-#define  ZERO      zero.d
+-#define  MZERO     mzero.d
+-#define  ONE       one.d
+-#define  TWO8      two8.d
+-#define  TWO52     two52.d
+-#define  TWOM1022  twom1022.d
+-
+ #endif
+Index: glibc-2.17-c758a686/sysdeps/ieee754/dbl-64/mpa2.h
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/ieee754/dbl-64/mpa2.h
++++ /dev/null
+@@ -1,94 +0,0 @@
+-
+-/*
+- * IBM Accurate Mathematical Library
+- * Written by International Business Machines Corp.
+- * Copyright (C) 2001 Free Software Foundation, Inc.
+- *
+- * This program is free software; you can redistribute it and/or modify
+- * it under the terms of the GNU Lesser General Public License as published by
+- * the Free Software Foundation; either version 2.1 of the License, or
+- * (at your option) any later version.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of
+- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+- * GNU Lesser General Public License for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this program; if not, see <http://www.gnu.org/licenses/>.
+- */
+-
+-/**************************************************************************/
+-/*                                                                        */
+-/* MODULE_NAME:mpa2.h                                                     */
+-/*                                                                        */
+-/*                                                                        */
+-/*   variables prototype and definition   according to type of processor  */
+-/*   types definition                                                     */
+-/**************************************************************************/
+-
+-#ifndef MPA2_H
+-#define MPA2_H
+-
+-
+-#ifdef BIG_ENDI
+-static const number
+-/**/ radix          = {{0x41700000, 0x00000000} }, /* 2**24  */
+-/**/ radixi         = {{0x3e700000, 0x00000000} }, /* 2**-24 */
+-/**/ cutter         = {{0x44b00000, 0x00000000} }, /* 2**76  */
+-/**/ zero           = {{0x00000000, 0x00000000} }, /*  0     */
+-/**/ one            = {{0x3ff00000, 0x00000000} }, /*  1     */
+-/**/ mone           = {{0xbff00000, 0x00000000} }, /* -1     */
+-/**/ two            = {{0x40000000, 0x00000000} }, /*  2     */
+-/**/ two5           = {{0x40400000, 0x00000000} }, /* 2**5   */
+-/**/ two10          = {{0x40900000, 0x00000000} }, /* 2**10  */
+-/**/ two18          = {{0x41100000, 0x00000000} }, /* 2**18  */
+-/**/ two19          = {{0x41200000, 0x00000000} }, /* 2**19  */
+-/**/ two23          = {{0x41600000, 0x00000000} }, /* 2**23  */
+-/**/ two52          = {{0x43300000, 0x00000000} }, /* 2**52  */
+-/**/ two57          = {{0x43800000, 0x00000000} }, /* 2**57  */
+-/**/ two71          = {{0x44600000, 0x00000000} }, /* 2**71  */
+-/**/ twom1032       = {{0x00000400, 0x00000000} }; /* 2**-1032 */
+-
+-#else
+-#ifdef LITTLE_ENDI
+-static const number
+-/**/ radix          = {{0x00000000, 0x41700000} }, /* 2**24  */
+-/**/ radixi         = {{0x00000000, 0x3e700000} }, /* 2**-24 */
+-/**/ cutter         = {{0x00000000, 0x44b00000} }, /* 2**76  */
+-/**/ zero           = {{0x00000000, 0x00000000} }, /*  0     */
+-/**/ one            = {{0x00000000, 0x3ff00000} }, /*  1     */
+-/**/ mone           = {{0x00000000, 0xbff00000} }, /* -1     */
+-/**/ two            = {{0x00000000, 0x40000000} }, /*  2     */
+-/**/ two5           = {{0x00000000, 0x40400000} }, /* 2**5   */
+-/**/ two10          = {{0x00000000, 0x40900000} }, /* 2**10  */
+-/**/ two18          = {{0x00000000, 0x41100000} }, /* 2**18  */
+-/**/ two19          = {{0x00000000, 0x41200000} }, /* 2**19  */
+-/**/ two23          = {{0x00000000, 0x41600000} }, /* 2**23  */
+-/**/ two52          = {{0x00000000, 0x43300000} }, /* 2**52  */
+-/**/ two57          = {{0x00000000, 0x43800000} }, /* 2**57  */
+-/**/ two71          = {{0x00000000, 0x44600000} }, /* 2**71  */
+-/**/ twom1032       = {{0x00000000, 0x00000400} }; /* 2**-1032 */
+-
+-#endif
+-#endif
+-
+-#define  RADIX     radix.d
+-#define  RADIXI    radixi.d
+-#define  CUTTER    cutter.d
+-#define  ZERO      zero.d
+-#define  ONE       one.d
+-#define  MONE      mone.d
+-#define  TWO       two.d
+-#define  TWO5      two5.d
+-#define  TWO10     two10.d
+-#define  TWO18     two18.d
+-#define  TWO19     two19.d
+-#define  TWO23     two23.d
+-#define  TWO52     two52.d
+-#define  TWO57     two57.d
+-#define  TWO71     two71.d
+-#define  TWOM1032  twom1032.d
+-
+-
+-#endif
+Index: glibc-2.17-c758a686/sysdeps/ieee754/dbl-64/mpatan.h
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/ieee754/dbl-64/mpatan.h
++++ glibc-2.17-c758a686/sysdeps/ieee754/dbl-64/mpatan.h
+@@ -177,6 +177,3 @@ __atan_twonm1[33] = {
+ 
+ #endif
+ #endif
+-
+-#define  ONE       __atan_one.d
+-#define  TWO       __atan_two.d
+Index: glibc-2.17-c758a686/sysdeps/ieee754/dbl-64/mpatan2.c
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/ieee754/dbl-64/mpatan2.c
++++ glibc-2.17-c758a686/sysdeps/ieee754/dbl-64/mpatan2.c
+@@ -49,18 +49,16 @@ void
+ SECTION
+ __mpatan2(mp_no *y, mp_no *x, mp_no *z, int p) {
+ 
+-  static const double ZERO = 0.0, ONE = 1.0;
+-
+   mp_no mpone = {0,{0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,
+ 		    0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,
+ 		    0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0}};
+   mp_no mpt1,mpt2,mpt3;
+ 
+ 
+-  if (X[0] <= ZERO) {
+-    mpone.e = 1;                 mpone.d[0] = mpone.d[1] = ONE;
++  if (X[0] <= 0) {
++    mpone.e = 1;                 mpone.d[0] = mpone.d[1] = 1;
+     __dvd(x,y,&mpt1,p);          __mul(&mpt1,&mpt1,&mpt2,p);
+-    if (mpt1.d[0] != ZERO)       mpt1.d[0] = ONE;
++    if (mpt1.d[0] != 0)       mpt1.d[0] = 1;
+     __add(&mpt2,&mpone,&mpt3,p); __mpsqrt(&mpt3,&mpt2,p);
+     __add(&mpt1,&mpt2,&mpt3,p);  mpt3.d[0]=Y[0];
+     __mpatan(&mpt3,&mpt1,p);     __add(&mpt1,&mpt1,z,p);
+Index: glibc-2.17-c758a686/sysdeps/ieee754/dbl-64/mpexp.h
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/ieee754/dbl-64/mpexp.h
++++ glibc-2.17-c758a686/sysdeps/ieee754/dbl-64/mpexp.h
+@@ -159,11 +159,4 @@ extern const number __mpexp_half attribu
+ #endif
+ #endif
+ 
+-#define  RADIX     __mpexp_radix.d
+-#define  RADIXI    __mpexp_radixi.d
+-#define  ZERO      __mpexp_zero.d
+-#define  ONE       __mpexp_one.d
+-#define  TWO       __mpexp_two.d
+-#define  HALF      __mpexp_half.d
+-
+ #endif
+Index: glibc-2.17-c758a686/sysdeps/ieee754/dbl-64/mpsqrt.h
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/ieee754/dbl-64/mpsqrt.h
++++ glibc-2.17-c758a686/sysdeps/ieee754/dbl-64/mpsqrt.h
+@@ -51,7 +51,4 @@ extern const int __mpsqrt_mp[33] attribu
+ 			     4,4,4,4,4,4,4,4,4};
+ #endif
+ 
+-#define  ONE       __mpsqrt_one.d
+-#define  HALFRAD   __mpsqrt_halfrad.d
+-
+ #endif
+Index: glibc-2.17-c758a686/sysdeps/ieee754/dbl-64/mptan.c
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/ieee754/dbl-64/mptan.c
++++ glibc-2.17-c758a686/sysdeps/ieee754/dbl-64/mptan.c
+@@ -47,8 +47,6 @@ void
+ SECTION
+ __mptan(double x, mp_no *mpy, int p) {
+ 
+-  static const double MONE = -1.0;
+-
+   int n;
+   mp_no mpw, mpc, mps;
+ 
+@@ -56,7 +54,7 @@ __mptan(double x, mp_no *mpy, int p) {
+   __c32(&mpw, &mpc, &mps, p);              /* computing sin(x) and cos(x) */
+   if (n)                     /* second or fourth quarter of unit circle */
+   { __dvd(&mpc,&mps,mpy,p);
+-    mpy->d[0] *= MONE;
++    mpy->d[0] *= -1;
+   }                          /* tan is negative in this area */
+   else  __dvd(&mps,&mpc,mpy,p);
+ 
+Index: glibc-2.17-c758a686/sysdeps/ieee754/dbl-64/ulog.h
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/ieee754/dbl-64/ulog.h
++++ glibc-2.17-c758a686/sysdeps/ieee754/dbl-64/ulog.h
+@@ -181,10 +181,6 @@
+ #endif
+ #endif
+ 
+-#define  ZERO      zero.d
+-#define  ONE       one.d
+-#define  HALF      half.d
+-#define  MHALF     mhalf.d
+ #define  SQRT_2    sqrt_2.d
+ #define  DEL_U     delu.d
+ #define  DEL_V     delv.d
+Index: glibc-2.17-c758a686/sysdeps/ieee754/dbl-64/utan.h
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/ieee754/dbl-64/utan.h
++++ glibc-2.17-c758a686/sysdeps/ieee754/dbl-64/utan.h
+@@ -270,10 +270,4 @@
+ #endif
+ #endif
+ 
+-
+-#define  ZERO      zero.d
+-#define  ONE       one.d
+-#define  MONE      mone.d
+-#define  TWO8      two8.d
+-
+ #endif
+Index: glibc-2.17-c758a686/sysdeps/ieee754/dbl-64/mpa-arch.h
+===================================================================
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/ieee754/dbl-64/mpa-arch.h
+@@ -0,0 +1,47 @@
++/* Overridable constants and operations.
++   Copyright (C) 2013 Free Software Foundation, Inc.
++
++   This program is free software; you can redistribute it and/or modify
++   it under the terms of the GNU Lesser General Public License as published by
++   the Free Software Foundation; either version 2.1 of the License, or
++   (at your option) any later version.
++
++   This program is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++   GNU Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public License
++   along with this program; if not, see <http://www.gnu.org/licenses/>.  */
++
++#include <stdint.h>
++
++typedef long mantissa_t;
++typedef int64_t mantissa_store_t;
++
++#define TWOPOW(i) (1L << i)
++
++#define RADIX_EXP 24
++#define  RADIX TWOPOW (RADIX_EXP)		/* 2^24    */
++
++/* Divide D by RADIX and put the remainder in R.  D must be a non-negative
++   integral value.  */
++#define DIV_RADIX(d, r) \
++  ({									      \
++    r = d & (RADIX - 1);						      \
++    d >>= RADIX_EXP;							      \
++  })
++
++/* Put the integer component of a double X in R and retain the fraction in
++   X.  This is used in extracting mantissa digits for MP_NO by using the
++   integer portion of the current value of the number as the current mantissa
++   digit and then scaling by RADIX to get the next mantissa digit in the same
++   manner.  */
++#define INTEGER_OF(x, i) \
++  ({									      \
++    i = (mantissa_t) x;							      \
++    x -= i;								      \
++  })
++
++/* Align IN down to F.  The code assumes that F is a power of two.  */
++#define ALIGN_DOWN_TO(in, f) ((in) & -(f))
+Index: glibc-2.17-c758a686/sysdeps/powerpc/power4/fpu/mpa-arch.h
+===================================================================
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/power4/fpu/mpa-arch.h
+@@ -0,0 +1,56 @@
++/* Overridable constants and operations.
++   Copyright (C) 2013-2017 Free Software Foundation, Inc.
++
++   This program is free software; you can redistribute it and/or modify
++   it under the terms of the GNU Lesser General Public License as published by
++   the Free Software Foundation; either version 2.1 of the License, or
++   (at your option) any later version.
++
++   This program is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++   GNU Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public License
++   along with this program; if not, see <http://www.gnu.org/licenses/>.  */
++
++typedef double mantissa_t;
++typedef double mantissa_store_t;
++
++#define TWOPOW(i) (0x1.0p##i)
++
++#define RADIX TWOPOW (24)		/* 2^24    */
++#define CUTTER TWOPOW (76)		/* 2^76    */
++#define RADIXI 0x1.0p-24		/* 2^-24 */
++#define TWO52 TWOPOW (52)		/* 2^52 */
++
++/* Divide D by RADIX and put the remainder in R.  */
++#define DIV_RADIX(d,r) \
++  ({									      \
++    double u = ((d) + CUTTER) - CUTTER;					      \
++    if (u > (d))							      \
++      u -= RADIX;							      \
++    r = (d) - u;							      \
++    (d) = u * RADIXI;							      \
++  })
++
++/* Put the integer component of a double X in R and retain the fraction in
++   X.  */
++#define INTEGER_OF(x, r) \
++  ({									      \
++    double u = ((x) + TWO52) - TWO52;					      \
++    if (u > (x))							      \
++      u -= 1;								      \
++    (r) = u;								      \
++    (x) -= u;								      \
++  })
++
++/* Align IN down to a multiple of F, where F is a power of two.  */
++#define ALIGN_DOWN_TO(in, f) \
++  ({									      \
++    double factor = f * TWO52;						      \
++    double u = (in + factor) - factor;					      \
++    if (u > in)								      \
++      u -= f;								      \
++    u;									      \
++  })
+Index: glibc-2.17-c758a686/sysdeps/ieee754/dbl-64/e_atan2.c
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/ieee754/dbl-64/e_atan2.c
++++ glibc-2.17-c758a686/sysdeps/ieee754/dbl-64/e_atan2.c
+@@ -98,15 +98,15 @@ __ieee754_atan2(double y,double x) {
+   /* y=+-0 */
+   if      (uy==0x00000000) {
+     if    (dy==0x00000000) {
+-      if  ((ux&0x80000000)==0x00000000)  return ZERO;
++      if  ((ux&0x80000000)==0x00000000)  return 0;
+       else                               return opi.d; } }
+   else if (uy==0x80000000) {
+     if    (dy==0x00000000) {
+-      if  ((ux&0x80000000)==0x00000000)  return MZERO;
++      if  ((ux&0x80000000)==0x00000000)  return -0.0;
+       else                               return mopi.d;} }
+ 
+   /* x=+-0 */
+-  if (x==ZERO) {
++  if (x==0) {
+     if ((uy&0x80000000)==0x00000000)     return hpi.d;
+     else                                 return mhpi.d; }
+ 
+@@ -118,8 +118,8 @@ __ieee754_atan2(double y,double x) {
+       else if (uy==0xfff00000) {
+ 	if    (dy==0x00000000)  return mqpi.d; }
+       else {
+-	if    ((uy&0x80000000)==0x00000000)  return ZERO;
+-	else                                 return MZERO; }
++	if    ((uy&0x80000000)==0x00000000)  return 0;
++	else                                 return -0.0; }
+     }
+   }
+   else if     (ux==0xfff00000) {
+@@ -141,14 +141,14 @@ __ieee754_atan2(double y,double x) {
+     if    (dy==0x00000000)  return mhpi.d; }
+ 
+   /* either x/y or y/x is very close to zero */
+-  ax = (x<ZERO) ? -x : x;    ay = (y<ZERO) ? -y : y;
++  ax = (x<0) ? -x : x;    ay = (y<0) ? -y : y;
+   de = (uy & 0x7ff00000) - (ux & 0x7ff00000);
+-  if      (de>=ep)  { return ((y>ZERO) ? hpi.d : mhpi.d); }
++  if      (de>=ep)  { return ((y>0) ? hpi.d : mhpi.d); }
+   else if (de<=em)  {
+-    if    (x>ZERO)  {
++    if    (x>0)  {
+       if  ((z=ay/ax)<TWOM1022)  return normalized(ax,ay,y,z);
+       else                      return signArctan2(y,z); }
+-    else            { return ((y>ZERO) ? opi.d : mopi.d); } }
++    else            { return ((y>0) ? opi.d : mopi.d); } }
+ 
+   /* if either x or y is extremely close to zero, scale abs(x), abs(y). */
+   if (ax<twom500.d || ay<twom500.d) { ax*=two500.d;  ay*=two500.d; }
+@@ -170,7 +170,7 @@ __ieee754_atan2(double y,double x) {
+     EMULV(ay,u,v,vv,t1,t2,t3,t4,t5)
+     du=((ax-v)-vv)/ay; }
+ 
+-  if (x>ZERO) {
++  if (x>0) {
+ 
+     /* (i)   x>0, abs(y)< abs(x):  atan(ay/ax) */
+     if (ay<ax) {
+@@ -180,7 +180,7 @@ __ieee754_atan2(double y,double x) {
+ 
+ 	MUL2(u,du,u,du,v,vv,t1,t2,t3,t4,t5,t6,t7,t8)
+ 	s1=v*(f11.d+v*(f13.d+v*(f15.d+v*(f17.d+v*f19.d))));
+-	ADD2(f9.d,ff9.d,s1,ZERO,s2,ss2,t1,t2)
++	ADD2(f9.d,ff9.d,s1,0,s2,ss2,t1,t2)
+ 	MUL2(v,vv,s2,ss2,s1,ss1,t1,t2,t3,t4,t5,t6,t7,t8)
+ 	ADD2(f7.d,ff7.d,s1,ss1,s2,ss2,t1,t2)
+ 	MUL2(v,vv,s2,ss2,s1,ss1,t1,t2,t3,t4,t5,t6,t7,t8)
+@@ -212,7 +212,7 @@ __ieee754_atan2(double y,double x) {
+ 	EADD(t1,du,v,vv)
+ 	s1=v*(hij[i][11].d+v*(hij[i][12].d+v*(hij[i][13].d+
+ 	   v*(hij[i][14].d+v* hij[i][15].d))));
+-	ADD2(hij[i][9].d,hij[i][10].d,s1,ZERO,s2,ss2,t1,t2)
++	ADD2(hij[i][9].d,hij[i][10].d,s1,0,s2,ss2,t1,t2)
+ 	MUL2(v,vv,s2,ss2,s1,ss1,t1,t2,t3,t4,t5,t6,t7,t8)
+ 	ADD2(hij[i][7].d,hij[i][8].d,s1,ss1,s2,ss2,t1,t2)
+ 	MUL2(v,vv,s2,ss2,s1,ss1,t1,t2,t3,t4,t5,t6,t7,t8)
+@@ -237,7 +237,7 @@ __ieee754_atan2(double y,double x) {
+ 
+ 	MUL2(u,du,u,du,v,vv,t1,t2,t3,t4,t5,t6,t7,t8)
+ 	s1=v*(f11.d+v*(f13.d+v*(f15.d+v*(f17.d+v*f19.d))));
+-	ADD2(f9.d,ff9.d,s1,ZERO,s2,ss2,t1,t2)
++	ADD2(f9.d,ff9.d,s1,0,s2,ss2,t1,t2)
+ 	MUL2(v,vv,s2,ss2,s1,ss1,t1,t2,t3,t4,t5,t6,t7,t8)
+ 	ADD2(f7.d,ff7.d,s1,ss1,s2,ss2,t1,t2)
+ 	MUL2(v,vv,s2,ss2,s1,ss1,t1,t2,t3,t4,t5,t6,t7,t8)
+@@ -265,7 +265,7 @@ __ieee754_atan2(double y,double x) {
+ 	EADD(t1,du,v,vv)
+ 	s1=v*(hij[i][11].d+v*(hij[i][12].d+v*(hij[i][13].d+
+ 	   v*(hij[i][14].d+v* hij[i][15].d))));
+-	ADD2(hij[i][9].d,hij[i][10].d,s1,ZERO,s2,ss2,t1,t2)
++	ADD2(hij[i][9].d,hij[i][10].d,s1,0,s2,ss2,t1,t2)
+ 	MUL2(v,vv,s2,ss2,s1,ss1,t1,t2,t3,t4,t5,t6,t7,t8)
+ 	ADD2(hij[i][7].d,hij[i][8].d,s1,ss1,s2,ss2,t1,t2)
+ 	MUL2(v,vv,s2,ss2,s1,ss1,t1,t2,t3,t4,t5,t6,t7,t8)
+@@ -293,7 +293,7 @@ __ieee754_atan2(double y,double x) {
+ 
+ 	MUL2(u,du,u,du,v,vv,t1,t2,t3,t4,t5,t6,t7,t8)
+ 	s1=v*(f11.d+v*(f13.d+v*(f15.d+v*(f17.d+v*f19.d))));
+-	ADD2(f9.d,ff9.d,s1,ZERO,s2,ss2,t1,t2)
++	ADD2(f9.d,ff9.d,s1,0,s2,ss2,t1,t2)
+ 	MUL2(v,vv,s2,ss2,s1,ss1,t1,t2,t3,t4,t5,t6,t7,t8)
+ 	ADD2(f7.d,ff7.d,s1,ss1,s2,ss2,t1,t2)
+ 	MUL2(v,vv,s2,ss2,s1,ss1,t1,t2,t3,t4,t5,t6,t7,t8)
+@@ -321,7 +321,7 @@ __ieee754_atan2(double y,double x) {
+ 	EADD(t1,du,v,vv)
+ 	s1=v*(hij[i][11].d+v*(hij[i][12].d+v*(hij[i][13].d+
+ 	   v*(hij[i][14].d+v* hij[i][15].d))));
+-	ADD2(hij[i][9].d,hij[i][10].d,s1,ZERO,s2,ss2,t1,t2)
++	ADD2(hij[i][9].d,hij[i][10].d,s1,0,s2,ss2,t1,t2)
+ 	MUL2(v,vv,s2,ss2,s1,ss1,t1,t2,t3,t4,t5,t6,t7,t8)
+ 	ADD2(hij[i][7].d,hij[i][8].d,s1,ss1,s2,ss2,t1,t2)
+ 	MUL2(v,vv,s2,ss2,s1,ss1,t1,t2,t3,t4,t5,t6,t7,t8)
+@@ -347,7 +347,7 @@ __ieee754_atan2(double y,double x) {
+ 
+ 	MUL2(u,du,u,du,v,vv,t1,t2,t3,t4,t5,t6,t7,t8)
+ 	s1=v*(f11.d+v*(f13.d+v*(f15.d+v*(f17.d+v*f19.d))));
+-	ADD2(f9.d,ff9.d,s1,ZERO,s2,ss2,t1,t2)
++	ADD2(f9.d,ff9.d,s1,0,s2,ss2,t1,t2)
+ 	MUL2(v,vv,s2,ss2,s1,ss1,t1,t2,t3,t4,t5,t6,t7,t8)
+ 	ADD2(f7.d,ff7.d,s1,ss1,s2,ss2,t1,t2)
+ 	MUL2(v,vv,s2,ss2,s1,ss1,t1,t2,t3,t4,t5,t6,t7,t8)
+@@ -375,7 +375,7 @@ __ieee754_atan2(double y,double x) {
+ 	EADD(t1,du,v,vv)
+ 	s1=v*(hij[i][11].d+v*(hij[i][12].d+v*(hij[i][13].d+
+ 	   v*(hij[i][14].d+v* hij[i][15].d))));
+-	ADD2(hij[i][9].d,hij[i][10].d,s1,ZERO,s2,ss2,t1,t2)
++	ADD2(hij[i][9].d,hij[i][10].d,s1,0,s2,ss2,t1,t2)
+ 	MUL2(v,vv,s2,ss2,s1,ss1,t1,t2,t3,t4,t5,t6,t7,t8)
+ 	ADD2(hij[i][7].d,hij[i][8].d,s1,ss1,s2,ss2,t1,t2)
+ 	MUL2(v,vv,s2,ss2,s1,ss1,t1,t2,t3,t4,t5,t6,t7,t8)
+Index: glibc-2.17-c758a686/sysdeps/ieee754/dbl-64/e_log.c
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/ieee754/dbl-64/e_log.c
++++ glibc-2.17-c758a686/sysdeps/ieee754/dbl-64/e_log.c
+@@ -78,9 +78,9 @@ __ieee754_log(double x) {
+   n=0;
+   if (__builtin_expect(ux < 0x00100000, 0)) {
+     if (__builtin_expect(((ux & 0x7fffffff) | dx) == 0, 0))
+-      return MHALF/ZERO; /* return -INF */
++      return MHALF/0; /* return -INF */
+     if (__builtin_expect(ux < 0, 0))
+-      return (x-x)/ZERO;                         /* return NaN  */
++      return (x-x)/0;                         /* return NaN  */
+     n -= 54;    x *= two54.d;                              /* scale x     */
+     num.d = x;
+   }
+@@ -89,7 +89,7 @@ __ieee754_log(double x) {
+ 
+   /* Regular values of x */
+ 
+-  w = x-ONE;
++  w = x-1;
+   if (__builtin_expect(ABS(w) > U03, 1)) { goto case_03; }
+ 
+ 
+@@ -113,25 +113,25 @@ __ieee754_log(double x) {
+ 	    w*(d17.d+w*(d18.d+w*(d19.d+w*d20.d))))))));
+   EMULV(w,a,s2,ss2,t1,t2,t3,t4,t5)
+   ADD2(d10.d,dd10.d,s2,ss2,s3,ss3,t1,t2)
+-  MUL2(w,ZERO,s3,ss3,s2,ss2,t1,t2,t3,t4,t5,t6,t7,t8)
++  MUL2(w,0,s3,ss3,s2,ss2,t1,t2,t3,t4,t5,t6,t7,t8)
+   ADD2(d9.d,dd9.d,s2,ss2,s3,ss3,t1,t2)
+-  MUL2(w,ZERO,s3,ss3,s2,ss2,t1,t2,t3,t4,t5,t6,t7,t8)
++  MUL2(w,0,s3,ss3,s2,ss2,t1,t2,t3,t4,t5,t6,t7,t8)
+   ADD2(d8.d,dd8.d,s2,ss2,s3,ss3,t1,t2)
+-  MUL2(w,ZERO,s3,ss3,s2,ss2,t1,t2,t3,t4,t5,t6,t7,t8)
++  MUL2(w,0,s3,ss3,s2,ss2,t1,t2,t3,t4,t5,t6,t7,t8)
+   ADD2(d7.d,dd7.d,s2,ss2,s3,ss3,t1,t2)
+-  MUL2(w,ZERO,s3,ss3,s2,ss2,t1,t2,t3,t4,t5,t6,t7,t8)
++  MUL2(w,0,s3,ss3,s2,ss2,t1,t2,t3,t4,t5,t6,t7,t8)
+   ADD2(d6.d,dd6.d,s2,ss2,s3,ss3,t1,t2)
+-  MUL2(w,ZERO,s3,ss3,s2,ss2,t1,t2,t3,t4,t5,t6,t7,t8)
++  MUL2(w,0,s3,ss3,s2,ss2,t1,t2,t3,t4,t5,t6,t7,t8)
+   ADD2(d5.d,dd5.d,s2,ss2,s3,ss3,t1,t2)
+-  MUL2(w,ZERO,s3,ss3,s2,ss2,t1,t2,t3,t4,t5,t6,t7,t8)
++  MUL2(w,0,s3,ss3,s2,ss2,t1,t2,t3,t4,t5,t6,t7,t8)
+   ADD2(d4.d,dd4.d,s2,ss2,s3,ss3,t1,t2)
+-  MUL2(w,ZERO,s3,ss3,s2,ss2,t1,t2,t3,t4,t5,t6,t7,t8)
++  MUL2(w,0,s3,ss3,s2,ss2,t1,t2,t3,t4,t5,t6,t7,t8)
+   ADD2(d3.d,dd3.d,s2,ss2,s3,ss3,t1,t2)
+-  MUL2(w,ZERO,s3,ss3,s2,ss2,t1,t2,t3,t4,t5,t6,t7,t8)
++  MUL2(w,0,s3,ss3,s2,ss2,t1,t2,t3,t4,t5,t6,t7,t8)
+   ADD2(d2.d,dd2.d,s2,ss2,s3,ss3,t1,t2)
+-  MUL2(w,ZERO,s3,ss3,s2,ss2,t1,t2,t3,t4,t5,t6,t7,t8)
+-  MUL2(w,ZERO,s2,ss2,s3,ss3,t1,t2,t3,t4,t5,t6,t7,t8)
+-  ADD2(w,ZERO,    s3,ss3, b, bb,t1,t2)
++  MUL2(w,0,s3,ss3,s2,ss2,t1,t2,t3,t4,t5,t6,t7,t8)
++  MUL2(w,0,s2,ss2,s3,ss3,t1,t2,t3,t4,t5,t6,t7,t8)
++  ADD2(w,0,    s3,ss3, b, bb,t1,t2)
+ 
+   /* End stage II, case abs(x-1) < 0.03 */
+   if ((y=b+(bb+b*E4)) == b+(bb-b*E4))  return y;
+@@ -155,7 +155,7 @@ __ieee754_log(double x) {
+   j = (num.i[HIGH_HALF] & 0x000fffff) >> 4;
+ 
+   /* Compute w=(u-ui*vj)/(ui*vj) */
+-  p0=(ONE+(i-75)*DEL_U)*(ONE+(j-180)*DEL_V);
++  p0=(1+(i-75)*DEL_U)*(1+(j-180)*DEL_V);
+   q=u-p0;   r0=Iu[i].d*Iv[j].d;   w=q*r0;
+ 
+   /* Evaluate polynomial I */
+@@ -178,11 +178,11 @@ __ieee754_log(double x) {
+ 
+   /* Improve the accuracy of r0 */
+   EMULV(p0,r0,sa,sb,t1,t2,t3,t4,t5)
+-  t=r0*((ONE-sa)-sb);
++  t=r0*((1-sa)-sb);
+   EADD(r0,t,ra,rb)
+ 
+   /* Compute w */
+-  MUL2(q,ZERO,ra,rb,w,ww,t1,t2,t3,t4,t5,t6,t7,t8)
++  MUL2(q,0,ra,rb,w,ww,t1,t2,t3,t4,t5,t6,t7,t8)
+ 
+   EADD(A,B0,a0,aa0)
+ 
+Index: glibc-2.17-c758a686/sysdeps/ieee754/dbl-64/s_atan.c
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/ieee754/dbl-64/s_atan.c
++++ glibc-2.17-c758a686/sysdeps/ieee754/dbl-64/s_atan.c
+@@ -82,7 +82,7 @@ double atan(double x) {
+     return x+x;
+ 
+   /* Regular values of x, including denormals +-0 and +-INF */
+-  u = (x<ZERO) ? -x : x;
++  u = (x<0) ? -x : x;
+   if (u<C) {
+     if (u<B) {
+       if (u<A) {                                           /* u < A */
+@@ -93,7 +93,7 @@ double atan(double x) {
+ 
+ 	EMULV(x,x,v,vv,t1,t2,t3,t4,t5)                       /* v+vv=x^2 */
+ 	s1=v*(f11.d+v*(f13.d+v*(f15.d+v*(f17.d+v*f19.d))));
+-	ADD2(f9.d,ff9.d,s1,ZERO,s2,ss2,t1,t2)
++	ADD2(f9.d,ff9.d,s1,0,s2,ss2,t1,t2)
+ 	MUL2(v,vv,s2,ss2,s1,ss1,t1,t2,t3,t4,t5,t6,t7,t8)
+ 	ADD2(f7.d,ff7.d,s1,ss1,s2,ss2,t1,t2)
+ 	MUL2(v,vv,s2,ss2,s1,ss1,t1,t2,t3,t4,t5,t6,t7,t8)
+@@ -101,8 +101,8 @@ double atan(double x) {
+ 	MUL2(v,vv,s2,ss2,s1,ss1,t1,t2,t3,t4,t5,t6,t7,t8)
+ 	ADD2(f3.d,ff3.d,s1,ss1,s2,ss2,t1,t2)
+ 	MUL2(v,vv,s2,ss2,s1,ss1,t1,t2,t3,t4,t5,t6,t7,t8)
+-	MUL2(x,ZERO,s1,ss1,s2,ss2,t1,t2,t3,t4,t5,t6,t7,t8)
+-	ADD2(x,ZERO,s2,ss2,s1,ss1,t1,t2)
++	MUL2(x,0,s1,ss1,s2,ss2,t1,t2,t3,t4,t5,t6,t7,t8)
++	ADD2(x,0,s2,ss2,s1,ss1,t1,t2)
+ 	if ((y=s1+(ss1-U5*s1)) == s1+(ss1+U5*s1))  return y;
+ 
+ 	return atanMp(x,pr);
+@@ -124,14 +124,14 @@ double atan(double x) {
+       z=u-hij[i][0].d;
+       s1=z*(hij[i][11].d+z*(hij[i][12].d+z*(hij[i][13].d+
+ 	 z*(hij[i][14].d+z* hij[i][15].d))));
+-      ADD2(hij[i][9].d,hij[i][10].d,s1,ZERO,s2,ss2,t1,t2)
+-      MUL2(z,ZERO,s2,ss2,s1,ss1,t1,t2,t3,t4,t5,t6,t7,t8)
++      ADD2(hij[i][9].d,hij[i][10].d,s1,0,s2,ss2,t1,t2)
++      MUL2(z,0,s2,ss2,s1,ss1,t1,t2,t3,t4,t5,t6,t7,t8)
+       ADD2(hij[i][7].d,hij[i][8].d,s1,ss1,s2,ss2,t1,t2)
+-      MUL2(z,ZERO,s2,ss2,s1,ss1,t1,t2,t3,t4,t5,t6,t7,t8)
++      MUL2(z,0,s2,ss2,s1,ss1,t1,t2,t3,t4,t5,t6,t7,t8)
+       ADD2(hij[i][5].d,hij[i][6].d,s1,ss1,s2,ss2,t1,t2)
+-      MUL2(z,ZERO,s2,ss2,s1,ss1,t1,t2,t3,t4,t5,t6,t7,t8)
++      MUL2(z,0,s2,ss2,s1,ss1,t1,t2,t3,t4,t5,t6,t7,t8)
+       ADD2(hij[i][3].d,hij[i][4].d,s1,ss1,s2,ss2,t1,t2)
+-      MUL2(z,ZERO,s2,ss2,s1,ss1,t1,t2,t3,t4,t5,t6,t7,t8)
++      MUL2(z,0,s2,ss2,s1,ss1,t1,t2,t3,t4,t5,t6,t7,t8)
+       ADD2(hij[i][1].d,hij[i][2].d,s1,ss1,s2,ss2,t1,t2)
+       if ((y=s2+(ss2-U6*s2)) == s2+(ss2+U6*s2))  return __signArctan(x,y);
+ 
+@@ -140,9 +140,9 @@ double atan(double x) {
+   }
+   else {
+     if (u<D) { /* C <= u < D */
+-      w=ONE/u;
++      w=1/u;
+       EMULV(w,u,t1,t2,t3,t4,t5,t6,t7)
+-      ww=w*((ONE-t1)-t2);
++      ww=w*((1-t1)-t2);
+       i=(TWO52+TWO8*w)-TWO52;  i-=16;
+       z=(w-cij[i][0].d)+ww;
+       yy=HPI1-z*(cij[i][2].d+z*(cij[i][3].d+z*(cij[i][4].d+
+@@ -152,12 +152,12 @@ double atan(double x) {
+       else        u3=U32;  /* w >= 1/2 */
+       if ((y=t1+(yy-u3)) == t1+(yy+u3))  return __signArctan(x,y);
+ 
+-      DIV2(ONE,ZERO,u,ZERO,w,ww,t1,t2,t3,t4,t5,t6,t7,t8,t9,t10)
++      DIV2(1,0,u,0,w,ww,t1,t2,t3,t4,t5,t6,t7,t8,t9,t10)
+       t1=w-hij[i][0].d;
+       EADD(t1,ww,z,zz)
+       s1=z*(hij[i][11].d+z*(hij[i][12].d+z*(hij[i][13].d+
+ 	 z*(hij[i][14].d+z* hij[i][15].d))));
+-      ADD2(hij[i][9].d,hij[i][10].d,s1,ZERO,s2,ss2,t1,t2)
++      ADD2(hij[i][9].d,hij[i][10].d,s1,0,s2,ss2,t1,t2)
+       MUL2(z,zz,s2,ss2,s1,ss1,t1,t2,t3,t4,t5,t6,t7,t8)
+       ADD2(hij[i][7].d,hij[i][8].d,s1,ss1,s2,ss2,t1,t2)
+       MUL2(z,zz,s2,ss2,s1,ss1,t1,t2,t3,t4,t5,t6,t7,t8)
+@@ -173,18 +173,18 @@ double atan(double x) {
+     }
+     else {
+       if (u<E) { /* D <= u < E */
+-	w=ONE/u;   v=w*w;
++	w=1/u;   v=w*w;
+ 	EMULV(w,u,t1,t2,t3,t4,t5,t6,t7)
+ 	yy=w*v*(d3.d+v*(d5.d+v*(d7.d+v*(d9.d+v*(d11.d+v*d13.d)))));
+-	ww=w*((ONE-t1)-t2);
++	ww=w*((1-t1)-t2);
+ 	ESUB(HPI,w,t3,cor)
+ 	yy=((HPI1+cor)-ww)-yy;
+ 	if ((y=t3+(yy-U4)) == t3+(yy+U4))  return __signArctan(x,y);
+ 
+-	DIV2(ONE,ZERO,u,ZERO,w,ww,t1,t2,t3,t4,t5,t6,t7,t8,t9,t10)
++	DIV2(1,0,u,0,w,ww,t1,t2,t3,t4,t5,t6,t7,t8,t9,t10)
+ 	MUL2(w,ww,w,ww,v,vv,t1,t2,t3,t4,t5,t6,t7,t8)
+ 	s1=v*(f11.d+v*(f13.d+v*(f15.d+v*(f17.d+v*f19.d))));
+-	ADD2(f9.d,ff9.d,s1,ZERO,s2,ss2,t1,t2)
++	ADD2(f9.d,ff9.d,s1,0,s2,ss2,t1,t2)
+ 	MUL2(v,vv,s2,ss2,s1,ss1,t1,t2,t3,t4,t5,t6,t7,t8)
+ 	ADD2(f7.d,ff7.d,s1,ss1,s2,ss2,t1,t2)
+ 	MUL2(v,vv,s2,ss2,s1,ss1,t1,t2,t3,t4,t5,t6,t7,t8)
+Index: glibc-2.17-c758a686/sysdeps/ieee754/dbl-64/s_tan.c
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/ieee754/dbl-64/s_tan.c
++++ glibc-2.17-c758a686/sysdeps/ieee754/dbl-64/s_tan.c
+@@ -84,7 +84,7 @@ tan(double x) {
+     goto ret;
+   }
+ 
+-  w=(x<ZERO) ? -x : x;
++  w=(x<0) ? -x : x;
+ 
+   /* (I) The case abs(x) <= 1.259e-8 */
+   if (w<=g1.d) { retval = x; goto ret; }
+@@ -125,11 +125,11 @@ tan(double x) {
+ 
+     /* First stage */
+     i = ((int) (mfftnhf.d+TWO8*w));
+-    z = w-xfg[i][0].d;  z2 = z*z;   s = (x<ZERO) ? MONE : ONE;
++    z = w-xfg[i][0].d;  z2 = z*z;   s = (x<0) ? -1 : 1;
+     pz = z+z*z2*(e0.d+z2*e1.d);
+     fi = xfg[i][1].d;   gi = xfg[i][2].d;   t2 = pz*(gi+fi)/(gi-pz);
+     if ((y=fi+(t2-fi*u3.d))==fi+(t2+fi*u3.d)) { retval = (s*y); goto ret; }
+-    t3 = (t2<ZERO) ? -t2 : t2;
++    t3 = (t2<0) ? -t2 : t2;
+     t4 = fi*ua3.d+t3*ub3.d;
+     if ((y=fi+(t2-t4))==fi+(t2+t4)) { retval = (s*y); goto ret; }
+ 
+@@ -165,8 +165,8 @@ tan(double x) {
+     da = xn*mp3.d;
+     a=t1-da;
+     da = (t1-a)-da;
+-    if (a<ZERO)  {ya=-a;  yya=-da;  sy=MONE;}
+-    else         {ya= a;  yya= da;  sy= ONE;}
++    if (a<0)  {ya=-a;  yya=-da;  sy=-1;}
++    else         {ya= a;  yya= da;  sy= 1;}
+ 
+     /* (IV),(V) The case 0.787 < abs(x) <= 25,    abs(y) <= 1e-7 */
+     if (ya<=gy1.d) { retval = tanMp(x); goto ret; }
+@@ -240,14 +240,14 @@ tan(double x) {
+       /* -cot */
+       t2 = pz*(fi+gi)/(fi+pz);
+       if ((y=gi-(t2-gi*u10.d))==gi-(t2+gi*u10.d)) { retval = (-sy*y); goto ret; }
+-      t3 = (t2<ZERO) ? -t2 : t2;
++      t3 = (t2<0) ? -t2 : t2;
+       t4 = gi*ua10.d+t3*ub10.d;
+       if ((y=gi-(t2-t4))==gi-(t2+t4)) { retval = (-sy*y); goto ret; } }
+     else   {
+       /* tan */
+       t2 = pz*(gi+fi)/(gi-pz);
+       if ((y=fi+(t2-fi*u9.d))==fi+(t2+fi*u9.d)) { retval = (sy*y); goto ret; }
+-      t3 = (t2<ZERO) ? -t2 : t2;
++      t3 = (t2<0) ? -t2 : t2;
+       t4 = fi*ua9.d+t3*ub9.d;
+       if ((y=fi+(t2-t4))==fi+(t2+t4)) { retval = (sy*y); goto ret; } }
+ 
+@@ -295,8 +295,8 @@ tan(double x) {
+     a = t - t1;
+     da = ((t-a)-t1)+da;
+     EADD(a,da,t1,t2)   a=t1;  da=t2;
+-    if (a<ZERO)  {ya=-a;  yya=-da;  sy=MONE;}
+-    else         {ya= a;  yya= da;  sy= ONE;}
++    if (a<0)  {ya=-a;  yya=-da;  sy=-1;}
++    else         {ya= a;  yya= da;  sy= 1;}
+ 
+     /* (+++) The case 25 < abs(x) <= 1e8,    abs(y) <= 1e-7 */
+     if (ya<=gy1.d) { retval = tanMp(x); goto ret; }
+@@ -355,14 +355,14 @@ tan(double x) {
+       /* -cot */
+       t2 = pz*(fi+gi)/(fi+pz);
+       if ((y=gi-(t2-gi*u18.d))==gi-(t2+gi*u18.d)) { retval = (-sy*y); goto ret; }
+-      t3 = (t2<ZERO) ? -t2 : t2;
++      t3 = (t2<0) ? -t2 : t2;
+       t4 = gi*ua18.d+t3*ub18.d;
+       if ((y=gi-(t2-t4))==gi-(t2+t4)) { retval = (-sy*y); goto ret; } }
+     else   {
+       /* tan */
+       t2 = pz*(gi+fi)/(gi-pz);
+       if ((y=fi+(t2-fi*u17.d))==fi+(t2+fi*u17.d)) { retval = (sy*y); goto ret; }
+-      t3 = (t2<ZERO) ? -t2 : t2;
++      t3 = (t2<0) ? -t2 : t2;
+       t4 = fi*ua17.d+t3*ub17.d;
+       if ((y=fi+(t2-t4))==fi+(t2+t4)) { retval = (sy*y); goto ret; } }
+ 
+@@ -398,8 +398,8 @@ tan(double x) {
+   /* Range reduction by algorithm iii */
+   n = (__branred(x,&a,&da)) & 0x00000001;
+   EADD(a,da,t1,t2)   a=t1;  da=t2;
+-  if (a<ZERO)  {ya=-a;  yya=-da;  sy=MONE;}
+-  else         {ya= a;  yya= da;  sy= ONE;}
++  if (a<0)  {ya=-a;  yya=-da;  sy=-1;}
++  else         {ya= a;  yya= da;  sy= 1;}
+ 
+   /* (+++) The case 1e8 < abs(x) < 2**1024,    abs(y) <= 1e-7 */
+   if (ya<=gy1.d) { retval = tanMp(x); goto ret; }
+@@ -463,14 +463,14 @@ tan(double x) {
+     /* -cot */
+     t2 = pz*(fi+gi)/(fi+pz);
+     if ((y=gi-(t2-gi*u26.d))==gi-(t2+gi*u26.d)) { retval = (-sy*y); goto ret; }
+-    t3 = (t2<ZERO) ? -t2 : t2;
++    t3 = (t2<0) ? -t2 : t2;
+     t4 = gi*ua26.d+t3*ub26.d;
+     if ((y=gi-(t2-t4))==gi-(t2+t4)) { retval = (-sy*y); goto ret; } }
+   else   {
+     /* tan */
+     t2 = pz*(gi+fi)/(gi-pz);
+     if ((y=fi+(t2-fi*u25.d))==fi+(t2+fi*u25.d)) { retval = (sy*y); goto ret; }
+-    t3 = (t2<ZERO) ? -t2 : t2;
++    t3 = (t2<0) ? -t2 : t2;
+     t4 = fi*ua25.d+t3*ub25.d;
+     if ((y=fi+(t2-t4))==fi+(t2+t4)) { retval = (sy*y); goto ret; } }
+ 
+Index: glibc-2.17-c758a686/sysdeps/ieee754/dbl-64/mpatan.c
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/ieee754/dbl-64/mpatan.c
++++ glibc-2.17-c758a686/sysdeps/ieee754/dbl-64/mpatan.c
+@@ -69,8 +69,8 @@ __mpatan(mp_no *x, mp_no *y, int p) {
+ 	{if (dx>__atan_xm[m].d) break;}
+     }
+     mpone.e    = mptwo.e    = mptwoim1.e = 1;
+-    mpone.d[0] = mpone.d[1] = mptwo.d[0] = mptwoim1.d[0] = ONE;
+-    mptwo.d[1] = TWO;
++    mpone.d[0] = mpone.d[1] = mptwo.d[0] = mptwoim1.d[0] = 1;
++    mptwo.d[1] = 2;
+ 
+ 				 /* Reduce x m times */
+     __mul(x,x,&mpsm,p);
+@@ -92,7 +92,7 @@ __mpatan(mp_no *x, mp_no *y, int p) {
+     n=__atan_np[p];    mptwoim1.d[1] = __atan_twonm1[p].d;
+     __dvd(&mpsm,&mptwoim1,&mpt,p);
+     for (i=n-1; i>1; i--) {
+-      mptwoim1.d[1] -= TWO;
++      mptwoim1.d[1] -= 2;
+       __dvd(&mpsm,&mptwoim1,&mpt1,p);
+       __mul(&mpsm,&mpt,&mpt2,p);
+       __sub(&mpt1,&mpt2,&mpt,p);
+Index: glibc-2.17-c758a686/sysdeps/ieee754/dbl-64/mpsqrt.c
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/ieee754/dbl-64/mpsqrt.c
++++ glibc-2.17-c758a686/sysdeps/ieee754/dbl-64/mpsqrt.c
+@@ -62,8 +62,8 @@ __mpsqrt(mp_no *x, mp_no *y, int p) {
+   mp_no mpxn,mpz,mpu,mpt1,mpt2;
+ 
+   /* Prepare multi-precision 1/2 and 3/2 */
+-  mphalf.e  =0;  mphalf.d[0]  =ONE;  mphalf.d[1]  =HALFRAD;
+-  mp3halfs.e=1;  mp3halfs.d[0]=ONE;  mp3halfs.d[1]=ONE;  mp3halfs.d[2]=HALFRAD;
++  mphalf.e  =0;  mphalf.d[0]  =1;  mphalf.d[1]  =HALFRAD;
++  mp3halfs.e=1;  mp3halfs.d[0]=1;  mp3halfs.d[1]=1;  mp3halfs.d[2]=HALFRAD;
+ 
+   ey=EX/2;     __cpy(x,&mpxn,p);    mpxn.e -= (ey+ey);
+   __mp_dbl(&mpxn,&dx,p);   dy=fastiroot(dx);    __dbl_mp(dy,&mpu,p);

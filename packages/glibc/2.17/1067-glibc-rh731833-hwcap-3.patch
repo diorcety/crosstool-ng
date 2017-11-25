@@ -1,0 +1,37 @@
+From af071af18c3bb13ba0eb48cde35ea5cdbff87b95 Mon Sep 17 00:00:00 2001
+From: "Ryan S. Arnold" <rsa@linux.vnet.ibm.com>
+Date: Wed, 26 Jun 2013 08:50:20 -0500
+Subject: [PATCH 38/42] Add AT_HWCAP2 as a new auxv_t a_type to elf.h. (cherry
+ picked from commit
+ c18c701d030e28698e6faee9c6d3b8b80d0e2302)
+
+---
+ elf/elf.h | 5 ++++-
+ 2 files changed, 8 insertions(+), 1 deletion(-)
+
+diff --git glibc-2.17-c758a686/elf/elf.h glibc-2.17-c758a686/elf/elf.h
+index b07e6ad..8686fd5 100644
+--- glibc-2.17-c758a686/elf/elf.h
++++ glibc-2.17-c758a686/elf/elf.h
+@@ -987,7 +987,7 @@ typedef struct
+ 
+ /* Some more special a_type values describing the hardware.  */
+ #define AT_PLATFORM	15		/* String identifying platform.  */
+-#define AT_HWCAP	16		/* Machine dependent hints about
++#define AT_HWCAP	16		/* Machine-dependent hints about
+ 					   processor capabilities.  */
+ 
+ /* This entry gives some information about the FPU initialization
+@@ -1009,6 +1009,9 @@ typedef struct
+ 
+ #define AT_RANDOM	25		/* Address of 16 random bytes.  */
+ 
++#define AT_HWCAP2	26		/* More machine-dependent hints about
++					   processor capabilities.  */
++
+ #define AT_EXECFN	31		/* Filename of executable.  */
+ 
+ /* Pointer to the global system page used for system calls and other
+-- 
+1.7.11.7
+

@@ -1,0 +1,203 @@
+From ae7cc530d644d05ef11fe9a846dd5e4b51966734 Mon Sep 17 00:00:00 2001
+From: Rajalakshmi Srinivasaraghavan <raji@linux.vnet.ibm.com>
+Date: Wed, 30 Jul 2014 10:35:21 -0500
+Subject: [PATCH] PowerPC: Cleaning up uneeded sqrt routines
+
+commit c24517c9dd9e92b4fa81e192967c63e56c1726e2
+Author: Adhemerval Zanella <azanella@linux.vnet.ibm.com>
+Date:   Fri Dec 13 14:56:09 2013 -0500
+
+    PowerPC: Cleaning up uneeded sqrt routines
+
+    For PPC64, all the wrappers at sysdeps are superfluous: they are
+    basically the same implementation from math/w_sqrt.c with the
+    '#ifdef _IEEE_LIBM'. And the power4 version just force the 'fsqrt'
+    instruction utilization with an inline assembly, which is already
+    handled by math_private.h __ieee754_sqrt implementation.
+
+File sysdeps/powerpc/fpu/w_sqrt.c (part oforiginal commit)
+is already deleted by some previous patch. Hence ignoring that.
+---
+ sysdeps/powerpc/fpu/w_sqrtf.c                  | 46 ---------------------
+ sysdeps/powerpc/powerpc64/power4/fpu/w_sqrt.c  | 55 --------------------------
+ sysdeps/powerpc/powerpc64/power4/fpu/w_sqrtf.c | 53 -------------------------
+ 3 files changed, 154 deletions(-)
+ delete mode 100644 sysdeps/powerpc/fpu/w_sqrtf.c
+ delete mode 100644 sysdeps/powerpc/powerpc64/power4/fpu/w_sqrt.c
+ delete mode 100644 sysdeps/powerpc/powerpc64/power4/fpu/w_sqrtf.c
+
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/fpu/w_sqrtf.c glibc-2.17-c758a686/sysdeps/powerpc/fpu/w_sqrtf.c
+deleted file mode 100644
+index 39b5b20..0000000
+--- glibc-2.17-c758a686/sysdeps/powerpc/fpu/w_sqrtf.c
++++ /dev/null
+@@ -1,46 +0,0 @@
+-/* Single-precision floating point square root wrapper.
+-   Copyright (C) 2004, 2012 Free Software Foundation, Inc.
+-   This file is part of the GNU C Library.
+-
+-   The GNU C Library is free software; you can redistribute it and/or
+-   modify it under the terms of the GNU Lesser General Public
+-   License as published by the Free Software Foundation; either
+-   version 2.1 of the License, or (at your option) any later version.
+-
+-   The GNU C Library is distributed in the hope that it will be useful,
+-   but WITHOUT ANY WARRANTY; without even the implied warranty of
+-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+-   Lesser General Public License for more details.
+-
+-   You should have received a copy of the GNU Lesser General Public
+-   License along with the GNU C Library; if not, see
+-   <http://www.gnu.org/licenses/>.  */
+-
+-#include <math.h>
+-#include <math_private.h>
+-#include <fenv_libc.h>
+-
+-#include <sysdep.h>
+-#include <ldsodefs.h>
+-
+-float
+-__sqrtf (float x)		/* wrapper sqrtf */
+-{
+-#ifdef _IEEE_LIBM
+-  return __ieee754_sqrtf (x);
+-#else
+-  float z;
+-  z = __ieee754_sqrtf (x);
+-
+-  if (_LIB_VERSION == _IEEE_ || (x != x))
+-    return z;
+-
+-  if (x < (float) 0.0)
+-    /* sqrtf(negative) */
+-    return (float) __kernel_standard ((double) x, (double) x, 126);
+-  else
+-    return z;
+-#endif
+-}
+-
+-weak_alias (__sqrtf, sqrtf)
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/power4/fpu/w_sqrt.c glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/power4/fpu/w_sqrt.c
+deleted file mode 100644
+index 1bd6a67..0000000
+--- glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/power4/fpu/w_sqrt.c
++++ /dev/null
+@@ -1,55 +0,0 @@
+-/* Double-precision floating point square root wrapper.
+-   Copyright (C) 2004, 2007, 2012 Free Software Foundation, Inc.
+-   This file is part of the GNU C Library.
+-
+-   The GNU C Library is free software; you can redistribute it and/or
+-   modify it under the terms of the GNU Lesser General Public
+-   License as published by the Free Software Foundation; either
+-   version 2.1 of the License, or (at your option) any later version.
+-
+-   The GNU C Library is distributed in the hope that it will be useful,
+-   but WITHOUT ANY WARRANTY; without even the implied warranty of
+-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+-   Lesser General Public License for more details.
+-
+-   You should have received a copy of the GNU Lesser General Public
+-   License along with the GNU C Library; if not, see
+-   <http://www.gnu.org/licenses/>.  */
+-
+-#include <math_ldbl_opt.h>
+-#include <math.h>
+-#include <math_private.h>
+-#include <fenv_libc.h>
+-
+-double
+-__sqrt (double x)		/* wrapper sqrt */
+-{
+-  double z;
+-/* Power4 (ISA V2.0) and above implement sqrt in hardware.  */
+-   __asm __volatile (
+-	"	fsqrt	%0,%1\n"
+-		: "=f" (z)
+-		: "f" (x));
+-#ifdef _IEEE_LIBM
+-  return z;
+-#else
+-  if (__builtin_expect (_LIB_VERSION == _IEEE_, 0))
+-    return z;
+-    
+-  if (__builtin_expect (x != x, 0))
+-    return z;
+-    
+-  if  (__builtin_expect (x < 0.0, 0))
+-    return __kernel_standard (x, x, 26);	/* sqrt(negative) */
+-  else
+-    return z;
+-#endif
+-}
+-
+-weak_alias (__sqrt, sqrt)
+-#ifdef NO_LONG_DOUBLE
+-  strong_alias (__sqrt, __sqrtl) weak_alias (__sqrt, sqrtl)
+-#endif
+-#if LONG_DOUBLE_COMPAT(libm, GLIBC_2_0)
+-compat_symbol (libm, __sqrt, sqrtl, GLIBC_2_0);
+-#endif
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/power4/fpu/w_sqrtf.c glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/power4/fpu/w_sqrtf.c
+deleted file mode 100644
+index 0e7e692..0000000
+--- glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/power4/fpu/w_sqrtf.c
++++ /dev/null
+@@ -1,53 +0,0 @@
+-/* Single-precision floating point square root wrapper.
+-   Copyright (C) 2004, 2007, 2012 Free Software Foundation, Inc.
+-   This file is part of the GNU C Library.
+-
+-   The GNU C Library is free software; you can redistribute it and/or
+-   modify it under the terms of the GNU Lesser General Public
+-   License as published by the Free Software Foundation; either
+-   version 2.1 of the License, or (at your option) any later version.
+-
+-   The GNU C Library is distributed in the hope that it will be useful,
+-   but WITHOUT ANY WARRANTY; without even the implied warranty of
+-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+-   Lesser General Public License for more details.
+-
+-   You should have received a copy of the GNU Lesser General Public
+-   License along with the GNU C Library; if not, see
+-   <http://www.gnu.org/licenses/>.  */
+-
+-#include <math.h>
+-#include <math_private.h>
+-#include <fenv_libc.h>
+-
+-#include <sysdep.h>
+-#include <ldsodefs.h>
+-
+-float
+-__sqrtf (float x)		/* wrapper sqrtf */
+-{
+-#ifdef _IEEE_LIBM
+-  return __ieee754_sqrtf (x);
+-#else
+-  float z;
+-/* Power4 (ISA V2.0) and above implement sqrtf in hardware.  */
+-   __asm __volatile (
+-	"	fsqrts	%0,%1\n"
+-		: "=f" (z)
+-		: "f" (x));
+-
+-  if (__builtin_expect (_LIB_VERSION == _IEEE_, 0))
+-    return z;
+-    
+-  if (__builtin_expect (x != x, 0))
+-    return z;
+-    
+-  if  (__builtin_expect (x < 0.0, 0))
+-    /* sqrtf(negative) */
+-    return (float) __kernel_standard ((double) x, (double) x, 126);
+-  else
+-    return z;
+-#endif
+-}
+-
+-weak_alias (__sqrtf, sqrtf)
+-- 
+1.8.3.1
+

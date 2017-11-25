@@ -1,0 +1,307 @@
+commit 075b9322c9e091b7e139f4c57e07d78d896c7a62
+Author: Dominik Vogt <vogt@de.ibm.com>
+Date:   Fri Jul 19 05:16:28 2013 +0000
+
+    Clean up whitespace in lock elision patches.
+    
+    Signed-off-by: Carlos O'Donell <carlos@redhat.com>
+Index: glibc-2.17-c758a686/nptl/pthread_mutex_lock.c
+===================================================================
+--- glibc-2.17-c758a686.orig/nptl/pthread_mutex_lock.c
++++ glibc-2.17-c758a686/nptl/pthread_mutex_lock.c
+@@ -86,7 +86,7 @@ __pthread_mutex_lock (mutex)
+       /* This case can never happen on a system without elision,
+          as the mutex type initialization functions will not
+ 	 allow to set the elision flags.  */
+-      /* Don't record owner or users for elision case. This is a
++      /* Don't record owner or users for elision case.  This is a
+          tail call.  */
+       return LLL_MUTEX_LOCK_ELISION (mutex);
+     }
+Index: glibc-2.17-c758a686/nptl/pthread_mutex_trylock.c
+===================================================================
+--- glibc-2.17-c758a686.orig/nptl/pthread_mutex_trylock.c
++++ glibc-2.17-c758a686/nptl/pthread_mutex_trylock.c
+@@ -31,7 +31,7 @@
+ #endif
+ 
+ /* We don't force elision in trylock, because this can lead to inconsistent
+-   lock state if the lock was actually busy. */
++   lock state if the lock was actually busy.  */
+ 
+ int
+ __pthread_mutex_trylock (mutex)
+@@ -73,7 +73,7 @@ __pthread_mutex_trylock (mutex)
+       if (lll_trylock_elision (mutex->__data.__lock,
+ 			       mutex->__data.__elision) != 0)
+         break;
+-      /* Don't record the ownership. */
++      /* Don't record the ownership.  */
+       return 0;
+ 
+     case PTHREAD_MUTEX_TIMED_NP:
+Index: glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/x86/bits/pthreadtypes.h
+===================================================================
+--- glibc-2.17-c758a686.orig/nptl/sysdeps/unix/sysv/linux/x86/bits/pthreadtypes.h
++++ glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/x86/bits/pthreadtypes.h
+@@ -112,7 +112,7 @@ typedef union
+     {
+       struct
+       {
+-        short __espins;
++	short __espins;
+ 	short __elision;
+ # define __spins d.__espins
+ # define __elision d.__elision
+Index: glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/x86/elision-conf.c
+===================================================================
+--- glibc-2.17-c758a686.orig/nptl/sysdeps/unix/sysv/linux/x86/elision-conf.c
++++ glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/x86/elision-conf.c
+@@ -14,7 +14,7 @@
+ 
+    You should have received a copy of the GNU Lesser General Public
+    License along with the GNU C Library; if not, see
+-   <http://www.gnu.org/licenses/>. */
++   <http://www.gnu.org/licenses/>.  */
+ 
+ #include "config.h"
+ #include <pthreadP.h>
+@@ -32,7 +32,7 @@ struct elision_config __elision_aconf =
+        acquisition attempts.  */
+     .skip_lock_busy = 3,
+     /* How often to not attempt to use elision if a transaction aborted due
+-       to reasons other than other threads' memory accesses. Expressed in
++       to reasons other than other threads' memory accesses.  Expressed in
+        number of lock acquisition attempts.  */
+     .skip_lock_internal_abort = 3,
+     /* How often we retry using elision if there is chance for the transaction
+@@ -52,13 +52,14 @@ int __rwlock_rtm_enabled attribute_hidde
+ 
+ int __rwlock_rtm_read_retries attribute_hidden = 3;
+ 
+-/* Set when the CPU supports elision. When false elision is never attempted.  */
++/* Set when the CPU supports elision.  When false elision is never attempted.
++ */
+ 
+ int __elision_available attribute_hidden;
+ 
+-/* Force elision for all new locks. This is used to decide whether existing
++/* Force elision for all new locks.  This is used to decide whether existing
+    DEFAULT locks should be automatically upgraded to elision in
+-   pthread_mutex_lock(). Disabled for suid programs. Only used when elision
++   pthread_mutex_lock().  Disabled for suid programs.  Only used when elision
+    is available.  */
+ 
+ int __pthread_force_elision attribute_hidden;
+Index: glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/x86/elision-conf.h
+===================================================================
+--- glibc-2.17-c758a686.orig/nptl/sysdeps/unix/sysv/linux/x86/elision-conf.h
++++ glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/x86/elision-conf.h
+@@ -14,7 +14,7 @@
+ 
+    You should have received a copy of the GNU Lesser General Public
+    License along with the GNU C Library; if not, see
+-   <http://www.gnu.org/licenses/>. */
++   <http://www.gnu.org/licenses/>.  */
+ #ifndef _ELISION_CONF_H
+ #define _ELISION_CONF_H 1
+ 
+Index: glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/x86/elision-lock.c
+===================================================================
+--- glibc-2.17-c758a686.orig/nptl/sysdeps/unix/sysv/linux/x86/elision-lock.c
++++ glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/x86/elision-lock.c
+@@ -14,7 +14,7 @@
+ 
+    You should have received a copy of the GNU Lesser General Public
+    License along with the GNU C Library; if not, see
+-   <http://www.gnu.org/licenses/>. */
++   <http://www.gnu.org/licenses/>.  */
+ 
+ #include <pthread.h>
+ #include "pthreadP.h"
+@@ -58,7 +58,7 @@ __lll_lock_elision (int *futex, short *a
+ 	      if (*futex == 0)
+ 		return 0;
+ 
+-	      /* Lock was busy. Fall back to normal locking.
++	      /* Lock was busy.  Fall back to normal locking.
+ 		 Could also _xend here but xabort with 0xff code
+ 		 is more visible in the profiler.  */
+ 	      _xabort (_ABORT_LOCK_BUSY);
+@@ -69,12 +69,12 @@ __lll_lock_elision (int *futex, short *a
+ 	      if ((status & _XABORT_EXPLICIT)
+ 			&& _XABORT_CODE (status) == _ABORT_LOCK_BUSY)
+ 	        {
+-		  /* Right now we skip here. Better would be to wait a bit
+-		     and retry. This likely needs some spinning.  */
++		  /* Right now we skip here.  Better would be to wait a bit
++		     and retry.  This likely needs some spinning.  */
+ 		  if (*adapt_count != aconf.skip_lock_busy)
+ 		    *adapt_count = aconf.skip_lock_busy;
+ 		}
+-	      /* Internal abort. There is no chance for retry.
++	      /* Internal abort.  There is no chance for retry.
+ 		 Use the normal locking and next time use lock.
+ 		 Be careful to avoid writing to the lock.  */
+ 	      else if (*adapt_count != aconf.skip_lock_internal_abort)
+Index: glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/x86/elision-timed.c
+===================================================================
+--- glibc-2.17-c758a686.orig/nptl/sysdeps/unix/sysv/linux/x86/elision-timed.c
++++ glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/x86/elision-timed.c
+@@ -14,7 +14,7 @@
+ 
+    You should have received a copy of the GNU Lesser General Public
+    License along with the GNU C Library; if not, see
+-   <http://www.gnu.org/licenses/>. */
++   <http://www.gnu.org/licenses/>.  */
+ 
+ #include <time.h>
+ #include <elision-conf.h>
+Index: glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/x86/elision-trylock.c
+===================================================================
+--- glibc-2.17-c758a686.orig/nptl/sysdeps/unix/sysv/linux/x86/elision-trylock.c
++++ glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/x86/elision-trylock.c
+@@ -14,7 +14,7 @@
+ 
+    You should have received a copy of the GNU Lesser General Public
+    License along with the GNU C Library; if not, see
+-   <http://www.gnu.org/licenses/>. */
++   <http://www.gnu.org/licenses/>.  */
+ 
+ #include <pthread.h>
+ #include <pthreadP.h>
+@@ -24,14 +24,14 @@
+ 
+ #define aconf __elision_aconf
+ 
+-/* Try to elide a futex trylock. FUTEX is the futex variable. ADAPT_COUNT is the
+-   adaptation counter in the mutex.  */
++/* Try to elide a futex trylock.  FUTEX is the futex variable.  ADAPT_COUNT is
++   the adaptation counter in the mutex.  */
+ 
+ int
+ __lll_trylock_elision (int *futex, short *adapt_count)
+ {
+   /* Implement POSIX semantics by forbiding nesting
+-     trylock. Sorry. After the abort the code is re-executed
++     trylock.  Sorry.  After the abort the code is re-executed
+      non transactional and if the lock was already locked
+      return an error.  */
+   _xabort (_ABORT_NESTED_TRYLOCK);
+@@ -46,7 +46,7 @@ __lll_trylock_elision (int *futex, short
+ 	  if (*futex == 0)
+ 	    return 0;
+ 
+-	  /* Lock was busy. Fall back to normal locking.
++	  /* Lock was busy.  Fall back to normal locking.
+ 	     Could also _xend here but xabort with 0xff code
+ 	     is more visible in the profiler.  */
+ 	  _xabort (_ABORT_LOCK_BUSY);
+@@ -54,12 +54,12 @@ __lll_trylock_elision (int *futex, short
+ 
+       if (!(status & _XABORT_RETRY))
+         {
+-          /* Internal abort. No chance for retry. For future
++          /* Internal abort.  No chance for retry.  For future
+              locks don't try speculation for some time.  */
+           if (*adapt_count != aconf.skip_trylock_internal_abort)
+             *adapt_count = aconf.skip_trylock_internal_abort;
+         }
+-      /* Could do some retries here. */
++      /* Could do some retries here.  */
+     }
+   else
+     {
+Index: glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/x86/force-elision.h
+===================================================================
+--- glibc-2.17-c758a686.orig/nptl/sysdeps/unix/sysv/linux/x86/force-elision.h
++++ glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/x86/force-elision.h
+@@ -14,7 +14,7 @@
+ 
+    You should have received a copy of the GNU Lesser General Public
+    License along with the GNU C Library; if not, see
+-   <http://www.gnu.org/licenses/>. */
++   <http://www.gnu.org/licenses/>.  */
+ 
+ /* Check for elision on this lock without upgrading.  */
+ #define DO_ELISION(m)							\
+Index: glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/x86/hle.h
+===================================================================
+--- glibc-2.17-c758a686.orig/nptl/sysdeps/unix/sysv/linux/x86/hle.h
++++ glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/x86/hle.h
+@@ -1,5 +1,5 @@
+-/* Shared RTM header. Emulate TSX intrinsics for compilers and assemblers
+-   that do not support the intrinsics and instructions yet. */
++/* Shared RTM header.  Emulate TSX intrinsics for compilers and assemblers
++   that do not support the intrinsics and instructions yet.  */
+ #ifndef _HLE_H
+ #define _HLE_H 1
+ 
+@@ -28,7 +28,7 @@
+ /* Official RTM intrinsics interface matching gcc/icc, but works
+    on older gcc compatible compilers and binutils.
+    We should somehow detect if the compiler supports it, because
+-   it may be able to generate slightly better code. */
++   it may be able to generate slightly better code.  */
+ 
+ #define _XBEGIN_STARTED		(~0u)
+ #define _XABORT_EXPLICIT	(1 << 0)
+Index: glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/x86/pthread_mutex_cond_lock.c
+===================================================================
+--- glibc-2.17-c758a686.orig/nptl/sysdeps/unix/sysv/linux/x86/pthread_mutex_cond_lock.c
++++ glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/x86/pthread_mutex_cond_lock.c
+@@ -13,9 +13,10 @@
+ 
+    You should have received a copy of the GNU Lesser General Public
+    License along with the GNU C Library; if not, see
+-   <http://www.gnu.org/licenses/>. */
++   <http://www.gnu.org/licenses/>.  */
+ 
+ /* The cond lock is not actually elided yet, but we still need to handle
+    already elided locks.  */
+ #include <elision-conf.h>
++
+ #include "sysdeps/unix/sysv/linux/pthread_mutex_cond_lock.c"
+Index: glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/x86/pthread_mutex_lock.c
+===================================================================
+--- glibc-2.17-c758a686.orig/nptl/sysdeps/unix/sysv/linux/x86/pthread_mutex_lock.c
++++ glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/x86/pthread_mutex_lock.c
+@@ -14,7 +14,8 @@
+ 
+    You should have received a copy of the GNU Lesser General Public
+    License along with the GNU C Library; if not, see
+-   <http://www.gnu.org/licenses/>. */
++   <http://www.gnu.org/licenses/>.  */
++
+ #include <elision-conf.h>
+ #include "force-elision.h"
+ 
+Index: glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/x86/pthread_mutex_timedlock.c
+===================================================================
+--- glibc-2.17-c758a686.orig/nptl/sysdeps/unix/sysv/linux/x86/pthread_mutex_timedlock.c
++++ glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/x86/pthread_mutex_timedlock.c
+@@ -14,7 +14,9 @@
+ 
+    You should have received a copy of the GNU Lesser General Public
+    License along with the GNU C Library; if not, see
+-   <http://www.gnu.org/licenses/>. */
++   <http://www.gnu.org/licenses/>.  */
++
+ #include <elision-conf.h>
+ #include "force-elision.h"
++
+ #include "nptl/pthread_mutex_timedlock.c"
+Index: glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/x86/pthread_mutex_trylock.c
+===================================================================
+--- glibc-2.17-c758a686.orig/nptl/sysdeps/unix/sysv/linux/x86/pthread_mutex_trylock.c
++++ glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/x86/pthread_mutex_trylock.c
+@@ -14,7 +14,8 @@
+ 
+    You should have received a copy of the GNU Lesser General Public
+    License along with the GNU C Library; if not, see
+-   <http://www.gnu.org/licenses/>. */
++   <http://www.gnu.org/licenses/>.  */
++
+ #include <elision-conf.h>
+ #include "force-elision.h"
+ 

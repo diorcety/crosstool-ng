@@ -1,0 +1,103 @@
+commit b023e4ca99f5e81f90d87d23cd267ef2abd2388c
+Author: Andi Kleen <ak@linux.intel.com>
+Date:   Sat Dec 22 00:58:34 2012 -0800
+
+    Add new internal mutex type flags for elision.
+    
+    Add Enable/disable flags used internally
+    
+    Extend the mutex initializers to have the fields needed for
+    elision. The layout stays the same, and this is not visible
+    to programs.
+    
+    These changes are not exposed outside pthread
+Index: glibc-2.17-c758a686/nptl/pthreadP.h
+===================================================================
+--- glibc-2.17-c758a686.orig/nptl/pthreadP.h
++++ glibc-2.17-c758a686/nptl/pthreadP.h
+@@ -61,6 +61,10 @@
+ enum
+ {
+   PTHREAD_MUTEX_KIND_MASK_NP = 3,
++
++  PTHREAD_MUTEX_ELISION_NP    = 256,
++  PTHREAD_MUTEX_NO_ELISION_NP = 512,
++
+   PTHREAD_MUTEX_ROBUST_NORMAL_NP = 16,
+   PTHREAD_MUTEX_ROBUST_RECURSIVE_NP
+   = PTHREAD_MUTEX_ROBUST_NORMAL_NP | PTHREAD_MUTEX_RECURSIVE_NP,
+@@ -93,12 +97,21 @@ enum
+   PTHREAD_MUTEX_PP_ERRORCHECK_NP
+   = PTHREAD_MUTEX_PRIO_PROTECT_NP | PTHREAD_MUTEX_ERRORCHECK_NP,
+   PTHREAD_MUTEX_PP_ADAPTIVE_NP
+-  = PTHREAD_MUTEX_PRIO_PROTECT_NP | PTHREAD_MUTEX_ADAPTIVE_NP
++  = PTHREAD_MUTEX_PRIO_PROTECT_NP | PTHREAD_MUTEX_ADAPTIVE_NP,
++  PTHREAD_MUTEX_ELISION_FLAGS_NP
++  = PTHREAD_MUTEX_ELISION_NP | PTHREAD_MUTEX_NO_ELISION_NP,
++
++  PTHREAD_MUTEX_TIMED_ELISION_NP =
++	  PTHREAD_MUTEX_TIMED_NP | PTHREAD_MUTEX_ELISION_NP,
++  PTHREAD_MUTEX_TIMED_NO_ELISION_NP =
++	  PTHREAD_MUTEX_TIMED_NP | PTHREAD_MUTEX_NO_ELISION_NP,
+ };
+ #define PTHREAD_MUTEX_PSHARED_BIT 128
+ 
+ #define PTHREAD_MUTEX_TYPE(m) \
+   ((m)->__data.__kind & 127)
++#define PTHREAD_MUTEX_TYPE_ELISION(m) \
++  ((m)->__data.__kind & (127|PTHREAD_MUTEX_ELISION_FLAGS_NP))
+ 
+ #if LLL_PRIVATE == 0 && LLL_SHARED == 128
+ # define PTHREAD_MUTEX_PSHARED(m) \
+Index: glibc-2.17-c758a686/nptl/sysdeps/pthread/pthread.h
+===================================================================
+--- glibc-2.17-c758a686.orig/nptl/sysdeps/pthread/pthread.h
++++ glibc-2.17-c758a686/nptl/sysdeps/pthread/pthread.h
+@@ -83,27 +83,39 @@ enum
+ 
+ 
+ /* Mutex initializers.  */
++#if __PTHREAD_MUTEX_HAVE_ELISION == 1 /* 64bit layout.  */
++#define __PTHREAD_SPINS 0, 0
++#elif __PTHREAD_MUTEX_HAVE_ELISION == 2 /* 32bit layout.  */
++#define __PTHREAD_SPINS { 0, 0 }
++#else
++#define __PTHREAD_SPINS 0
++#endif
++
+ #ifdef __PTHREAD_MUTEX_HAVE_PREV
+ # define PTHREAD_MUTEX_INITIALIZER \
+-  { { 0, 0, 0, 0, 0, 0, { 0, 0 } } }
++  { { 0, 0, 0, 0, 0, __PTHREAD_SPINS, { 0, 0 } } }
+ # ifdef __USE_GNU
+ #  define PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP \
+-  { { 0, 0, 0, 0, PTHREAD_MUTEX_RECURSIVE_NP, 0, { 0, 0 } } }
++  { { 0, 0, 0, 0, PTHREAD_MUTEX_RECURSIVE_NP, __PTHREAD_SPINS, { 0, 0 } } }
+ #  define PTHREAD_ERRORCHECK_MUTEX_INITIALIZER_NP \
+-  { { 0, 0, 0, 0, PTHREAD_MUTEX_ERRORCHECK_NP, 0, { 0, 0 } } }
++  { { 0, 0, 0, 0, PTHREAD_MUTEX_ERRORCHECK_NP, __PTHREAD_SPINS, { 0, 0 } } }
+ #  define PTHREAD_ADAPTIVE_MUTEX_INITIALIZER_NP \
+-  { { 0, 0, 0, 0, PTHREAD_MUTEX_ADAPTIVE_NP, 0, { 0, 0 } } }
++  { { 0, 0, 0, 0, PTHREAD_MUTEX_ADAPTIVE_NP, __PTHREAD_SPINS, { 0, 0 } } }
++#  define PTHREAD_ADAPTIVE_MUTEX_INITIALIZER_NP \
++  { { 0, 0, 0, 0, PTHREAD_MUTEX_ADAPTIVE_NP, __PTHREAD_SPINS, { 0, 0 } } }
++
+ # endif
+ #else
+ # define PTHREAD_MUTEX_INITIALIZER \
+-  { { 0, 0, 0, 0, 0, { 0 } } }
++  { { 0, 0, 0, 0, 0, { __PTHREAD_SPINS } } }
+ # ifdef __USE_GNU
+ #  define PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP \
+-  { { 0, 0, 0, PTHREAD_MUTEX_RECURSIVE_NP, 0, { 0 } } }
++  { { 0, 0, 0, PTHREAD_MUTEX_RECURSIVE_NP, 0, { __PTHREAD_SPINS } } }
+ #  define PTHREAD_ERRORCHECK_MUTEX_INITIALIZER_NP \
+-  { { 0, 0, 0, PTHREAD_MUTEX_ERRORCHECK_NP, 0, { 0 } } }
++  { { 0, 0, 0, PTHREAD_MUTEX_ERRORCHECK_NP, 0, { __PTHREAD_SPINS } } }
+ #  define PTHREAD_ADAPTIVE_MUTEX_INITIALIZER_NP \
+-  { { 0, 0, 0, PTHREAD_MUTEX_ADAPTIVE_NP, 0, { 0 } } }
++  { { 0, 0, 0, PTHREAD_MUTEX_ADAPTIVE_NP, 0, { __PTHREAD_SPINS } } }
++
+ # endif
+ #endif
+ 

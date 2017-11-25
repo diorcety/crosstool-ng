@@ -1,0 +1,23 @@
+commit TBD
+Author: Florian Weimer <fweimer@redhat.com>
+Date:   Fri May 19 17:46:47 2017 +0200
+
+    rtld: Completely ignore LD_LIBRARY_PATH for AT_SECURE=1 programs
+
+LD_LIBRARY_PATH can only be used to reorder system search paths, which
+is not useful functionality.
+
+Index: glibc-2.17-c758a686/elf/rtld.c
+===================================================================
+--- glibc-2.17-c758a686.orig/elf/rtld.c
++++ glibc-2.17-c758a686/elf/rtld.c
+@@ -2580,7 +2701,8 @@ process_envvars (enum mode *modep)
+ 
+ 	case 12:
+ 	  /* The library search path.  */
+-	  if (memcmp (envline, "LIBRARY_PATH", 12) == 0)
++	  if (!__libc_enable_secure
++	      && memcmp (envline, "LIBRARY_PATH", 12) == 0)
+ 	    {
+ 	      library_path = &envline[13];
+ 	      break;

@@ -1,0 +1,22 @@
+commit 705a79f82560ff6472cebed86aa5db04cdea3bce
+Author: Florian Weimer <fweimer@redhat.com>
+Date:   Wed Nov 30 14:59:27 2016 +0100
+
+    libio: Limit buffer size to 8192 bytes [BZ #4099]
+    
+    This avoids overly large buffers with network file systems which report
+    very large block sizes.
+
+Index: b/libio/filedoalloc.c
+===================================================================
+--- a/libio/filedoalloc.c
++++ b/libio/filedoalloc.c
+@@ -121,7 +121,7 @@ _IO_file_doallocate (fp)
+ 	    fp->_flags |= _IO_LINE_BUF;
+ 	}
+ #if _IO_HAVE_ST_BLKSIZE
+-      if (st.st_blksize > 0)
++      if (st.st_blksize > 0 && st.st_blksize < _IO_BUFSIZ)
+ 	size = st.st_blksize;
+ #endif
+     }

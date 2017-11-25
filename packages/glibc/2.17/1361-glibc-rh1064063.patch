@@ -1,0 +1,70 @@
+commit a3e5b4feeb54cb92657ec2bc6d9be1fcef9e8575
+Author: Paul E. Murphy <murphyp@linux.vnet.ibm.com>
+Date:   Mon Jan 11 17:24:04 2016 -0500
+
+    Fix race in tst-mqueue5
+    
+    The check is done on line 117 by a thread spawned
+    from do_child(), forked from do_test().  This test
+    generates a signal in the forked process.
+    
+    Either thread may handle the signal, and on ppc,
+    it happens to be done on do_child, on the thread
+    which is not doing the check on line 117.
+    
+    This exposes a race condition whereby the test
+    incorrectly fails as the signal is caught during
+    or after the check.
+    
+    This is mitigated by ensuring the signal is blocked
+    in the child thread while thread is running.
+
+ 2016-01-15  Martin Sebor  <msebor@redhat.com>
+ 
+ 	[BZ #19432]
+diff --git a/rt/tst-mqueue5.c b/rt/tst-mqueue5.c
+index aa74fa3..25042bc 100644
+--- a/rt/tst-mqueue5.c
++++ b/rt/tst-mqueue5.c
+@@ -116,7 +116,7 @@ thr (void *arg)
+ 
+   if (rtmin_cnt != 2)
+     {
+-      puts ("SIGRTMIN signal in child did not arrive");
++      puts ("SIGRTMIN signal in thread did not arrive");
+       result = 1;
+     }
+   else if (rtmin_pid != getppid ()
+@@ -403,6 +403,16 @@ do_child (const char *name, pthread_barrier_t *b2, pthread_barrier_t *b3,
+       result = 1;
+     }
+ 
++  /* Ensure the thr thread gets the signal, not us.  */
++  sigset_t set;
++  sigemptyset (&set);
++  sigaddset (&set, SIGRTMIN);
++  if (pthread_sigmask (SIG_BLOCK, &set, NULL))
++    {
++      printf ("Failed to block SIGRTMIN in child: %m\n");
++      result = 1;
++    }
++
+   (void) pthread_barrier_wait (b2);
+ 
+   /* Parent calls mqsend (q), which should wake up mqrecv (q)
+@@ -514,7 +524,14 @@ do_child (const char *name, pthread_barrier_t *b2, pthread_barrier_t *b3,
+       result = 1;
+     }
+ 
+- void *thr_ret;
++  /* Reenable test signals before cleaning up the thread.  */
++  if (pthread_sigmask (SIG_UNBLOCK, &set, NULL))
++    {
++      printf ("Failed to unblock SIGRTMIN in child: %m\n");
++      result = 1;
++    }
++
++  void *thr_ret;
+   ret = pthread_join (th, &thr_ret);
+   if (ret)
+     {

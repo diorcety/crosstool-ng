@@ -1,0 +1,41 @@
+commit 900056024b75eae8b550d7fee1dec9e71f28344e
+Author: Florian Weimer <fweimer@redhat.com>
+Date:   Mon Mar 7 13:48:47 2016 +0100
+
+    test-skeleton.c: Do not set RLIMIT_DATA [BZ #19648]
+    
+    With older kernels, it is mostly ineffective because it causes malloc
+    to switch from sbrk to mmap (potentially invalidating malloc testing
+    compared to what real appliations do).  With newer kernels which
+    have switched to enforcing RLIMIT_DATA for mmap as well, some test
+    cases will fail in an unintended fashion because the limit which was
+    set previously does not include room for all mmap mappings.
+
+Index: b/test-skeleton.c
+===================================================================
+--- a/test-skeleton.c
++++ b/test-skeleton.c
+@@ -356,23 +356,6 @@ main (int argc, char *argv[])
+       setrlimit (RLIMIT_CORE, &core_limit);
+ #endif
+ 
+-#ifdef RLIMIT_DATA
+-      /* Try to avoid eating all memory if a test leaks.  */
+-      struct rlimit data_limit;
+-      if (getrlimit (RLIMIT_DATA, &data_limit) == 0)
+-	{
+-	  if (TEST_DATA_LIMIT == RLIM_INFINITY)
+-	    data_limit.rlim_cur = data_limit.rlim_max;
+-	  else if (data_limit.rlim_cur > (rlim_t) TEST_DATA_LIMIT)
+-	    data_limit.rlim_cur = MIN ((rlim_t) TEST_DATA_LIMIT,
+-				       data_limit.rlim_max);
+-	  if (setrlimit (RLIMIT_DATA, &data_limit) < 0)
+-	    printf ("setrlimit: RLIMIT_DATA: %m\n");
+-	}
+-      else
+-	printf ("getrlimit: RLIMIT_DATA: %m\n");
+-#endif
+-
+       /* We put the test process in its own pgrp so that if it bogusly
+ 	 generates any job control signals, they won't hit the whole build.  */
+       setpgid (0, 0);

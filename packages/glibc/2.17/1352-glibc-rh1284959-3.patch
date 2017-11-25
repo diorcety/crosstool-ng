@@ -1,0 +1,52 @@
+Short description: Don't corrupt heap if top chunk is MINSIZE.
+Author(s): Mel Gorman <mgorman@suse.de>
+Origin: git://sourceware.org/git/glibc.git
+Bug-RHEL: N/A
+Bug-Fedora: N/A
+Bug-Upstream: #18502
+Upstream status: committed
+
+commit f8ef472c0ff4644445ec716036d31430b4fa4bab
+Author: Mel Gorman <mgorman@suse.de>
+Date:   Mon Jun 8 13:36:13 2015 +0100
+
+    malloc: Do not corrupt the top of a threaded heap if top chunk is MINSIZE [BZ #18502]
+    
+    mksquashfs was reported in openSUSE to be causing segmentation faults when
+    creating installation images. Testing showed that mksquashfs sometimes
+    failed and could be reproduced within 10 attempts. The core dump looked
+    like the heap top was corrupted and was pointing to an unmapped area. In
+    other cases, this has been due to an application corrupting glibc structures
+    but mksquashfs appears to be fine in this regard.
+    
+    The problem is that heap_trim is "growing" the top into unmapped space.
+    If the top chunk == MINSIZE then top_area is -1 and this check does not
+    behave as expected due to a signed/unsigned comparison
+    
+      if (top_area <= pad)
+        return 0;
+    
+    The next calculation extra = ALIGN_DOWN(top_area - pad, pagesz) calculates
+    extra as a negative number which also is unnoticed due to a signed/unsigned
+    comparison. We then call shrink_heap(heap, negative_number) which crashes
+    later. This patch adds a simple check against MINSIZE to make sure extra
+    does not become negative. It adds a cast to hint to the reader that this
+    is a signed vs unsigned issue.
+    
+    Without the patch, mksquash fails within 10 attempts. With it applied, it
+    completed 1000 times without error. The standard test suite "make check"
+    showed no changes in the summary of test results.
+
+Index: glibc-2.17-c758a686/malloc/arena.c
+===================================================================
+--- glibc-2.17-c758a686.orig/malloc/arena.c
++++ glibc-2.17-c758a686/malloc/arena.c
+@@ -705,7 +705,7 @@ heap_trim(heap_info *heap, size_t pad)
+     return 0;
+ 
+   top_area = top_size - MINSIZE - 1;
+-  if (top_area <= pad)
++  if (top_area < 0 || (size_t) top_area <= pad)
+     return 0;
+ 
+   /* Release in pagesize units and round down to the nearest page.  */

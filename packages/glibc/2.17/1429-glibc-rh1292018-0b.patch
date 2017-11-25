@@ -1,0 +1,148 @@
+Needed to get future uses of all-dl-routines to include
+__get_cpu_features into the right shared object routines.
+
+commit ac9e0e5e401fa634667a8284a0db0ca886bf816b
+Author: Roland McGrath <roland@hack.frob.com>
+Date:   Fri Feb 6 10:42:08 2015 -0800
+
+    Clean up sysdep-dl-routines variable.
+
+Index: glibc-2.17-c758a686/elf/Makefile
+===================================================================
+--- glibc-2.17-c758a686.orig/elf/Makefile
++++ glibc-2.17-c758a686/elf/Makefile
+@@ -22,7 +22,7 @@ subdir		:= elf
+ include ../Makeconfig
+ 
+ headers		= elf.h bits/elfclass.h link.h bits/link.h
+-routines	= $(dl-routines) dl-support dl-iteratephdr \
++routines	= $(all-dl-routines) dl-support dl-iteratephdr \
+ 		  dl-addr enbl-secure dl-profstub \
+ 		  dl-origin dl-libc dl-sym dl-tsd dl-sysdep
+ 
+@@ -43,7 +43,7 @@ shared-only-routines += dl-caller
+ 
+ # ld.so uses those routines, plus some special stuff for being the program
+ # interpreter and operating independent of libc.
+-rtld-routines	:= rtld $(dl-routines) dl-sysdep dl-environ dl-minimal
++rtld-routines	= rtld $(all-dl-routines) dl-sysdep dl-environ dl-minimal
+ all-rtld-routines = $(rtld-routines) $(sysdep-rtld-routines)
+ 
+ CFLAGS-dl-runtime.c = -fexceptions -fasynchronous-unwind-tables
+Index: glibc-2.17-c758a686/ports/sysdeps/aarch64/Makefile
+===================================================================
+--- glibc-2.17-c758a686.orig/ports/sysdeps/aarch64/Makefile
++++ glibc-2.17-c758a686/ports/sysdeps/aarch64/Makefile
+@@ -2,8 +2,6 @@ long-double-fcts = yes
+ 
+ ifeq ($(subdir),elf)
+ sysdep-dl-routines += tlsdesc dl-tlsdesc
+-sysdep_routines += tlsdesc dl-tlsdesc
+-sysdep-rtld-routines += tlsdesc dl-tlsdesc
+ gen-as-const-headers += dl-link.sym
+ endif
+ 
+Index: glibc-2.17-c758a686/ports/sysdeps/arm/Makefile
+===================================================================
+--- glibc-2.17-c758a686.orig/ports/sysdeps/arm/Makefile
++++ glibc-2.17-c758a686/ports/sysdeps/arm/Makefile
+@@ -3,8 +3,8 @@ static-gnulib-arch = $(elfobjdir)/libgcc
+ 
+ ifeq ($(subdir),elf)
+ sysdep-dl-routines += tlsdesc dl-tlsdesc
+-sysdep_routines += aeabi_unwind_cpp_pr1 find_exidx tlsdesc dl-tlsdesc
+-sysdep-rtld-routines += aeabi_unwind_cpp_pr1 tlsdesc dl-tlsdesc
++sysdep_routines += aeabi_unwind_cpp_pr1 find_exidx
++sysdep-rtld-routines += aeabi_unwind_cpp_pr1
+ shared-only-routines += aeabi_unwind_cpp_pr1
+ 
+ $(objpfx)libgcc-stubs.a: $(objpfx)aeabi_unwind_cpp_pr1.os
+Index: glibc-2.17-c758a686/ports/sysdeps/hppa/Makefile
+===================================================================
+--- glibc-2.17-c758a686.orig/ports/sysdeps/hppa/Makefile
++++ glibc-2.17-c758a686/ports/sysdeps/hppa/Makefile
+@@ -24,8 +24,6 @@ LDFLAGS-c_pic.os += -Wl,--unique=.text*
+ ifeq ($(subdir),elf)
+ CFLAGS-rtld.c += -mdisable-fpregs
+ sysdep-dl-routines += dl-symaddr dl-fptr
+-sysdep_routines += $(sysdep-dl-routines)
+-sysdep-rtld-routines += $(sysdep-dl-routines)
+ endif
+ 
+ ifeq ($(subdir),csu)
+Index: glibc-2.17-c758a686/sysdeps/i386/Makefile
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/i386/Makefile
++++ glibc-2.17-c758a686/sysdeps/i386/Makefile
+@@ -74,8 +74,6 @@ endif
+ 
+ ifeq ($(subdir),elf)
+ sysdep-dl-routines += tlsdesc dl-tlsdesc
+-sysdep_routines += tlsdesc dl-tlsdesc
+-sysdep-rtld-routines += tlsdesc dl-tlsdesc
+ endif
+ 
+ ifeq ($(subdir),csu)
+Index: glibc-2.17-c758a686/ports/sysdeps/ia64/Makefile
+===================================================================
+--- glibc-2.17-c758a686.orig/ports/sysdeps/ia64/Makefile
++++ glibc-2.17-c758a686/ports/sysdeps/ia64/Makefile
+@@ -17,6 +17,4 @@ endif
+ 
+ ifeq ($(subdir),elf)
+ sysdep-dl-routines += dl-symaddr dl-fptr
+-sysdep_routines += $(sysdep-dl-routines)
+-sysdep-rtld-routines += $(sysdep-dl-routines)
+ endif
+Index: glibc-2.17-c758a686/ports/sysdeps/unix/sysv/linux/ia64/Makefile
+===================================================================
+--- glibc-2.17-c758a686.orig/ports/sysdeps/unix/sysv/linux/ia64/Makefile
++++ glibc-2.17-c758a686/ports/sysdeps/unix/sysv/linux/ia64/Makefile
+@@ -14,8 +14,6 @@ endif
+ 
+ ifeq ($(subdir),elf)
+ sysdep-dl-routines += dl-static
+-sysdep_routines += $(sysdep-dl-routines)
+-sysdep-rtld-routines += $(sysdep-dl-routines)
+ endif
+ 
+ ifeq ($(subdir),rt)
+Index: glibc-2.17-c758a686/ports/sysdeps/unix/sysv/linux/mips/Makefile
+===================================================================
+--- glibc-2.17-c758a686.orig/ports/sysdeps/unix/sysv/linux/mips/Makefile
++++ glibc-2.17-c758a686/ports/sysdeps/unix/sysv/linux/mips/Makefile
+@@ -49,8 +49,6 @@ ifeq ($(subdir),elf)
+ ifeq ($(build-shared),yes)
+ # This is needed for DSO loading from static binaries.
+ sysdep-dl-routines += dl-static
+-sysdep_routines += dl-static
+-sysdep-rtld-routines += dl-static
+ endif
+ endif
+ 
+Index: glibc-2.17-c758a686/sysdeps/unix/sysv/linux/powerpc/Makefile
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/unix/sysv/linux/powerpc/Makefile
++++ glibc-2.17-c758a686/sysdeps/unix/sysv/linux/powerpc/Makefile
+@@ -21,8 +21,6 @@ sysdep_routines += dl-vdso
+ ifeq ($(build-shared),yes)
+ # This is needed for DSO loading from static binaries.
+ sysdep-dl-routines += dl-static
+-sysdep_routines += dl-static
+-sysdep-rtld-routines += dl-static
+ endif
+ endif
+ 
+Index: glibc-2.17-c758a686/sysdeps/x86_64/Makefile
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/x86_64/Makefile
++++ glibc-2.17-c758a686/sysdeps/x86_64/Makefile
+@@ -20,8 +20,6 @@ endif
+ 
+ ifeq ($(subdir),elf)
+ sysdep-dl-routines += tlsdesc dl-tlsdesc
+-sysdep_routines += tlsdesc dl-tlsdesc
+-sysdep-rtld-routines += tlsdesc dl-tlsdesc
+ 
+ tests += tst-quad1 tst-quad2
+ modules-names += tst-quadmod1 tst-quadmod2

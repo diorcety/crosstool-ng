@@ -1,0 +1,18 @@
+commit a849e800352ac5068dc6f1191c86ff62ba014c61
+Author: Andreas Schwab <schwab@linux-m68k.org>
+Date:   Thu May 1 22:00:34 2014 +0200
+
+    Fix implicit declaration
+
+Index: b/nscd/nscd-client.h
+===================================================================
+--- a/nscd/nscd-client.h
++++ b/nscd/nscd-client.h
+@@ -24,6 +24,7 @@
+ 
+ #include <stdbool.h>
+ #include <stdint.h>
++#include <string.h>
+ #include <sys/types.h>
+ #include <atomic.h>
+ #include <nscd-types.h>

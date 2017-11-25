@@ -1,0 +1,72 @@
+Update powerpc64 ULPs.
+
+The last upstream ULP update before the branch, in
+
+commit c6922934363f44b88250567f52036d8e9972c255
+Author: Andreas Schwab <schwab@linux-m68k.org>
+Date:   Sat Mar 3 14:20:24 2012 +0100
+
+    Update powerpc libm ULPs
+
+did not specify 1-ULP tolerance for all tests because some of them
+returned the exact result.  Current upstream uses a different way for
+specifying ULPs, after this commit:
+
+commit e6b6a85705be16373fb3f78ef998edc62150499c
+Author: Joseph Myers <joseph@codesourcery.com>
+Date:   Wed Mar 5 15:02:38 2014 +0000
+
+    Don't include individual test ulps in libm-test-ulps.
+
+This implicitly increased the test tolerance for most (all?) math
+functions to 1 ULP because at least one subtest was off by 1 ULP.
+
+Index: b/sysdeps/powerpc/fpu/libm-test-ulps
+===================================================================
+--- a/sysdeps/powerpc/fpu/libm-test-ulps
++++ b/sysdeps/powerpc/fpu/libm-test-ulps
+@@ -2396,6 +2396,9 @@ ldouble: 2
+ Test "sin_downward (8) == 0.9893582466233817778081235982452886721164":
+ ildouble: 1
+ ldouble: 1
++Test "sin_downward (9) == 0.4121184852417565697562725663524351793439":
++float: 1
++ifloat: 1
+ 
+ # sin_tonearest
+ Test "sin_tonearest (1) == 0.8414709848078965066525023216302989996226":
+@@ -2438,10 +2441,15 @@ float: 1
+ ifloat: 1
+ ildouble: 2
+ ldouble: 2
++Test "sin_upward (10) == -0.5440211108893698134047476618513772816836":
++float: 1
++ifloat: 1
+ Test "sin_upward (2) == 0.9092974268256816953960198659117448427023":
+ float: 2
+ ifloat: 2
+ Test "sin_upward (3) == 0.1411200080598672221007448028081102798469":
++float: 1
++ifloat: 1
+ ildouble: 1
+ ldouble: 1
+ Test "sin_upward (4) == -0.7568024953079282513726390945118290941359":
+@@ -2449,9 +2457,18 @@ float: 1
+ ifloat: 1
+ ildouble: 1
+ ldouble: 1
++Test "sin_upward (5) == -0.9589242746631384688931544061559939733525":
++float: 1
++ifloat: 1
+ Test "sin_upward (6) == -0.2794154981989258728115554466118947596280":
+ ildouble: 1
+ ldouble: 1
++Test "sin_upward (7) == 0.6569865987187890903969990915936351779369":
++float: 1
++ifloat: 1
++Test "sin_upward (8) == 0.9893582466233817778081235982452886721164":
++float: 1
++ifloat: 1
+ Test "sin_upward (9) == 0.4121184852417565697562725663524351793439":
+ float: 1
+ ifloat: 1

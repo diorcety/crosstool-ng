@@ -1,0 +1,386 @@
+# MPX Support for glibc:
+#
+# Note: Renamed configure.ac changes to configure.in changes.
+#
+# commit ea8ba7cd14d0f479bae8365ae5c4ef177bdd0aad
+# Author: Igor Zamyatin <igor.zamyatin@intel.com>
+# Date:   Wed Apr 16 14:43:16 2014 -0700
+# 
+#     Save/restore bound registers for _dl_runtime_profile
+# 
+#     This patch saves and restores bound registers in x86-64 PLT for
+#     ld.so profile and LD_AUDIT:
+# 
+#         * sysdeps/x86_64/bits/link.h (La_x86_64_regs): Add lr_bnd.
+#         (La_x86_64_retval): Add lrv_bnd0 and lrv_bnd1.
+#         * sysdeps/x86_64/dl-trampoline.S (_dl_runtime_profile): Save
+#         Intel MPX bound registers before _dl_profile_fixup.
+#         * sysdeps/x86_64/dl-trampoline.h: Restore Intel MPX bound
+#         registers after _dl_profile_fixup.  Save and restore bound
+#         registers bnd0/bnd1 when calling _dl_call_pltexit.
+#         * sysdeps/x86_64/link-defines.sym (BND_SIZE): New.
+#         (LR_BND_OFFSET): Likewise.
+#         (LRV_BND0_OFFSET): Likewise.
+#         (LRV_BND1_OFFSET): Likewise.
+# 
+# commit a4c75cfd56e536c2b18556e8a482d88dffa0fffc
+# Author: Igor Zamyatin <igor.zamyatin@intel.com>
+# Date:   Tue Apr 1 10:16:04 2014 -0700
+# 
+#     Save/restore bound registers in _dl_runtime_resolve
+# 
+#     This patch saves and restores bound registers in symbol lookup for x86-64:
+# 
+#     1. Branches without BND prefix clear bound registers.
+#     2. x86-64 pass bounds in bound registers as specified in MPX psABI
+#     extension on hjl/mpx/master branch at
+# 
+#     https://github.com/hjl-tools/x86-64-psABI
+#     https://groups.google.com/forum/#!topic/x86-64-abi/KFsB0XTgWYc
+# 
+#     Binutils has been updated to create an alternate PLT to add BND prefix
+#     when branching to ld.so.
+# 
+#         * config.h.in (HAVE_MPX_SUPPORT): New #undef.
+#         * sysdeps/x86_64/configure.ac: Set HAVE_MPX_SUPPORT.
+#         * sysdeps/x86_64/configure: Regenerated.
+#         * sysdeps/x86_64/dl-trampoline.S (REGISTER_SAVE_AREA): New
+#         macro.
+#         (REGISTER_SAVE_RAX): Likewise.
+#         (REGISTER_SAVE_RCX): Likewise.
+#         (REGISTER_SAVE_RDX): Likewise.
+#         (REGISTER_SAVE_RSI): Likewise.
+#         (REGISTER_SAVE_RDI): Likewise.
+#         (REGISTER_SAVE_R8): Likewise.
+#         (REGISTER_SAVE_R9): Likewise.
+#         (REGISTER_SAVE_BND0): Likewise.
+#         (REGISTER_SAVE_BND1): Likewise.
+#         (REGISTER_SAVE_BND2): Likewise.
+#         (_dl_runtime_resolve): Use them.  Save and restore Intel MPX
+#         bound registers when calling _dl_fixup.
+# 
+diff -urN glibc-2.17-c758a686/config.h.in glibc-2.17-c758a686/config.h.in
+--- glibc-2.17-c758a686/config.h.in	2014-09-10 23:26:03.467045808 -0400
++++ glibc-2.17-c758a686/config.h.in	2014-09-10 23:27:41.532851928 -0400
+@@ -107,6 +107,9 @@
+ /* Define if assembler supports AVX512.  */
+ #undef  HAVE_AVX512_ASM_SUPPORT
+ 
++/* Define if assembler supports Intel MPX.  */
++#undef  HAVE_MPX_SUPPORT
++
+ /* Define if gcc supports FMA4.  */
+ #undef	HAVE_FMA4_SUPPORT
+ 
+diff -urN glibc-2.17-c758a686/sysdeps/x86/bits/link.h glibc-2.17-c758a686/sysdeps/x86/bits/link.h
+--- glibc-2.17-c758a686/sysdeps/x86/bits/link.h	2014-09-10 23:26:03.467045808 -0400
++++ glibc-2.17-c758a686/sysdeps/x86/bits/link.h	2014-09-10 23:27:41.533851926 -0400
+@@ -93,6 +93,9 @@
+   uint64_t lr_rsp;
+   La_x86_64_xmm lr_xmm[8];
+   La_x86_64_vector lr_vector[8];
++#ifndef __ILP32__
++  __int128 lr_bnd[4];
++#endif
+ } La_x86_64_regs;
+ 
+ /* Return values for calls from PLT on x86-64.  */
+@@ -106,6 +109,10 @@
+   long double lrv_st1;
+   La_x86_64_vector lrv_vector0;
+   La_x86_64_vector lrv_vector1;
++#ifndef __ILP32__
++  __int128 lrv_bnd0;
++  __int128 lrv_bnd1;
++#endif
+ } La_x86_64_retval;
+ 
+ #define La_x32_regs La_x86_64_regs
+diff -urN glibc-2.17-c758a686/sysdeps/x86_64/configure glibc-2.17-c758a686/sysdeps/x86_64/configure
+--- glibc-2.17-c758a686/sysdeps/x86_64/configure	2014-09-10 23:26:03.573045598 -0400
++++ glibc-2.17-c758a686/sysdeps/x86_64/configure	2014-09-10 23:27:41.532851928 -0400
+@@ -212,6 +212,33 @@
+ { $as_echo "$as_me:${as_lineno-$LINENO}: result: $libc_cv_cc_novzeroupper" >&5
+ $as_echo "$libc_cv_cc_novzeroupper" >&6; }
+ 
++{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for Intel MPX support" >&5
++$as_echo_n "checking for Intel MPX support... " >&6; }
++if ${libc_cv_asm_mpx+:} false; then :
++  $as_echo_n "(cached) " >&6
++else
++  cat > conftest.s <<\EOF
++        bndmov %bnd0,(%rsp)
++EOF
++if { ac_try='${CC-cc} -c $ASFLAGS conftest.s 1>&5'
++  { { eval echo "\"\$as_me\":${as_lineno-$LINENO}: \"$ac_try\""; } >&5
++  (eval $ac_try) 2>&5
++  ac_status=$?
++  $as_echo "$as_me:${as_lineno-$LINENO}: \$? = $ac_status" >&5
++  test $ac_status = 0; }; }; then
++  libc_cv_asm_mpx=yes
++else
++  libc_cv_asm_mpx=no
++fi
++rm -f conftest*
++fi
++{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $libc_cv_asm_mpx" >&5
++$as_echo "$libc_cv_asm_mpx" >&6; }
++if test $libc_cv_asm_mpx == yes; then
++  $as_echo "#define HAVE_MPX_SUPPORT 1" >>confdefs.h
++
++fi
++
+ $as_echo "#define PI_STATIC_AND_HIDDEN 1" >>confdefs.h
+ 
+ # work around problem with autoconf and empty lines at the end of files
+diff -urN glibc-2.17-c758a686/sysdeps/x86_64/configure.in glibc-2.17-c758a686/sysdeps/x86_64/configure.in
+--- glibc-2.17-c758a686/sysdeps/x86_64/configure.in	2014-09-10 23:26:03.468045806 -0400
++++ glibc-2.17-c758a686/sysdeps/x86_64/configure.in	2014-09-10 23:27:41.532851928 -0400
+@@ -70,6 +70,21 @@
+ 		   [libc_cv_cc_novzeroupper=no])
+ ])
+ 
++dnl Check whether asm supports Intel MPX
++AC_CACHE_CHECK(for Intel MPX support, libc_cv_asm_mpx, [dnl
++cat > conftest.s <<\EOF
++        bndmov %bnd0,(%rsp)
++EOF
++if AC_TRY_COMMAND(${CC-cc} -c $ASFLAGS conftest.s 1>&AS_MESSAGE_LOG_FD); then
++  libc_cv_asm_mpx=yes
++else
++  libc_cv_asm_mpx=no
++fi
++rm -f conftest*])
++if test $libc_cv_asm_mpx == yes; then
++  AC_DEFINE(HAVE_MPX_SUPPORT)
++fi
++
+ dnl It is always possible to access static and hidden symbols in an
+ dnl position independent way.
+ AC_DEFINE(PI_STATIC_AND_HIDDEN)
+diff -urN glibc-2.17-c758a686/sysdeps/x86_64/dl-trampoline.h glibc-2.17-c758a686/sysdeps/x86_64/dl-trampoline.h
+--- glibc-2.17-c758a686/sysdeps/x86_64/dl-trampoline.h	2014-09-10 23:26:03.468045806 -0400
++++ glibc-2.17-c758a686/sysdeps/x86_64/dl-trampoline.h	2014-09-10 23:27:41.535851922 -0400
+@@ -63,6 +63,20 @@
+ 	movaps (LR_XMM_OFFSET + XMM_SIZE*6)(%rsp), %xmm6
+ 	movaps (LR_XMM_OFFSET + XMM_SIZE*7)(%rsp), %xmm7
+ 
++#ifndef __ILP32__
++# ifdef HAVE_MPX_SUPPORT
++	bndmov 		    (LR_BND_OFFSET)(%rsp), %bnd0  # Restore bound
++	bndmov (LR_BND_OFFSET +   BND_SIZE)(%rsp), %bnd1  # registers.
++	bndmov (LR_BND_OFFSET + BND_SIZE*2)(%rsp), %bnd2
++	bndmov (LR_BND_OFFSET + BND_SIZE*3)(%rsp), %bnd3
++# else
++	.byte 0x66,0x0f,0x1a,0x84,0x24;.long (LR_BND_OFFSET)
++	.byte 0x66,0x0f,0x1a,0x8c,0x24;.long (LR_BND_OFFSET + BND_SIZE)
++	.byte 0x66,0x0f,0x1a,0x94,0x24;.long (LR_BND_OFFSET + BND_SIZE*2)
++	.byte 0x66,0x0f,0x1a,0x9c,0x24;.long (LR_BND_OFFSET + BND_SIZE*3)
++# endif
++#endif
++
+ #ifdef RESTORE_AVX
+ 	/* Check if any xmm0-xmm7 registers are changed by audit
+ 	   module.  */
+@@ -222,6 +236,16 @@
+ 	vmovdqa %xmm1, (LRV_SIZE + XMM_SIZE)(%rcx)
+ #endif
+ 
++#ifndef __ILP32__
++# ifdef HAVE_MPX_SUPPORT
++	bndmov %bnd0, LRV_BND0_OFFSET(%rcx)  # Preserve returned bounds.
++	bndmov %bnd1, LRV_BND1_OFFSET(%rcx)
++# else
++	.byte  0x66,0x0f,0x1b,0x81;.long (LRV_BND0_OFFSET)
++	.byte  0x66,0x0f,0x1b,0x89;.long (LRV_BND1_OFFSET)
++# endif
++#endif
++
+ 	fstpt LRV_ST0_OFFSET(%rcx)
+ 	fstpt LRV_ST1_OFFSET(%rcx)
+ 
+@@ -254,6 +278,16 @@
+ 1:
+ #endif
+ 
++#ifndef __ILP32__
++# ifdef HAVE_MPX_SUPPORT
++	bndmov LRV_BND0_OFFSET(%rcx), %bnd0  # Restore bound registers.
++	bndmov LRV_BND1_OFFSET(%rcx), %bnd1
++# else
++	.byte  0x66,0x0f,0x1a,0x81;.long (LRV_BND0_OFFSET)
++	.byte  0x66,0x0f,0x1a,0x89;.long (LRV_BND1_OFFSET)
++# endif
++#endif
++
+ 	fldt LRV_ST1_OFFSET(%rsp)
+ 	fldt LRV_ST0_OFFSET(%rsp)
+ 
+diff -urN glibc-2.17-c758a686/sysdeps/x86_64/dl-trampoline.S glibc-2.17-c758a686/sysdeps/x86_64/dl-trampoline.S
+--- glibc-2.17-c758a686/sysdeps/x86_64/dl-trampoline.S	2014-09-10 23:26:03.468045806 -0400
++++ glibc-2.17-c758a686/sysdeps/x86_64/dl-trampoline.S	2014-09-10 23:27:41.534851924 -0400
+@@ -24,6 +24,30 @@
+ # error RTLD_SAVESPACE_SSE must be aligned to 32 bytes
+ #endif
+ 
++/* Area on stack to save and restore registers used for parameter
++   passing when calling _dl_fixup.  */
++#ifdef __ILP32__
++/* X32 saves RCX, RDX, RSI, RDI, R8 and R9 plus RAX.  */
++# define REGISTER_SAVE_AREA	(8 * 7)
++# define REGISTER_SAVE_RAX	0
++#else
++/* X86-64 saves RCX, RDX, RSI, RDI, R8 and R9 plus RAX as well as BND0,
++   BND1, BND2, BND3.  */
++# define REGISTER_SAVE_AREA	(8 * 7 + 16 * 4)
++/* Align bound register save area to 16 bytes.  */
++# define REGISTER_SAVE_BND0	0
++# define REGISTER_SAVE_BND1	(REGISTER_SAVE_BND0 + 16)
++# define REGISTER_SAVE_BND2	(REGISTER_SAVE_BND1 + 16)
++# define REGISTER_SAVE_BND3	(REGISTER_SAVE_BND2 + 16)
++# define REGISTER_SAVE_RAX	(REGISTER_SAVE_BND3 + 16)
++#endif
++#define REGISTER_SAVE_RCX	(REGISTER_SAVE_RAX + 8)
++#define REGISTER_SAVE_RDX	(REGISTER_SAVE_RCX + 8)
++#define REGISTER_SAVE_RSI	(REGISTER_SAVE_RDX + 8)
++#define REGISTER_SAVE_RDI	(REGISTER_SAVE_RSI + 8)
++#define REGISTER_SAVE_R8	(REGISTER_SAVE_RDI + 8)
++#define REGISTER_SAVE_R9	(REGISTER_SAVE_R8 + 8)
++
+ 	.text
+ 	.globl _dl_runtime_resolve
+ 	.type _dl_runtime_resolve, @function
+@@ -31,28 +55,63 @@
+ 	cfi_startproc
+ _dl_runtime_resolve:
+ 	cfi_adjust_cfa_offset(16) # Incorporate PLT
+-	subq $56,%rsp
+-	cfi_adjust_cfa_offset(56)
+-	movq %rax,(%rsp)	# Preserve registers otherwise clobbered.
+-	movq %rcx, 8(%rsp)
+-	movq %rdx, 16(%rsp)
+-	movq %rsi, 24(%rsp)
+-	movq %rdi, 32(%rsp)
+-	movq %r8, 40(%rsp)
+-	movq %r9, 48(%rsp)
+-	movq 64(%rsp), %rsi	# Copy args pushed by PLT in register.
+-	movq 56(%rsp), %rdi	# %rdi: link_map, %rsi: reloc_index
++	subq $REGISTER_SAVE_AREA,%rsp
++	cfi_adjust_cfa_offset(REGISTER_SAVE_AREA)
++	# Preserve registers otherwise clobbered.
++	movq %rax, REGISTER_SAVE_RAX(%rsp)
++	movq %rcx, REGISTER_SAVE_RCX(%rsp)
++	movq %rdx, REGISTER_SAVE_RDX(%rsp)
++	movq %rsi, REGISTER_SAVE_RSI(%rsp)
++	movq %rdi, REGISTER_SAVE_RDI(%rsp)
++	movq %r8, REGISTER_SAVE_R8(%rsp)
++	movq %r9, REGISTER_SAVE_R9(%rsp)
++#ifndef __ILP32__
++	# We also have to preserve bound registers.  These are nops if
++	# Intel MPX isn't available or disabled.
++# ifdef HAVE_MPX_SUPPORT
++	bndmov %bnd0, REGISTER_SAVE_BND0(%rsp)
++	bndmov %bnd1, REGISTER_SAVE_BND1(%rsp)
++	bndmov %bnd2, REGISTER_SAVE_BND2(%rsp)
++	bndmov %bnd3, REGISTER_SAVE_BND3(%rsp)
++# else
++	.byte 0x66,0x0f,0x1b,0x44,0x24,REGISTER_SAVE_BND0
++	.byte 0x66,0x0f,0x1b,0x4c,0x24,REGISTER_SAVE_BND1
++	.byte 0x66,0x0f,0x1b,0x54,0x24,REGISTER_SAVE_BND2
++	.byte 0x66,0x0f,0x1b,0x5c,0x24,REGISTER_SAVE_BND3
++# endif
++#endif
++	# Copy args pushed by PLT in register.
++	# %rdi: link_map, %rsi: reloc_index
++	movq (REGISTER_SAVE_AREA + 8)(%rsp), %rsi
++	movq REGISTER_SAVE_AREA(%rsp), %rdi
+ 	call _dl_fixup		# Call resolver.
+ 	movq %rax, %r11		# Save return value
+-	movq 48(%rsp), %r9	# Get register content back.
+-	movq 40(%rsp), %r8
+-	movq 32(%rsp), %rdi
+-	movq 24(%rsp), %rsi
+-	movq 16(%rsp), %rdx
+-	movq 8(%rsp), %rcx
+-	movq (%rsp), %rax
+-	addq $72, %rsp		# Adjust stack(PLT did 2 pushes)
+-	cfi_adjust_cfa_offset(-72)
++#ifndef __ILP32__
++	# Restore bound registers.  These are nops if Intel MPX isn't
++	# avaiable or disabled.
++# ifdef HAVE_MPX_SUPPORT
++	bndmov REGISTER_SAVE_BND3(%rsp), %bnd3
++	bndmov REGISTER_SAVE_BND2(%rsp), %bnd2
++	bndmov REGISTER_SAVE_BND1(%rsp), %bnd1
++	bndmov REGISTER_SAVE_BND0(%rsp), %bnd0
++# else
++	.byte 0x66,0x0f,0x1a,0x5c,0x24,REGISTER_SAVE_BND3
++	.byte 0x66,0x0f,0x1a,0x54,0x24,REGISTER_SAVE_BND2
++	.byte 0x66,0x0f,0x1a,0x4c,0x24,REGISTER_SAVE_BND1
++	.byte 0x66,0x0f,0x1a,0x44,0x24,REGISTER_SAVE_BND0
++# endif
++#endif
++	# Get register content back.
++	movq REGISTER_SAVE_R9(%rsp), %r9
++	movq REGISTER_SAVE_R8(%rsp), %r8
++	movq REGISTER_SAVE_RDI(%rsp), %rdi
++	movq REGISTER_SAVE_RSI(%rsp), %rsi
++	movq REGISTER_SAVE_RDX(%rsp), %rdx
++	movq REGISTER_SAVE_RCX(%rsp), %rcx
++	movq REGISTER_SAVE_RAX(%rsp), %rax
++	# Adjust stack(PLT did 2 pushes)
++	addq $(REGISTER_SAVE_AREA + 16), %rsp
++	cfi_adjust_cfa_offset(-(REGISTER_SAVE_AREA + 16))
+ 	jmp *%r11		# Jump to function address.
+ 	cfi_endproc
+ 	.size _dl_runtime_resolve, .-_dl_runtime_resolve
+@@ -130,6 +189,20 @@
+ 	movaps %xmm6, (LR_XMM_OFFSET + XMM_SIZE*6)(%rsp)
+ 	movaps %xmm7, (LR_XMM_OFFSET + XMM_SIZE*7)(%rsp)
+ 
++# ifndef __ILP32__
++#  ifdef HAVE_MPX_SUPPORT
++	bndmov %bnd0, 		   (LR_BND_OFFSET)(%rsp)  # Preserve bound
++	bndmov %bnd1, (LR_BND_OFFSET +   BND_SIZE)(%rsp)  # registers. Nops if
++	bndmov %bnd2, (LR_BND_OFFSET + BND_SIZE*2)(%rsp)  # MPX not available
++	bndmov %bnd3, (LR_BND_OFFSET + BND_SIZE*3)(%rsp)  # or disabled.
++#  else
++	.byte 0x66,0x0f,0x1b,0x84,0x24;.long (LR_BND_OFFSET)
++	.byte 0x66,0x0f,0x1b,0x8c,0x24;.long (LR_BND_OFFSET + BND_SIZE)
++	.byte 0x66,0x0f,0x1b,0x84,0x24;.long (LR_BND_OFFSET + BND_SIZE*2)
++	.byte 0x66,0x0f,0x1b,0x8c,0x24;.long (LR_BND_OFFSET + BND_SIZE*3)
++#  endif
++# endif
++
+ # if defined HAVE_AVX_SUPPORT || defined HAVE_AVX512_ASM_SUPPORT
+ 	.data
+ L(have_avx):
+diff -urN glibc-2.17-c758a686/sysdeps/x86_64/link-defines.sym glibc-2.17-c758a686/sysdeps/x86_64/link-defines.sym
+--- glibc-2.17-c758a686/sysdeps/x86_64/link-defines.sym	2014-09-10 23:26:03.468045806 -0400
++++ glibc-2.17-c758a686/sysdeps/x86_64/link-defines.sym	2014-09-10 23:27:41.535851922 -0400
+@@ -6,6 +6,7 @@
+ XMM_SIZE		sizeof (La_x86_64_xmm)
+ YMM_SIZE		sizeof (La_x86_64_ymm)
+ ZMM_SIZE		sizeof (La_x86_64_zmm)
++BND_SIZE		sizeof (__int128)
+ 
+ LR_SIZE			sizeof (struct La_x86_64_regs)
+ LR_RDX_OFFSET		offsetof (struct La_x86_64_regs, lr_rdx)
+@@ -18,6 +19,9 @@
+ LR_RSP_OFFSET		offsetof (struct La_x86_64_regs, lr_rsp)
+ LR_XMM_OFFSET		offsetof (struct La_x86_64_regs, lr_xmm)
+ LR_VECTOR_OFFSET	offsetof (struct La_x86_64_regs, lr_vector)
++#ifndef __ILP32__
++LR_BND_OFFSET		offsetof (struct La_x86_64_regs, lr_bnd)
++#endif
+ 
+ LRV_SIZE		sizeof (struct La_x86_64_retval)
+ LRV_RAX_OFFSET		offsetof (struct La_x86_64_retval, lrv_rax)
+@@ -28,3 +32,7 @@
+ LRV_ST1_OFFSET		offsetof (struct La_x86_64_retval, lrv_st1)
+ LRV_VECTOR0_OFFSET	offsetof (struct La_x86_64_retval, lrv_vector0)
+ LRV_VECTOR1_OFFSET	offsetof (struct La_x86_64_retval, lrv_vector1)
++#ifndef __ILP32__
++LRV_BND0_OFFSET		offsetof (struct La_x86_64_retval, lrv_bnd0)
++LRV_BND1_OFFSET		offsetof (struct La_x86_64_retval, lrv_bnd1)
++#endif

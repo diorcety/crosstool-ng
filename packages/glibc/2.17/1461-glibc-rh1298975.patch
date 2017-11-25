@@ -1,0 +1,619 @@
+commit ced8f8933673f4efda1d666d26a1a949602035ed
+Author: Stephen Gallagher <sgallagh@redhat.com>
+Date:   Fri Apr 29 22:11:09 2016 -0400
+
+    NSS: Implement group merging support.
+
+commit 2413e73c32fc36470885ae548631e081d66f4201
+Author: Zack Weinberg <zackw@panix.com>
+Date:   Mon Jul 18 09:33:21 2016 -0300
+
+    Don't install the internal header grp-merge.h
+
+--- glibc-2.17-c758a686/grp/Makefile
++++ glibc-2.17-c758a686/grp/Makefile
+@@ -23,7 +23,8 @@
+ 
+ routines := fgetgrent initgroups setgroups \
+ 	    getgrent getgrgid getgrnam putgrent \
+-	    getgrent_r getgrgid_r getgrnam_r fgetgrent_r
++	    getgrent_r getgrgid_r getgrnam_r fgetgrent_r \
++	    grp-merge
+ 
+ include ../Makeconfig
+ 
+--- glibc-2.17-c758a686/grp/Versions
++++ glibc-2.17-c758a686/grp/Versions
+@@ -28,4 +28,7 @@
+     # g*
+     getgrouplist;
+   }
++  GLIBC_PRIVATE {
++    __merge_grp; __copy_grp;
++  }
+ }
+--- glibc-2.17-c758a686/grp/getgrgid_r.c
++++ glibc-2.17-c758a686/grp/getgrgid_r.c
+@@ -18,6 +18,7 @@
+ 
+ #include <grp.h>
+ 
++#include <grp-merge.h>
+ 
+ #define LOOKUP_TYPE	struct group
+ #define FUNCTION_NAME	getgrgid
+@@ -25,5 +26,7 @@
+ #define ADD_PARAMS	gid_t gid
+ #define ADD_VARIABLES	gid
+ #define BUFLEN		NSS_BUFLEN_GROUP
++#define DEEPCOPY_FN	__copy_grp
++#define MERGE_FN	__merge_grp
+ 
+ #include <nss/getXXbyYY_r.c>
+--- glibc-2.17-c758a686/grp/getgrnam_r.c
++++ glibc-2.17-c758a686/grp/getgrnam_r.c
+@@ -18,6 +18,7 @@
+ 
+ #include <grp.h>
+ 
++#include <grp-merge.h>
+ 
+ #define LOOKUP_TYPE	struct group
+ #define FUNCTION_NAME	getgrnam
+@@ -25,4 +26,7 @@
+ #define ADD_PARAMS	const char *name
+ #define ADD_VARIABLES	name
+ 
++#define DEEPCOPY_FN	__copy_grp
++#define MERGE_FN	__merge_grp
++
+ #include <nss/getXXbyYY_r.c>
+--- glibc-2.17-c758a686/grp/grp-merge.c
++++ glibc-2.17-c758a686/grp/grp-merge.c
+@@ -0,0 +1,186 @@
++/* Group merging implementation.
++   Copyright (C) 2016 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <errno.h>
++#include <stdlib.h>
++#include <string.h>
++#include <grp.h>
++#include <grp-merge.h>
++
++#define BUFCHECK(size)			\
++  ({					\
++    do					\
++      {					\
++	if (c + (size) > buflen)	\
++          {				\
++	    free (members);		\
++	    return ERANGE;		\
++	  }				\
++      }					\
++    while (0);				\
++  })
++
++int
++internal_function
++__copy_grp (const struct group srcgrp, const size_t buflen,
++	    struct group *destgrp, char *destbuf, char **endptr)
++{
++  size_t i;
++  size_t c = 0;
++  size_t len;
++  size_t memcount;
++  char **members = NULL;
++
++  /* Copy the GID.  */
++  destgrp->gr_gid = srcgrp.gr_gid;
++
++  /* Copy the name.  */
++  len = strlen (srcgrp.gr_name) + 1;
++  BUFCHECK (len);
++  memcpy (&destbuf[c], srcgrp.gr_name, len);
++  destgrp->gr_name = &destbuf[c];
++  c += len;
++
++  /* Copy the password.  */
++  len = strlen (srcgrp.gr_passwd) + 1;
++  BUFCHECK (len);
++  memcpy (&destbuf[c], srcgrp.gr_passwd, len);
++  destgrp->gr_passwd = &destbuf[c];
++  c += len;
++
++  /* Count all of the members.  */
++  for (memcount = 0; srcgrp.gr_mem[memcount]; memcount++)
++    ;
++
++  /* Allocate a temporary holding area for the pointers to the member
++     contents, including space for a NULL-terminator.  */
++  members = malloc (sizeof (char *) * (memcount + 1));
++  if (members == NULL)
++    return ENOMEM;
++
++  /* Copy all of the group members to destbuf and add a pointer to each of
++     them into the 'members' array.  */
++  for (i = 0; srcgrp.gr_mem[i]; i++)
++    {
++      len = strlen (srcgrp.gr_mem[i]) + 1;
++      BUFCHECK (len);
++      memcpy (&destbuf[c], srcgrp.gr_mem[i], len);
++      members[i] = &destbuf[c];
++      c += len;
++    }
++  members[i] = NULL;
++
++  /* Copy the pointers from the members array into the buffer and assign them
++     to the gr_mem member of destgrp.  */
++  destgrp->gr_mem = (char **) &destbuf[c];
++  len = sizeof (char *) * (memcount + 1);
++  BUFCHECK (len);
++  memcpy (&destbuf[c], members, len);
++  c += len;
++  free (members);
++  members = NULL;
++
++  /* Save the count of members at the end.  */
++  BUFCHECK (sizeof (size_t));
++  memcpy (&destbuf[c], &memcount, sizeof (size_t));
++  c += sizeof (size_t);
++
++  if (endptr)
++    *endptr = destbuf + c;
++  return 0;
++}
++libc_hidden_def (__copy_grp)
++
++/* Check that the name, GID and passwd fields match, then
++   copy in the gr_mem array.  */
++int
++internal_function
++__merge_grp (struct group *savedgrp, char *savedbuf, char *savedend,
++	     size_t buflen, struct group *mergegrp, char *mergebuf)
++{
++  size_t c, i, len;
++  size_t savedmemcount;
++  size_t memcount;
++  size_t membersize;
++  char **members = NULL;
++
++  /* We only support merging members of groups with identical names and
++     GID values. If we hit this case, we need to overwrite the current
++     buffer with the saved one (which is functionally equivalent to
++     treating the new lookup as NSS_STATUS_NOTFOUND).  */
++  if (mergegrp->gr_gid != savedgrp->gr_gid
++      || strcmp (mergegrp->gr_name, savedgrp->gr_name))
++    return __copy_grp (*savedgrp, buflen, mergegrp, mergebuf, NULL);
++
++  /* Get the count of group members from the last sizeof (size_t) bytes in the
++     mergegrp buffer.  */
++  savedmemcount = (size_t) *(savedend - sizeof (size_t));
++
++  /* Get the count of new members to add.  */
++  for (memcount = 0; mergegrp->gr_mem[memcount]; memcount++)
++    ;
++
++  /* Create a temporary array to hold the pointers to the member values from
++     both the saved and merge groups.  */
++  membersize = savedmemcount + memcount + 1;
++  members = malloc (sizeof (char *) * membersize);
++  if (members == NULL)
++    return ENOMEM;
++
++  /* Copy in the existing member pointers from the saved group
++     Note: this is not NULL-terminated yet.  */
++  memcpy (members, savedgrp->gr_mem, sizeof (char *) * savedmemcount);
++
++  /* Back up into the savedbuf until we get back to the NULL-terminator of the
++     group member list. (This means walking back savedmemcount + 1 (char *) pointers
++     and the member count value.
++     The value of c is going to be the used length of the buffer backed up by
++     the member count and further backed up by the size of the pointers.  */
++  c = savedend - savedbuf
++      - sizeof (size_t)
++      - sizeof (char *) * (savedmemcount + 1);
++
++  /* Add all the new group members, overwriting the old NULL-terminator while
++     adding the new pointers to the temporary array.  */
++  for (i = 0; mergegrp->gr_mem[i]; i++)
++    {
++      len = strlen (mergegrp->gr_mem[i]) + 1;
++      BUFCHECK (len);
++      memcpy (&savedbuf[c], mergegrp->gr_mem[i], len);
++      members[savedmemcount + i] = &savedbuf[c];
++      c += len;
++    }
++  /* Add the NULL-terminator.  */
++  members[savedmemcount + memcount] = NULL;
++
++  /* Copy the member array back into the buffer after the member list and free
++     the member array.  */
++  savedgrp->gr_mem = (char **) &savedbuf[c];
++  len = sizeof (char *) * membersize;
++  BUFCHECK (len);
++  memcpy (&savedbuf[c], members, len);
++  c += len;
++
++  free (members);
++  members = NULL;
++
++  /* Finally, copy the results back into mergebuf, since that's the buffer
++     that we were provided by the caller.  */
++  return __copy_grp (*savedgrp, buflen, mergegrp, mergebuf, NULL);
++}
++libc_hidden_def (__merge_grp)
+--- glibc-2.17-c758a686/grp/grp-merge.h
++++ glibc-2.17-c758a686/grp/grp-merge.h
+@@ -0,0 +1,37 @@
++/* Group merging implementation.
++   Copyright (C) 2016 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#ifndef _GRP_MERGE_H
++#define _GRP_MERGE_H 1
++
++#include <grp.h>
++
++/* Duplicate a grp struct (and its members). When no longer needed, the
++   calling function must free(newbuf).  */
++int
++__copy_grp (const struct group srcgrp, const size_t buflen,
++	    struct group *destgrp, char *destbuf, char **endptr)
++	    internal_function;
++
++/* Merge the member lists of two grp structs together.  */
++int
++__merge_grp (struct group *savedgrp, char *savedbuf, char *savedend,
++	     size_t buflen, struct group *mergegrp, char *mergebuf)
++	     internal_function;
++
++#endif /* _GRP_MERGE_H */
+--- glibc-2.17-c758a686/include/grp-merge.h
++++ glibc-2.17-c758a686/include/grp-merge.h
+@@ -0,0 +1,7 @@
++#ifndef _GRP_MERGE_H
++#include <grp/grp-merge.h>
++
++libc_hidden_proto (__copy_grp)
++libc_hidden_proto (__merge_grp)
++
++#endif /* _GRP_MERGE_H */
+--- glibc-2.17-c758a686/manual/nss.texi
++++ glibc-2.17-c758a686/manual/nss.texi
+@@ -180,7 +180,7 @@
+ 
+ The case of the keywords is insignificant.  The @var{status}
+ values are the results of a call to a lookup function of a specific
+-service.  They mean
++service.  They mean:
+ 
+ @ftable @samp
+ @item success
+@@ -204,6 +204,50 @@
+ @end ftable
+ 
+ @noindent
++The @var{action} values mean:
++
++@ftable @samp
++@item return
++
++If the status matches, stop the lookup process at this service
++specification.  If an entry is available, provide it to the application.
++If an error occurred, report it to the application.  In case of a prior
++@samp{merge} action, the data is combined with previous lookup results,
++as explained below.
++
++@item continue
++
++If the status matches, proceed with the lookup process at the next
++entry, discarding the result of the current lookup (and any merged
++data).  An exception is the @samp{initgroups} database and the
++@samp{success} status, where @samp{continue} acts like @code{merge}
++below.
++
++@item merge
++
++Proceed with the lookup process, retaining the current lookup result.
++This action is useful only with the @samp{success} status.  If a
++subsequent service lookup succeeds and has a matching @samp{return}
++specification, the results are merged, the lookup process ends, and the
++merged results are returned to the application.  If the following service
++has a matching @samp{merge} action, the lookup process continues,
++retaining the combined data from this and any previous lookups.
++
++After a @code{merge} action, errors from subsequent lookups are ignored,
++and the data gathered so far will be returned.
++
++The @samp{merge} only applies to the @samp{success} status.  It is
++currently implemented for the @samp{group} database and its group
++members field, @samp{gr_mem}.  If specified for other databases, it
++causes the lookup to fail (if the @var{status} matches).
++
++When processing @samp{merge} for @samp{group} membership, the group GID
++and name must be identical for both entries.  If only one or the other is
++a match, the behavior is undefined.
++
++@end ftable
++
++@noindent
+ If we have a line like
+ 
+ @smallexample
+--- glibc-2.17-c758a686/nscd/getgrgid_r.c
++++ glibc-2.17-c758a686/nscd/getgrgid_r.c
+@@ -17,6 +17,7 @@
+ 
+ #include <grp.h>
+ 
++#include <grp-merge.h>
+ 
+ #define LOOKUP_TYPE	struct group
+ #define FUNCTION_NAME	getgrgid
+@@ -25,6 +26,9 @@
+ #define ADD_VARIABLES	gid
+ #define BUFLEN		NSS_BUFLEN_GROUP
+ 
++#define DEEPCOPY_FN	__copy_grp
++#define MERGE_FN	__merge_grp
++
+ /* We are nscd, so we don't want to be talking to ourselves.  */
+ #undef	USE_NSCD
+ 
+--- glibc-2.17-c758a686/nscd/getgrnam_r.c
++++ glibc-2.17-c758a686/nscd/getgrnam_r.c
+@@ -17,6 +17,7 @@
+ 
+ #include <grp.h>
+ 
++#include <grp-merge.h>
+ 
+ #define LOOKUP_TYPE	struct group
+ #define FUNCTION_NAME	getgrnam
+@@ -24,6 +25,9 @@
+ #define ADD_PARAMS	const char *name
+ #define ADD_VARIABLES	name
+ 
++#define DEEPCOPY_FN	__copy_grp
++#define MERGE_FN	__merge_grp
++
+ /* We are nscd, so we don't want to be talking to ourselves.  */
+ #undef	USE_NSCD
+ 
+--- glibc-2.17-c758a686/nss/getXXbyYY_r.c
++++ glibc-2.17-c758a686/nss/getXXbyYY_r.c
+@@ -131,6 +131,52 @@
+ # define AF_VAL AF_INET
+ #endif
+ 
++
++/* Set defaults for merge functions that haven't been defined.  */
++#ifndef DEEPCOPY_FN
++static inline int
++__copy_einval (LOOKUP_TYPE a,
++	       const size_t b,
++	       LOOKUP_TYPE *c,
++	       char *d,
++	       char **e)
++{
++  return EINVAL;
++}
++# define DEEPCOPY_FN __copy_einval
++#endif
++
++#ifndef MERGE_FN
++static inline int
++__merge_einval (LOOKUP_TYPE *a,
++		char *b,
++		char *c,
++		size_t d,
++		LOOKUP_TYPE *e,
++		char *f)
++{
++  return EINVAL;
++}
++# define MERGE_FN __merge_einval
++#endif
++
++#define CHECK_MERGE(err, status)		\
++  ({						\
++    do						\
++      {						\
++	if (err)				\
++	  {					\
++	    __set_errno (err);			\
++	    if (err == ERANGE)			\
++	      status = NSS_STATUS_TRYAGAIN;	\
++	    else				\
++	      status = NSS_STATUS_UNAVAIL;	\
++	    break;				\
++	  }					\
++      }						\
++    while (0);					\
++  })
++
+ /* Type of the lookup function we need here.  */
+ typedef enum nss_status (*lookup_function) (ADD_PARAMS, LOOKUP_TYPE *, char *,
+ 					    size_t, int * H_ERRNO_PARM
+@@ -152,13 +198,16 @@
+   static service_user *startp;
+   static lookup_function start_fct;
+   service_user *nip;
++  int do_merge = 0;
++  LOOKUP_TYPE mergegrp;
++  char *mergebuf = NULL;
++  char *endptr = NULL;
+   union
+   {
+     lookup_function l;
+     void *ptr;
+   } fct;
+-
+-  int no_more;
++  int no_more, err;
+   enum nss_status status = NSS_STATUS_UNAVAIL;
+ #ifdef USE_NSCD
+   int nscd_status;
+@@ -278,9 +327,66 @@
+ 	  && errno == ERANGE)
+ 	break;
+ 
++      if (do_merge)
++	{
++
++	  if (status == NSS_STATUS_SUCCESS)
++	    {
++	      /* The previous loop saved a buffer for merging.
++		 Perform the merge now.  */
++	      err = MERGE_FN (&mergegrp, mergebuf, endptr, buflen, resbuf,
++			      buffer);
++	      CHECK_MERGE (err,status);
++	      do_merge = 0;
++	    }
++	  else
++	    {
++	      /* If the result wasn't SUCCESS, copy the saved buffer back
++	         into the result buffer and set the status back to
++	         NSS_STATUS_SUCCESS to match the previous pass through the
++	         loop.
++	          * If the next action is CONTINUE, it will overwrite the value
++	            currently in the buffer and return the new value.
++	          * If the next action is RETURN, we'll return the previously-
++	            acquired values.
++	          * If the next action is MERGE, then it will be added to the
++	            buffer saved from the previous source.  */
++	      err = DEEPCOPY_FN (mergegrp, buflen, resbuf, buffer, NULL);
++	      CHECK_MERGE (err, status);
++	      status = NSS_STATUS_SUCCESS;
++	    }
++	}
++
++      /* If we were are configured to merge this value with the next one,
++         save the current value of the group struct.  */
++      if (nss_next_action (nip, status) == NSS_ACTION_MERGE
++	  && status == NSS_STATUS_SUCCESS)
++	{
++	  /* Copy the current values into a buffer to be merged with the next
++	     set of retrieved values.  */
++	  if (mergebuf == NULL)
++	    {
++	      /* Only allocate once and reuse it for as many merges as we need
++	         to perform.  */
++	      mergebuf = malloc (buflen);
++	      if (mergebuf == NULL)
++		{
++		  __set_errno (ENOMEM);
++		  status = NSS_STATUS_UNAVAIL;
++		  break;
++		}
++	    }
++
++	  err = DEEPCOPY_FN (*resbuf, buflen, &mergegrp, mergebuf, &endptr);
++	  CHECK_MERGE (err, status);
++	  do_merge = 1;
++	}
++
+       no_more = __nss_next2 (&nip, REENTRANT_NAME_STRING,
+ 			     REENTRANT2_NAME_STRING, &fct.ptr, status, 0);
+     }
++  free (mergebuf);
++  mergebuf = NULL;
+ 
+ #ifdef HANDLE_DIGITS_DOTS
+ done:
+--- glibc-2.17-c758a686/nss/getnssent_r.c
++++ glibc-2.17-c758a686/nss/getnssent_r.c
+@@ -79,7 +79,18 @@
+       else
+ 	status = DL_CALL_FCT (fct.f, (0));
+ 
+-      no_more = __nss_next2 (nip, func_name, NULL, &fct.ptr, status, 0);
++
++      /* This is a special-case.  When [SUCCESS=merge] is in play,
++         _nss_next2() will skip to the next database.  Due to the
++         implementation of that function, we can't know whether we're
++         in an enumeration or an individual lookup, which behaves
++         differently with regards to merging.  We'll treat SUCCESS as
++         an indication to start the enumeration at this database. */
++      if (nss_next_action (*nip, status) == NSS_ACTION_MERGE)
++	no_more = 1;
++      else
++	no_more = __nss_next2 (nip, func_name, NULL, &fct.ptr, status, 0);
++
+       if (is_last_nip)
+ 	*last_nip = *nip;
+     }
+@@ -175,8 +186,18 @@
+ 
+       do
+ 	{
+-	  no_more = __nss_next2 (nip, getent_func_name, NULL, &fct.ptr,
+-				 status, 0);
++        /* This is a special-case.  When [SUCCESS=merge] is in play,
++           _nss_next2() will skip to the next database.  Due to the
++           implementation of that function, we can't know whether we're
++           in an enumeration or an individual lookup, which behaves
++           differently with regards to merging.  We'll treat SUCCESS as
++           an indication to return the results here. */
++	  if (status == NSS_STATUS_SUCCESS
++	      && nss_next_action (*nip, status) == NSS_ACTION_MERGE)
++	    no_more = 1;
++	  else
++	    no_more = __nss_next2 (nip, getent_func_name, NULL, &fct.ptr,
++				   status, 0);
+ 
+ 	  if (is_last_nip)
+ 	    *last_nip = *nip;
+--- glibc-2.17-c758a686/nss/nsswitch.c
++++ glibc-2.17-c758a686/nss/nsswitch.c
+@@ -712,6 +712,9 @@
+ 	      else if (line - name == 8
+ 		       && __strncasecmp (name, "CONTINUE", 8) == 0)
+ 		action = NSS_ACTION_CONTINUE;
++	      else if (line - name == 5
++		       && __strncasecmp (name, "MERGE", 5) == 0)
++		action = NSS_ACTION_MERGE;
+ 	      else
+ 		goto finish;
+ 
+--- glibc-2.17-c758a686/nss/nsswitch.h
++++ glibc-2.17-c758a686/nss/nsswitch.h
+@@ -32,7 +32,8 @@
+ typedef enum
+ {
+   NSS_ACTION_CONTINUE,
+-  NSS_ACTION_RETURN
++  NSS_ACTION_RETURN,
++  NSS_ACTION_MERGE
+ } lookup_actions;
+ 
+ 

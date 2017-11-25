@@ -1,0 +1,25 @@
+commit 9a4848572bec992781311995e9e5e46eb226ce97
+Author: Siddhesh Poyarekar <siddhesh@redhat.com>
+Date:   Thu Nov 20 12:04:26 2014 +0530
+
+    Define IN_MODULE for translation units that define NOT_IN_libc
+    
+    Make sure that all instances where NOT_IN_libc is defined also defines
+    IN_MODULE to facilitate removal NOT_IN_libc in future passes.
+    
+    Verified that the generated code is unchanged on x86_64.
+    
+    	* elf/Makefile (libof-sotruss-lib): Set as extramodules.
+
+Index: glibc-2.17-c758a686/elf/Makefile
+===================================================================
+--- glibc-2.17-c758a686.orig/elf/Makefile
++++ glibc-2.17-c758a686/elf/Makefile
+@@ -98,6 +98,7 @@ extra-objs += sotruss-lib.os sotruss-lib
+ install-others += $(inst_auditdir)/sotruss-lib.so
+ install-bin-script += sotruss
+ generated += sotruss
++libof-sotruss-lib = extramodules
+ CPPFLAGS-sotruss-lib = -DNOT_IN_libc
+ $(objpfx)sotruss-lib.so: $(objpfx)sotruss-lib.os
+ 	$(build-module-asneeded)

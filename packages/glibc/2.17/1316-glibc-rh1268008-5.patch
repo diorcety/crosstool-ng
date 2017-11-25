@@ -1,0 +1,2342 @@
+From 6db8663b21a826cbf689a297a898675078256166 Mon Sep 17 00:00:00 2001
+From: Stefan Liebler <stli@linux.vnet.ibm.com>
+Date: Thu, 8 Oct 2015 10:44:39 +0200
+Subject: [PATCH 05/30] S390: Refactor ifunc implementations and enable
+ ifunc-test-framework.
+
+upstream-commit-id: 31556246c3ac168a2dfec8f9036d913765bbb73d
+https://www.sourceware.org/ml/libc-alpha/2015-07/msg00088.html
+
+On s390 all ifunc resolvers were implemented in multiarch/ifunc-resolve.c.
+The resulting single object files has undefined references to all ifunc-functions.
+This patch introduces one multiarch/<func>.c file for each of memcpy, memcmp
+and memset with the function specific ifunc resolver. The different function
+implementations are now implemented in multiarch/<func>-s390x.S
+(moved from multiarch/<func>.S).
+
+The new multiarch/ifunc-resolve.h file contains the ifunc-resolver macro
+and other helper-macros. They are merged and are now used in common for
+32/64bit. Therefore the __<func>_g5/__<func>_z900 functions were renamed to
+__<func>_default.
+
+This patch also enables testing the ifunc implementations by implementing
+the function __libc_ifunc_impl_list. It uses the helper-macros of ifunc-resolve.h.
+
+ChangeLog:
+
+	* sysdeps/s390/s390-32/multiarch/Makefile (sysdep_routines):
+	Remove ifunc-resolve, add memset-s390, memcpy-s390, memcmp-s390.
+	* sysdeps/s390/s390-32/multiarch/ifunc-resolve.c: Delete File.
+	* sysdeps/s390/s390-32/multiarch/memcmp.S: Move to ...
+	* sysdeps/s390/s390-32/multiarch/memcmp-s390.S: ... here.
+	(memcmp, bcmp): Use __memcmp_default as alias source.
+	* sysdeps/s390/s390-32/multiarch/memcmp.c: New File.
+	* sysdeps/s390/s390-32/memcmp.S (__memcmp_g5):
+	Rename to __memcmp_default.
+	* sysdeps/s390/s390-32/multiarch/memcpy.S: Move to ...
+	* sysdeps/s390/s390-32/multiarch/memcpy-s390.S: ... here.
+	(memcpy): Use __memcpy_default as alias source.
+	* sysdeps/s390/s390-32/multiarch/memcpy.c: New File.
+	* sysdeps/s390/s390-32/memcpy.S (__memcpy_g5):
+	Rename to __memcpy_default.
+	* sysdeps/s390/s390-32/multiarch/memset.S: Move to ...
+	* sysdeps/s390/s390-32/multiarch/memset-s390.S: ... here.
+	(memset): Use __memset_default as alias source.
+	* sysdeps/s390/s390-32/multiarch/memset.c: New File.
+	* sysdeps/s390/s390-32/memset.S (__memset_g5):
+	Rename to __memset_default.
+	* sysdeps/s390/s390-64/multiarch/Makefile (sysdep_routines):
+	Remove ifunc-resolve, add memset-s390x, memcpy-s390x, memcmp-s390x.
+	* sysdeps/s390/s390-64/multiarch/ifunc-resolve.c: Delete File.
+	* sysdeps/s390/s390-64/multiarch/memcmp.S: Move to ...
+	* sysdeps/s390/s390-64/multiarch/memcmp-s390x.S: ... here.
+	(memcmp, bcmp): Use __memcmp_default as alias source.
+	* sysdeps/s390/s390-64/multiarch/memcmp.c: New File.
+	* sysdeps/s390/s390-64/memcmp.S (__memcmp_z900):
+	Rename to __memcmp_default.
+	* sysdeps/s390/s390-64/multiarch/memcpy.S: Move to ...
+	* sysdeps/s390/s390-64/multiarch/memcpy-s390x.S: ... here.
+	(memcpy): Use __memcpy_default as alias source.
+	* sysdeps/s390/s390-64/multiarch/memcpy.c: New File.
+	* sysdeps/s390/s390-64/memcpy.S (__memcpy_z900):
+	Rename to __memcpy_default.
+	* sysdeps/s390/s390-64/multiarch/memset.S: Move to ...
+	* sysdeps/s390/s390-64/multiarch/memset-s390x.S: ... here.
+	(memset): Use __memset_default as alias source.
+	* sysdeps/s390/s390-64/multiarch/memset.c: New File.
+	* sysdeps/s390/s390-64/memset.S (__memset_z900):
+	Rename to __memset_default.
+	* sysdeps/s390/multiarch/ifunc-resolve.h: New File.
+	* sysdeps/s390/multiarch/ifunc-impl-list.c: New File.
+---
+ sysdeps/s390/multiarch/ifunc-impl-list.c       |  74 ++++++++++++++++
+ sysdeps/s390/multiarch/ifunc-resolve.h         |  75 ++++++++++++++++
+ sysdeps/s390/s390-32/memcmp.S                  |  46 +++++-----
+ sysdeps/s390/s390-32/memcpy.S                  |  50 +++++------
+ sysdeps/s390/s390-32/memset.S                  |  44 +++++-----
+ sysdeps/s390/s390-32/multiarch/Makefile        |   3 +-
+ sysdeps/s390/s390-32/multiarch/ifunc-resolve.c |  72 ----------------
+ sysdeps/s390/s390-32/multiarch/memcmp-s390.S   | 104 +++++++++++++++++++++++
+ sysdeps/s390/s390-32/multiarch/memcmp.S        | 104 -----------------------
+ sysdeps/s390/s390-32/multiarch/memcmp.c        |  24 ++++++
+ sysdeps/s390/s390-32/multiarch/memcpy-s390.S   |  98 +++++++++++++++++++++
+ sysdeps/s390/s390-32/multiarch/memcpy.S        |  98 ---------------------
+ sysdeps/s390/s390-32/multiarch/memcpy.c        |  24 ++++++
+ sysdeps/s390/s390-32/multiarch/memset-s390.S   | 113 +++++++++++++++++++++++++
+ sysdeps/s390/s390-32/multiarch/memset.S        | 113 -------------------------
+ sysdeps/s390/s390-32/multiarch/memset.c        |  23 +++++
+ sysdeps/s390/s390-64/memcmp.S                  |  42 ++++-----
+ sysdeps/s390/s390-64/memcpy.S                  |  40 ++++-----
+ sysdeps/s390/s390-64/memset.S                  |  40 ++++-----
+ sysdeps/s390/s390-64/multiarch/Makefile        |   3 +-
+ sysdeps/s390/s390-64/multiarch/ifunc-resolve.c |  76 -----------------
+ sysdeps/s390/s390-64/multiarch/memcmp-s390x.S  | 101 ++++++++++++++++++++++
+ sysdeps/s390/s390-64/multiarch/memcmp.S        | 101 ----------------------
+ sysdeps/s390/s390-64/multiarch/memcmp.c        |  24 ++++++
+ sysdeps/s390/s390-64/multiarch/memcpy-s390x.S  |  94 ++++++++++++++++++++
+ sysdeps/s390/s390-64/multiarch/memcpy.S        |  94 --------------------
+ sysdeps/s390/s390-64/multiarch/memcpy.c        |  24 ++++++
+ sysdeps/s390/s390-64/multiarch/memset-s390x.S  | 109 ++++++++++++++++++++++++
+ sysdeps/s390/s390-64/multiarch/memset.S        | 109 ------------------------
+ sysdeps/s390/s390-64/multiarch/memset.c        |  23 +++++
+ 30 files changed, 1045 insertions(+), 900 deletions(-)
+ create mode 100644 sysdeps/s390/multiarch/ifunc-impl-list.c
+ create mode 100644 sysdeps/s390/multiarch/ifunc-resolve.h
+ delete mode 100644 sysdeps/s390/s390-32/multiarch/ifunc-resolve.c
+ create mode 100644 sysdeps/s390/s390-32/multiarch/memcmp-s390.S
+ delete mode 100644 sysdeps/s390/s390-32/multiarch/memcmp.S
+ create mode 100644 sysdeps/s390/s390-32/multiarch/memcmp.c
+ create mode 100644 sysdeps/s390/s390-32/multiarch/memcpy-s390.S
+ delete mode 100644 sysdeps/s390/s390-32/multiarch/memcpy.S
+ create mode 100644 sysdeps/s390/s390-32/multiarch/memcpy.c
+ create mode 100644 sysdeps/s390/s390-32/multiarch/memset-s390.S
+ delete mode 100644 sysdeps/s390/s390-32/multiarch/memset.S
+ create mode 100644 sysdeps/s390/s390-32/multiarch/memset.c
+ delete mode 100644 sysdeps/s390/s390-64/multiarch/ifunc-resolve.c
+ create mode 100644 sysdeps/s390/s390-64/multiarch/memcmp-s390x.S
+ delete mode 100644 sysdeps/s390/s390-64/multiarch/memcmp.S
+ create mode 100644 sysdeps/s390/s390-64/multiarch/memcmp.c
+ create mode 100644 sysdeps/s390/s390-64/multiarch/memcpy-s390x.S
+ delete mode 100644 sysdeps/s390/s390-64/multiarch/memcpy.S
+ create mode 100644 sysdeps/s390/s390-64/multiarch/memcpy.c
+ create mode 100644 sysdeps/s390/s390-64/multiarch/memset-s390x.S
+ delete mode 100644 sysdeps/s390/s390-64/multiarch/memset.S
+ create mode 100644 sysdeps/s390/s390-64/multiarch/memset.c
+
+diff --git a/sysdeps/s390/multiarch/ifunc-impl-list.c b/sysdeps/s390/multiarch/ifunc-impl-list.c
+new file mode 100644
+index 0000000..c330904
+--- /dev/null
++++ b/sysdeps/s390/multiarch/ifunc-impl-list.c
+@@ -0,0 +1,74 @@
++/* Enumerate available IFUNC implementations of a function. s390/s390x version.
++   Copyright (C) 2015 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <assert.h>
++#include <string.h>
++#include <ifunc-impl-list.h>
++#include <ifunc-resolve.h>
++
++/* Maximum number of IFUNC implementations.  */
++#define MAX_IFUNC	3
++
++/* Fill ARRAY of MAX elements with IFUNC implementations for function
++   NAME supported on target machine and return the number of valid
++   entries.  */
++size_t
++__libc_ifunc_impl_list (const char *name, struct libc_ifunc_impl *array,
++			size_t max)
++{
++  assert (max >= MAX_IFUNC);
++
++  size_t i = 0;
++
++  /* Get hardware information.  */
++  unsigned long int dl_hwcap = GLRO (dl_hwcap);
++  unsigned long long stfle_bits = 0ULL;
++  if ((dl_hwcap & HWCAP_S390_STFLE)
++	&& (dl_hwcap & HWCAP_S390_ZARCH)
++	&& (dl_hwcap & HWCAP_S390_HIGH_GPRS))
++    {
++      S390_STORE_STFLE (stfle_bits);
++    }
++
++  IFUNC_IMPL (i, name, memset,
++	      IFUNC_IMPL_ADD (array, i, memset,
++			      S390_IS_Z196 (stfle_bits), __memset_z196)
++	      IFUNC_IMPL_ADD (array, i, memset,
++			      S390_IS_Z10 (stfle_bits), __memset_z10)
++	      IFUNC_IMPL_ADD (array, i, memset, 1, __memset_default))
++
++  IFUNC_IMPL (i, name, memcmp,
++	      IFUNC_IMPL_ADD (array, i, memcmp,
++			      S390_IS_Z196 (stfle_bits), __memcmp_z196)
++	      IFUNC_IMPL_ADD (array, i, memcmp,
++			      S390_IS_Z10 (stfle_bits), __memcmp_z10)
++	      IFUNC_IMPL_ADD (array, i, memcmp, 1, __memcmp_default))
++
++#ifdef SHARED
++
++  IFUNC_IMPL (i, name, memcpy,
++	      IFUNC_IMPL_ADD (array, i, memcpy,
++			      S390_IS_Z196 (stfle_bits), __memcpy_z196)
++	      IFUNC_IMPL_ADD (array, i, memcpy,
++			      S390_IS_Z10 (stfle_bits), __memcpy_z10)
++	      IFUNC_IMPL_ADD (array, i, memcpy, 1, __memcpy_default))
++
++#endif /* SHARED */
++
++  return i;
++}
+diff --git a/sysdeps/s390/multiarch/ifunc-resolve.h b/sysdeps/s390/multiarch/ifunc-resolve.h
+new file mode 100644
+index 0000000..491df68
+--- /dev/null
++++ b/sysdeps/s390/multiarch/ifunc-resolve.h
+@@ -0,0 +1,75 @@
++/* IFUNC resolver function for CPU specific functions.
++   32/64 bit S/390 version.
++   Copyright (C) 2015 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <unistd.h>
++#include <dl-procinfo.h>
++
++#define S390_STFLE_BITS_Z10  34 /* General instructions extension */
++#define S390_STFLE_BITS_Z196 45 /* Distinct operands, pop ... */
++
++#define S390_IS_Z196(STFLE_BITS)			\
++  ((STFLE_BITS & (1ULL << (63 - S390_STFLE_BITS_Z196))) != 0)
++
++#define S390_IS_Z10(STFLE_BITS)				\
++  ((STFLE_BITS & (1ULL << (63 - S390_STFLE_BITS_Z10))) != 0)
++
++#define S390_STORE_STFLE(STFLE_BITS)					\
++  /* We want just 1 double word to be returned.  */			\
++  register unsigned long reg0 asm("0") = 0;				\
++									\
++  asm volatile(".machine push"        "\n\t"				\
++	       ".machine \"z9-109\""  "\n\t"				\
++	       ".machinemode \"zarch_nohighgprs\"\n\t"			\
++	       "stfle %0"             "\n\t"				\
++	       ".machine pop"         "\n"				\
++	       : "=QS" (STFLE_BITS), "+d" (reg0)			\
++	       : : "cc");
++
++#define s390_libc_ifunc(FUNC)						\
++  asm (".globl " #FUNC "\n\t"						\
++       ".type  " #FUNC ",@gnu_indirect_function\n\t"			\
++       ".set   " #FUNC ",__resolve_" #FUNC "\n\t"			\
++       ".globl __GI_" #FUNC "\n\t"					\
++       ".set   __GI_" #FUNC "," #FUNC "\n");				\
++									\
++  /* Make the declarations of the optimized functions hidden in order
++     to prevent GOT slots being generated for them. */			\
++  extern void *__##FUNC##_z196 attribute_hidden;			\
++  extern void *__##FUNC##_z10 attribute_hidden;				\
++  extern void *__##FUNC##_default attribute_hidden;			\
++									\
++  void *__resolve_##FUNC (unsigned long int dl_hwcap)			\
++  {									\
++    if ((dl_hwcap & HWCAP_S390_STFLE)					\
++	&& (dl_hwcap & HWCAP_S390_ZARCH)				\
++	&& (dl_hwcap & HWCAP_S390_HIGH_GPRS))				\
++      {									\
++	unsigned long long stfle_bits;					\
++	S390_STORE_STFLE (stfle_bits);					\
++									\
++	if (S390_IS_Z196 (stfle_bits))					\
++	  return &__##FUNC##_z196;					\
++	else if (S390_IS_Z10 (stfle_bits))				\
++	  return &__##FUNC##_z10;					\
++	else								\
++	  return &__##FUNC##_default;					\
++      }									\
++    else								\
++      return &__##FUNC##_default;					\
++  }
+diff --git a/sysdeps/s390/s390-32/memcmp.S b/sysdeps/s390/s390-32/memcmp.S
+index b6eabe5..104e280 100644
+--- a/sysdeps/s390/s390-32/memcmp.S
++++ b/sysdeps/s390/s390-32/memcmp.S
+@@ -27,38 +27,38 @@
+ 
+        .text
+ #ifdef USE_MULTIARCH
+-ENTRY(__memcmp_g5)
++ENTRY(__memcmp_default)
+ #else
+ ENTRY(memcmp)
+ #endif
+ 	.machine "g5"
+-        basr    %r5,0
++	basr    %r5,0
+ .L_G5_16:
+-        ltr     %r4,%r4
+-        je      .L_G5_4
+-        ahi     %r4,-1
+-        lr      %r1,%r4
+-        srl     %r1,8
+-        ltr     %r1,%r1
+-        jne     .L_G5_12
+-        ex      %r4,.L_G5_17-.L_G5_16(%r5)
++	ltr     %r4,%r4
++	je      .L_G5_4
++	ahi     %r4,-1
++	lr      %r1,%r4
++	srl     %r1,8
++	ltr     %r1,%r1
++	jne     .L_G5_12
++	ex      %r4,.L_G5_17-.L_G5_16(%r5)
+ .L_G5_4:
+-        ipm     %r2
+-        sll     %r2,2
+-        sra     %r2,30
+-        br      %r14
++	ipm     %r2
++	sll     %r2,2
++	sra     %r2,30
++	br      %r14
+ .L_G5_12:
+-        clc     0(256,%r3),0(%r2)
+-        jne     .L_G5_4
+-        la      %r3,256(%r3)
+-        la      %r2,256(%r2)
+-        brct    %r1,.L_G5_12
+-        ex      %r4,.L_G5_17-.L_G5_16(%r5)
+-        j       .L_G5_4
++	clc     0(256,%r3),0(%r2)
++	jne     .L_G5_4
++	la      %r3,256(%r3)
++	la      %r2,256(%r2)
++	brct    %r1,.L_G5_12
++	ex      %r4,.L_G5_17-.L_G5_16(%r5)
++	j       .L_G5_4
+ .L_G5_17:
+-        clc     0(1,%r3),0(%r2)
++	clc     0(1,%r3),0(%r2)
+ #ifdef USE_MULTIARCH
+-END(__memcmp_g5)
++END(__memcmp_default)
+ #else
+ END(memcmp)
+ libc_hidden_builtin_def (memcmp)
+diff --git a/sysdeps/s390/s390-32/memcpy.S b/sysdeps/s390/s390-32/memcpy.S
+index a3b1ace..6a2cf68 100644
+--- a/sysdeps/s390/s390-32/memcpy.S
++++ b/sysdeps/s390/s390-32/memcpy.S
+@@ -26,41 +26,41 @@
+      %r4 = number of bytes to copy.  */
+ 
+ #ifdef USE_MULTIARCH
+-ENTRY(__memcpy_g5)
++ENTRY(__memcpy_default)
+ #else
+ ENTRY(memcpy)
+ #endif
+ 	.machine "g5"
+-        st      %r13,52(%r15)
+-        .cfi_offset 13, -44
+-        basr    %r13,0
++	st      %r13,52(%r15)
++	.cfi_offset 13, -44
++	basr    %r13,0
+ .L_G5_16:
+-        ltr     %r4,%r4
+-        je      .L_G5_4
+-        ahi     %r4,-1
+-        lr      %r5,%r4
+-        srl     %r5,8
+-        ltr     %r5,%r5
+-        lr      %r1,%r2
+-        jne     .L_G5_12
+-        ex      %r4,.L_G5_17-.L_G5_16(%r13)
++	ltr     %r4,%r4
++	je      .L_G5_4
++	ahi     %r4,-1
++	lr      %r5,%r4
++	srl     %r5,8
++	ltr     %r5,%r5
++	lr      %r1,%r2
++	jne     .L_G5_12
++	ex      %r4,.L_G5_17-.L_G5_16(%r13)
+ .L_G5_4:
+-        l       %r13,52(%r15)
+-        br      %r14
++	l       %r13,52(%r15)
++	br      %r14
+ .L_G5_13:
+-        chi	%r5,4096             # Switch to mvcle for copies >1MB
+-        jh	__memcpy_mvcle
++	chi	%r5,4096             # Switch to mvcle for copies >1MB
++	jh	__memcpy_mvcle
+ .L_G5_12:
+-        mvc     0(256,%r1),0(%r3)
+-        la      %r1,256(%r1)
+-        la      %r3,256(%r3)
+-        brct    %r5,.L_G5_12
+-        ex      %r4,.L_G5_17-.L_G5_16(%r13)
+-        j       .L_G5_4
++	mvc     0(256,%r1),0(%r3)
++	la      %r1,256(%r1)
++	la      %r3,256(%r3)
++	brct    %r5,.L_G5_12
++	ex      %r4,.L_G5_17-.L_G5_16(%r13)
++	j       .L_G5_4
+ .L_G5_17:
+-        mvc     0(1,%r1),0(%r3)
++	mvc     0(1,%r1),0(%r3)
+ #ifdef USE_MULTIARCH
+-END(__memcpy_g5)
++END(__memcpy_default)
+ #else
+ END(memcpy)
+ libc_hidden_builtin_def (memcpy)
+diff --git a/sysdeps/s390/s390-32/memset.S b/sysdeps/s390/s390-32/memset.S
+index a73dc6c..d363cf1 100644
+--- a/sysdeps/s390/s390-32/memset.S
++++ b/sysdeps/s390/s390-32/memset.S
+@@ -28,37 +28,37 @@
+        .text
+ 
+ #ifdef USE_MULTIARCH
+-ENTRY(__memset_g5)
++ENTRY(__memset_default)
+ #else
+ ENTRY(memset)
+ #endif
+ 	.machine "g5"
+-        basr    %r5,0
++	basr    %r5,0
+ .L_G5_19:
+-        ltr     %r4,%r4
+-        je      .L_G5_4
+-        stc     %r3,0(%r2)
+-        chi     %r4,1
+-        lr      %r1,%r2
+-        je      .L_G5_4
+-        ahi     %r4,-2
+-        lr      %r3,%r4
+-        srl     %r3,8
+-        ltr     %r3,%r3
+-        jne     .L_G5_14
+-        ex      %r4,.L_G5_20-.L_G5_19(%r5)
++	ltr     %r4,%r4
++	je      .L_G5_4
++	stc     %r3,0(%r2)
++	chi     %r4,1
++	lr      %r1,%r2
++	je      .L_G5_4
++	ahi     %r4,-2
++	lr      %r3,%r4
++	srl     %r3,8
++	ltr     %r3,%r3
++	jne     .L_G5_14
++	ex      %r4,.L_G5_20-.L_G5_19(%r5)
+ .L_G5_4:
+-        br      %r14
++	br      %r14
+ .L_G5_14:
+-        mvc     1(256,%r1),0(%r1)
+-        la      %r1,256(%r1)
+-        brct    %r3,.L_G5_14
+-        ex      %r4,.L_G5_20-.L_G5_19(%r5)
+-        j       .L_G5_4
++	mvc     1(256,%r1),0(%r1)
++	la      %r1,256(%r1)
++	brct    %r3,.L_G5_14
++	ex      %r4,.L_G5_20-.L_G5_19(%r5)
++	j       .L_G5_4
+ .L_G5_20:
+-        mvc     1(1,%r1),0(%r1)
++	mvc     1(1,%r1),0(%r1)
+ #ifdef USE_MULTIARCH
+-END(__memset_g5)
++END(__memset_default)
+ #else
+ END(memset)
+ libc_hidden_builtin_def (memset)
+diff --git a/sysdeps/s390/s390-32/multiarch/Makefile b/sysdeps/s390/s390-32/multiarch/Makefile
+index 9baeecd..f8aee14 100644
+--- a/sysdeps/s390/s390-32/multiarch/Makefile
++++ b/sysdeps/s390/s390-32/multiarch/Makefile
+@@ -1,3 +1,4 @@
+ ifeq ($(subdir),string)
+-sysdep_routines += ifunc-resolve memset memcpy memcmp
++sysdep_routines += memset memset-s390 memcpy memcpy-s390 \
++		   memcmp memcmp-s390
+ endif
+diff --git a/sysdeps/s390/s390-32/multiarch/ifunc-resolve.c b/sysdeps/s390/s390-32/multiarch/ifunc-resolve.c
+deleted file mode 100644
+index 522c63c..0000000
+--- a/sysdeps/s390/s390-32/multiarch/ifunc-resolve.c
++++ /dev/null
+@@ -1,72 +0,0 @@
+-/* IFUNC resolver function for CPU specific functions.
+-   32 bit S/390 version.
+-   Copyright (C) 2012 Free Software Foundation, Inc.
+-   This file is part of the GNU C Library.
+-
+-   The GNU C Library is free software; you can redistribute it and/or
+-   modify it under the terms of the GNU Lesser General Public
+-   License as published by the Free Software Foundation; either
+-   version 2.1 of the License, or (at your option) any later version.
+-
+-   The GNU C Library is distributed in the hope that it will be useful,
+-   but WITHOUT ANY WARRANTY; without even the implied warranty of
+-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+-   Lesser General Public License for more details.
+-
+-   You should have received a copy of the GNU Lesser General Public
+-   License along with the GNU C Library; if not, see
+-   <http://www.gnu.org/licenses/>.  */
+-
+-#include <unistd.h>
+-#include <dl-procinfo.h>
+-
+-#define STFLE_BITS_Z10  34 /* General instructions extension */
+-#define STFLE_BITS_Z196 45 /* Distinct operands, pop ... */
+-
+-#ifndef NOT_IN_libc
+-
+-#define IFUNC_RESOLVE(FUNC)						\
+-  asm (".globl " #FUNC "\n\t"						\
+-       ".type  " #FUNC ",@gnu_indirect_function\n\t"			\
+-       ".set   " #FUNC ",__resolve_" #FUNC "\n\t"			\
+-       ".globl __GI_" #FUNC "\n\t"					\
+-       ".set   __GI_" #FUNC "," #FUNC "\n");				\
+-									\
+-  /* Make the declarations of the optimized functions hidden in order
+-     to prevent GOT slots being generated for them. */			\
+-  extern void *__##FUNC##_z196 attribute_hidden;			\
+-  extern void *__##FUNC##_z10 attribute_hidden;				\
+-  extern void *__##FUNC##_g5 attribute_hidden;				\
+-									\
+-  void *__resolve_##FUNC (unsigned long int dl_hwcap)			\
+-  {									\
+-    if ((dl_hwcap & HWCAP_S390_STFLE)					\
+-	&& (dl_hwcap & HWCAP_S390_ZARCH)				\
+-	&& (dl_hwcap & HWCAP_S390_HIGH_GPRS))				\
+-      {									\
+-	/* We want just 1 double word to be returned.  */		\
+-	register unsigned long reg0 asm("0") = 0;			\
+-	unsigned long long stfle_bits;					\
+-									\
+-	asm volatile(".insn s,0xb2b00000,%0" "\n\t"  /* stfle */	\
+-		     : "=QS" (stfle_bits), "+d" (reg0)			\
+-		     : : "cc");						\
+-									\
+-	if ((stfle_bits & (1ULL << (63 - STFLE_BITS_Z196))) != 0)	\
+-	  return &__##FUNC##_z196;					\
+-	else if ((stfle_bits & (1ULL << (63 - STFLE_BITS_Z10))) != 0)	\
+-	  return &__##FUNC##_z10;					\
+-      }									\
+-    return &__##FUNC##_g5;						\
+-  }
+-
+-IFUNC_RESOLVE(memset)
+-IFUNC_RESOLVE(memcmp)
+-asm(".weak bcmp ; bcmp = memcmp");
+-
+-/* In the static lib memcpy is needed before the reloc is resolved.  */
+-#ifdef SHARED
+-IFUNC_RESOLVE(memcpy)
+-#endif
+-
+-#endif
+diff --git a/sysdeps/s390/s390-32/multiarch/memcmp-s390.S b/sysdeps/s390/s390-32/multiarch/memcmp-s390.S
+new file mode 100644
+index 0000000..b339aac
+--- /dev/null
++++ b/sysdeps/s390/s390-32/multiarch/memcmp-s390.S
+@@ -0,0 +1,104 @@
++/* CPU specific memcmp implementations.  32 bit S/390 version.
++   Copyright (C) 2012-2015 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++
++#include "sysdep.h"
++#include "asm-syntax.h"
++
++/* INPUT PARAMETERS
++     %r2 = address of first memory area
++     %r3 = address of second memory area
++     %r4 = number of bytes to compare.  */
++
++       .text
++
++#ifndef NOT_IN_libc
++
++ENTRY(__memcmp_z196)
++	.machine "z196"
++	.machinemode "zarch_nohighgprs"
++	ltr     %r4,%r4
++	je      .L_Z196_4
++	ahi     %r4,-1
++	srlk    %r1,%r4,8
++	ltr     %r1,%r1
++	jne     .L_Z196_2
++.L_Z196_3:
++	exrl    %r4,.L_Z196_14
++.L_Z196_4:
++	ipm     %r2
++	sll     %r2,2
++	sra     %r2,30
++	br      %r14
++.L_Z196_17:
++	la      %r3,256(%r3)
++	la      %r2,256(%r2)
++	ahi     %r1,-1
++	je      .L_Z196_3
++.L_Z196_2:
++	pfd     1,512(%r3)
++	pfd     1,512(%r2)
++	clc     0(256,%r3),0(%r2)
++	je      .L_Z196_17
++	ipm     %r2
++	sll     %r2,2
++	sra     %r2,30
++	br      %r14
++.L_Z196_14:
++	clc     0(1,%r3),0(%r2)
++END(__memcmp_z196)
++
++ENTRY(__memcmp_z10)
++	.machine "z10"
++	.machinemode "zarch_nohighgprs"
++	ltr     %r4,%r4
++	je      .L_Z10_4
++	ahi     %r4,-1
++	lr      %r1,%r4
++	srl     %r1,8
++	cijlh   %r1,0,.L_Z10_12
++.L_Z10_3:
++	exrl    %r4,.L_Z10_15
++.L_Z10_4:
++	ipm     %r2
++	sll     %r2,2
++	sra     %r2,30
++	br      %r14
++.L_Z10_12:
++	pfd     1,512(%r3)
++	pfd     1,512(%r2)
++	clc     0(256,%r3),0(%r2)
++	jne     .L_Z10_4
++	la      %r3,256(%r3)
++	la      %r2,256(%r2)
++	brct    %r1,.L_Z10_12
++	j       .L_Z10_3
++.L_Z10_15:
++	clc     0(1,%r3),0(%r2)
++END(__memcmp_z10)
++
++#endif /* !NOT_IN_libc */
++
++#include "../memcmp.S"
++
++#ifdef NOT_IN_libc
++.globl   memcmp
++.set     memcmp,__memcmp_default
++.weak    bcmp
++.set	 bcmp,__memcmp_default
++#endif
+diff --git a/sysdeps/s390/s390-32/multiarch/memcmp.S b/sysdeps/s390/s390-32/multiarch/memcmp.S
+deleted file mode 100644
+index c654d19..0000000
+--- a/sysdeps/s390/s390-32/multiarch/memcmp.S
++++ /dev/null
+@@ -1,104 +0,0 @@
+-/* CPU specific memcmp implementations.  32 bit S/390 version.
+-   Copyright (C) 2012 Free Software Foundation, Inc.
+-   This file is part of the GNU C Library.
+-
+-   The GNU C Library is free software; you can redistribute it and/or
+-   modify it under the terms of the GNU Lesser General Public
+-   License as published by the Free Software Foundation; either
+-   version 2.1 of the License, or (at your option) any later version.
+-
+-   The GNU C Library is distributed in the hope that it will be useful,
+-   but WITHOUT ANY WARRANTY; without even the implied warranty of
+-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+-   Lesser General Public License for more details.
+-
+-   You should have received a copy of the GNU Lesser General Public
+-   License along with the GNU C Library; if not, see
+-   <http://www.gnu.org/licenses/>.  */
+-
+-
+-#include "sysdep.h"
+-#include "asm-syntax.h"
+-
+-/* INPUT PARAMETERS
+-     %r2 = address of first memory area
+-     %r3 = address of second memory area
+-     %r4 = number of bytes to compare.  */
+-
+-       .text
+-
+-#ifndef NOT_IN_libc
+-
+-ENTRY(__memcmp_z196)
+-	.machine "z196"
+-	.machinemode "zarch_nohighgprs"
+-        ltr     %r4,%r4
+-        je      .L_Z196_4
+-        ahi     %r4,-1
+-        srlk    %r1,%r4,8
+-        ltr     %r1,%r1
+-        jne     .L_Z196_2
+-.L_Z196_3:
+-        exrl    %r4,.L_Z196_14
+-.L_Z196_4:
+-        ipm     %r2
+-        sll     %r2,2
+-        sra     %r2,30
+-        br      %r14
+-.L_Z196_17:
+-        la      %r3,256(%r3)
+-        la      %r2,256(%r2)
+-        ahi     %r1,-1
+-        je      .L_Z196_3
+-.L_Z196_2:
+-        pfd     1,512(%r3)
+-        pfd     1,512(%r2)
+-        clc     0(256,%r3),0(%r2)
+-        je      .L_Z196_17
+-        ipm     %r2
+-        sll     %r2,2
+-        sra     %r2,30
+-        br      %r14
+-.L_Z196_14:
+-        clc     0(1,%r3),0(%r2)
+-END(__memcmp_z196)
+-
+-ENTRY(__memcmp_z10)
+-	.machine "z10"
+-	.machinemode "zarch_nohighgprs"
+-        ltr     %r4,%r4
+-        je      .L_Z10_4
+-        ahi     %r4,-1
+-        lr      %r1,%r4
+-        srl     %r1,8
+-        cijlh   %r1,0,.L_Z10_12
+-.L_Z10_3:
+-        exrl    %r4,.L_Z10_15
+-.L_Z10_4:
+-        ipm     %r2
+-        sll     %r2,2
+-        sra     %r2,30
+-        br      %r14
+-.L_Z10_12:
+-        pfd     1,512(%r3)
+-        pfd     1,512(%r2)
+-        clc     0(256,%r3),0(%r2)
+-        jne     .L_Z10_4
+-        la      %r3,256(%r3)
+-        la      %r2,256(%r2)
+-        brct    %r1,.L_Z10_12
+-        j       .L_Z10_3
+-.L_Z10_15:
+-        clc     0(1,%r3),0(%r2)
+-END(__memcmp_z10)
+-
+-#endif
+-
+-#include "../memcmp.S"
+-
+-#ifdef NOT_IN_libc
+-.globl   memcmp
+-.set     memcmp,__memcmp_g5
+-.weak    bcmp
+-.set	 bcmp,__memcmp_g5
+-#endif
+diff --git a/sysdeps/s390/s390-32/multiarch/memcmp.c b/sysdeps/s390/s390-32/multiarch/memcmp.c
+new file mode 100644
+index 0000000..7089d56
+--- /dev/null
++++ b/sysdeps/s390/s390-32/multiarch/memcmp.c
+@@ -0,0 +1,24 @@
++/* Multiple versions of memcmp.
++   Copyright (C) 2015 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#ifndef NOT_IN_libc
++# include <ifunc-resolve.h>
++
++s390_libc_ifunc (memcmp)
++asm(".weak bcmp ; bcmp = memcmp");
++#endif
+diff --git a/sysdeps/s390/s390-32/multiarch/memcpy-s390.S b/sysdeps/s390/s390-32/multiarch/memcpy-s390.S
+new file mode 100644
+index 0000000..f6e0fea
+--- /dev/null
++++ b/sysdeps/s390/s390-32/multiarch/memcpy-s390.S
+@@ -0,0 +1,98 @@
++/* CPU specific memcpy implementations.  32 bit S/390 version.
++   Copyright (C) 2012-2015 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++
++#include "sysdep.h"
++#include "asm-syntax.h"
++
++/* INPUT PARAMETERS
++     %r2 = target operands address
++     %r3 = source operands address
++     %r4 = number of bytes to copy.  */
++
++       .text
++
++#if defined SHARED && !defined NOT_IN_libc
++
++ENTRY(__memcpy_z196)
++	.machine "z196"
++	.machinemode "zarch_nohighgprs"
++	llgfr   %r4,%r4
++	ltgr    %r4,%r4
++	je      .L_Z196_4
++	aghi    %r4,-1
++	lr      %r1,%r2
++	srlg    %r5,%r4,8
++	ltgr    %r5,%r5
++	jne     .L_Z196_5
++.L_Z196_3:
++	exrl    %r4,.L_Z196_14
++.L_Z196_4:
++	br      %r14
++.L_Z196_5:
++	cgfi    %r5,262144      # Switch to mvcle for copies >64MB
++	jh      __memcpy_mvcle
++.L_Z196_2:
++	pfd     1,768(%r3)
++	pfd     2,768(%r1)
++	mvc     0(256,%r1),0(%r3)
++	aghi    %r5,-1
++	la      %r1,256(%r1)
++	la      %r3,256(%r3)
++	jne     .L_Z196_2
++	j       .L_Z196_3
++.L_Z196_14:
++	mvc     0(1,%r1),0(%r3)
++END(__memcpy_z196)
++
++ENTRY(__memcpy_z10)
++	.machine "z10"
++	.machinemode "zarch_nohighgprs"
++	llgfr   %r4,%r4
++	cgije   %r4,0,.L_Z10_4
++	aghi    %r4,-1
++	lr      %r1,%r2
++	srlg    %r5,%r4,8
++	cgijlh  %r5,0,.L_Z10_13
++.L_Z10_3:
++	exrl    %r4,.L_Z10_15
++.L_Z10_4:
++	br      %r14
++.L_Z10_13:
++	cgfi    %r5,65535	# Switch to mvcle for copies >16MB
++	jh      __memcpy_mvcle
++.L_Z10_12:
++	pfd     1,768(%r3)
++	pfd     2,768(%r1)
++	mvc     0(256,%r1),0(%r3)
++	la      %r1,256(%r1)
++	la      %r3,256(%r3)
++	brctg   %r5,.L_Z10_12
++	j       .L_Z10_3
++.L_Z10_15:
++	mvc     0(1,%r1),0(%r3)
++END(__memcpy_z10)
++
++#endif /* SHARED && !defined NOT_IN_libc */
++
++#include "../memcpy.S"
++
++#if !defined SHARED || defined NOT_IN_libc
++.globl   memcpy
++.set     memcpy,__memcpy_default
++#endif
+diff --git a/sysdeps/s390/s390-32/multiarch/memcpy.S b/sysdeps/s390/s390-32/multiarch/memcpy.S
+deleted file mode 100644
+index 5c2113f..0000000
+--- a/sysdeps/s390/s390-32/multiarch/memcpy.S
++++ /dev/null
+@@ -1,98 +0,0 @@
+-/* CPU specific memcpy implementations.  32 bit S/390 version.
+-   Copyright (C) 2012 Free Software Foundation, Inc.
+-   This file is part of the GNU C Library.
+-
+-   The GNU C Library is free software; you can redistribute it and/or
+-   modify it under the terms of the GNU Lesser General Public
+-   License as published by the Free Software Foundation; either
+-   version 2.1 of the License, or (at your option) any later version.
+-
+-   The GNU C Library is distributed in the hope that it will be useful,
+-   but WITHOUT ANY WARRANTY; without even the implied warranty of
+-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+-   Lesser General Public License for more details.
+-
+-   You should have received a copy of the GNU Lesser General Public
+-   License along with the GNU C Library; if not, see
+-   <http://www.gnu.org/licenses/>.  */
+-
+-
+-#include "sysdep.h"
+-#include "asm-syntax.h"
+-
+-/* INPUT PARAMETERS
+-     %r2 = target operands address
+-     %r3 = source operands address
+-     %r4 = number of bytes to copy.  */
+-
+-       .text
+-
+-#if defined SHARED && !defined NOT_IN_libc
+-
+-ENTRY(__memcpy_z196)
+-	.machine "z196"
+-	.machinemode "zarch_nohighgprs"
+-        llgfr   %r4,%r4
+-        ltgr    %r4,%r4
+-        je      .L_Z196_4
+-        aghi    %r4,-1
+-        lr      %r1,%r2
+-        srlg    %r5,%r4,8
+-        ltgr    %r5,%r5
+-        jne     .L_Z196_5
+-.L_Z196_3:
+-        exrl    %r4,.L_Z196_14
+-.L_Z196_4:
+-        br      %r14
+-.L_Z196_5:
+-        cgfi    %r5,262144      # Switch to mvcle for copies >64MB
+-        jh      __memcpy_mvcle
+-.L_Z196_2:
+-        pfd     1,768(%r3)
+-        pfd     2,768(%r1)
+-        mvc     0(256,%r1),0(%r3)
+-        aghi    %r5,-1
+-        la      %r1,256(%r1)
+-        la      %r3,256(%r3)
+-        jne     .L_Z196_2
+-        j       .L_Z196_3
+-.L_Z196_14:
+-        mvc     0(1,%r1),0(%r3)
+-END(__memcpy_z196)
+-
+-ENTRY(__memcpy_z10)
+-	.machine "z10"
+-	.machinemode "zarch_nohighgprs"
+-        llgfr   %r4,%r4
+-        cgije   %r4,0,.L_Z10_4
+-        aghi    %r4,-1
+-        lr      %r1,%r2
+-        srlg    %r5,%r4,8
+-        cgijlh  %r5,0,.L_Z10_13
+-.L_Z10_3:
+-        exrl    %r4,.L_Z10_15
+-.L_Z10_4:
+-        br      %r14
+-.L_Z10_13:
+-        cgfi    %r5,65535	# Switch to mvcle for copies >16MB
+-        jh      __memcpy_mvcle
+-.L_Z10_12:
+-        pfd     1,768(%r3)
+-        pfd     2,768(%r1)
+-        mvc     0(256,%r1),0(%r3)
+-        la      %r1,256(%r1)
+-        la      %r3,256(%r3)
+-        brctg   %r5,.L_Z10_12
+-        j       .L_Z10_3
+-.L_Z10_15:
+-        mvc     0(1,%r1),0(%r3)
+-END(__memcpy_z10)
+-
+-#endif
+-
+-#include "../memcpy.S"
+-
+-#if !defined SHARED || defined NOT_IN_libc
+-.globl   memcpy
+-.set     memcpy,__memcpy_g5
+-#endif
+diff --git a/sysdeps/s390/s390-32/multiarch/memcpy.c b/sysdeps/s390/s390-32/multiarch/memcpy.c
+new file mode 100644
+index 0000000..1ff31bb
+--- /dev/null
++++ b/sysdeps/s390/s390-32/multiarch/memcpy.c
+@@ -0,0 +1,24 @@
++/* Multiple versions of memcpy.
++   Copyright (C) 2015 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++/* In the static lib memcpy is needed before the reloc is resolved.  */
++#if defined SHARED && !defined NOT_IN_libc
++# include <ifunc-resolve.h>
++
++s390_libc_ifunc (memcpy)
++#endif
+diff --git a/sysdeps/s390/s390-32/multiarch/memset-s390.S b/sysdeps/s390/s390-32/multiarch/memset-s390.S
+new file mode 100644
+index 0000000..f6df2fa
+--- /dev/null
++++ b/sysdeps/s390/s390-32/multiarch/memset-s390.S
+@@ -0,0 +1,113 @@
++/* Set a block of memory to some byte value.  32 bit S/390 version.
++   Copyright (C) 2012-2015 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++
++#include "sysdep.h"
++#include "asm-syntax.h"
++
++/* INPUT PARAMETERS
++     %r2 = address of memory area
++     %r3 = byte to fill memory with
++     %r4 = number of bytes to fill.  */
++
++       .text
++
++#ifndef NOT_IN_libc
++
++ENTRY(__memset_z196)
++	.machine "z196"
++	.machinemode "zarch_nohighgprs"
++	llgfr   %r4,%r4
++	ltgr    %r4,%r4
++	je      .L_Z196_4
++	stc     %r3,0(%r2)
++	lr      %r1,%r2
++	cghi    %r4,1
++	je      .L_Z196_4
++	aghi    %r4,-2
++	srlg    %r5,%r4,8
++	ltgr    %r5,%r5
++	jne     .L_Z196_1
++.L_Z196_3:
++	exrl    %r4,.L_Z196_17
++.L_Z196_4:
++	br      %r14
++.L_Z196_1:
++	cgfi	%r5,1048576
++	jh	__memset_mvcle	   # Switch to mvcle for >256MB
++.L_Z196_2:
++	pfd     2,1024(%r1)
++	mvc     1(256,%r1),0(%r1)
++	aghi    %r5,-1
++	la      %r1,256(%r1)
++	jne     .L_Z196_2
++	j       .L_Z196_3
++.L_Z196_17:
++	mvc     1(1,%r1),0(%r1)
++END(__memset_z196)
++
++ENTRY(__memset_z10)
++	.machine "z10"
++	.machinemode "zarch_nohighgprs"
++	llgfr   %r4,%r4
++	cgije   %r4,0,.L_Z10_4
++	stc     %r3,0(%r2)
++	lr      %r1,%r2
++	cgije   %r4,1,.L_Z10_4
++	aghi    %r4,-2
++	srlg    %r5,%r4,8
++	cgijlh  %r5,0,.L_Z10_15
++.L_Z10_3:
++	exrl    %r4,.L_Z10_18
++.L_Z10_4:
++	br      %r14
++.L_Z10_15:
++	cgfi	%r5,163840          # Switch to mvcle for >40MB
++	jh	__memset_mvcle
++.L_Z10_14:
++	pfd     2,1024(%r1)
++	mvc     1(256,%r1),0(%r1)
++	la      %r1,256(%r1)
++	brctg   %r5,.L_Z10_14
++	j       .L_Z10_3
++.L_Z10_18:
++	mvc     1(1,%r1),0(%r1)
++END(__memset_z10)
++
++ENTRY(__memset_mvcle)
++	ahi	%r4,2               # take back the change done by the caller
++	lr      %r0,%r2             # save source address
++	lr      %r1,%r3             # move pad byte to R1
++	lr      %r3,%r4
++	sr      %r4,%r4             # no source for MVCLE, only a pad byte
++	sr      %r5,%r5
++.L0:    mvcle   %r2,%r4,0(%r1)      # thats it, MVCLE is your friend
++	jo      .L0
++	lr      %r2,%r0             # return value is source address
++.L1:
++	br      %r14
++END(__memset_mvcle)
++
++#endif /* !NOT_IN_libc */
++
++#include "../memset.S"
++
++#ifdef NOT_IN_libc
++.globl   memset
++.set     memset,__memset_default
++#endif
+diff --git a/sysdeps/s390/s390-32/multiarch/memset.S b/sysdeps/s390/s390-32/multiarch/memset.S
+deleted file mode 100644
+index 54aa028..0000000
+--- a/sysdeps/s390/s390-32/multiarch/memset.S
++++ /dev/null
+@@ -1,113 +0,0 @@
+-/* Set a block of memory to some byte value.  32 bit S/390 version.
+-   Copyright (C) 2012 Free Software Foundation, Inc.
+-   This file is part of the GNU C Library.
+-
+-   The GNU C Library is free software; you can redistribute it and/or
+-   modify it under the terms of the GNU Lesser General Public
+-   License as published by the Free Software Foundation; either
+-   version 2.1 of the License, or (at your option) any later version.
+-
+-   The GNU C Library is distributed in the hope that it will be useful,
+-   but WITHOUT ANY WARRANTY; without even the implied warranty of
+-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+-   Lesser General Public License for more details.
+-
+-   You should have received a copy of the GNU Lesser General Public
+-   License along with the GNU C Library; if not, see
+-   <http://www.gnu.org/licenses/>.  */
+-
+-
+-#include "sysdep.h"
+-#include "asm-syntax.h"
+-
+-/* INPUT PARAMETERS
+-     %r2 = address of memory area
+-     %r3 = byte to fill memory with
+-     %r4 = number of bytes to fill.  */
+-
+-       .text
+-
+-#ifndef NOT_IN_libc
+-
+-ENTRY(__memset_z196)
+-	.machine "z196"
+-	.machinemode "zarch_nohighgprs"
+-        llgfr   %r4,%r4
+-        ltgr    %r4,%r4
+-        je      .L_Z196_4
+-        stc     %r3,0(%r2)
+-        lr      %r1,%r2
+-        cghi    %r4,1
+-        je      .L_Z196_4
+-        aghi    %r4,-2
+-        srlg    %r5,%r4,8
+-        ltgr    %r5,%r5
+-        jne     .L_Z196_1
+-.L_Z196_3:
+-        exrl    %r4,.L_Z196_17
+-.L_Z196_4:
+-        br      %r14
+-.L_Z196_1:
+-	cgfi	%r5,1048576
+-	jh	__memset_mvcle	   # Switch to mvcle for >256MB
+-.L_Z196_2:
+-        pfd     2,1024(%r1)
+-        mvc     1(256,%r1),0(%r1)
+-        aghi    %r5,-1
+-        la      %r1,256(%r1)
+-        jne     .L_Z196_2
+-        j       .L_Z196_3
+-.L_Z196_17:
+-        mvc     1(1,%r1),0(%r1)
+-END(__memset_z196)
+-
+-ENTRY(__memset_z10)
+-	.machine "z10"
+-	.machinemode "zarch_nohighgprs"
+-        llgfr   %r4,%r4
+-        cgije   %r4,0,.L_Z10_4
+-        stc     %r3,0(%r2)
+-        lr      %r1,%r2
+-        cgije   %r4,1,.L_Z10_4
+-        aghi    %r4,-2
+-        srlg    %r5,%r4,8
+-        cgijlh  %r5,0,.L_Z10_15
+-.L_Z10_3:
+-        exrl    %r4,.L_Z10_18
+-.L_Z10_4:
+-        br      %r14
+-.L_Z10_15:
+-	cgfi	%r5,163840          # Switch to mvcle for >40MB
+-	jh	__memset_mvcle
+-.L_Z10_14:
+-        pfd     2,1024(%r1)
+-        mvc     1(256,%r1),0(%r1)
+-        la      %r1,256(%r1)
+-        brctg   %r5,.L_Z10_14
+-        j       .L_Z10_3
+-.L_Z10_18:
+-        mvc     1(1,%r1),0(%r1)
+-END(__memset_z10)
+-
+-ENTRY(__memset_mvcle)
+-	ahi	%r4,2               # take back the change done by the caller
+-	lr      %r0,%r2             # save source address
+-	lr      %r1,%r3             # move pad byte to R1
+-	lr      %r3,%r4
+-	sr      %r4,%r4             # no source for MVCLE, only a pad byte
+-	sr      %r5,%r5
+-.L0:    mvcle   %r2,%r4,0(%r1)      # thats it, MVCLE is your friend
+-	jo      .L0
+-	lr      %r2,%r0             # return value is source address
+-.L1:
+-	br      %r14
+-END(__memset_mvcle)
+-
+-#endif
+-
+-#include "../memset.S"
+-
+-#ifdef NOT_IN_libc
+-.globl   memset
+-.set     memset,__memset_g5
+-#endif
+diff --git a/sysdeps/s390/s390-32/multiarch/memset.c b/sysdeps/s390/s390-32/multiarch/memset.c
+new file mode 100644
+index 0000000..3b15446
+--- /dev/null
++++ b/sysdeps/s390/s390-32/multiarch/memset.c
+@@ -0,0 +1,23 @@
++/* Multiple versions of memset.
++   Copyright (C) 2015 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#ifndef NOT_IN_libc
++# include <ifunc-resolve.h>
++
++s390_libc_ifunc (memset)
++#endif
+diff --git a/sysdeps/s390/s390-64/memcmp.S b/sysdeps/s390/s390-64/memcmp.S
+index eb5370f..1d7e788 100644
+--- a/sysdeps/s390/s390-64/memcmp.S
++++ b/sysdeps/s390/s390-64/memcmp.S
+@@ -27,36 +27,36 @@
+ 
+        .text
+ #ifdef USE_MULTIARCH
+-ENTRY(__memcmp_z900)
++ENTRY(__memcmp_default)
+ #else
+ ENTRY(memcmp)
+ #endif
+ 	.machine "z900"
+-        ltgr    %r4,%r4
+-        je      .L_Z900_4
+-        aghi    %r4,-1
+-        srlg    %r1,%r4,8
+-        ltgr    %r1,%r1
+-        jne     .L_Z900_12
++	ltgr    %r4,%r4
++	je      .L_Z900_4
++	aghi    %r4,-1
++	srlg    %r1,%r4,8
++	ltgr    %r1,%r1
++	jne     .L_Z900_12
+ .L_Z900_3:
+-        larl    %r1,.L_Z900_15
+-        ex      %r4,0(%r1)
++	larl    %r1,.L_Z900_15
++	ex      %r4,0(%r1)
+ .L_Z900_4:
+-        ipm     %r2
+-        sllg    %r2,%r2,34
+-        srag    %r2,%r2,62
+-        br      %r14
++	ipm     %r2
++	sllg    %r2,%r2,34
++	srag    %r2,%r2,62
++	br      %r14
+ .L_Z900_12:
+-        clc     0(256,%r3),0(%r2)
+-        jne     .L_Z900_4
+-        la      %r3,256(%r3)
+-        la      %r2,256(%r2)
+-        brctg   %r1,.L_Z900_12
+-        j       .L_Z900_3
++	clc     0(256,%r3),0(%r2)
++	jne     .L_Z900_4
++	la      %r3,256(%r3)
++	la      %r2,256(%r2)
++	brctg   %r1,.L_Z900_12
++	j       .L_Z900_3
+ .L_Z900_15:
+-        clc     0(1,%r3),0(%r2)
++	clc     0(1,%r3),0(%r2)
+ #ifdef USE_MULTIARCH
+-END(__memcmp_z900)
++END(__memcmp_default)
+ #else
+ END(memcmp)
+ libc_hidden_builtin_def (memcmp)
+diff --git a/sysdeps/s390/s390-64/memcpy.S b/sysdeps/s390/s390-64/memcpy.S
+index 61fca0b..6827a0e 100644
+--- a/sysdeps/s390/s390-64/memcpy.S
++++ b/sysdeps/s390/s390-64/memcpy.S
+@@ -29,37 +29,37 @@
+        .text
+ 
+ #ifdef USE_MULTIARCH
+-ENTRY(__memcpy_z900)
++ENTRY(__memcpy_default)
+ #else
+ ENTRY(memcpy)
+ #endif
+ 	.machine "z900"
+-        ltgr    %r4,%r4
+-        je      .L_Z900_4
+-        aghi    %r4,-1
+-        srlg    %r5,%r4,8
+-        ltgr    %r5,%r5
+-        lgr     %r1,%r2
+-        jne     .L_Z900_13
++	ltgr    %r4,%r4
++	je      .L_Z900_4
++	aghi    %r4,-1
++	srlg    %r5,%r4,8
++	ltgr    %r5,%r5
++	lgr     %r1,%r2
++	jne     .L_Z900_13
+ .L_Z900_3:
+-        larl    %r5,.L_Z900_15
+-        ex      %r4,0(%r5)
++	larl    %r5,.L_Z900_15
++	ex      %r4,0(%r5)
+ .L_Z900_4:
+-        br      %r14
++	br      %r14
+ .L_Z900_13:
+-        chi	%r5,4096             # Switch to mvcle for copies >1MB
+-        jh      __memcpy_mvcle
++	chi	%r5,4096             # Switch to mvcle for copies >1MB
++	jh      __memcpy_mvcle
+ .L_Z900_12:
+-        mvc     0(256,%r1),0(%r3)
+-        la      %r1,256(%r1)
+-        la      %r3,256(%r3)
+-        brctg   %r5,.L_Z900_12
+-        j       .L_Z900_3
++	mvc     0(256,%r1),0(%r3)
++	la      %r1,256(%r1)
++	la      %r3,256(%r3)
++	brctg   %r5,.L_Z900_12
++	j       .L_Z900_3
+ .L_Z900_15:
+-        mvc     0(1,%r1),0(%r3)
++	mvc     0(1,%r1),0(%r3)
+ 
+ #ifdef USE_MULTIARCH
+-END(__memcpy_z900)
++END(__memcpy_default)
+ #else
+ END(memcpy)
+ libc_hidden_builtin_def (memcpy)
+diff --git a/sysdeps/s390/s390-64/memset.S b/sysdeps/s390/s390-64/memset.S
+index 8185e94..b1ba9e2 100644
+--- a/sysdeps/s390/s390-64/memset.S
++++ b/sysdeps/s390/s390-64/memset.S
+@@ -29,35 +29,35 @@
+        .text
+ 
+ #ifdef USE_MULTIARCH
+-ENTRY(__memset_z900)
++ENTRY(__memset_default)
+ #else
+ ENTRY(memset)
+ #endif
+ 	.machine "z900"
+-        ltgr    %r4,%r4
+-        je      .L_Z900_4
+-        stc     %r3,0(%r2)
+-        cghi    %r4,1
+-        lgr     %r1,%r2
+-        je      .L_Z900_4
+-        aghi    %r4,-2
+-        srlg    %r3,%r4,8
+-        ltgr    %r3,%r3
+-        jne     .L_Z900_14
++	ltgr    %r4,%r4
++	je      .L_Z900_4
++	stc     %r3,0(%r2)
++	cghi    %r4,1
++	lgr     %r1,%r2
++	je      .L_Z900_4
++	aghi    %r4,-2
++	srlg    %r3,%r4,8
++	ltgr    %r3,%r3
++	jne     .L_Z900_14
+ .L_Z900_3:
+-        larl    %r3,.L_Z900_18
+-        ex      %r4,0(%r3)
++	larl    %r3,.L_Z900_18
++	ex      %r4,0(%r3)
+ .L_Z900_4:
+-        br      %r14
++	br      %r14
+ .L_Z900_14:
+-        mvc     1(256,%r1),0(%r1)
+-        la      %r1,256(%r1)
+-        brctg   %r3,.L_Z900_14
+-        j       .L_Z900_3
++	mvc     1(256,%r1),0(%r1)
++	la      %r1,256(%r1)
++	brctg   %r3,.L_Z900_14
++	j       .L_Z900_3
+ .L_Z900_18:
+-        mvc     1(1,%r1),0(%r1)
++	mvc     1(1,%r1),0(%r1)
+ #ifdef USE_MULTIARCH
+-END(__memset_z900)
++END(__memset_default)
+ #else
+ END(memset)
+ libc_hidden_builtin_def (memset)
+diff --git a/sysdeps/s390/s390-64/multiarch/Makefile b/sysdeps/s390/s390-64/multiarch/Makefile
+index 9baeecd..91053b5 100644
+--- a/sysdeps/s390/s390-64/multiarch/Makefile
++++ b/sysdeps/s390/s390-64/multiarch/Makefile
+@@ -1,3 +1,4 @@
+ ifeq ($(subdir),string)
+-sysdep_routines += ifunc-resolve memset memcpy memcmp
++sysdep_routines += memset memset-s390x memcpy memcpy-s390x \
++		   memcmp memcmp-s390x
+ endif
+diff --git a/sysdeps/s390/s390-64/multiarch/ifunc-resolve.c b/sysdeps/s390/s390-64/multiarch/ifunc-resolve.c
+deleted file mode 100644
+index b6be970..0000000
+--- a/sysdeps/s390/s390-64/multiarch/ifunc-resolve.c
++++ /dev/null
+@@ -1,76 +0,0 @@
+-/* IFUNC resolver function for CPU specific functions.
+-   64 bit S/390 version.
+-   Copyright (C) 2012 Free Software Foundation, Inc.
+-   This file is part of the GNU C Library.
+-
+-   The GNU C Library is free software; you can redistribute it and/or
+-   modify it under the terms of the GNU Lesser General Public
+-   License as published by the Free Software Foundation; either
+-   version 2.1 of the License, or (at your option) any later version.
+-
+-   The GNU C Library is distributed in the hope that it will be useful,
+-   but WITHOUT ANY WARRANTY; without even the implied warranty of
+-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+-   Lesser General Public License for more details.
+-
+-   You should have received a copy of the GNU Lesser General Public
+-   License along with the GNU C Library; if not, see
+-   <http://www.gnu.org/licenses/>.  */
+-
+-#include <unistd.h>
+-#include <dl-procinfo.h>
+-
+-#define STFLE_BITS_Z10  34 /* General instructions extension */
+-#define STFLE_BITS_Z196 45 /* Distinct operands, pop ... */
+-
+-#ifndef NOT_IN_libc
+-
+-#define IFUNC_RESOLVE(FUNC)						\
+-  asm (".globl " #FUNC "\n\t"						\
+-       ".type  " #FUNC ",@gnu_indirect_function\n\t"			\
+-       ".set   " #FUNC ",__resolve_" #FUNC "\n\t"			\
+-       ".globl __GI_" #FUNC "\n\t"					\
+-       ".set   __GI_" #FUNC "," #FUNC "\n");				\
+-									\
+-  /* Make the declarations of the optimized functions hidden in order
+-     to prevent GOT slots being generated for them. */			\
+-  extern void *__##FUNC##_z196 attribute_hidden;			\
+-  extern void *__##FUNC##_z10 attribute_hidden;				\
+-  extern void *__##FUNC##_z900 attribute_hidden;			\
+-									\
+-  void *__resolve_##FUNC (unsigned long int dl_hwcap)			\
+-  {									\
+-    if (dl_hwcap & HWCAP_S390_STFLE)					\
+-      {									\
+-	/* We want just 1 double word to be returned.  */		\
+-	register unsigned long reg0 asm("0") = 0;			\
+-	unsigned long stfle_bits;					\
+-									\
+-	asm volatile(".machine push"        "\n\t"			\
+-		     ".machine \"z9-109\""  "\n\t"			\
+-		     "stfle %0"             "\n\t"			\
+-		     ".machine pop"         "\n"			\
+-		     : "=QS" (stfle_bits), "+d" (reg0)			\
+-		     : : "cc");						\
+-									\
+-	if ((stfle_bits & (1UL << (63 - STFLE_BITS_Z196))) != 0)	\
+-	  return &__##FUNC##_z196;					\
+-	else if ((stfle_bits & (1UL << (63 - STFLE_BITS_Z10))) != 0)	\
+-	  return &__##FUNC##_z10;					\
+-	else								\
+-	  return &__##FUNC##_z900;					\
+-      }									\
+-    else								\
+-      return &__##FUNC##_z900;						\
+-  }
+-
+-IFUNC_RESOLVE(memset)
+-IFUNC_RESOLVE(memcmp)
+-asm(".weak bcmp ; bcmp = memcmp");
+-
+-/* In the static lib memcpy is needed before the reloc is resolved.  */
+-#ifdef SHARED
+-IFUNC_RESOLVE(memcpy)
+-#endif
+-
+-#endif
+diff --git a/sysdeps/s390/s390-64/multiarch/memcmp-s390x.S b/sysdeps/s390/s390-64/multiarch/memcmp-s390x.S
+new file mode 100644
+index 0000000..6d55b0b
+--- /dev/null
++++ b/sysdeps/s390/s390-64/multiarch/memcmp-s390x.S
+@@ -0,0 +1,101 @@
++/* CPU specific memcmp implementations.  64 bit S/390 version.
++   Copyright (C) 2012-2015 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++
++#include "sysdep.h"
++#include "asm-syntax.h"
++
++/* INPUT PARAMETERS
++     %r2 = address of first memory area
++     %r3 = address of second memory area
++     %r4 = number of bytes to compare.  */
++
++       .text
++
++#ifndef NOT_IN_libc
++
++ENTRY(__memcmp_z196)
++	.machine "z196"
++	ltgr    %r4,%r4
++	je      .L_Z196_4
++	aghi    %r4,-1
++	srlg    %r1,%r4,8
++	ltgr    %r1,%r1
++	jne     .L_Z196_2
++.L_Z196_3:
++	exrl    %r4,.L_Z196_14
++.L_Z196_4:
++	ipm     %r2
++	sllg    %r2,%r2,34
++	srag    %r2,%r2,62
++	br      %r14
++.L_Z196_17:
++	la      %r3,256(%r3)
++	la      %r2,256(%r2)
++	aghi    %r1,-1
++	je      .L_Z196_3
++.L_Z196_2:
++	pfd     1,512(%r3)
++	pfd     1,512(%r2)
++	clc     0(256,%r3),0(%r2)
++	je      .L_Z196_17
++	ipm     %r2
++	sllg    %r2,%r2,34
++	srag    %r2,%r2,62
++	br      %r14
++.L_Z196_14:
++	clc     0(1,%r3),0(%r2)
++END(__memcmp_z196)
++
++ENTRY(__memcmp_z10)
++	.machine "z10"
++	ltgr    %r4,%r4
++	je      .L_Z10_4
++	aghi    %r4,-1
++	srlg    %r1,%r4,8
++	cgijlh  %r1,0,.L_Z10_12
++.L_Z10_3:
++	exrl    %r4,.L_Z10_15
++.L_Z10_4:
++	ipm     %r2
++	sllg    %r2,%r2,34
++	srag    %r2,%r2,62
++	br      %r14
++.L_Z10_12:
++	pfd     1,512(%r3)
++	pfd     1,512(%r2)
++	clc     0(256,%r3),0(%r2)
++	jne     .L_Z10_4
++	la      %r3,256(%r3)
++	la      %r2,256(%r2)
++	brctg   %r1,.L_Z10_12
++	j       .L_Z10_3
++.L_Z10_15:
++	clc     0(1,%r3),0(%r2)
++END(__memcmp_z10)
++
++#endif /* !NOT_IN_libc */
++
++#include "../memcmp.S"
++
++#ifdef NOT_IN_libc
++.globl   memcmp
++.set     memcmp,__memcmp_default
++.weak    bcmp
++.set	 bcmp,__memcmp_default
++#endif
+diff --git a/sysdeps/s390/s390-64/multiarch/memcmp.S b/sysdeps/s390/s390-64/multiarch/memcmp.S
+deleted file mode 100644
+index 9a8cba8..0000000
+--- a/sysdeps/s390/s390-64/multiarch/memcmp.S
++++ /dev/null
+@@ -1,101 +0,0 @@
+-/* CPU specific memcmp implementations.  64 bit S/390 version.
+-   Copyright (C) 2012 Free Software Foundation, Inc.
+-   This file is part of the GNU C Library.
+-
+-   The GNU C Library is free software; you can redistribute it and/or
+-   modify it under the terms of the GNU Lesser General Public
+-   License as published by the Free Software Foundation; either
+-   version 2.1 of the License, or (at your option) any later version.
+-
+-   The GNU C Library is distributed in the hope that it will be useful,
+-   but WITHOUT ANY WARRANTY; without even the implied warranty of
+-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+-   Lesser General Public License for more details.
+-
+-   You should have received a copy of the GNU Lesser General Public
+-   License along with the GNU C Library; if not, see
+-   <http://www.gnu.org/licenses/>.  */
+-
+-
+-#include "sysdep.h"
+-#include "asm-syntax.h"
+-
+-/* INPUT PARAMETERS
+-     %r2 = address of first memory area
+-     %r3 = address of second memory area
+-     %r4 = number of bytes to compare.  */
+-
+-       .text
+-
+-#ifndef NOT_IN_libc
+-
+-ENTRY(__memcmp_z196)
+-	.machine "z196"
+-        ltgr    %r4,%r4
+-        je      .L_Z196_4
+-        aghi    %r4,-1
+-        srlg    %r1,%r4,8
+-        ltgr    %r1,%r1
+-        jne     .L_Z196_2
+-.L_Z196_3:
+-        exrl    %r4,.L_Z196_14
+-.L_Z196_4:
+-        ipm     %r2
+-        sllg    %r2,%r2,34
+-        srag    %r2,%r2,62
+-        br      %r14
+-.L_Z196_17:
+-        la      %r3,256(%r3)
+-        la      %r2,256(%r2)
+-        aghi    %r1,-1
+-        je      .L_Z196_3
+-.L_Z196_2:
+-        pfd     1,512(%r3)
+-        pfd     1,512(%r2)
+-        clc     0(256,%r3),0(%r2)
+-        je      .L_Z196_17
+-        ipm     %r2
+-        sllg    %r2,%r2,34
+-        srag    %r2,%r2,62
+-        br      %r14
+-.L_Z196_14:
+-        clc     0(1,%r3),0(%r2)
+-END(__memcmp_z196)
+-
+-ENTRY(__memcmp_z10)
+-	.machine "z10"
+-        ltgr    %r4,%r4
+-        je      .L_Z10_4
+-        aghi    %r4,-1
+-        srlg    %r1,%r4,8
+-        cgijlh  %r1,0,.L_Z10_12
+-.L_Z10_3:
+-        exrl    %r4,.L_Z10_15
+-.L_Z10_4:
+-        ipm     %r2
+-        sllg    %r2,%r2,34
+-        srag    %r2,%r2,62
+-        br      %r14
+-.L_Z10_12:
+-        pfd     1,512(%r3)
+-        pfd     1,512(%r2)
+-        clc     0(256,%r3),0(%r2)
+-        jne     .L_Z10_4
+-        la      %r3,256(%r3)
+-        la      %r2,256(%r2)
+-        brctg   %r1,.L_Z10_12
+-        j       .L_Z10_3
+-.L_Z10_15:
+-        clc     0(1,%r3),0(%r2)
+-END(__memcmp_z10)
+-
+-#endif
+-
+-#include "../memcmp.S"
+-
+-#ifdef NOT_IN_libc
+-.globl   memcmp
+-.set     memcmp,__memcmp_z900
+-.weak    bcmp
+-.set	 bcmp,__memcmp_z900
+-#endif
+diff --git a/sysdeps/s390/s390-64/multiarch/memcmp.c b/sysdeps/s390/s390-64/multiarch/memcmp.c
+new file mode 100644
+index 0000000..7089d56
+--- /dev/null
++++ b/sysdeps/s390/s390-64/multiarch/memcmp.c
+@@ -0,0 +1,24 @@
++/* Multiple versions of memcmp.
++   Copyright (C) 2015 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#ifndef NOT_IN_libc
++# include <ifunc-resolve.h>
++
++s390_libc_ifunc (memcmp)
++asm(".weak bcmp ; bcmp = memcmp");
++#endif
+diff --git a/sysdeps/s390/s390-64/multiarch/memcpy-s390x.S b/sysdeps/s390/s390-64/multiarch/memcpy-s390x.S
+new file mode 100644
+index 0000000..cdb34f1
+--- /dev/null
++++ b/sysdeps/s390/s390-64/multiarch/memcpy-s390x.S
+@@ -0,0 +1,94 @@
++/* CPU specific memcpy implementations.  64 bit S/390 version.
++   Copyright (C) 2012-2015 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++
++#include "sysdep.h"
++#include "asm-syntax.h"
++
++/* INPUT PARAMETERS
++     %r2 = target operands address
++     %r3 = source operands address
++     %r4 = number of bytes to copy.  */
++
++       .text
++
++#if defined SHARED && !defined NOT_IN_libc
++
++ENTRY(__memcpy_z196)
++	.machine "z196"
++	ltgr    %r4,%r4
++	je      .L_Z196_4
++	aghi    %r4,-1
++	lgr     %r1,%r2
++	srlg    %r5,%r4,8
++	ltgr    %r5,%r5
++	jne     .L_Z196_5
++.L_Z196_3:
++	exrl    %r4,.L_Z196_14
++.L_Z196_4:
++	br      %r14
++.L_Z196_5:
++	cgfi    %r5,262144      # Switch to mvcle for copies >64MB
++	jh      __memcpy_mvcle
++.L_Z196_2:
++	pfd     1,768(%r3)
++	pfd     2,768(%r1)
++	mvc     0(256,%r1),0(%r3)
++	aghi    %r5,-1
++	la      %r1,256(%r1)
++	la      %r3,256(%r3)
++	jne     .L_Z196_2
++	j       .L_Z196_3
++.L_Z196_14:
++	mvc     0(1,%r1),0(%r3)
++END(__memcpy_z196)
++
++ENTRY(__memcpy_z10)
++	.machine "z10"
++	cgije   %r4,0,.L_Z10_4
++	aghi    %r4,-1
++	lgr     %r1,%r2
++	srlg    %r5,%r4,8
++	cgijlh  %r5,0,.L_Z10_13
++.L_Z10_3:
++	exrl    %r4,.L_Z10_15
++.L_Z10_4:
++	br      %r14
++.L_Z10_13:
++	cgfi    %r5,65535	# Switch to mvcle for copies >16MB
++	jh      __memcpy_mvcle
++.L_Z10_12:
++	pfd     1,768(%r3)
++	pfd     2,768(%r1)
++	mvc     0(256,%r1),0(%r3)
++	la      %r1,256(%r1)
++	la      %r3,256(%r3)
++	brctg   %r5,.L_Z10_12
++	j       .L_Z10_3
++.L_Z10_15:
++	mvc     0(1,%r1),0(%r3)
++END(__memcpy_z10)
++
++#endif /* SHARED && !defined NOT_IN_libc  */
++
++#include "../memcpy.S"
++
++#if !defined SHARED || defined NOT_IN_libc
++.globl   memcpy
++.set     memcpy,__memcpy_default
++#endif
+diff --git a/sysdeps/s390/s390-64/multiarch/memcpy.S b/sysdeps/s390/s390-64/multiarch/memcpy.S
+deleted file mode 100644
+index 525588f..0000000
+--- a/sysdeps/s390/s390-64/multiarch/memcpy.S
++++ /dev/null
+@@ -1,94 +0,0 @@
+-/* CPU specific memcpy implementations.  64 bit S/390 version.
+-   Copyright (C) 2012 Free Software Foundation, Inc.
+-   This file is part of the GNU C Library.
+-
+-   The GNU C Library is free software; you can redistribute it and/or
+-   modify it under the terms of the GNU Lesser General Public
+-   License as published by the Free Software Foundation; either
+-   version 2.1 of the License, or (at your option) any later version.
+-
+-   The GNU C Library is distributed in the hope that it will be useful,
+-   but WITHOUT ANY WARRANTY; without even the implied warranty of
+-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+-   Lesser General Public License for more details.
+-
+-   You should have received a copy of the GNU Lesser General Public
+-   License along with the GNU C Library; if not, see
+-   <http://www.gnu.org/licenses/>.  */
+-
+-
+-#include "sysdep.h"
+-#include "asm-syntax.h"
+-
+-/* INPUT PARAMETERS
+-     %r2 = target operands address
+-     %r3 = source operands address
+-     %r4 = number of bytes to copy.  */
+-
+-       .text
+-
+-#if defined SHARED && !defined NOT_IN_libc
+-
+-ENTRY(__memcpy_z196)
+-        .machine "z196"
+-        ltgr    %r4,%r4
+-        je      .L_Z196_4
+-        aghi    %r4,-1
+-        lgr     %r1,%r2
+-        srlg    %r5,%r4,8
+-        ltgr    %r5,%r5
+-        jne     .L_Z196_5
+-.L_Z196_3:
+-        exrl    %r4,.L_Z196_14
+-.L_Z196_4:
+-        br      %r14
+-.L_Z196_5:
+-        cgfi    %r5,262144      # Switch to mvcle for copies >64MB
+-        jh      __memcpy_mvcle
+-.L_Z196_2:
+-        pfd     1,768(%r3)
+-        pfd     2,768(%r1)
+-        mvc     0(256,%r1),0(%r3)
+-        aghi    %r5,-1
+-        la      %r1,256(%r1)
+-        la      %r3,256(%r3)
+-        jne     .L_Z196_2
+-        j       .L_Z196_3
+-.L_Z196_14:
+-        mvc     0(1,%r1),0(%r3)
+-END(__memcpy_z196)
+-
+-ENTRY(__memcpy_z10)
+-	.machine "z10"
+-        cgije   %r4,0,.L_Z10_4
+-        aghi    %r4,-1
+-        lgr     %r1,%r2
+-        srlg    %r5,%r4,8
+-        cgijlh  %r5,0,.L_Z10_13
+-.L_Z10_3:
+-        exrl    %r4,.L_Z10_15
+-.L_Z10_4:
+-        br      %r14
+-.L_Z10_13:
+-        cgfi    %r5,65535	# Switch to mvcle for copies >16MB
+-        jh      __memcpy_mvcle
+-.L_Z10_12:
+-        pfd     1,768(%r3)
+-        pfd     2,768(%r1)
+-        mvc     0(256,%r1),0(%r3)
+-        la      %r1,256(%r1)
+-        la      %r3,256(%r3)
+-        brctg   %r5,.L_Z10_12
+-        j       .L_Z10_3
+-.L_Z10_15:
+-        mvc     0(1,%r1),0(%r3)
+-END(__memcpy_z10)
+-
+-#endif
+-
+-#include "../memcpy.S"
+-
+-#if !defined SHARED || defined NOT_IN_libc
+-.globl   memcpy
+-.set     memcpy,__memcpy_z900
+-#endif
+diff --git a/sysdeps/s390/s390-64/multiarch/memcpy.c b/sysdeps/s390/s390-64/multiarch/memcpy.c
+new file mode 100644
+index 0000000..1ff31bb
+--- /dev/null
++++ b/sysdeps/s390/s390-64/multiarch/memcpy.c
+@@ -0,0 +1,24 @@
++/* Multiple versions of memcpy.
++   Copyright (C) 2015 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++/* In the static lib memcpy is needed before the reloc is resolved.  */
++#if defined SHARED && !defined NOT_IN_libc
++# include <ifunc-resolve.h>
++
++s390_libc_ifunc (memcpy)
++#endif
+diff --git a/sysdeps/s390/s390-64/multiarch/memset-s390x.S b/sysdeps/s390/s390-64/multiarch/memset-s390x.S
+new file mode 100644
+index 0000000..0037bdf
+--- /dev/null
++++ b/sysdeps/s390/s390-64/multiarch/memset-s390x.S
+@@ -0,0 +1,109 @@
++/* Set a block of memory to some byte value.  64 bit S/390 version.
++   Copyright (C) 2012-2015 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++
++#include "sysdep.h"
++#include "asm-syntax.h"
++
++/* INPUT PARAMETERS
++     %r2 = address of memory area
++     %r3 = byte to fill memory with
++     %r4 = number of bytes to fill.  */
++
++       .text
++
++#ifndef NOT_IN_libc
++
++ENTRY(__memset_z196)
++	.machine "z196"
++	ltgr    %r4,%r4
++	je      .L_Z196_4
++	stc     %r3,0(%r2)
++	lgr     %r1,%r2
++	cghi    %r4,1
++	je      .L_Z196_4
++	aghi    %r4,-2
++	srlg    %r5,%r4,8
++	ltgr    %r5,%r5
++	jne     .L_Z196_1
++.L_Z196_3:
++	exrl    %r4,.L_Z196_17
++.L_Z196_4:
++	br      %r14
++.L_Z196_1:
++	cgfi	%r5,1048576
++	jh	__memset_mvcle	   # Switch to mvcle for >256MB
++.L_Z196_2:
++	pfd     2,1024(%r1)
++	mvc     1(256,%r1),0(%r1)
++	aghi    %r5,-1
++	la      %r1,256(%r1)
++	jne     .L_Z196_2
++	j       .L_Z196_3
++.L_Z196_17:
++	mvc     1(1,%r1),0(%r1)
++END(__memset_z196)
++
++ENTRY(__memset_z10)
++	.machine "z10"
++	cgije   %r4,0,.L_Z10_4
++	stc     %r3,0(%r2)
++	lgr     %r1,%r2
++	cgije   %r4,1,.L_Z10_4
++	aghi    %r4,-2
++	srlg    %r5,%r4,8
++	cgijlh  %r5,0,.L_Z10_15
++.L_Z10_3:
++	exrl    %r4,.L_Z10_18
++.L_Z10_4:
++	br      %r14
++.L_Z10_15:
++	cgfi	%r5,163840          # Switch to mvcle for >40MB
++	jh	__memset_mvcle
++.L_Z10_14:
++	pfd     2,1024(%r1)
++	mvc     1(256,%r1),0(%r1)
++	la      %r1,256(%r1)
++	brctg   %r5,.L_Z10_14
++	j       .L_Z10_3
++.L_Z10_18:
++	mvc     1(1,%r1),0(%r1)
++END(__memset_z10)
++
++ENTRY(__memset_mvcle)
++	aghi	%r4,2               # take back the change done by the caller
++	lgr	%r0,%r2		    # save source address
++	lgr	%r1,%r3		    # move pad byte to R1
++	lgr	%r3,%r4             # move length to r3
++	sgr	%r4,%r4		    # no source for MVCLE, only a pad byte
++	sgr	%r5,%r5
++.L0:	mvcle	%r2,%r4,0(%r1)	    # thats it, MVCLE is your friend
++	jo	.L0
++	lgr	%r2,%r0		    # return value is source address
++.L1:
++	br	%r14
++END(__memset_mvcle)
++
++#endif /* !NOT_IN_libc */
++
++#include "../memset.S"
++
++#ifdef NOT_IN_libc
++.globl   memset
++.set     memset,__memset_default
++#endif
+diff --git a/sysdeps/s390/s390-64/multiarch/memset.S b/sysdeps/s390/s390-64/multiarch/memset.S
+deleted file mode 100644
+index 8dbb3cb..0000000
+--- a/sysdeps/s390/s390-64/multiarch/memset.S
++++ /dev/null
+@@ -1,109 +0,0 @@
+-/* Set a block of memory to some byte value.  64 bit S/390 version.
+-   Copyright (C) 2012 Free Software Foundation, Inc.
+-   This file is part of the GNU C Library.
+-
+-   The GNU C Library is free software; you can redistribute it and/or
+-   modify it under the terms of the GNU Lesser General Public
+-   License as published by the Free Software Foundation; either
+-   version 2.1 of the License, or (at your option) any later version.
+-
+-   The GNU C Library is distributed in the hope that it will be useful,
+-   but WITHOUT ANY WARRANTY; without even the implied warranty of
+-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+-   Lesser General Public License for more details.
+-
+-   You should have received a copy of the GNU Lesser General Public
+-   License along with the GNU C Library; if not, see
+-   <http://www.gnu.org/licenses/>.  */
+-
+-
+-#include "sysdep.h"
+-#include "asm-syntax.h"
+-
+-/* INPUT PARAMETERS
+-     %r2 = address of memory area
+-     %r3 = byte to fill memory with
+-     %r4 = number of bytes to fill.  */
+-
+-       .text
+-
+-#ifndef NOT_IN_libc
+-
+-ENTRY(__memset_z196)
+-	.machine "z196"
+-        ltgr    %r4,%r4
+-        je      .L_Z196_4
+-        stc     %r3,0(%r2)
+-        lgr     %r1,%r2
+-        cghi    %r4,1
+-        je      .L_Z196_4
+-        aghi    %r4,-2
+-        srlg    %r5,%r4,8
+-        ltgr    %r5,%r5
+-        jne     .L_Z196_1
+-.L_Z196_3:
+-        exrl    %r4,.L_Z196_17
+-.L_Z196_4:
+-        br      %r14
+-.L_Z196_1:
+-	cgfi	%r5,1048576
+-	jh	__memset_mvcle	   # Switch to mvcle for >256MB
+-.L_Z196_2:
+-        pfd     2,1024(%r1)
+-        mvc     1(256,%r1),0(%r1)
+-        aghi    %r5,-1
+-        la      %r1,256(%r1)
+-        jne     .L_Z196_2
+-        j       .L_Z196_3
+-.L_Z196_17:
+-        mvc     1(1,%r1),0(%r1)
+-END(__memset_z196)
+-
+-ENTRY(__memset_z10)
+-	.machine "z10"
+-        cgije   %r4,0,.L_Z10_4
+-        stc     %r3,0(%r2)
+-        lgr     %r1,%r2
+-        cgije   %r4,1,.L_Z10_4
+-        aghi    %r4,-2
+-        srlg    %r5,%r4,8
+-        cgijlh  %r5,0,.L_Z10_15
+-.L_Z10_3:
+-        exrl    %r4,.L_Z10_18
+-.L_Z10_4:
+-        br      %r14
+-.L_Z10_15:
+-	cgfi	%r5,163840          # Switch to mvcle for >40MB
+-	jh	__memset_mvcle
+-.L_Z10_14:
+-        pfd     2,1024(%r1)
+-        mvc     1(256,%r1),0(%r1)
+-        la      %r1,256(%r1)
+-        brctg   %r5,.L_Z10_14
+-        j       .L_Z10_3
+-.L_Z10_18:
+-        mvc     1(1,%r1),0(%r1)
+-END(__memset_z10)
+-
+-ENTRY(__memset_mvcle)
+-	aghi	%r4,2               # take back the change done by the caller
+-	lgr	%r0,%r2		    # save source address
+-	lgr	%r1,%r3		    # move pad byte to R1
+-	lgr	%r3,%r4             # move length to r3
+-	sgr	%r4,%r4		    # no source for MVCLE, only a pad byte
+-	sgr	%r5,%r5
+-.L0:	mvcle	%r2,%r4,0(%r1)	    # thats it, MVCLE is your friend
+-	jo	.L0
+-	lgr	%r2,%r0		    # return value is source address
+-.L1:
+-	br	%r14
+-END(__memset_mvcle)
+-
+-#endif
+-
+-#include "../memset.S"
+-
+-#ifdef NOT_IN_libc
+-.globl   memset
+-.set     memset,__memset_z900
+-#endif
+diff --git a/sysdeps/s390/s390-64/multiarch/memset.c b/sysdeps/s390/s390-64/multiarch/memset.c
+new file mode 100644
+index 0000000..3b15446
+--- /dev/null
++++ b/sysdeps/s390/s390-64/multiarch/memset.c
+@@ -0,0 +1,23 @@
++/* Multiple versions of memset.
++   Copyright (C) 2015 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#ifndef NOT_IN_libc
++# include <ifunc-resolve.h>
++
++s390_libc_ifunc (memset)
++#endif
+-- 
+2.3.0
+

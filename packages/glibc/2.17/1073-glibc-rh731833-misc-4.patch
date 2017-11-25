@@ -1,0 +1,140 @@
+This is a combination of two commits:
+
+From 42b373ad467ba426610a358d90034bcf68abb15f Mon Sep 17 00:00:00 2001
+From: Edjunior Machado <emachado@linux.vnet.ibm.com>
+Date: Thu, 23 May 2013 10:06:24 -0500
+Subject: [PATCH 31/42] PowerPC: Add functions for shared resources hints.
+ (cherry picked from commit
+ 9323d39baea2fb0cca3735136abe263eff405133)
+
+From a6d45052042c1fc962523633c0489634864e1a02 Mon Sep 17 00:00:00 2001
+From: Adhemerval Zanella <azanella@linux.vnet.ibm.com>
+Date: Fri, 24 May 2013 13:29:30 -0500
+Subject: [PATCH 32/42] PowerPC: Program Priority Register support
+
+This patch add inline functions to change the Program Priority Register
+from ISA 2.05.
+(cherry picked from commit d116b7c414c8239b677e341ac517745db689ac2d)
+
+diff -pruN glibc-2.17-c758a686/manual/platform.texi glibc-2.17-c758a686/manual/platform.texi
+--- glibc-2.17-c758a686/manual/platform.texi	2012-12-25 08:32:13.000000000 +0530
++++ glibc-2.17-c758a686/manual/platform.texi	2013-08-05 19:06:49.523550318 +0530
+@@ -34,3 +34,48 @@ This frequency is not related to the pro
+ It is also possible that this frequency is not constant.  More information is
+ available in @cite{Power ISA 2.06b - Book II - Section 5.2}.
+ @end deftypefun
++
++The following functions provide hints about the usage of resources that are
++shared with other processors.  They can be used, for example, if a program
++waiting on a lock intends to divert the shared resources to be used by other
++processors.  More information is available in @cite{Power ISA 2.06b - Book II -
++Section 3.2}.
++
++@deftypefun {void} __ppc_yield (void)
++Provide a hint that performance will probably be improved if shared resources
++dedicated to the executing processor are released for use by other processors.
++@end deftypefun
++
++@deftypefun {void} __ppc_mdoio (void)
++Provide a hint that performance will probably be improved if shared resources
++dedicated to the executing processor are released until all outstanding storage
++accesses to caching-inhibited storage have been completed.
++@end deftypefun
++
++@deftypefun {void} __ppc_mdoom (void)
++Provide a hint that performance will probably be improved if shared resources
++dedicated to the executing processor are released until all outstanding storage
++accesses to cacheable storage for which the data is not in the cache have been
++completed.
++@end deftypefun
++
++@deftypefun {void} __ppc_set_ppr_med (void)
++Set the Program Priority Register to medium value (default).
++
++The @dfn{Program Priority Register} (PPR) is a 64-bit register that controls
++the program's priority.  By adjusting the PPR value the programmer may
++improve system throughput by causing the system resources to be used
++more efficiently, especially in contention situations.
++The three unprivileged states available are covered by the functions
++@code{__ppc_set_ppr_med} (medium -- default), @code{__ppc_set_ppc_low} (low)
++and @code{__ppc_set_ppc_med_low} (medium low).  More information
++available in @cite{Power ISA 2.06b - Book II - Section 3.1}.
++@end deftypefun
++
++@deftypefun {void} __ppc_set_ppr_low (void)
++Set the Program Priority Register to low value.
++@end deftypefun
++
++@deftypefun {void} __ppc_set_ppr_med_low (void)
++Set the Program Priority Register to medium low value.
++@end deftypefun
+diff -pruN glibc-2.17-c758a686/sysdeps/powerpc/sys/platform/ppc.h glibc-2.17-c758a686/sysdeps/powerpc/sys/platform/ppc.h
+--- glibc-2.17-c758a686/sysdeps/powerpc/sys/platform/ppc.h	2012-12-25 08:32:13.000000000 +0530
++++ glibc-2.17-c758a686/sysdeps/powerpc/sys/platform/ppc.h	2013-08-05 19:06:49.523550318 +0530
+@@ -50,4 +50,66 @@ __ppc_get_timebase (void)
+ #endif
+ }
+ 
++/* The following functions provide hints about the usage of shared processor
++   resources, as defined in ISA 2.06 and newer. */
++
++/* Provides a hint that performance will probably be improved if shared
++   resources dedicated to the executing processor are released for use by other
++   processors.  */
++static inline void
++__ppc_yield (void)
++{
++  __asm__ volatile ("or 27,27,27");
++}
++
++/* Provides a hint that performance will probably be improved if shared
++   resources dedicated to the executing processor are released until
++   all outstanding storage accesses to caching-inhibited storage have been
++   completed.  */
++static inline void
++__ppc_mdoio (void)
++{
++  __asm__ volatile ("or 29,29,29");
++}
++
++/* Provides a hint that performance will probably be improved if shared
++   resources dedicated to the executing processor are released until all
++   outstanding storage accesses to cacheable storage for which the data is not
++   in the cache have been completed.  */
++static inline void
++__ppc_mdoom (void)
++{
++  __asm__ volatile ("or 30,30,30");
++}
++
++
++/* ISA 2.05 and beyond support the Program Priority Register (PPR) to adjust
++   thread priorities based on lock acquisition, wait and release. The ISA
++   defines the use of form 'or Rx,Rx,Rx' as the way to modify the PRI field.
++   The unprivileged priorities are:
++     Rx = 1 (low)
++     Rx = 2 (medium)
++     Rx = 6 (medium-low/normal)
++   The 'or' instruction form is a nop in previous hardware, so it is safe to
++   use unguarded. The default value is 'medium'.
++ */
++
++static inline void
++__ppc_set_ppr_med (void)
++{
++  __asm__ volatile ("or 2,2,2");
++}
++
++static inline void
++__ppc_set_ppr_med_low (void)
++{
++  __asm__ volatile ("or 6,6,6");
++}
++
++static inline void
++__ppc_set_ppr_low (void)
++{
++  __asm__ volatile ("or 1,1,1");
++}
++
+ #endif  /* sys/platform/ppc.h */

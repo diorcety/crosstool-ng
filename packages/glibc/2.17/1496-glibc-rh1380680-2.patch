@@ -1,0 +1,114 @@
+From 29f8926b153d59ba18f67ce5445dce66bacc0cbf Mon Sep 17 00:00:00 2001
+From: Stefan Liebler <stli@linux.vnet.ibm.com>
+Date: Mon, 7 Nov 2016 15:25:04 +0100
+Subject: [PATCH 02/17] S390: Configure check for vector support in gcc.
+
+Upstream commit 9b7f05599a92dead97d6683bc838a57bc63ac52b
+
+The S390 specific test checks if the gcc has support for vector registers
+by compiling an inline assembly which clobbers vector registers.
+On success the macro HAVE_S390_VX_GCC_SUPPORT is defined.
+This macro can be used to determine if e.g. clobbering vector registers
+is allowed or not.
+
+ChangeLog:
+
+	* config.h.in (HAVE_S390_VX_GCC_SUPPORT): New macro undefine.
+	* sysdeps/s390/configure.in: Add test for S390 vector register
+	support in gcc.
+	* sysdeps/s390/configure: Regenerated.
+---
+ config.h.in               |  4 ++++
+ sysdeps/s390/configure    | 33 +++++++++++++++++++++++++++++++++
+ sysdeps/s390/configure.in | 22 ++++++++++++++++++++++
+ 3 files changed, 59 insertions(+)
+
+diff --git a/config.h.in b/config.h.in
+index f7f2388..62e04c7 100644
+--- a/config.h.in
++++ b/config.h.in
+@@ -113,6 +113,10 @@
+ /* Define if assembler supports vector instructions on S390.  */
+ #undef  HAVE_S390_VX_ASM_SUPPORT
+ 
++/* Define if gcc supports vector registers as clobbers in inline assembly
++   on S390.  */
++#undef  HAVE_S390_VX_GCC_SUPPORT
++
+ /* Define if gcc supports FMA4.  */
+ #undef	HAVE_FMA4_SUPPORT
+ 
+diff --git a/sysdeps/s390/configure b/sysdeps/s390/configure
+index cc4c1e0..eb49a4c 100644
+--- a/sysdeps/s390/configure
++++ b/sysdeps/s390/configure
+@@ -42,3 +42,36 @@ else
+   { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: Use binutils with vector-support in order to use optimized implementations." >&5
+ $as_echo "$as_me: WARNING: Use binutils with vector-support in order to use optimized implementations." >&2;}
+ fi
++
++{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for S390 vector support in gcc" >&5
++$as_echo_n "checking for S390 vector support in gcc... " >&6; }
++if ${libc_cv_gcc_s390_vx+:} false; then :
++  $as_echo_n "(cached) " >&6
++else
++  cat > conftest.c <<\EOF
++void testvecclobber ()
++{
++  __asm__ ("" : : : "v16");
++}
++EOF
++if { ac_try='${CC-cc} --shared conftest.c -o conftest.o &> /dev/null'
++  { { eval echo "\"\$as_me\":${as_lineno-$LINENO}: \"$ac_try\""; } >&5
++  (eval $ac_try) 2>&5
++  ac_status=$?
++  $as_echo "$as_me:${as_lineno-$LINENO}: \$? = $ac_status" >&5
++  test $ac_status = 0; }; } ;
++then
++  libc_cv_gcc_s390_vx=yes
++else
++  libc_cv_gcc_s390_vx=no
++fi
++rm -f conftest*
++fi
++{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $libc_cv_gcc_s390_vx" >&5
++$as_echo "$libc_cv_gcc_s390_vx" >&6; }
++
++if test "$libc_cv_gcc_s390_vx" = yes ;
++then
++  $as_echo "#define HAVE_S390_VX_GCC_SUPPORT 1" >>confdefs.h
++
++fi
+diff --git a/sysdeps/s390/configure.in b/sysdeps/s390/configure.in
+index 733e356..a3b1f25 100644
+--- a/sysdeps/s390/configure.in
++++ b/sysdeps/s390/configure.in
+@@ -31,3 +31,25 @@ then
+ else
+   AC_MSG_WARN([Use binutils with vector-support in order to use optimized implementations.])
+ fi
++
++AC_CACHE_CHECK(for S390 vector support in gcc, libc_cv_gcc_s390_vx, [dnl
++cat > conftest.c <<\EOF
++void testvecclobber ()
++{
++  __asm__ ("" : : : "v16");
++}
++EOF
++dnl
++dnl test, if gcc supports S390 vector registers as clobber in inline assembly
++if AC_TRY_COMMAND([${CC-cc} --shared conftest.c -o conftest.o &> /dev/null]) ;
++then
++  libc_cv_gcc_s390_vx=yes
++else
++  libc_cv_gcc_s390_vx=no
++fi
++rm -f conftest* ])
++
++if test "$libc_cv_gcc_s390_vx" = yes ;
++then
++  AC_DEFINE(HAVE_S390_VX_GCC_SUPPORT)
++fi
+-- 
+1.8.3.1
+

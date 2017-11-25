@@ -1,0 +1,54 @@
+Upstream commits:
+
+commit a071766ebfd853179ac39f9773f894029bf86d36
+Author: Andreas Schwab <schwab@suse.de>
+Date:   Thu Mar 20 15:05:25 2014 +0100
+
+    Fix use of half-initialized result in getaddrinfo when using nscd (bug 16743)
+    
+    This fixes a bug in the way the results from __nscd_getai are collected:
+    for every returned result a new entry is first added to the
+    gaih_addrtuple list, but if that result doesn't match the request this
+    entry remains uninitialized.  So for this non-matching result an extra
+    result with uninitialized content is returned.
+    
+    To reproduce (with nscd running):
+    
+        $ getent ahostsv4 localhost
+        127.0.0.1       STREAM localhost
+        127.0.0.1       DGRAM
+        127.0.0.1       RAW
+        (null)          STREAM
+        (null)          DGRAM
+        (null)          RAW
+
+commit 8dc9751764eb1bedf06d19695524b31a16773413
+Author: Andreas Schwab <schwab@suse.de>
+Date:   Wed May 7 11:47:20 2014 +0200
+
+    Fix parsing of getai result from nscd for IPv6-only request
+
+
+Index: b/sysdeps/posix/getaddrinfo.c
+===================================================================
+--- a/sysdeps/posix/getaddrinfo.c
++++ b/sysdeps/posix/getaddrinfo.c
+@@ -725,6 +725,18 @@ gaih_inet (const char *name, const struc
+ 		    {
+ 		      socklen_t size = (air->family[i] == AF_INET
+ 					? INADDRSZ : IN6ADDRSZ);
++
++		      if (!((air->family[i] == AF_INET
++			     && req->ai_family == AF_INET6
++			     && (req->ai_flags & AI_V4MAPPED) != 0)
++			    || req->ai_family == AF_UNSPEC
++			    || air->family[i] == req->ai_family))
++			{
++			  /* Skip over non-matching result.  */
++			  addrs += size;
++			  continue;
++			}
++
+ 		      if (*pat == NULL)
+ 			{
+ 			  *pat = addrfree++;

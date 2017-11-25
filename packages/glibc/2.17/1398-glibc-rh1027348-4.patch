@@ -1,0 +1,105 @@
+commit c2f5813ae0a68f6c6d69e66dac2da6e46b9df034
+Author: Joseph Myers <joseph@codesourcery.com>
+Date:   Wed Mar 18 17:05:38 2015 +0000
+
+    Make sem_timedwait use FUTEX_CLOCK_REALTIME (bug 18138).
+    
+    sem_timedwait converts absolute timeouts to relative to pass them to
+    the futex syscall.  (Before the recent reimplementation, on x86_64 it
+    used FUTEX_CLOCK_REALTIME, but not on other architectures.)
+    
+    Correctly implementing POSIX requirements, however, requires use of
+    FUTEX_CLOCK_REALTIME; passing a relative timeout to the kernel does
+    not conform to POSIX.  The POSIX specification for sem_timedwait says
+    "The timeout shall be based on the CLOCK_REALTIME clock.".  The POSIX
+    specification for clock_settime says "If the value of the
+    CLOCK_REALTIME clock is set via clock_settime(), the new value of the
+    clock shall be used to determine the time of expiration for absolute
+    time services based upon the CLOCK_REALTIME clock. This applies to the
+    time at which armed absolute timers expire. If the absolute time
+    requested at the invocation of such a time service is before the new
+    value of the clock, the time service shall expire immediately as if
+    the clock had reached the requested time normally.".  If a relative
+    timeout is passed to the kernel, it is interpreted according to the
+    CLOCK_MONOTONIC clock, and so fails to meet that POSIX requirement in
+    the event of clock changes.
+    
+    This patch makes sem_timedwait use lll_futex_timed_wait_bitset with
+    FUTEX_CLOCK_REALTIME when possible, as done in some other places in
+    NPTL.  FUTEX_CLOCK_REALTIME is always available for supported Linux
+    kernel versions; unavailability of lll_futex_timed_wait_bitset is only
+    an issue for hppa (an issue noted in
+    <https://sourceware.org/glibc/wiki/PortStatus>, and fixed by the
+    unreviewed
+    <https://sourceware.org/ml/libc-alpha/2014-12/msg00655.html> that
+    removes the hppa lowlevellock.h completely).
+    
+    In the FUTEX_CLOCK_REALTIME case, the glibc code still needs to check
+    for negative tv_sec and handle that as timeout, because the Linux
+    kernel returns EINVAL not ETIMEDOUT for that case, so resulting in
+    failures of nptl/tst-abstime and nptl/tst-sem13 in the absence of that
+    check.  If we're trying to distinguish between Linux-specific and
+    generic-futex NPTL code, I suppose having this in an nptl/ file isn't
+    ideal, but there doesn't seem to be any better place at present.
+    
+    It's not possible to add a testcase for this issue to the testsuite
+    because of the requirement to change the system clock as part of a
+    test (this is a case where testing would require some form of
+    container, with root in that container, and one whose CLOCK_REALTIME
+    is isolated from that of the host; I'm not sure what forms of
+    containers, short of a full virtual machine, provide that clock
+    isolation).
+    
+    Tested for x86_64.  Also tested for powerpc with the testcase included
+    in the bug.
+    
+        [BZ #18138]
+        * nptl/sem_waitcommon.c: Include <kernel-features.h>.
+        (futex_abstimed_wait)
+        [__ASSUME_FUTEX_CLOCK_REALTIME && lll_futex_timed_wait_bitset]:
+        Use lll_futex_timed_wait_bitset with FUTEX_CLOCK_REALTIME instead
+        of lll_futex_timed_wait.
+
+Index: glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/sem_waitcommon.c
+===================================================================
+--- glibc-2.17-c758a686.orig/nptl/sysdeps/unix/sysv/linux/sem_waitcommon.c
++++ glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/sem_waitcommon.c
+@@ -17,6 +17,7 @@
+    License along with the GNU C Library; if not, see
+    <http://www.gnu.org/licenses/>.  */
+ 
++#include <kernel-features.h>
+ #include <errno.h>
+ #include <sysdep.h>
+ #include <lowlevellock.h>
+@@ -45,6 +46,13 @@ futex_abstimed_wait (unsigned int* futex
+     }
+   else
+     {
++#if (defined __ASSUME_FUTEX_CLOCK_REALTIME	\
++     && defined lll_futex_timed_wait_bitset)
++      /* The Linux kernel returns EINVAL for this, but in userspace
++	 such a value is valid.  */
++      if (abstime->tv_sec < 0)
++	return ETIMEDOUT;
++#else
+       struct timeval tv;
+       struct timespec rt;
+       int sec, nsec;
+@@ -68,9 +76,16 @@ futex_abstimed_wait (unsigned int* futex
+       /* Do wait.  */
+       rt.tv_sec = sec;
+       rt.tv_nsec = nsec;
++#endif
+       if (cancel)
+ 	oldtype = __pthread_enable_asynccancel ();
++#if (defined __ASSUME_FUTEX_CLOCK_REALTIME	\
++     && defined lll_futex_timed_wait_bitset)
++      err = lll_futex_timed_wait_bitset (futex, expected, abstime,
++					 FUTEX_CLOCK_REALTIME, private);
++#else
+       err = lll_futex_timed_wait (futex, expected, &rt, private);
++#endif
+       if (cancel)
+ 	__pthread_disable_asynccancel (oldtype);
+     }

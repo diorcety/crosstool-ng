@@ -1,0 +1,219 @@
+From 7560c8b2254c082f754f1e8fd390d4b50146dcdd Mon Sep 17 00:00:00 2001
+From: Rajalakshmi Srinivasaraghavan <raji@linux.vnet.ibm.com>
+Date: Wed, 30 Jul 2014 11:30:28 -0500
+Subject: [PATCH] PowerPC: multiarch copysign/copysignf for PowerPC64
+
+commit 2568f3fa69bbf70d0bea457cb7cbbf3bee45bfe5
+Author: Adhemerval Zanella <azanella@linux.vnet.ibm.com>
+Date:   Fri Dec 13 15:32:58 2013 -0500
+---
+ sysdeps/powerpc/powerpc64/fpu/multiarch/Makefile   |  6 ++-
+ .../powerpc64/fpu/multiarch/s_copysign-power6.S    | 33 ++++++++++++++
+ .../powerpc64/fpu/multiarch/s_copysign-ppc64.S     | 35 +++++++++++++++
+ .../powerpc/powerpc64/fpu/multiarch/s_copysign.c   | 51 ++++++++++++++++++++++
+ .../powerpc/powerpc64/fpu/multiarch/s_copysignf.c  | 32 ++++++++++++++
+ 5 files changed, 155 insertions(+), 2 deletions(-)
+ create mode 100644 sysdeps/powerpc/powerpc64/fpu/multiarch/s_copysign-power6.S
+ create mode 100644 sysdeps/powerpc/powerpc64/fpu/multiarch/s_copysign-ppc64.S
+ create mode 100644 sysdeps/powerpc/powerpc64/fpu/multiarch/s_copysign.c
+ create mode 100644 sysdeps/powerpc/powerpc64/fpu/multiarch/s_copysignf.c
+
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/Makefile glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/Makefile
+index 4cdb383..3af4ac3 100644
+--- glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/Makefile
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/Makefile
+@@ -1,6 +1,7 @@
+ ifeq ($(subdir),math)
+ sysdep_routines += s_isnan-power7 s_isnan-power6x s_isnan-power6 \
+-                  s_isnan-power5 s_isnan-ppc64
++                  s_isnan-power5 s_isnan-ppc64 s_copysign-power6 \
++                  s_copysign-ppc64
+ 
+ libm-sysdep_routines += s_isnan-power7 s_isnan-power6x s_isnan-power6 \
+                        s_isnan-power5 s_isnan-ppc64 s_llround-power6x \
+@@ -9,5 +10,6 @@ libm-sysdep_routines += s_isnan-power7 s_isnan-power6x s_isnan-power6 \
+                        s_floor-power5+ s_floor-ppc64 s_floorf-power5+ \
+                        s_floorf-ppc64 s_round-power5+ s_round-ppc64 \
+                        s_roundf-power5+ s_roundf-ppc64 s_trunc-power5+ \
+-                       s_trunc-ppc64 s_truncf-power5+ s_truncf-ppc64
++                       s_trunc-ppc64 s_truncf-power5+ s_truncf-ppc64 \
++                       s_copysign-power6 s_copysign-ppc64
+ endif
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_copysign-power6.S glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_copysign-power6.S
+new file mode 100644
+index 0000000..4fa34a6
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_copysign-power6.S
+@@ -0,0 +1,33 @@
++/* copysign().  PowerPC64 default version.
++   Copyright (C) 2013-2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <sysdep.h>
++#include <math_ldbl_opt.h>
++
++#undef weak_alias
++#define weak_alias(a,b)
++#undef strong_alias
++#define strong_alias(a,b)
++#undef compat_symbol
++#define compat_symbol(a, b, c, d)
++#undef hidden_def
++#define hidden_def(name)
++
++#define __copysign __copysign_power6
++
++#include <sysdeps/powerpc/powerpc64/fpu/s_copysign.S>
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_copysign-ppc64.S glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_copysign-ppc64.S
+new file mode 100644
+index 0000000..a5cdfc2
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_copysign-ppc64.S
+@@ -0,0 +1,35 @@
++/* copysign().  PowerPC64 default version.
++   Copyright (C) 2010-2014 Free Software Foundation, Inc.
++   Contributed by Luis Machado <luisgpm@br.ibm.com>.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <sysdep.h>
++#include <math_ldbl_opt.h>
++
++#undef weak_alias
++#define weak_alias(a,b)
++#undef strong_alias
++#define strong_alias(a,b)
++#undef compat_symbol
++#define compat_symbol(a, b, c, d)
++
++#define __copysign __copysign_ppc64
++#undef hidden_def
++#define hidden_def(name)				\
++  strong_alias (__copysign_ppc64, __GI___copysign)
++
++#include <sysdeps/powerpc/powerpc64/fpu/s_copysign.S>
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_copysign.c glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_copysign.c
+new file mode 100644
+index 0000000..f3e6b3a
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_copysign.c
+@@ -0,0 +1,51 @@
++/* Multiple versions of copysign.
++   Copyright (C) 2013-2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++/* Redefine copysign so that the compiler won't complain about the type
++   mismatch with the IFUNC selector in strong_alias below.  */
++#undef __copysign
++#define __copysign __redirect_copysign
++#include <math.h>
++#include <math_ldbl_opt.h>
++#undef __copysign
++#include <shlib-compat.h>
++#include "init-arch.h"
++
++extern __typeof (__redirect_copysign) __copysign_ppc64 attribute_hidden;
++extern __typeof (__redirect_copysign) __copysign_power6 attribute_hidden;
++
++extern __typeof (__redirect_copysign) __libm_copysign;
++libc_ifunc (__libm_copysign,
++	    (hwcap & PPC_FEATURE_ARCH_2_05)
++	    ? __copysign_power6
++            : __copysign_ppc64);
++
++strong_alias (__libm_copysign, __copysign)
++weak_alias (__copysign, copysign)
++
++#ifdef NO_LONG_DOUBLE
++weak_alias (__copysign,copysignl)
++strong_alias(__copysign,__copysignl)
++#endif
++#ifdef IS_IN_libm
++# if LONG_DOUBLE_COMPAT(libm, GLIBC_2_0)
++compat_symbol (libm, __copysign, copysignl, GLIBC_2_0);
++# endif
++#elif LONG_DOUBLE_COMPAT(libc, GLIBC_2_0)
++compat_symbol (libc, __copysign, copysignl, GLIBC_2_0);
++#endif
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_copysignf.c glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_copysignf.c
+new file mode 100644
+index 0000000..55cc272
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_copysignf.c
+@@ -0,0 +1,32 @@
++/* Multiple versions of copysignf.
++   Copyright (C) 2013-2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <math.h>
++#include <shlib-compat.h>
++#include "init-arch.h"
++
++/* It's safe to use double-precision implementation for single-precision. */
++extern __typeof (__copysignf) __copysign_ppc64 attribute_hidden;
++extern __typeof (__copysignf) __copysign_power6 attribute_hidden;
++
++libc_ifunc (__copysignf,
++	    (hwcap & PPC_FEATURE_ARCH_2_05)
++	    ? __copysign_power6
++            : __copysign_ppc64);
++
++weak_alias (__copysignf, copysignf)
+-- 
+1.8.3.1
+

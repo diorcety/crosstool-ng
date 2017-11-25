@@ -1,0 +1,327 @@
+#
+# All patches are from upstream and provide support for correct lib
+# directory for AArch64.
+#
+# From 37bf2f1f983e37c0d87a1e34cd3d8a228ead5e16 Mon Sep 17 00:00:00 2001
+# From: Andreas Schwab <schwab@suse.de>
+# Date: Thu, 4 Apr 2013 12:22:22 -0400
+# Subject: [PATCH 2/4] Add support for rtld directory different from slib
+#  directory
+# 
+# ---
+#  ChangeLog         | 15 +++++++++++++++
+#  Makeconfig        | 10 ++++++++--
+#  Makerules         |  4 ++--
+#  config.make.in    |  1 +
+#  configure         |  2 ++
+#  configure.in      |  1 +
+#  elf/Makefile      | 11 ++++++-----
+#  scripts/rellns-sh | 17 +++++++++++++++--
+#  8 files changed, 50 insertions(+), 11 deletions(-)
+# 
+# From 937dd2d4a5da7d51b87261b037e22dfca05face7 Mon Sep 17 00:00:00 2001
+# From: Marcus Shawcroft <marcus.shawcroft@linaro.org>
+# Date: Thu, 4 Apr 2013 12:26:55 -0400
+# Subject: [PATCH 4/4] Correct missed use of $(rtlddir).
+# 
+# ---
+#  ChangeLog | 4 ++++
+#  Makerules | 2 +-
+#  2 files changed, 5 insertions(+), 1 deletion(-)
+# 
+# From bcce68c6dc678b443e7f140d664ba1fa49c0ceaa Mon Sep 17 00:00:00 2001
+# From: Andreas Schwab <schwab@suse.de>
+# Date: Thu, 4 Apr 2013 12:23:43 -0400
+# Subject: [PATCH 3/4] aarch64: Move rtld link to /lib
+# 
+# ---
+#  ports/ChangeLog.aarch64                            | 6 ++++++
+#  ports/sysdeps/unix/sysv/linux/aarch64/configure    | 1 +
+#  ports/sysdeps/unix/sysv/linux/aarch64/configure.in | 1 +
+#  3 files changed, 8 insertions(+)
+# 
+# From 05bc48a20b8c20574bc59a048750f0dd77fd6e23 Mon Sep 17 00:00:00 2001
+# From: Andreas Schwab <schwab@suse.de>
+# Date: Thu, 4 Apr 2013 12:02:53 -0400
+# Subject: [PATCH 1/4] aarch64: use lib64 as default lib and slib directory
+# 
+# ---
+#  ports/ChangeLog.aarch64                            |  6 ++++++
+#  ports/sysdeps/unix/sysv/linux/aarch64/configure    | 13 +++++++++++++
+#  ports/sysdeps/unix/sysv/linux/aarch64/configure.in | 12 ++++++++++++
+#  3 files changed, 31 insertions(+)
+# 
+# commit 446737706c186b33529a2c07fcb6f0cc10b2d1ea
+# Author: Andreas Schwab <schwab@suse.de>
+# Date:   Tue Mar 19 10:13:46 2013 +0100
+#
+#    s390x: Move rtld link to /lib
+#
+diff -urN glibc-2.17-c758a686/config.make.in glibc-2.17-c758a686/config.make.in
+--- glibc-2.17-c758a686/config.make.in	2013-10-28 10:56:39.996320904 -0400
++++ glibc-2.17-c758a686/config.make.in	2013-10-28 10:56:57.773317467 -0400
+@@ -11,6 +11,7 @@
+ datadir = @datadir@
+ libdir = @libdir@
+ slibdir = @libc_cv_slibdir@
++rtlddir = @libc_cv_rtlddir@
+ localedir = @libc_cv_localedir@
+ sysconfdir = @libc_cv_sysconfdir@
+ libexecdir = @libexecdir@
+diff -urN glibc-2.17-c758a686/configure glibc-2.17-c758a686/configure
+--- glibc-2.17-c758a686/configure	2013-10-28 10:56:39.935320916 -0400
++++ glibc-2.17-c758a686/configure	2013-10-28 10:56:57.775317467 -0400
+@@ -594,6 +594,7 @@
+ libc_cv_localstatedir
+ libc_cv_sysconfdir
+ libc_cv_localedir
++libc_cv_rtlddir
+ libc_cv_slibdir
+ old_glibc_headers
+ use_nscd
+@@ -7600,6 +7601,7 @@
+ 
+ 
+ 
++
+ 
+ 
+ 
+diff -urN glibc-2.17-c758a686/configure.in glibc-2.17-c758a686/configure.in
+--- glibc-2.17-c758a686/configure.in	2013-10-28 10:56:39.902320923 -0400
++++ glibc-2.17-c758a686/configure.in	2013-10-28 10:56:57.776317467 -0400
+@@ -2127,6 +2127,7 @@
+ AC_SUBST(old_glibc_headers)
+ 
+ AC_SUBST(libc_cv_slibdir)
++AC_SUBST(libc_cv_rtlddir)
+ AC_SUBST(libc_cv_localedir)
+ AC_SUBST(libc_cv_sysconfdir)
+ AC_SUBST(libc_cv_localstatedir)
+diff -urN glibc-2.17-c758a686/elf/Makefile glibc-2.17-c758a686/elf/Makefile
+--- glibc-2.17-c758a686/elf/Makefile	2013-10-28 10:56:40.127320879 -0400
++++ glibc-2.17-c758a686/elf/Makefile	2013-10-28 10:56:57.776317467 -0400
+@@ -66,7 +66,7 @@
+ ifeq (yes,$(build-shared))
+ extra-objs	= $(all-rtld-routines:%=%.os) soinit.os sofini.os interp.os
+ generated	+= librtld.os dl-allobjs.os ld.so ldd
+-install-others	= $(inst_slibdir)/$(rtld-installed-name)
++install-others = $(inst_rtlddir)/$(rtld-installed-name)
+ install-bin-script = ldd
+ endif
+ 
+@@ -341,7 +341,7 @@
+ 	  | $(AWK) '($$7 ~ /^UND(|EF)$$/ && $$1 != "0:" && $$4 != "REGISTER") { print; p=1 } END { exit p != 0 }'
+ 
+ # interp.c exists just to get this string into the libraries.
+-CFLAGS-interp.c = -D'RUNTIME_LINKER="$(slibdir)/$(rtld-installed-name)"' \
++CFLAGS-interp.c = -D'RUNTIME_LINKER="$(rtlddir)/$(rtld-installed-name)"' \
+ 		  -DNOT_IN_libc=1
+ $(objpfx)interp.os: $(common-objpfx)config.make
+ 
+@@ -373,18 +373,19 @@
+ 	$(make-target-directory)
+ 	$(do-install-program)
+ 
+-$(inst_slibdir)/$(rtld-installed-name): \
++$(inst_rtlddir)/$(rtld-installed-name): \
+   $(inst_slibdir)/$(rtld-version-installed-name) \
+   $(inst_slibdir)/libc-$(version).so
++	$(make-target-directory)
+ 	$(make-shlib-link)
+ 
+ # Special target called by parent to install just the dynamic linker.
+ .PHONY: ldso_install
+-ldso_install: $(inst_slibdir)/$(rtld-installed-name)
++ldso_install: $(inst_rtlddir)/$(rtld-installed-name)
+ endif
+ 
+ 
+-common-ldd-rewrite = -e 's%@RTLD@%$(slibdir)/$(rtld-installed-name)%g' \
++common-ldd-rewrite = -e 's%@RTLD@%$(rtlddir)/$(rtld-installed-name)%g' \
+ 		     -e 's%@VERSION@%$(version)%g' \
+ 		     -e 's|@PKGVERSION@|$(PKGVERSION)|g' \
+ 		     -e 's|@REPORT_BUGS_TO@|$(REPORT_BUGS_TO)|g'
+diff -urN glibc-2.17-c758a686/Makeconfig glibc-2.17-c758a686/Makeconfig
+--- glibc-2.17-c758a686/Makeconfig	2013-10-28 10:56:40.434320820 -0400
++++ glibc-2.17-c758a686/Makeconfig	2013-10-28 10:56:57.772317467 -0400
+@@ -148,12 +148,18 @@
+ endif
+ inst_libdir = $(install_root)$(libdir)
+ 
+-# Where to install the shared library and dynamic linker.
++# Where to install the shared library.
+ ifndef slibdir
+ slibdir = $(exec_prefix)/lib
+ endif
+ inst_slibdir = $(install_root)$(slibdir)
+ 
++# Where to install the dynamic linker.
++ifndef rtlddir
++rtlddir = $(slibdir)
++endif
++inst_rtlddir = $(install_root)$(rtlddir)
++
+ # Prefix to put on files installed in $(libdir).  For libraries `libNAME.a',
+ # the prefix is spliced between `lib' and the name, so the linker switch
+ # `-l$(libprefix)NAME' finds the library; for other files the prefix is
+@@ -443,7 +449,7 @@
+ endif
+ ifndef config-LDFLAGS
+ ifeq (yes,$(build-shared))
+-config-LDFLAGS = -Wl,-dynamic-linker=$(slibdir)/$(rtld-installed-name)
++config-LDFLAGS = -Wl,-dynamic-linker=$(rtlddir)/$(rtld-installed-name)
+ endif
+ endif
+ ifndef link-libc
+diff -urN glibc-2.17-c758a686/Makerules glibc-2.17-c758a686/Makerules
+--- glibc-2.17-c758a686/Makerules	2013-10-28 10:56:39.928320918 -0400
++++ glibc-2.17-c758a686/Makerules	2013-10-28 10:56:57.777317467 -0400
+@@ -873,7 +873,7 @@
+ symbolic-link-prog := $(common-objpfx)elf/sln
+ symbolic-link-list := $(common-objpfx)elf/symlink.list
+ define make-shlib-link
+-echo $(<F) $@ >> $(symbolic-link-list)
++echo `$(..)scripts/rellns-sh -p $< $@` $@ >> $(symbolic-link-list)
+ endef
+ else # cross-compiling
+ # We need a definition that can be used by elf/Makefile's install rules.
+@@ -883,7 +883,7 @@
+ ifndef make-shlib-link
+ define make-shlib-link
+ rm -f $@
+-$(LN_S) $(<F) $@
++$(LN_S) `$(..)scripts/rellns-sh -p $< $@` $@
+ endef
+ endif
+ 
+@@ -937,7 +937,7 @@
+ 	 cat $<; \
+ 	 echo 'GROUP ( $(slibdir)/libc.so$(libc.so-version)' \
+ 	      '$(libdir)/$(patsubst %,$(libtype.oS),$(libprefix)$(libc-name))'\
+-	      ' AS_NEEDED (' $(slibdir)/$(rtld-installed-name) ') )' \
++	      ' AS_NEEDED (' $(rtlddir)/$(rtld-installed-name) ') )' \
+ 	) > $@.new
+ 	mv -f $@.new $@
+ 
+diff -urN glibc-2.17-c758a686/ports/sysdeps/unix/sysv/linux/aarch64/configure glibc-2.17-c758a686/ports/sysdeps/unix/sysv/linux/aarch64/configure
+--- glibc-2.17-c758a686/ports/sysdeps/unix/sysv/linux/aarch64/configure	2013-10-28 10:56:39.873320928 -0400
++++ glibc-2.17-c758a686/ports/sysdeps/unix/sysv/linux/aarch64/configure	2013-10-28 10:57:26.270311964 -0400
+@@ -1,3 +1,17 @@
+ # This file is generated from configure.in by Autoconf.  DO NOT EDIT!
++ # Local configure fragment for sysdeps/unix/sysv/linux/aarch64.
+ 
+ arch_minimum_kernel=3.7.0
++
++test -n "$libc_cv_slibdir" ||
++case "$prefix" in
++  /usr | /usr/)
++    libc_cv_slibdir="/lib64"
++    libc_cv_rtlddir="/lib"
++    if test "$libdir" = '${exec_prefix}/lib'; then
++      libdir='${exec_prefix}/lib64';
++      # Locale data can be shared between 32bit and 64bit libraries
++      libc_cv_localedir='${exec_prefix}/lib/locale'
++    fi
++    ;;
++esac
+diff -urN glibc-2.17-c758a686/ports/sysdeps/unix/sysv/linux/aarch64/configure.in glibc-2.17-c758a686/ports/sysdeps/unix/sysv/linux/aarch64/configure.in
+--- glibc-2.17-c758a686/ports/sysdeps/unix/sysv/linux/aarch64/configure.in	2013-10-28 10:56:39.873320928 -0400
++++ glibc-2.17-c758a686/ports/sysdeps/unix/sysv/linux/aarch64/configure.in	2013-10-28 10:57:49.162307556 -0400
+@@ -2,3 +2,16 @@
+ # Local configure fragment for sysdeps/unix/sysv/linux/aarch64.
+ 
+ arch_minimum_kernel=3.7.0
++
++test -n "$libc_cv_slibdir" ||
++case "$prefix" in
++  /usr | /usr/)
++    libc_cv_slibdir="/lib64"
++    libc_cv_rtlddir="/lib"
++    if test "$libdir" = '${exec_prefix}/lib'; then
++      libdir='${exec_prefix}/lib64';
++      # Locale data can be shared between 32bit and 64bit libraries
++      libc_cv_localedir='${exec_prefix}/lib/locale'
++    fi
++    ;;
++esac
+diff -urN glibc-2.17-c758a686/scripts/rellns-sh glibc-2.17-c758a686/scripts/rellns-sh
+--- glibc-2.17-c758a686/scripts/rellns-sh	2013-10-28 10:56:40.081320888 -0400
++++ glibc-2.17-c758a686/scripts/rellns-sh	2013-10-28 10:56:57.776317467 -0400
+@@ -16,8 +16,17 @@
+ # You should have received a copy of the GNU General Public License
+ # along with this program; if not, see <http://www.gnu.org/licenses/>.
+ 
++# With -p, instead of creating the link print the computed relative link
++# name.
++do_print=false
++case $1 in
++  -p)
++    do_print=true
++    shift
++    ;;
++esac
+ if test $# -ne 2; then
+-  echo "Usage: rellns SOURCE DEST" >&2
++  echo "Usage: rellns [-p] SOURCE DEST" >&2
+   exit 1
+ fi
+ 
+@@ -70,4 +79,8 @@
+   from=`echo $from | sed 's%^[^/]*/*%%'`
+ done
+ 
+-ln -s $rfrom$to $2
++if $do_print; then
++  echo "$rfrom$to"
++else
++  ln -s $rfrom$to $2
++fi
+diff --git glibc-2.17-c758a686/sysdeps/gnu/configure glibc-2.17-c758a686/sysdeps/gnu/configure
+index 26327ca..70aaa90 100644
+--- glibc-2.17-c758a686/sysdeps/gnu/configure
++++ glibc-2.17-c758a686/sysdeps/gnu/configure
+@@ -9,12 +9,17 @@
+ case "$prefix" in
+ /usr | /usr/)
+   # 64-bit libraries on bi-arch platforms go in /lib64 instead of /lib.
+-  # Allow earlier configure scripts to handle libc_cv_slibdir, libdir,
+-  # and libc_cv_localedir.
++  # Allow earlier configure scripts to handle libc_cv_slibdir,
++  # libc_cv_rtlddir, libdir, and libc_cv_localedir.
+   test -n "$libc_cv_slibdir" || \
+   case $machine in
+   sparc/sparc64 | x86_64* | powerpc/powerpc64 | s390/s390-64)
+     libc_cv_slibdir=/lib64
++    case $machine in
++    s390/s390-64)
++      libc_cv_rtlddir=/lib
++      ;;
++    esac
+     if test "$libdir" = '${exec_prefix}/lib'; then
+       libdir='${exec_prefix}/lib64';
+       # Locale data can be shared between 32bit and 64bit libraries
+diff --git glibc-2.17-c758a686/sysdeps/gnu/configure.in glibc-2.17-c758a686/sysdeps/gnu/configure.in
+index b8fd74c..ce251df 100644
+--- glibc-2.17-c758a686/sysdeps/gnu/configure.in
++++ glibc-2.17-c758a686/sysdeps/gnu/configure.in
+@@ -9,12 +9,17 @@ GLIBC_PROVIDES dnl See aclocal.m4 in the top level source directory.
+ case "$prefix" in
+ /usr | /usr/)
+   # 64-bit libraries on bi-arch platforms go in /lib64 instead of /lib.
+-  # Allow earlier configure scripts to handle libc_cv_slibdir, libdir,
+-  # and libc_cv_localedir.
++  # Allow earlier configure scripts to handle libc_cv_slibdir,
++  # libc_cv_rtlddir, libdir, and libc_cv_localedir.
+   test -n "$libc_cv_slibdir" || \
+   case $machine in
+   sparc/sparc64 | x86_64* | powerpc/powerpc64 | s390/s390-64)
+     libc_cv_slibdir=/lib64
++    case $machine in
++    s390/s390-64)
++      libc_cv_rtlddir=/lib
++      ;;
++    esac
+     if test "$libdir" = '${exec_prefix}/lib'; then
+       libdir='${exec_prefix}/lib64';
+       # Locale data can be shared between 32bit and 64bit libraries

@@ -1,0 +1,62 @@
+commit 1ef74943ce2f114c78b215af57c2ccc72ccdb0b7
+Author: Paul Pluzhnikov <ppluzhnikov@google.com>
+Date:   Thu Apr 25 11:08:31 2013 -0700
+
+    Get rid of __STDC_FORMAT_MACROS, __STDC_LIMIT_MACROS and
+    __STDC_CONSTANT_MACROS.
+
+--- glibc-2.17-c758a686/sysdeps/generic/inttypes.h
++++ glibc-2.17-c758a686/sysdeps/generic/inttypes.h
+@@ -41,10 +41,6 @@
+ #endif
+ 
+ 
+-/* The ISO C99 standard specifies that these macros must only be
+-   defined if explicitly requested.  */
+-#if !defined __cplusplus || defined __STDC_FORMAT_MACROS
+-
+ # if __WORDSIZE == 64
+ #  define __PRI64_PREFIX	"l"
+ #  define __PRIPTR_PREFIX	"l"
+@@ -267,8 +263,6 @@
+ # define SCNuPTR	__PRIPTR_PREFIX "u"
+ # define SCNxPTR	__PRIPTR_PREFIX "x"
+ 
+-#endif	/* C++ && format macros */
+-
+ 
+ __BEGIN_DECLS
+ 
+--- glibc-2.17-c758a686/sysdeps/generic/stdint.h
++++ glibc-2.17-c758a686/sysdeps/generic/stdint.h
+@@ -141,10 +141,6 @@
+ #endif
+ 
+ 
+-/* The ISO C99 standard specifies that in C++ implementations these
+-   macros should only be defined if explicitly requested.  */
+-#if !defined __cplusplus || defined __STDC_LIMIT_MACROS
+-
+ # if __WORDSIZE == 64
+ #  define __INT64_C(c)	c ## L
+ #  define __UINT64_C(c)	c ## UL
+@@ -278,12 +274,6 @@
+ # define WINT_MIN		(0u)
+ # define WINT_MAX		(4294967295u)
+ 
+-#endif	/* C++ && limit macros */
+-
+-
+-/* The ISO C99 standard specifies that in C++ implementations these
+-   should only be defined if explicitly requested.  */
+-#if !defined __cplusplus || defined __STDC_CONSTANT_MACROS
+ 
+ /* Signed.  */
+ # define INT8_C(c)	c
+@@ -314,6 +304,4 @@
+ #  define UINTMAX_C(c)	c ## ULL
+ # endif
+ 
+-#endif	/* C++ && constant macros */
+-
+ #endif /* stdint.h */

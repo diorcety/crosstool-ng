@@ -1,0 +1,229 @@
+commit e5e0d9a4f632735cf3bb440eecb5caee5eea44c1
+Author: Ian Bolton <ian.bolton@arm.com>
+Date:   Thu Apr 24 07:15:33 2014 +0100
+
+    [AArch64] Suppress unnecessary FPSR and FPCR writes.
+
+diff --git a/ports/sysdeps/aarch64/fpu/fclrexcpt.c b/ports/sysdeps/aarch64/fpu/fclrexcpt.c
+index 531269f..b24f0ff 100644
+--- a/ports/sysdeps/aarch64/fpu/fclrexcpt.c
++++ b/ports/sysdeps/aarch64/fpu/fclrexcpt.c
+@@ -23,13 +23,15 @@ int
+ feclearexcept (int excepts)
+ {
+   fpu_fpsr_t fpsr;
++  fpu_fpsr_t fpsr_new;
+ 
+   excepts &= FE_ALL_EXCEPT;
+ 
+   _FPU_GETFPSR (fpsr);
+-  fpsr = (fpsr & ~FE_ALL_EXCEPT) | (fpsr & FE_ALL_EXCEPT & ~excepts);
++  fpsr_new = (fpsr & ~FE_ALL_EXCEPT) | (fpsr & FE_ALL_EXCEPT & ~excepts);
+ 
+-  _FPU_SETFPSR (fpsr);
++  if (fpsr != fpsr_new)
++    _FPU_SETFPSR (fpsr_new);
+ 
+   return 0;
+ }
+diff --git a/ports/sysdeps/aarch64/fpu/fedisblxcpt.c b/ports/sysdeps/aarch64/fpu/fedisblxcpt.c
+index 719d52f..c43335c 100644
+--- a/ports/sysdeps/aarch64/fpu/fedisblxcpt.c
++++ b/ports/sysdeps/aarch64/fpu/fedisblxcpt.c
+@@ -23,6 +23,7 @@ int
+ fedisableexcept (int excepts)
+ {
+   fpu_control_t fpcr;
++  fpu_control_t fpcr_new;
+   int original_excepts;
+ 
+   _FPU_GETCW (fpcr);
+@@ -31,9 +32,10 @@ fedisableexcept (int excepts)
+ 
+   excepts &= FE_ALL_EXCEPT;
+ 
+-  fpcr &= ~(excepts << FE_EXCEPT_SHIFT);
++  fpcr_new = fpcr & ~(excepts << FE_EXCEPT_SHIFT);
+ 
+-  _FPU_SETCW (fpcr);
++  if (fpcr != fpcr_new)
++    _FPU_SETCW (fpcr_new);
+ 
+   return original_excepts;
+ }
+diff --git a/ports/sysdeps/aarch64/fpu/feenablxcpt.c b/ports/sysdeps/aarch64/fpu/feenablxcpt.c
+index 07a4bbb..70e413c 100644
+--- a/ports/sysdeps/aarch64/fpu/feenablxcpt.c
++++ b/ports/sysdeps/aarch64/fpu/feenablxcpt.c
+@@ -23,6 +23,7 @@ int
+ feenableexcept (int excepts)
+ {
+   fpu_control_t fpcr;
++  fpu_control_t fpcr_new;
+   int original_excepts;
+ 
+   _FPU_GETCW (fpcr);
+@@ -31,9 +32,10 @@ feenableexcept (int excepts)
+ 
+   excepts &= FE_ALL_EXCEPT;
+ 
+-  fpcr |= (excepts << FE_EXCEPT_SHIFT);
++  fpcr_new = fpcr | (excepts << FE_EXCEPT_SHIFT);
+ 
+-  _FPU_SETCW (fpcr);
++  if (fpcr != fpcr_new)
++    _FPU_SETCW (fpcr_new);
+ 
+   /* Trapping exceptions are optional in AArch64 the relevant enable
+      bits in FPCR are RES0 hence the absence of support can be
+diff --git a/ports/sysdeps/aarch64/fpu/feholdexcpt.c b/ports/sysdeps/aarch64/fpu/feholdexcpt.c
+index 0514ac1..973ba4a 100644
+--- a/ports/sysdeps/aarch64/fpu/feholdexcpt.c
++++ b/ports/sysdeps/aarch64/fpu/feholdexcpt.c
+@@ -22,8 +22,10 @@
+ int
+ feholdexcept (fenv_t *envp)
+ {
+-  fpu_fpsr_t fpsr;
+   fpu_control_t fpcr;
++  fpu_control_t fpcr_new;
++  fpu_fpsr_t fpsr;
++  fpu_fpsr_t fpsr_new;
+ 
+   _FPU_GETCW (fpcr);
+   envp->__fpcr = fpcr;
+@@ -32,14 +34,16 @@ feholdexcept (fenv_t *envp)
+   envp->__fpsr = fpsr;
+ 
+   /* Now set all exceptions to non-stop.  */
+-  fpcr &= ~(FE_ALL_EXCEPT << FE_EXCEPT_SHIFT);
++  fpcr_new = fpcr & ~(FE_ALL_EXCEPT << FE_EXCEPT_SHIFT);
+ 
+   /* And clear all exception flags.  */
+-  fpsr &= ~FE_ALL_EXCEPT;
++  fpsr_new = fpsr & ~FE_ALL_EXCEPT;
+ 
+-  _FPU_SETFPSR (fpsr);
++  if (fpsr != fpsr_new)
++    _FPU_SETFPSR (fpsr_new);
+ 
+-  _FPU_SETCW (fpcr);
++  if (fpcr != fpcr_new)
++    _FPU_SETCW (fpcr_new);
+ 
+   return 0;
+ }
+diff --git a/ports/sysdeps/aarch64/fpu/fesetenv.c b/ports/sysdeps/aarch64/fpu/fesetenv.c
+index a2434e3..30193e9 100644
+--- a/ports/sysdeps/aarch64/fpu/fesetenv.c
++++ b/ports/sysdeps/aarch64/fpu/fesetenv.c
+@@ -23,34 +23,38 @@ int
+ fesetenv (const fenv_t *envp)
+ {
+   fpu_control_t fpcr;
+-  fpu_fpsr_t fpsr;
++  fpu_control_t fpcr_new;
+   fpu_control_t updated_fpcr;
++  fpu_fpsr_t fpsr;
++  fpu_fpsr_t fpsr_new;
+ 
+   _FPU_GETCW (fpcr);
+   _FPU_GETFPSR (fpsr);
+ 
+-  fpcr &= _FPU_RESERVED;
+-  fpsr &= _FPU_FPSR_RESERVED;
++  fpcr_new = fpcr & _FPU_RESERVED;
++  fpsr_new = fpsr & _FPU_FPSR_RESERVED;
+ 
+   if (envp == FE_DFL_ENV)
+     {
+-      fpcr |= _FPU_DEFAULT;
+-      fpsr |= _FPU_FPSR_DEFAULT;
++      fpcr_new |= _FPU_DEFAULT;
++      fpsr_new |= _FPU_FPSR_DEFAULT;
+     }
+   else if (envp == FE_NOMASK_ENV)
+     {
+-      fpcr |= _FPU_FPCR_IEEE;
+-      fpsr |= _FPU_FPSR_IEEE;
++      fpcr_new |= _FPU_FPCR_IEEE;
++      fpsr_new |= _FPU_FPSR_IEEE;
+     }
+   else
+     {
+-      fpcr |= envp->__fpcr & ~_FPU_RESERVED;
+-      fpsr |= envp->__fpsr & ~_FPU_FPSR_RESERVED;
++      fpcr_new |= envp->__fpcr & ~_FPU_RESERVED;
++      fpsr_new |= envp->__fpsr & ~_FPU_FPSR_RESERVED;
+     }
+ 
+-  _FPU_SETFPSR (fpsr);
++  if (fpsr != fpsr_new)
++    _FPU_SETFPSR (fpsr_new);
+ 
+-  _FPU_SETCW (fpcr);
++  if (fpcr != fpcr_new)
++    _FPU_SETCW (fpcr_new);
+ 
+   /* Trapping exceptions are optional in AArch64 the relevant enable
+      bits in FPCR are RES0 hence the absence of support can be
+@@ -58,7 +62,7 @@ fesetenv (const fenv_t *envp)
+      value.  */
+ 
+   _FPU_GETCW (updated_fpcr);
+-  if ((updated_fpcr & fpcr) != fpcr)
++  if ((updated_fpcr & fpcr_new) != fpcr_new)
+     return 1;
+ 
+   return 0;
+diff --git a/ports/sysdeps/aarch64/fpu/fesetround.c b/ports/sysdeps/aarch64/fpu/fesetround.c
+index 40a05f6..225096a 100644
+--- a/ports/sysdeps/aarch64/fpu/fesetround.c
++++ b/ports/sysdeps/aarch64/fpu/fesetround.c
+@@ -23,6 +23,7 @@ int
+ fesetround (int round)
+ {
+   fpu_control_t fpcr;
++  fpu_control_t fpcr_new;
+ 
+   switch (round)
+     {
+@@ -31,9 +32,10 @@ fesetround (int round)
+     case FE_DOWNWARD:
+     case FE_TOWARDZERO:
+       _FPU_GETCW (fpcr);
+-      fpcr = (fpcr & ~FE_TOWARDZERO) | round;
++      fpcr_new = (fpcr & ~FE_TOWARDZERO) | round;
+ 
+-      _FPU_SETCW (fpcr);
++      if (fpcr != fpcr_new)
++	_FPU_SETCW (fpcr_new);
+       return 0;
+ 
+     default:
+diff --git a/ports/sysdeps/aarch64/fpu/fsetexcptflg.c b/ports/sysdeps/aarch64/fpu/fsetexcptflg.c
+index 49cd1e4..60bb1c9 100644
+--- a/ports/sysdeps/aarch64/fpu/fsetexcptflg.c
++++ b/ports/sysdeps/aarch64/fpu/fsetexcptflg.c
+@@ -24,16 +24,18 @@ int
+ fesetexceptflag (const fexcept_t *flagp, int excepts)
+ {
+   fpu_fpsr_t fpsr;
++  fpu_fpsr_t fpsr_new;
+ 
+   /* Get the current environment.  */
+   _FPU_GETFPSR (fpsr);
+ 
+   /* Set the desired exception mask.  */
+-  fpsr &= ~(excepts & FE_ALL_EXCEPT);
+-  fpsr |= (*flagp & excepts & FE_ALL_EXCEPT);
++  fpsr_new = fpsr & ~(excepts & FE_ALL_EXCEPT);
++  fpsr_new |= (*flagp & excepts & FE_ALL_EXCEPT);
+ 
+   /* Save state back to the FPU.  */
+-  _FPU_SETFPSR (fpsr);
++  if (fpsr != fpsr_new)
++    _FPU_SETFPSR (fpsr_new);
+ 
+   return 0;
+ }

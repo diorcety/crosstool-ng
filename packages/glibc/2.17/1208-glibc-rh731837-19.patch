@@ -1,0 +1,28 @@
+From a060ed545478f28bded88544e9361c49cf442427 Mon Sep 17 00:00:00 2001
+From: Rajalakshmi Srinivasaraghavan <raji@linux.vnet.ibm.com>
+Date: Wed, 30 Jul 2014 08:19:53 -0500
+Subject: [PATCH] More fixes for unsafe compiler optimization
+
+commit 1775babf2be39c3e09eb8b855379d0aca867abeb
+Author: Adhemerval Zanella <azanella@linux.vnet.ibm.com>
+Date:   Tue Apr 29 14:15:45 2014 -0500
+
+GCC 4.9 -ftree-loop-distribute-patterns now may transform loops in
+memcpy.  Add the alias to internal GLIBC symbol to avoid PLT creation.
+---
+ sysdeps/generic/symbol-hacks.h | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git glibc-2.17-c758a686/sysdeps/generic/symbol-hacks.h glibc-2.17-c758a686/sysdeps/generic/symbol-hacks.h
+index 9eaf014..6bec24b 100644
+--- glibc-2.17-c758a686/sysdeps/generic/symbol-hacks.h
++++ glibc-2.17-c758a686/sysdeps/generic/symbol-hacks.h
+@@ -3,4 +3,5 @@
+ #if !defined __ASSEMBLER__ && !defined NOT_IN_libc && defined SHARED
+ asm ("memmove = __GI_memmove");
+ asm ("memset = __GI_memset");
++asm ("memcpy = __GI_memcpy");
+ #endif
+-- 
+1.8.3.1
+

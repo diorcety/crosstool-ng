@@ -1,0 +1,224 @@
+From c59b219a7fb36564572a864bd61a5cdc7e37f25b Mon Sep 17 00:00:00 2001
+From: Rajalakshmi Srinivasaraghavan <raji@linux.vnet.ibm.com>
+Date: Wed, 30 Jul 2014 05:35:32 -0500
+Subject: [PATCH] PowerPC: multiarch rawmemchr for PowerPC64
+
+commit 1fd005ad2f8ca30d44d5bfa036422b4ec281ea4a
+Author: Adhemerval Zanella <azanella@linux.vnet.ibm.com>
+Date:   Fri Dec 13 14:37:26 2013 -0500
+
+Added sysdeps/powerpc/powerpc32/power4/multiarch/rawmemchr-ppc32.c and
+string/rawmemchr.c apart from original commit.
+---
+ string/rawmemchr.c                                 |  5 ++-
+ .../powerpc32/power4/multiarch/rawmemchr-ppc32.c   | 32 +++++++++++++++++++
+ sysdeps/powerpc/powerpc64/multiarch/Makefile       |  3 +-
+ .../powerpc/powerpc64/multiarch/ifunc-impl-list.c  |  8 +++++
+ .../powerpc/powerpc64/multiarch/rawmemchr-power7.S | 35 ++++++++++++++++++++
+ .../powerpc/powerpc64/multiarch/rawmemchr-ppc64.c  | 19 +++++++++++
+ sysdeps/powerpc/powerpc64/multiarch/rawmemchr.c    | 37 ++++++++++++++++++++++
+ 7 files changed, 137 insertions(+), 2 deletions(-)
+ create mode 100644 sysdeps/powerpc/powerpc32/power4/multiarch/rawmemchr-ppc32.c
+ create mode 100644 sysdeps/powerpc/powerpc64/multiarch/rawmemchr-power7.S
+ create mode 100644 sysdeps/powerpc/powerpc64/multiarch/rawmemchr-ppc64.c
+ create mode 100644 sysdeps/powerpc/powerpc64/multiarch/rawmemchr.c
+
+diff --git glibc-2.17-c758a686/string/rawmemchr.c glibc-2.17-c758a686/string/rawmemchr.c
+index 90e8c7c..0e4f192 100644
+--- glibc-2.17-c758a686/string/rawmemchr.c
++++ glibc-2.17-c758a686/string/rawmemchr.c
+@@ -47,10 +47,13 @@
+ 
+ #undef memchr
+ 
++#ifndef RAWMEMCHR
++# define RAWMEMCHR __rawmemchr
++#endif
+ 
+ /* Find the first occurrence of C in S.  */
+ __ptr_t
+-__rawmemchr (s, c_in)
++RAWMEMCHR (s, c_in)
+      const __ptr_t s;
+      int c_in;
+ {
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc32/power4/multiarch/rawmemchr-ppc32.c glibc-2.17-c758a686/sysdeps/powerpc/powerpc32/power4/multiarch/rawmemchr-ppc32.c
+new file mode 100644
+index 0000000..2e8abaa
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc32/power4/multiarch/rawmemchr-ppc32.c
+@@ -0,0 +1,32 @@
++/* PowerPC32 default implementation of rawmemchr.
++   Copyright (C) 2013-2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <string.h>
++
++#define RAWMEMCHR  __rawmemchr_ppc
++#undef weak_alias
++#define weak_alias(a, b)
++#ifdef SHARED
++# undef libc_hidden_def
++# define libc_hidden_def(name)  \
++  __hidden_ver1 (__rawmemchr_ppc, __GI___rawmemchr, __rawmemchr_ppc);
++#endif
++
++extern __typeof (rawmemchr) __rawmemchr_ppc attribute_hidden;
++
++#include <string/rawmemchr.c>
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/Makefile glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/Makefile
+index db765f2..695112c 100644
+--- glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/Makefile
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/Makefile
+@@ -4,5 +4,6 @@ sysdep_routines += memcpy-power7 memcpy-a2 memcpy-power6 memcpy-cell \
+                   memcmp-ppc64 memset-power7 memset-power6 memset-power4 \
+                   memset-ppc64 bzero-power4 bzero-power6 bzero-power7 \
+                   mempcpy-power7 mempcpy-ppc64 memchr-power7 memchr-ppc64 \
+-                  memrchr-power7 memrchr-ppc64
++                  memrchr-power7 memrchr-ppc64 rawmemchr-power7 \
++                  rawmemchr-ppc64
+ endif
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/ifunc-impl-list.c glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/ifunc-impl-list.c
+index a0700dc..5b15c3f 100644
+--- glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/ifunc-impl-list.c
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/ifunc-impl-list.c
+@@ -114,5 +114,13 @@ __libc_ifunc_impl_list (const char *name, struct libc_ifunc_impl *array,
+              IFUNC_IMPL_ADD (array, i, memrchr, 1,
+                              __memrchr_ppc))
+ 
++  /* Support sysdeps/powerpc/powerpc64/multiarch/rawmemchr.c.  */
++  IFUNC_IMPL (i, name, rawmemchr,
++             IFUNC_IMPL_ADD (array, i, rawmemchr,
++                             hwcap & PPC_FEATURE_HAS_VSX,
++                             __rawmemchr_power7)
++             IFUNC_IMPL_ADD (array, i, rawmemchr, 1,
++                             __rawmemchr_ppc))
++
+   return i;
+ }
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/rawmemchr-power7.S glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/rawmemchr-power7.S
+new file mode 100644
+index 0000000..24ae3bf
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/rawmemchr-power7.S
+@@ -0,0 +1,35 @@
++/* Optimized rawmemchr implementation for PowerPC64/POWER7.
++   Copyright (C) 2013-2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <sysdep.h>
++
++#undef ENTRY
++#define ENTRY(name)						\
++  .section ".text";						\
++  ENTRY_2(__rawmemchr_power7)					\
++  .align ALIGNARG(2);						\
++  BODY_LABEL(__rawmemchr_power7):				\
++  cfi_startproc;
++
++#undef END
++#define END(name)						\
++  cfi_endproc;							\
++  TRACEBACK(__rawmemchr_power7)					\
++  END_2(__rawmemchr_power7)
++
++#include <sysdeps/powerpc/powerpc64/power7/rawmemchr.S>
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/rawmemchr-ppc64.c glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/rawmemchr-ppc64.c
+new file mode 100644
+index 0000000..0f2f202
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/rawmemchr-ppc64.c
+@@ -0,0 +1,19 @@
++/* PowerPC64 default implementation of rawmemchr.
++   Copyright (C) 2013-2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <sysdeps/powerpc/powerpc32/power4/multiarch/rawmemchr-ppc32.c>
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/rawmemchr.c glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/rawmemchr.c
+new file mode 100644
+index 0000000..3f53cd5
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/rawmemchr.c
+@@ -0,0 +1,37 @@
++/* Multiple versions of rawmemchr.
++   Copyright (C) 2013-2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#ifndef NOT_IN_libc
++# include <string.h>
++# include <shlib-compat.h>
++# include "init-arch.h"
++
++extern __typeof (__rawmemchr) __rawmemchr_ppc attribute_hidden;
++extern __typeof (__rawmemchr) __rawmemchr_power7 attribute_hidden;
++
++/* Avoid DWARF definition DIE on ifunc symbol so that GDB can handle
++   ifunc symbol properly.  */
++libc_ifunc (__rawmemchr,
++	    (hwcap & PPC_FEATURE_HAS_VSX)
++            ? __rawmemchr_power7
++            : __rawmemchr_ppc);
++
++weak_alias (__rawmemchr, rawmemchr)
++#else
++#include <string/rawmemchr.c>
++#endif
+-- 
+1.8.3.1
+

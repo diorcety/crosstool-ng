@@ -1,0 +1,502 @@
+From 4c98816d5248bed13b1d8388efc0c47fe869300f Mon Sep 17 00:00:00 2001
+From: Stefan Liebler <stli@linux.vnet.ibm.com>
+Date: Thu, 8 Oct 2015 11:02:10 +0200
+Subject: [PATCH 12/30] S390: Optimize strcpy and wcscpy.
+
+upstream-commit-id: 680df122ab8a07806cb38d044292896334f76c01
+https://www.sourceware.org/ml/libc-alpha/2015-07/msg00157.html
+
+This patch provides optimized versions of strcpy and wcscpy with the z13
+vector instructions.
+
+ChangeLog:
+
+	* sysdeps/s390/multiarch/strcpy-vx.S: New File.
+	* sysdeps/s390/multiarch/strcpy.c: Likewise.
+	* sysdeps/s390/multiarch/wcscpy-c.c: Likewise.
+	* sysdeps/s390/multiarch/wcscpy-vx.S: Likewise.
+	* sysdeps/s390/multiarch/wcscpy.c: Likewise.
+	* sysdeps/s390/s390-32/multiarch/strcpy.c: Likewise.
+	* sysdeps/s390/s390-64/multiarch/strcpy.c: Likewise.
+	* sysdeps/s390/multiarch/Makefile (sysdep_routines): Add strcpy and
+	wcscpy functions.
+	* sysdeps/s390/multiarch/ifunc-impl-list.c
+	(__libc_ifunc_impl_list): Add ifunc test for strcpy, wcscpy.
+	* benchtests/bench-wcscpy.c: New File.
+	* benchtests/Makefile (wcsmbs-bench): Add wcscpy.
+---
+ benchtests/Makefile                      |   2 +-
+ benchtests/bench-wcscpy.c                |  20 ++++++
+ sysdeps/s390/multiarch/Makefile          |   6 +-
+ sysdeps/s390/multiarch/ifunc-impl-list.c |   3 +
+ sysdeps/s390/multiarch/strcpy-vx.S       | 109 ++++++++++++++++++++++++++++++
+ sysdeps/s390/multiarch/strcpy.c          |  24 +++++++
+ sysdeps/s390/multiarch/wcscpy-c.c        |  25 +++++++
+ sysdeps/s390/multiarch/wcscpy-vx.S       | 111 +++++++++++++++++++++++++++++++
+ sysdeps/s390/multiarch/wcscpy.c          |  27 ++++++++
+ sysdeps/s390/s390-32/multiarch/strcpy.c  |  21 ++++++
+ sysdeps/s390/s390-64/multiarch/strcpy.c  |  21 ++++++
+ 11 files changed, 366 insertions(+), 3 deletions(-)
+ create mode 100644 benchtests/bench-wcscpy.c
+ create mode 100644 sysdeps/s390/multiarch/strcpy-vx.S
+ create mode 100644 sysdeps/s390/multiarch/strcpy.c
+ create mode 100644 sysdeps/s390/multiarch/wcscpy-c.c
+ create mode 100644 sysdeps/s390/multiarch/wcscpy-vx.S
+ create mode 100644 sysdeps/s390/multiarch/wcscpy.c
+ create mode 100644 sysdeps/s390/s390-32/multiarch/strcpy.c
+ create mode 100644 sysdeps/s390/s390-64/multiarch/strcpy.c
+
+diff --git a/benchtests/Makefile b/benchtests/Makefile
+index 7bb2eef..1dda844 100644
+--- a/benchtests/Makefile
++++ b/benchtests/Makefile
+@@ -38,7 +38,7 @@ string-bench := bcopy bzero memccpy memchr memcmp memcpy memmem memmove \
+ 		strcat strchr strchrnul strcmp strcpy strcspn strlen \
+ 		strncasecmp strncat strncmp strncpy strnlen strpbrk strrchr \
+ 		strspn strstr strcpy_chk stpcpy_chk memrchr strsep strtok
+-wcsmbs-bench := wcslen wcsnlen
++wcsmbs-bench := wcslen wcsnlen wcscpy
+ string-bench-all := $(string-bench) ${wcsmbs-bench}
+ 
+ stdlib-bench := strtod
+diff --git a/benchtests/bench-wcscpy.c b/benchtests/bench-wcscpy.c
+new file mode 100644
+index 0000000..62c5825
+--- /dev/null
++++ b/benchtests/bench-wcscpy.c
+@@ -0,0 +1,20 @@
++/* Measure wcscpy functions.
++   Copyright (C) 2015 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#define WIDE 1
++#include "bench-strcpy.c"
+diff --git a/sysdeps/s390/multiarch/Makefile b/sysdeps/s390/multiarch/Makefile
+index 3397f24..e2202b7 100644
+--- a/sysdeps/s390/multiarch/Makefile
++++ b/sysdeps/s390/multiarch/Makefile
+@@ -1,9 +1,11 @@
+ ifeq ($(subdir),string)
+ sysdep_routines += strlen strlen-vx strlen-c \
+-		   strnlen strnlen-vx strnlen-c
++		   strnlen strnlen-vx strnlen-c \
++		   strcpy strcpy-vx
+ endif
+ 
+ ifeq ($(subdir),wcsmbs)
+ sysdep_routines += wcslen wcslen-vx wcslen-c \
+-		   wcsnlen wcsnlen-vx wcsnlen-c
++		   wcsnlen wcsnlen-vx wcsnlen-c \
++		   wcscpy wcscpy-vx wcscpy-c
+ endif
+diff --git a/sysdeps/s390/multiarch/ifunc-impl-list.c b/sysdeps/s390/multiarch/ifunc-impl-list.c
+index bc17c59..c9228d6 100644
+--- a/sysdeps/s390/multiarch/ifunc-impl-list.c
++++ b/sysdeps/s390/multiarch/ifunc-impl-list.c
+@@ -85,6 +85,9 @@ __libc_ifunc_impl_list (const char *name, struct libc_ifunc_impl *array,
+   IFUNC_VX_IMPL (strnlen);
+   IFUNC_VX_IMPL (wcsnlen);
+ 
++  IFUNC_VX_IMPL (strcpy);
++  IFUNC_VX_IMPL (wcscpy);
++
+ #endif /* HAVE_S390_VX_ASM_SUPPORT */
+ 
+   return i;
+diff --git a/sysdeps/s390/multiarch/strcpy-vx.S b/sysdeps/s390/multiarch/strcpy-vx.S
+new file mode 100644
+index 0000000..a8243b0
+--- /dev/null
++++ b/sysdeps/s390/multiarch/strcpy-vx.S
+@@ -0,0 +1,109 @@
++/* Vector optimized 32/64 bit S/390 version of strcpy.
++   Copyright (C) 2015 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#if defined HAVE_S390_VX_ASM_SUPPORT && !defined NOT_IN_libc
++
++# include "sysdep.h"
++# include "asm-syntax.h"
++
++	.text
++
++/* char * strcpy (const char *dest, const char *src)
++   Copy string src to dest.
++
++   Register usage:
++   -r1=tmp
++   -r2=dest and return_value
++   -r3=src
++   -r4=tmp
++   -r5=current_len
++   -v16=part of src
++   -v17=index of zero
++   -v18=part of src
++*/
++ENTRY(__strcpy_vx)
++	.machine "z13"
++	.machinemode "zarch_nohighgprs"
++
++	vlbb	%v16,0(%r3),6	/* Load s until next 4k-byte boundary.  */
++	lcbb	%r1,0(%r3),6	/* Get bytes to 4k-byte boundary or 16.  */
++
++	vfenezb	%v17,%v16,%v16	/* Find element not equal with zero search.  */
++	vlgvb	%r5,%v17,7	/* Load zero index or 16 if not found.  */
++	clrjl	%r5,%r1,.Lfound_align /* If found zero within loaded bytes,
++					 copy bytes before and return.  */
++
++	/* Align s to 16 byte.  */
++	risbgn	%r4,%r3,60,128+63,0 /* %r3 = bits 60-63 of %r2 'and' 15.  */
++	lghi	%r5,15		/* current_len = 15.  */
++	slr	%r5,%r4		/* Compute highest index to 16byte boundary.  */
++
++	vstl	%v16,%r5,0(%r2)	/* Copy loaded characters - no zero.  */
++	ahi	%r5,1		/* Start loop at next character.  */
++
++	/* Find zero in 16byte aligned loop.  */
++.Lloop:
++	vl	%v16,0(%r5,%r3)	/* Load s.  */
++	vfenezbs %v17,%v16,%v16	/* Find element not equal with zero search.  */
++	je	.Lfound_v16_0	/* Jump away if zero was found.  */
++	vl	%v18,16(%r5,%r3)/* Load next part of s.  */
++	vst	%v16,0(%r5,%r2)	/* Store previous part without zero to dst.  */
++	vfenezbs %v17,%v18,%v18
++	je	.Lfound_v18_16
++	vl	%v16,32(%r5,%r3)
++	vst	%v18,16(%r5,%r2)
++	vfenezbs %v17,%v16,%v16
++	je	.Lfound_v16_32
++	vl	%v18,48(%r5,%r3)
++	vst	%v16,32(%r5,%r2)
++	vfenezbs %v17,%v18,%v18
++	je	.Lfound_v18_48
++	vst	%v18,48(%r5,%r2)
++
++	aghi	%r5,64
++	j	.Lloop	/* No zero found -> loop.  */
++
++.Lfound_v16_32:
++	aghi	%r5,32
++.Lfound_v16_0:
++	la	%r3,0(%r5,%r2)
++	vlgvb	%r4,%v17,7	/* Load byte index of zero.  */
++	vstl	%v16,%r4,0(%r3)	/* Store characters including zero.  */
++	br	%r14
++
++.Lfound_v18_48:
++	aghi	%r5,32
++.Lfound_v18_16:
++	la	%r3,16(%r5,%r2)
++	vlgvb	%r4,%v17,7	/* Load byte index of zero.  */
++	vstl	%v18,%r4,0(%r3)	/* Store characters including zero.  */
++	br	%r14
++
++.Lfound_align:
++	vstl	%v16,%r5,0(%r2)	/* Copy characters including zero.  */
++	br	%r14
++END(__strcpy_vx)
++
++/* Use mvst-strcpy-implementation as default implementation.  */
++# define strcpy __strcpy_c
++# undef libc_hidden_builtin_def
++# define libc_hidden_builtin_def(name) strong_alias(__strcpy_c, __GI_strcpy)
++#endif /* HAVE_S390_VX_ASM_SUPPORT && !defined NOT_IN_libc */
++
++/* Include mvst-strcpy-implementation in s390-32/s390-64 subdirectory.  */
++#include <strcpy.S>
+diff --git a/sysdeps/s390/multiarch/strcpy.c b/sysdeps/s390/multiarch/strcpy.c
+new file mode 100644
+index 0000000..2e00ddf
+--- /dev/null
++++ b/sysdeps/s390/multiarch/strcpy.c
+@@ -0,0 +1,24 @@
++/* Multiple versions of strcpy.
++   Copyright (C) 2015 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#if defined HAVE_S390_VX_ASM_SUPPORT && !defined NOT_IN_libc
++# include <string.h>
++# include <ifunc-resolve.h>
++
++s390_vx_libc_ifunc2 (__strcpy, strcpy)
++#endif
+diff --git a/sysdeps/s390/multiarch/wcscpy-c.c b/sysdeps/s390/multiarch/wcscpy-c.c
+new file mode 100644
+index 0000000..ca219dd
+--- /dev/null
++++ b/sysdeps/s390/multiarch/wcscpy-c.c
+@@ -0,0 +1,25 @@
++/* Default wcscpy implementation for S/390.
++   Copyright (C) 2015 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#if defined HAVE_S390_VX_ASM_SUPPORT && !defined NOT_IN_libc
++# define WCSCPY  __wcscpy_c
++
++# include <wchar.h>
++extern __typeof (wcscpy) __wcscpy_c;
++# include <wcsmbs/wcscpy.c>
++#endif
+diff --git a/sysdeps/s390/multiarch/wcscpy-vx.S b/sysdeps/s390/multiarch/wcscpy-vx.S
+new file mode 100644
+index 0000000..6ec10bf
+--- /dev/null
++++ b/sysdeps/s390/multiarch/wcscpy-vx.S
+@@ -0,0 +1,111 @@
++/* Vector optimized 32/64 bit S/390 version of wcscpy.
++   Copyright (C) 2015 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#if defined HAVE_S390_VX_ASM_SUPPORT && !defined NOT_IN_libc
++
++# include "sysdep.h"
++# include "asm-syntax.h"
++
++	.text
++
++/* char * wcscpy (const wchar_t *dest, const wchar_t *src)
++   Copy string src to dest.
++
++   Register usage:
++   -r0=border-len for switching to vector-instructions
++   -r1=tmp
++   -r2=dest and return value
++   -r3=src
++   -r4=tmp
++   -r5=current_len
++   -v16=part of src
++   -v17=index of zero
++   -v18=part of src
++*/
++ENTRY(__wcscpy_vx)
++	.machine "z13"
++	.machinemode "zarch_nohighgprs"
++
++	vlbb	%v16,0(%r3),6	/* Load s until next 4k-byte boundary.  */
++	lcbb	%r1,0(%r3),6	/* Get bytes to 4k-byte boundary or 16.  */
++
++	tmll	%r3,3		/* Test if s is 4-byte aligned?  */
++	jne	.Lfallback	/* And use common-code variant if not.  */
++
++	vfenezf	%v17,%v16,%v16	/* Find element not equal with zero search.  */
++	vlgvb	%r5,%v17,7	/* Load zero index or 16 if not found.  */
++	clrjl	%r5,%r1,.Lfound_align /* If found zero within loaded bytes,
++					 copy bytes before and return.  */
++
++	/* Align s to 16 byte.  */
++	risbgn	%r4,%r3,60,128+63,0 /* %r3 = bits 60-63 of %r2 'and' 15.  */
++	lghi	%r5,15		/* current_len = 15.  */
++	slr	%r5,%r4		/* Compute highest index to 16byte boundary.  */
++
++	vstl	%v16,%r5,0(%r2)	/* Copy loaded characters - no zero.  */
++	ahi	%r5,1		/* Start loop at next character.  */
++
++	/* Find zero in 16byte aligned loop.  */
++.Lloop:
++	vl	%v16,0(%r5,%r3)	/* Load s.  */
++	vfenezfs %v17,%v16,%v16	/* Find element not equal with zero search.  */
++	je	.Lfound_v16_0	/* Jump away if zero was found.  */
++	vl	%v18,16(%r5,%r3) /* Load next part of s.  */
++	vst	%v16,0(%r5,%r2)	/* Store previous part without zero to dst.  */
++	vfenezfs %v17,%v18,%v18
++	je	.Lfound_v18_16
++	vl	%v16,32(%r5,%r3)
++	vst	%v18,16(%r5,%r2)
++	vfenezfs %v17,%v16,%v16
++	je	.Lfound_v16_32
++	vl	%v18,48(%r5,%r3)
++	vst	%v16,32(%r5,%r2)
++	vfenezfs %v17,%v18,%v18
++	je	.Lfound_v18_48
++	vst	%v18,48(%r5,%r2)
++
++	aghi	%r5,64
++	j	.Lloop		/* No zero found -> loop.  */
++
++.Lfound_v16_32:
++	aghi	%r5,32
++.Lfound_v16_0:
++	la	%r3,0(%r5,%r2)
++	vlgvb	%r1,%v17,7	/* Load byte index of zero.  */
++	aghi	%r1,3		/* Also copy remaining bytes of zero.  */
++	vstl	%v16,%r1,0(%r3)	/* Copy characters including zero.  */
++	br	%r14
++
++.Lfound_v18_48:
++	aghi	%r5,32
++.Lfound_v18_16:
++	la	%r3,16(%r5,%r2)
++	vlgvb	%r1,%v17,7	/* Load byte index of zero.  */
++	aghi	%r1,3		/* Also copy remaining bytes of zero.  */
++	vstl	%v18,%r1,0(%r3)	/* Copy characters including zero.  */
++	br	%r14
++
++.Lfound_align:
++	aghi	%r5,3		/* Also copy remaining bytes of zero.  */
++	vstl	%v16,%r5,0(%r2)	/* Copy characters including zero.  */
++	br	%r14
++
++.Lfallback:
++	jg	__wcscpy_c
++END(__wcscpy_vx)
++#endif /* HAVE_S390_VX_ASM_SUPPORT && !defined NOT_IN_libc */
+diff --git a/sysdeps/s390/multiarch/wcscpy.c b/sysdeps/s390/multiarch/wcscpy.c
+new file mode 100644
+index 0000000..b3a057a
+--- /dev/null
++++ b/sysdeps/s390/multiarch/wcscpy.c
+@@ -0,0 +1,27 @@
++/* Multiple versions of wcscpy.
++   Copyright (C) 2015 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#if defined HAVE_S390_VX_ASM_SUPPORT && !defined NOT_IN_libc
++# include <wchar.h>
++# include <ifunc-resolve.h>
++
++s390_vx_libc_ifunc2 (__wcscpy, wcscpy)
++
++#else
++# include <wcsmbs/wcscpy.c>
++#endif /* !(defined HAVE_S390_VX_ASM_SUPPORT && !defined NOT_IN_libc) */
+diff --git a/sysdeps/s390/s390-32/multiarch/strcpy.c b/sysdeps/s390/s390-32/multiarch/strcpy.c
+new file mode 100644
+index 0000000..b02c392
+--- /dev/null
++++ b/sysdeps/s390/s390-32/multiarch/strcpy.c
+@@ -0,0 +1,21 @@
++/* Multiple versions of strcpy.
++   Copyright (C) 2015 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++/* This wrapper-file is needed, because otherwise file
++   sysdeps/s390/s390-[32|64]/strcpy.S will be used.  */
++#include <sysdeps/s390/multiarch/strcpy.c>
+diff --git a/sysdeps/s390/s390-64/multiarch/strcpy.c b/sysdeps/s390/s390-64/multiarch/strcpy.c
+new file mode 100644
+index 0000000..b02c392
+--- /dev/null
++++ b/sysdeps/s390/s390-64/multiarch/strcpy.c
+@@ -0,0 +1,21 @@
++/* Multiple versions of strcpy.
++   Copyright (C) 2015 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++/* This wrapper-file is needed, because otherwise file
++   sysdeps/s390/s390-[32|64]/strcpy.S will be used.  */
++#include <sysdeps/s390/multiarch/strcpy.c>
+-- 
+2.3.0
+

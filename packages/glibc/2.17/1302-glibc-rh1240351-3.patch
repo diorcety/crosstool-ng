@@ -1,0 +1,667 @@
+    Backport of the following patches:
+    
+    commit 4393fc119c34e97519b9b7a4fc94066b283be452
+    Author: Adhemerval Zanella <azanella@linux.vnet.ibm.com>
+    Date:   Thu Feb 27 09:45:41 2014 -0600
+    
+        PowerPC: Optimized isinf/isinff for POWER8
+    
+        This patch add a optimized isinf/isinff implementation for POWER8
+        using the new Move From VSR Doubleword instruction to gains some
+        cycles from FP to GRP register move.
+    
+        ChangeLog:
+    	2014-02-27  Adhemerval Zanella  <azanella@linux.vnet.ibm.com>
+    
+    	* sysdeps/powerpc/powerpc64/fpu/multiarch/Makefile: Add isinf power8
+    	implementation.
+    	* sysdeps/powerpc/powerpc64/fpu/multiarch/s_isinf-power8.S: New file:
+    	POWER8 isinf ifunc implementation.
+    	* sysdeps/powerpc/powerpc64/fpu/multiarch/s_isinf.c (__isinf): Add
+    	POWER8 implementation.
+    	* sysdeps/powerpc/powerpc64/fpu/multiarch/s_isinff.c (__isinff):
+    	Likewise.
+    	* sysdeps/powerpc/powerpc64/power8/fpu/s_isinf.S: New file:
+    	POWER8 isinf implementation.
+    	* sysdeps/powerpc/powerpc64/power8/fpu/s_isinff.S: New file.
+    
+    commit cac626d60a863e48ab75417064984769e58c5719
+    Author: Adhemerval Zanella <azanella@linux.vnet.ibm.com>
+    Date:   Thu Feb 27 09:46:46 2014 -0600
+    
+        PowerPC: Optimized finite/finitef for POWER8
+    
+        This patch add a optimized finite/finitef implementation for POWER8
+        using the new Move From VSR Doubleword instruction to gains some
+        cycles from FP to GRP register move.
+    
+        ChangeLog:
+    	2014-02-27  Adhemerval Zanella  <azanella@linux.vnet.ibm.com>
+    
+    	* sysdeps/powerpc/powerpc64/fpu/multiarch/Makefile: Add finite power8
+    	implementation.
+    	* sysdeps/powerpc/powerpc64/fpu/multiarch/s_finite-power8.S: New file:
+    	POWER8 finite ifunc implementation.
+    	* sysdeps/powerpc/powerpc64/fpu/multiarch/s_finite.c (__finite): Add
+    	POWER8 implementation.
+    	* sysdeps/powerpc/powerpc64/fpu/multiarch/s_finitef.c (__finitef):
+    	Likewise.
+    	* sysdeps/powerpc/powerpc64/power8/fpu/s_finite.S: New file:
+    	POWER8 finite implementation.
+    	* sysdeps/powerpc/powerpc64/power8/fpu/s_finitef.S: New file.
+    
+    commit 1ad8950a3ea4056ed343d681b5146f4b4aa27e10
+    Author: Adhemerval Zanella <azanella@linux.vnet.ibm.com>
+    Date:   Tue Feb 18 09:29:29 2014 -0500
+    
+        PowerPC: llrint/llrintf POWER8 optimization
+    
+        This patch add a optimized llrint/llrintf implementation for POWER8
+        using the new Move From VSR Doubleword instruction to gains some
+        cycles from FP to GRP register move.
+    
+        ChangeLog:
+    	2014-02-27  Adhemerval Zanella  <azanella@linux.vnet.ibm.com>
+    
+    	* sysdeps/powerpc/powerpc64/fpu/multiarch/Makefile: Add llrint power8
+    	implementation.
+    	* sysdeps/powerpc/powerpc64/fpu/multiarch/s_llrint-power8.S: New file:
+    	POWER8 llrint ifunc implementation.
+    	* sysdeps/powerpc/powerpc64/fpu/multiarch/s_llrint.c (__lllrint): Add
+    	POWER8 implementation.
+    	* sysdeps/powerpc/powerpc64/power8/fpu/s_llrint.S: New file:
+    	POWER8 llrint implementation.
+    
+    commit fe13a20c37578f08ce393ccaeb45caeb48815ca5
+    Author: Adhemerval Zanella <azanella@linux.vnet.ibm.com>
+    Date:   Mon Feb 17 10:44:08 2014 -0600
+    
+        PowerPC: llround/llroundf POWER8 optimization
+    
+        This patch add a optimized llround/llroundf implementation for POWER8
+        using the new Move From VSR Doubleword instruction to gains some
+        cycles from FP to GRP register move.
+    
+        ChangeLog:
+    	2014-02-27  Adhemerval Zanella  <azanella@linux.vnet.ibm.com>
+    
+    	* sysdeps/powerpc/powerpc64/fpu/multiarch/Makefile: Add llround power8
+    	implementation.
+    	* sysdeps/powerpc/powerpc64/fpu/multiarch/s_llround-power8.S: New file:
+    	POWER8 llround ifunc implementation.
+    	* sysdeps/powerpc/powerpc64/fpu/multiarch/s_llround.c (__lllround): Add
+    	POWER8 implementation.
+    	* sysdeps/powerpc/powerpc64/power8/fpu/s_llround.S: New file:
+    	POWER8 llround implementation.
+    
+    commit 757d9dd5c3efa56fac75965abc014faaae7b7895
+    Author: Adhemerval Zanella <azanella@linux.vnet.ibm.com>
+    Date:   Mon Mar 31 08:00:38 2014 -0500
+    
+        PowerPC: Fix little endian enconding for mfvsrd
+    
+        This patch fixes the MFVSRD_R3_V1 macro that encodes 'mfvsrd  r3,vs1'
+        (to support old binutils) for little endian.
+
+diff --git a/sysdeps/powerpc/powerpc64/fpu/multiarch/Makefile b/sysdeps/powerpc/powerpc64/fpu/multiarch/Makefile
+index 4cd1c5d..3e2127b 100644
+--- a/sysdeps/powerpc/powerpc64/fpu/multiarch/Makefile
++++ b/sysdeps/powerpc/powerpc64/fpu/multiarch/Makefile
+@@ -4,7 +4,8 @@ sysdep_routines += s_isnan-power7 s_isnan-power6x s_isnan-power6 \
+                   s_copysign-ppc64 s_finite-power7 s_finite-ppc64 \
+                   s_finitef-ppc64 s_isinff-ppc64 s_isinf-power7 \
+                   s_isinf-ppc64 s_modf-power5+ s_modf-ppc64 \
+-                  s_modff-power5+ s_modff-ppc64 s_isnan-power8
++                  s_modff-power5+ s_modff-ppc64 s_isnan-power8 \
++                  s_isinf-power8 s_finite-power8
+ 
+ libm-sysdep_routines += s_isnan-power7 s_isnan-power6x s_isnan-power6 \
+                        s_isnan-power5 s_isnan-ppc64 s_llround-power6x \
+@@ -22,7 +23,8 @@ libm-sysdep_routines += s_isnan-power7 s_isnan-power6x s_isnan-power6 \
+                        s_logbl-ppc64 s_modf-power5+ s_modf-ppc64 \
+                        s_modff-power5+ s_modff-ppc64 e_hypot-ppc64 \
+                        e_hypot-power7 e_hypotf-ppc64 e_hypotf-power7 \
+-                       s_isnan-power8
++                       s_isnan-power8 s_isinf-power8 s_finite-power8 \
++                       s_llrint-power8 s_llround-power8
+ 
+ CFLAGS-s_logbf-power7.c = -mcpu=power7
+ CFLAGS-s_logbl-power7.c = -mcpu=power7
+diff --git a/sysdeps/powerpc/powerpc64/fpu/multiarch/s_finite-power8.S b/sysdeps/powerpc/powerpc64/fpu/multiarch/s_finite-power8.S
+new file mode 100644
+index 0000000..3b9071f
+--- /dev/null
++++ b/sysdeps/powerpc/powerpc64/fpu/multiarch/s_finite-power8.S
+@@ -0,0 +1,33 @@
++/* isnan().  PowerPC64/POWER7 version.
++   Copyright (C) 2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <sysdep.h>
++#include <math_ldbl_opt.h>
++
++#undef hidden_def
++#define hidden_def(name)
++#undef weak_alias
++#define weak_alias(name, alias)
++#undef strong_alias
++#define strong_alias(name, alias)
++#undef compat_symbol
++#define compat_symbol(lib, name, symbol, ver)
++
++#define __finite __finite_power8
++
++#include <sysdeps/powerpc/powerpc64/power8/fpu/s_finite.S>
+diff --git a/sysdeps/powerpc/powerpc64/fpu/multiarch/s_finite.c b/sysdeps/powerpc/powerpc64/fpu/multiarch/s_finite.c
+index f79a93e..b9e908d 100644
+--- a/sysdeps/powerpc/powerpc64/fpu/multiarch/s_finite.c
++++ b/sysdeps/powerpc/powerpc64/fpu/multiarch/s_finite.c
+@@ -23,10 +23,13 @@
+ 
+ extern __typeof (__finite) __finite_ppc64 attribute_hidden;
+ extern __typeof (__finite) __finite_power7 attribute_hidden;
++extern __typeof (__finite) __finite_power8 attribute_hidden;
+ 
+ libc_ifunc (__finite,
+-	    (hwcap & PPC_FEATURE_ARCH_2_06)
+-	    ? __finite_power7
++	    (hwcap2 & PPC_FEATURE2_ARCH_2_07)
++	    ? __finite_power8 :
++	      (hwcap & PPC_FEATURE_ARCH_2_06)
++	      ? __finite_power7
+             : __finite_ppc64);
+ 
+ weak_alias (__finite, finite)
+diff --git a/sysdeps/powerpc/powerpc64/fpu/multiarch/s_finitef.c b/sysdeps/powerpc/powerpc64/fpu/multiarch/s_finitef.c
+index a7243b5..30b34bc 100644
+--- a/sysdeps/powerpc/powerpc64/fpu/multiarch/s_finitef.c
++++ b/sysdeps/powerpc/powerpc64/fpu/multiarch/s_finitef.c
+@@ -23,10 +23,13 @@
+ extern __typeof (__finitef) __finitef_ppc64 attribute_hidden;
+ /* The double-precision version also works for single-precision.  */
+ extern __typeof (__finitef) __finite_power7 attribute_hidden;
++extern __typeof (__finitef) __finite_power8 attribute_hidden;
+ 
+ libc_ifunc (__finitef,
+-	    (hwcap & PPC_FEATURE_ARCH_2_06)
+-	    ? __finite_power7
++	    (hwcap2 & PPC_FEATURE2_ARCH_2_07)
++	    ? __finite_power8 :
++	      (hwcap & PPC_FEATURE_ARCH_2_06)
++	      ? __finite_power7
+             : __finitef_ppc64);
+ 
+ weak_alias (__finitef, finitef)
+diff --git a/sysdeps/powerpc/powerpc64/fpu/multiarch/s_isinf-power8.S b/sysdeps/powerpc/powerpc64/fpu/multiarch/s_isinf-power8.S
+new file mode 100644
+index 0000000..979816e
+--- /dev/null
++++ b/sysdeps/powerpc/powerpc64/fpu/multiarch/s_isinf-power8.S
+@@ -0,0 +1,33 @@
++/* isinf().  PowerPC64/POWER8 version.
++   Copyright (C) 2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <sysdep.h>
++#include <math_ldbl_opt.h>
++
++#undef hidden_def
++#define hidden_def(name)
++#undef weak_alias
++#define weak_alias(name, alias)
++#undef strong_alias
++#define strong_alias(name, alias)
++#undef compat_symbol
++#define compat_symbol(lib, name, alias, ver)
++
++#define __isinf __isinf_power8
++
++#include <sysdeps/powerpc/powerpc64/power8/fpu/s_isinf.S>
+diff --git a/sysdeps/powerpc/powerpc64/fpu/multiarch/s_isinf.c b/sysdeps/powerpc/powerpc64/fpu/multiarch/s_isinf.c
+index 1ee230b..e349a06 100644
+--- a/sysdeps/powerpc/powerpc64/fpu/multiarch/s_isinf.c
++++ b/sysdeps/powerpc/powerpc64/fpu/multiarch/s_isinf.c
+@@ -23,10 +23,13 @@
+ 
+ extern __typeof (__isinf) __isinf_ppc64 attribute_hidden;
+ extern __typeof (__isinf) __isinf_power7 attribute_hidden;
++extern __typeof (__isinf) __isinf_power8 attribute_hidden;
+ 
+ libc_ifunc (__isinf,
+-	    (hwcap & PPC_FEATURE_ARCH_2_06)
+-	    ? __isinf_power7
++	    (hwcap2 & PPC_FEATURE2_ARCH_2_07)
++	    ? __isinf_power8 :
++	      (hwcap & PPC_FEATURE_ARCH_2_06)
++	      ? __isinf_power7
+             : __isinf_ppc64);
+ 
+ weak_alias (__isinf, isinf)
+diff --git a/sysdeps/powerpc/powerpc64/fpu/multiarch/s_isinff.c b/sysdeps/powerpc/powerpc64/fpu/multiarch/s_isinff.c
+index 1336feb..71da7a3 100644
+--- a/sysdeps/powerpc/powerpc64/fpu/multiarch/s_isinff.c
++++ b/sysdeps/powerpc/powerpc64/fpu/multiarch/s_isinff.c
+@@ -24,10 +24,13 @@
+ extern __typeof (__isinff) __isinff_ppc64 attribute_hidden;
+ /* The double-precision version also works for single-precision.  */
+ extern __typeof (__isinff) __isinf_power7 attribute_hidden;
++extern __typeof (__isinff) __isinf_power8 attribute_hidden;
+ 
+ libc_ifunc (__isinff,
+-	    (hwcap & PPC_FEATURE_ARCH_2_06)
+-	    ? __isinf_power7
++	    (hwcap2 & PPC_FEATURE2_ARCH_2_07)
++	    ? __isinf_power8 :
++	      (hwcap & PPC_FEATURE_ARCH_2_06)
++	      ? __isinf_power7
+             : __isinff_ppc64);
+ 
+ weak_alias (__isinff, isinff)
+diff --git a/sysdeps/powerpc/powerpc64/fpu/multiarch/s_llrint-power8.S b/sysdeps/powerpc/powerpc64/fpu/multiarch/s_llrint-power8.S
+new file mode 100644
+index 0000000..3962b7d
+--- /dev/null
++++ b/sysdeps/powerpc/powerpc64/fpu/multiarch/s_llrint-power8.S
+@@ -0,0 +1,31 @@
++/* Round double to long int.  PowerPC64/POWER6X default version.
++   Copyright (C) 2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <sysdep.h>
++#include <math_ldbl_opt.h>
++
++#undef weak_alias
++#define weak_alias(a,b)
++#undef strong_alias
++#define strong_alias(a,b)
++#undef compat_symbol
++#define compat_symbol(a,b,c,d)
++
++#define __llrint __llrint_power8
++
++#include <sysdeps/powerpc/powerpc64/power8/fpu/s_llrint.S>
+diff --git a/sysdeps/powerpc/powerpc64/fpu/multiarch/s_llrint.c b/sysdeps/powerpc/powerpc64/fpu/multiarch/s_llrint.c
+index 5818b53..cf1b2e4 100644
+--- a/sysdeps/powerpc/powerpc64/fpu/multiarch/s_llrint.c
++++ b/sysdeps/powerpc/powerpc64/fpu/multiarch/s_llrint.c
+@@ -30,10 +30,13 @@
+ 
+ extern __typeof (__llrint) __llrint_ppc64 attribute_hidden;
+ extern __typeof (__llrint) __llrint_power6x attribute_hidden;
++extern __typeof (__llrint) __llrint_power8 attribute_hidden;
+ 
+ libc_ifunc (__llrint,
+-	    (hwcap & PPC_FEATURE_POWER6_EXT)
+-	    ? __llrint_power6x
++	    (hwcap2 & PPC_FEATURE2_ARCH_2_07)
++	    ? __llrint_power8 :
++	      (hwcap & PPC_FEATURE_POWER6_EXT)
++	      ? __llrint_power6x
+             : __llrint_ppc64);
+ 
+ weak_alias (__llrint, llrint)
+diff --git a/sysdeps/powerpc/powerpc64/fpu/multiarch/s_llround-power8.S b/sysdeps/powerpc/powerpc64/fpu/multiarch/s_llround-power8.S
+new file mode 100644
+index 0000000..41c61a1
+--- /dev/null
++++ b/sysdeps/powerpc/powerpc64/fpu/multiarch/s_llround-power8.S
+@@ -0,0 +1,31 @@
++/* llround().  PowerPC64 default version.
++   Copyright (C) 2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <sysdep.h>
++#include <math_ldbl_opt.h>
++
++#undef weak_alias
++#define weak_alias(name, alias)
++#undef strong_alias
++#define strong_alias(name, alias)
++#undef compat_symbol
++#define compat_symbol(lib, name, alias, ver)
++
++#define __llround __llround_power8
++
++#include <sysdeps/powerpc/powerpc64/power8/fpu/s_llround.S>
+diff --git a/sysdeps/powerpc/powerpc64/fpu/multiarch/s_llround.c b/sysdeps/powerpc/powerpc64/fpu/multiarch/s_llround.c
+index a4d1bf3..7dba17e 100644
+--- a/sysdeps/powerpc/powerpc64/fpu/multiarch/s_llround.c
++++ b/sysdeps/powerpc/powerpc64/fpu/multiarch/s_llround.c
+@@ -27,12 +27,15 @@
+ extern __typeof (__llround) __llround_ppc64 attribute_hidden;
+ extern __typeof (__llround) __llround_power5plus attribute_hidden;
+ extern __typeof (__llround) __llround_power6x attribute_hidden;
++extern __typeof (__llround) __llround_power8 attribute_hidden;
+ 
+ libc_ifunc (__llround,
+-	    (hwcap & PPC_FEATURE_POWER6_EXT)
+-	    ? __llround_power6x :
+-	      (hwcap & PPC_FEATURE_POWER5_PLUS)
+-	      ? __llround_power5plus
++	    (hwcap2 & PPC_FEATURE2_ARCH_2_07)
++	    ? __llround_power8 :
++	      (hwcap & PPC_FEATURE_POWER6_EXT)
++	      ? __llround_power6x :
++		(hwcap & PPC_FEATURE_POWER5_PLUS)
++		? __llround_power5plus
+             : __llround_ppc64);
+ 
+ weak_alias (__llround, llround)
+diff --git a/sysdeps/powerpc/powerpc64/power8/fpu/s_finite.S b/sysdeps/powerpc/powerpc64/power8/fpu/s_finite.S
+new file mode 100644
+index 0000000..3e98126
+--- /dev/null
++++ b/sysdeps/powerpc/powerpc64/power8/fpu/s_finite.S
+@@ -0,0 +1,56 @@
++/* isfinite().  PowerPC64/POWER8 version.
++   Copyright (C) 2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <sysdep.h>
++#include <math_ldbl_opt.h>
++
++#define MFVSRD_R3_V1  .long 0x7c230066     /* mfvsrd  r3,vs1  */
++
++/* int [r3] __finite ([fp1] x)  */
++
++EALIGN (__finite, 4, 0)
++	CALL_MCOUNT 0
++	MFVSRD_R3_V1
++	lis     r9,0x8010
++	clrldi  r3,r3,1       /* r3 = r3 & 0x8000000000000000  */
++	rldicr  r9,r9,32,31   /* r9 = (r9 << 32) & 0xffffffff  */
++	add     r3,r3,r9
++	rldicl  r3,r3,1,63
++	blr
++END (__finite)
++
++hidden_def (__finite)
++weak_alias (__finite, finite)
++
++/* It turns out that the 'double' version will also always work for
++   single-precision.  */
++strong_alias (__finite, __finitef)
++hidden_def (__finitef)
++weak_alias (__finitef, finitef)
++
++#ifdef IS_IN_libm
++# if LONG_DOUBLE_COMPAT (libm, GLIBC_2_0)
++compat_symbol (libm, __finite, __finitel, GLIBC_2_0)
++compat_symbol (libm, finite, finitel, GLIBC_2_0)
++# endif
++#else
++# if LONG_DOUBLE_COMPAT (libc, GLIBC_2_0)
++compat_symbol (libc, __finite, __finitel, GLIBC_2_0);
++compat_symbol (libc, finite, finitel, GLIBC_2_0);
++# endif
++#endif
+diff --git a/sysdeps/powerpc/powerpc64/power8/fpu/s_finitef.S b/sysdeps/powerpc/powerpc64/power8/fpu/s_finitef.S
+new file mode 100644
+index 0000000..54bd941
+--- /dev/null
++++ b/sysdeps/powerpc/powerpc64/power8/fpu/s_finitef.S
+@@ -0,0 +1 @@
++/* This function uses the same code as s_finite.S.  */
+diff --git a/sysdeps/powerpc/powerpc64/power8/fpu/s_isinf.S b/sysdeps/powerpc/powerpc64/power8/fpu/s_isinf.S
+new file mode 100644
+index 0000000..125de39
+--- /dev/null
++++ b/sysdeps/powerpc/powerpc64/power8/fpu/s_isinf.S
+@@ -0,0 +1,61 @@
++/* isinf().  PowerPC64/POWER8 version.
++   Copyright (C) 2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <sysdep.h>
++#include <math_ldbl_opt.h>
++
++#define MFVSRD_R3_V1  .long 0x7c230066     /* mfvsrd  r3,vs1  */
++
++/* int [r3] __isinf([fp1] x)  */
++
++EALIGN (__isinf, 4, 0)
++	CALL_MCOUNT 0
++	MFVSRD_R3_V1
++	lis     r9,0x7ff0     /* r9 = 0x7ff0  */
++	rldicl  r10,r3,0,1    /* r10 = r3 & (0x8000000000000000)  */
++	sldi    r9,r9,32      /* r9 = r9 << 52  */
++	cmpd    cr7,r10,r9    /* fp1 & 0x7ff0000000000000 ?  */
++	beq     cr7,L(inf)
++	li      r3,0          /* Not inf  */
++	blr
++L(inf):
++	sradi   r3,r3,63      /* r3 = r3 >> 63  */
++	ori     r3,r3,1       /* r3 = r3 | 0x1  */
++	blr
++END (__isinf)
++
++hidden_def (__isinf)
++weak_alias (__isinf, isinf)
++
++/* It turns out that the 'double' version will also always work for
++   single-precision.  */
++strong_alias (__isinf, __isinff)
++hidden_def (__isinff)
++weak_alias (__isinff, isinff)
++
++#ifdef NO_LONG_DOUBLE
++strong_alias (__isinf, __isinfl)
++weak_alias (__isinf, isinfl)
++#endif
++
++#ifndef IS_IN_libm
++# if LONG_DOUBLE_COMPAT(libc, GLIBC_2_0)
++compat_symbol (libc, __isinf, __isinfl, GLIBC_2_0);
++compat_symbol (libc, isinf, isinfl, GLIBC_2_0);
++# endif
++#endif
+diff --git a/sysdeps/powerpc/powerpc64/power8/fpu/s_isinff.S b/sysdeps/powerpc/powerpc64/power8/fpu/s_isinff.S
+new file mode 100644
+index 0000000..be759e0
+--- /dev/null
++++ b/sysdeps/powerpc/powerpc64/power8/fpu/s_isinff.S
+@@ -0,0 +1 @@
++/* This function uses the same code as s_isinf.S.  */
+diff --git a/sysdeps/powerpc/powerpc64/power8/fpu/s_isnan.S b/sysdeps/powerpc/powerpc64/power8/fpu/s_isnan.S
+index c1ca9a5..cb96d03 100644
+--- a/sysdeps/powerpc/powerpc64/power8/fpu/s_isnan.S
++++ b/sysdeps/powerpc/powerpc64/power8/fpu/s_isnan.S
+@@ -19,8 +19,8 @@
+ #include <sysdep.h>
+ #include <math_ldbl_opt.h>
+ 
+-#define MFVSRD_R3_V1  .byte 0x7c,0x23,0x00,0x66     /* mfvsrd  r3,vs1  */
+-
++#define MFVSRD_R3_V1  .long 0x7c230066     /* mfvsrd  r3,vs1  */
++        
+ /* int [r3] __isnan([f1] x)  */
+ 
+ EALIGN (__isnan, 4, 0)
+diff --git a/sysdeps/powerpc/powerpc64/power8/fpu/s_llrint.S b/sysdeps/powerpc/powerpc64/power8/fpu/s_llrint.S
+new file mode 100644
+index 0000000..ce48d4e
+--- /dev/null
++++ b/sysdeps/powerpc/powerpc64/power8/fpu/s_llrint.S
+@@ -0,0 +1,45 @@
++/* Round double to long int.  POWER8 PowerPC64 version.
++   Copyright (C) 2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <sysdep.h>
++#include <math_ldbl_opt.h>
++
++#define MFVSRD_R3_V1  .long 0x7c230066     /* mfvsrd  r3,vs1  */
++
++/* long long int[r3] __llrint (double x[fp1])  */
++ENTRY (__llrint)
++	CALL_MCOUNT 0
++	fctid	fp1,fp1
++	MFVSRD_R3_V1
++	blr
++END (__llrint)
++
++strong_alias (__llrint, __lrint)
++weak_alias (__llrint, llrint)
++weak_alias (__lrint, lrint)
++
++#ifdef NO_LONG_DOUBLE
++strong_alias (__llrint, __llrintl)
++weak_alias (__llrint, llrintl)
++strong_alias (__lrint, __lrintl)
++weak_alias (__lrint, lrintl)
++#endif
++#if LONG_DOUBLE_COMPAT(libm, GLIBC_2_1)
++compat_symbol (libm, __llrint, llrintl, GLIBC_2_1)
++compat_symbol (libm, __lrint, lrintl, GLIBC_2_1)
++#endif
+diff --git a/sysdeps/powerpc/powerpc64/power8/fpu/s_llround.S b/sysdeps/powerpc/powerpc64/power8/fpu/s_llround.S
+new file mode 100644
+index 0000000..2aea234
+--- /dev/null
++++ b/sysdeps/powerpc/powerpc64/power8/fpu/s_llround.S
+@@ -0,0 +1,47 @@
++/* llround function.  POWER8 PowerPC64 version.
++   Copyright (C) 2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <sysdep.h>
++#include <math_ldbl_opt.h>
++
++#define MFVSRD_R3_V1  .long 0x7c230066     /* mfvsrd  r3,vs1  */
++
++/* long long [r3] llround (float x [fp1])  */
++
++ENTRY (__llround)
++	CALL_MCOUNT 0
++	frin	fp1,fp1	/* Round to nearest +-0.5.  */
++	fctidz	fp1,fp1	/* Convert To Integer DW round toward 0.  */
++	MFVSRD_R3_V1
++	blr
++END (__llround)
++
++strong_alias (__llround, __lround)
++weak_alias (__llround, llround)
++weak_alias (__lround, lround)
++
++#ifdef NO_LONG_DOUBLE
++weak_alias (__llround, llroundl)
++strong_alias (__llround, __llroundl)
++weak_alias (__lround, lroundl)
++strong_alias (__lround, __lroundl)
++#endif
++#if LONG_DOUBLE_COMPAT(libm, GLIBC_2_1)
++compat_symbol (libm, __llround, llroundl, GLIBC_2_1)
++compat_symbol (libm, __lround, lroundl, GLIBC_2_1)
++#endif

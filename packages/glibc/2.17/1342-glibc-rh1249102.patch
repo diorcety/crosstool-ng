@@ -1,0 +1,26 @@
+commit a53fbd8e6cd2f69bdfa3431d616a5f332aea6664
+Author: Adhemerval Zanella <azanella@linux.vnet.ibm.com>
+Date:   Tue Jul 29 13:56:44 2014 -0500
+
+    PowerPC: Fix gprof entry point for LE
+    
+    This patch fixes the ELFv2 gprof entry point since the ABI
+    does not define function descriptors.  It fixes BZ#17213.
+diff --git a/sysdeps/powerpc/powerpc64/entry.h b/sysdeps/powerpc/powerpc64/entry.h
+index 76ead1d..30553c1 100644
+--- a/sysdeps/powerpc/powerpc64/entry.h
++++ b/sysdeps/powerpc/powerpc64/entry.h
+@@ -23,6 +23,7 @@ extern void _start (void);
+ 
+ #define ENTRY_POINT _start
+ 
++#if _CALL_ELF != 2
+ /* We have to provide a special declaration.  */
+ #define ENTRY_POINT_DECL(class) class void _start (void);
+ 
+@@ -33,3 +34,4 @@ extern void _start (void);
+ #define TEXT_START \
+   ({ extern unsigned long int _start_as_data[] asm ("_start");  \
+      _start_as_data[0]; })
++#endif
+

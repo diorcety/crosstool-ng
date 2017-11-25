@@ -1,0 +1,38 @@
+commit 6b142b3a1d007d7e6f50c26710de7177bc4aca74
+Author: Andreas Schwab <schwab@suse.de>
+Date:   Mon Jun 8 15:21:18 2015 +0200
+
+    Record TTL also for DNS PTR queries (bug 18513)
+    
+    This allows nscd to manage proper TTL for GETHOSTBYADDR[v6] requests.
+
+2015-06-22  Andreas Schwab  <schwab@suse.de>
+
+	[BZ #18513]
+	* resolv/nss_dns/dns-host.c (getanswer_r): Record TTL also for
+	PTR queries.
+
+Index: glibc-2.17-c758a686/resolv/nss_dns/dns-host.c
+===================================================================
+--- glibc-2.17-c758a686.orig/resolv/nss_dns/dns-host.c
++++ glibc-2.17-c758a686/resolv/nss_dns/dns-host.c
+@@ -800,6 +800,10 @@ getanswer_r (const querybuf *answer, int
+ 
+       if (qtype == T_PTR && type == T_CNAME)
+ 	{
++	  /* A CNAME could also have a TTL entry.  */
++	  if (ttlp != NULL && ttl < *ttlp)
++	      *ttlp = ttl;
++
+ 	  n = dn_expand (answer->buf, end_of_message, cp, tbuf, sizeof tbuf);
+ 	  if (__builtin_expect (n < 0 || res_dnok (tbuf) == 0, 0))
+ 	    {
+@@ -863,6 +867,8 @@ getanswer_r (const querybuf *answer, int
+ 	      ++had_error;
+ 	      break;
+ 	    }
++	  if (ttlp != NULL && ttl < *ttlp)
++	      *ttlp = ttl;
+ #if MULTI_PTRS_ARE_ALIASES
+ 	  cp += n;
+ 	  if (haveanswer == 0)

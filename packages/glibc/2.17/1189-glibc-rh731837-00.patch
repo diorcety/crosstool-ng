@@ -1,0 +1,211 @@
+From 5315ec1fd24b4f2ae6e8fa624e14da15a8efdd84 Mon Sep 17 00:00:00 2001
+From: Rajalakshmi Srinivasaraghavan <raji@linux.vnet.ibm.com>
+Date: Wed, 30 Jul 2014 04:42:49 -0500
+Subject: [PATCH] PowerPC: Adjust multiarch Implies for PowerPC64
+
+commit 5e6a4d4b9eb579c5ca606c0eed1f2f40e405a5f1
+Author: Adhemerval Zanella <azanella@linux.vnet.ibm.com>
+Date:   Fri Dec 13 14:29:27 2013 -0500
+
+    PowerPC: Adjust multiarch Implies for PowerPC64
+
+    This patch adds Implies files on multiarch folder for POWER chips so
+    multirach is enabled when building with --with-cpu and powerN
+    option.
+
+The following file changed in the above commit is ignored as its part of already existing patch.
+sysdeps/powerpc/powerpc64/power5/Implies
+The following file changed in the above commit is ignored as this file is not present at 2.17 code.
+sysdeps/unix/sysv/linux/powerpc/powerpc64/power8/Implies
+---
+ sysdeps/powerpc/powerpc64/power4/fpu/Implies              | 1 +
+ sysdeps/powerpc/powerpc64/power4/fpu/multiarch/Implies    | 1 +
+ sysdeps/powerpc/powerpc64/power4/multiarch/Implies        | 1 +
+ sysdeps/powerpc/powerpc64/power5+/fpu/Implies             | 1 +
+ sysdeps/powerpc/powerpc64/power5+/multiarch/Implies       | 1 +
+ sysdeps/powerpc/powerpc64/power5/fpu/Implies              | 1 +
+ sysdeps/powerpc/powerpc64/power5/multiarch/Implies        | 1 +
+ sysdeps/powerpc/powerpc64/power6/fpu/Implies              | 1 +
+ sysdeps/powerpc/powerpc64/power6/multiarch/Implies        | 1 +
+ sysdeps/powerpc/powerpc64/power7/fpu/Implies              | 1 +
+ sysdeps/powerpc/powerpc64/power7/multiarch/Implies        | 1 +
+ sysdeps/powerpc/powerpc64/power8/fpu/Implies              | 1 +
+ sysdeps/powerpc/powerpc64/power8/fpu/multiarch/Implies    | 1 +
+ sysdeps/powerpc/powerpc64/power8/multiarch/Implies        | 1 +
+ sysdeps/unix/sysv/linux/powerpc/powerpc64/power4/Implies  | 2 --
+ sysdeps/unix/sysv/linux/powerpc/powerpc64/power5+/Implies | 2 --
+ sysdeps/unix/sysv/linux/powerpc/powerpc64/power5/Implies  | 2 --
+ sysdeps/unix/sysv/linux/powerpc/powerpc64/power6/Implies  | 2 --
+ sysdeps/unix/sysv/linux/powerpc/powerpc64/power6x/Implies | 2 --
+ sysdeps/unix/sysv/linux/powerpc/powerpc64/power7/Implies  | 2 --
+ 20 files changed, 14 insertions(+), 12 deletions(-)
+ create mode 100644 sysdeps/powerpc/powerpc64/power4/fpu/Implies
+ create mode 100644 sysdeps/powerpc/powerpc64/power4/fpu/multiarch/Implies
+ create mode 100644 sysdeps/powerpc/powerpc64/power4/multiarch/Implies
+ create mode 100644 sysdeps/powerpc/powerpc64/power5+/fpu/Implies
+ create mode 100644 sysdeps/powerpc/powerpc64/power5+/multiarch/Implies
+ create mode 100644 sysdeps/powerpc/powerpc64/power5/fpu/Implies
+ create mode 100644 sysdeps/powerpc/powerpc64/power5/multiarch/Implies
+ create mode 100644 sysdeps/powerpc/powerpc64/power6/fpu/Implies
+ create mode 100644 sysdeps/powerpc/powerpc64/power6/multiarch/Implies
+ create mode 100644 sysdeps/powerpc/powerpc64/power7/fpu/Implies
+ create mode 100644 sysdeps/powerpc/powerpc64/power7/multiarch/Implies
+ create mode 100644 sysdeps/powerpc/powerpc64/power8/fpu/Implies
+ create mode 100644 sysdeps/powerpc/powerpc64/power8/fpu/multiarch/Implies
+ create mode 100644 sysdeps/powerpc/powerpc64/power8/multiarch/Implies
+ delete mode 100644 sysdeps/unix/sysv/linux/powerpc/powerpc64/power4/Implies
+ delete mode 100644 sysdeps/unix/sysv/linux/powerpc/powerpc64/power5+/Implies
+ delete mode 100644 sysdeps/unix/sysv/linux/powerpc/powerpc64/power5/Implies
+ delete mode 100644 sysdeps/unix/sysv/linux/powerpc/powerpc64/power6/Implies
+ delete mode 100644 sysdeps/unix/sysv/linux/powerpc/powerpc64/power6x/Implies
+ delete mode 100644 sysdeps/unix/sysv/linux/powerpc/powerpc64/power7/Implies
+
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/power4/fpu/Implies glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/power4/fpu/Implies
+new file mode 100644
+index 0000000..c1f617b
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/power4/fpu/Implies
+@@ -0,0 +1 @@
++powerpc/powerpc64/fpu
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/power4/fpu/multiarch/Implies glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/power4/fpu/multiarch/Implies
+new file mode 100644
+index 0000000..8d6531a
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/power4/fpu/multiarch/Implies
+@@ -0,0 +1 @@
++powerpc/powerpc64/fpu/multiarch
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/power4/multiarch/Implies glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/power4/multiarch/Implies
+new file mode 100644
+index 0000000..30edcf7
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/power4/multiarch/Implies
+@@ -0,0 +1 @@
++powerpc/powerpc64/multiarch
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/power5+/fpu/Implies glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/power5+/fpu/Implies
+new file mode 100644
+index 0000000..f00c50f
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/power5+/fpu/Implies
+@@ -0,0 +1 @@
++powerpc/powerpc64/power5/fpu
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/power5+/multiarch/Implies glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/power5+/multiarch/Implies
+new file mode 100644
+index 0000000..0851b19
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/power5+/multiarch/Implies
+@@ -0,0 +1 @@
++powerpc/powerpc64/power5/multiarch
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/power5/fpu/Implies glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/power5/fpu/Implies
+new file mode 100644
+index 0000000..558a5fb
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/power5/fpu/Implies
+@@ -0,0 +1 @@
++powerpc/powerpc64/power4/fpu
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/power5/multiarch/Implies glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/power5/multiarch/Implies
+new file mode 100644
+index 0000000..9a3cbb0
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/power5/multiarch/Implies
+@@ -0,0 +1 @@
++powerpc/powerpc64/power4/multiarch
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/power6/fpu/Implies glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/power6/fpu/Implies
+new file mode 100644
+index 0000000..f09854e
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/power6/fpu/Implies
+@@ -0,0 +1 @@
++powerpc/powerpc64/power5+/fpu
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/power6/multiarch/Implies glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/power6/multiarch/Implies
+new file mode 100644
+index 0000000..2ebe304
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/power6/multiarch/Implies
+@@ -0,0 +1 @@
++powerpc/powerpc64/power5+/multiarch
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/power7/fpu/Implies glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/power7/fpu/Implies
+new file mode 100644
+index 0000000..30fa176
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/power7/fpu/Implies
+@@ -0,0 +1 @@
++powerpc/powerpc64/power6/fpu
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/power7/multiarch/Implies glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/power7/multiarch/Implies
+new file mode 100644
+index 0000000..bf5d617
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/power7/multiarch/Implies
+@@ -0,0 +1 @@
++powerpc/powerpc64/power6/multiarch
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/power8/fpu/Implies glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/power8/fpu/Implies
+new file mode 100644
+index 0000000..8447198
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/power8/fpu/Implies
+@@ -0,0 +1 @@
++powerpc/powerpc64/power7/fpu
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/power8/fpu/multiarch/Implies glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/power8/fpu/multiarch/Implies
+new file mode 100644
+index 0000000..7fd86fd
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/power8/fpu/multiarch/Implies
+@@ -0,0 +1 @@
++powerpc/powerpc64/power7/fpu/multiarch
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/power8/multiarch/Implies glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/power8/multiarch/Implies
+new file mode 100644
+index 0000000..1fc7b7c
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/power8/multiarch/Implies
+@@ -0,0 +1 @@
++powerpc/powerpc64/power7/multiarch
+diff --git glibc-2.17-c758a686/sysdeps/unix/sysv/linux/powerpc/powerpc64/power4/Implies glibc-2.17-c758a686/sysdeps/unix/sysv/linux/powerpc/powerpc64/power4/Implies
+deleted file mode 100644
+index bedb20b..0000000
+--- glibc-2.17-c758a686/sysdeps/unix/sysv/linux/powerpc/powerpc64/power4/Implies
++++ /dev/null
+@@ -1,2 +0,0 @@
+-powerpc/powerpc64/power4/fpu
+-powerpc/powerpc64/power4
+diff --git glibc-2.17-c758a686/sysdeps/unix/sysv/linux/powerpc/powerpc64/power5+/Implies glibc-2.17-c758a686/sysdeps/unix/sysv/linux/powerpc/powerpc64/power5+/Implies
+deleted file mode 100644
+index 4c782d4..0000000
+--- glibc-2.17-c758a686/sysdeps/unix/sysv/linux/powerpc/powerpc64/power5+/Implies
++++ /dev/null
+@@ -1,2 +0,0 @@
+-powerpc/powerpc64/power5+/fpu
+-powerpc/powerpc64/power5+
+diff --git glibc-2.17-c758a686/sysdeps/unix/sysv/linux/powerpc/powerpc64/power5/Implies glibc-2.17-c758a686/sysdeps/unix/sysv/linux/powerpc/powerpc64/power5/Implies
+deleted file mode 100644
+index a01a13a..0000000
+--- glibc-2.17-c758a686/sysdeps/unix/sysv/linux/powerpc/powerpc64/power5/Implies
++++ /dev/null
+@@ -1,2 +0,0 @@
+-powerpc/powerpc64/power5/fpu
+-powerpc/powerpc64/power5
+diff --git glibc-2.17-c758a686/sysdeps/unix/sysv/linux/powerpc/powerpc64/power6/Implies glibc-2.17-c758a686/sysdeps/unix/sysv/linux/powerpc/powerpc64/power6/Implies
+deleted file mode 100644
+index 9d68f39..0000000
+--- glibc-2.17-c758a686/sysdeps/unix/sysv/linux/powerpc/powerpc64/power6/Implies
++++ /dev/null
+@@ -1,2 +0,0 @@
+-powerpc/powerpc64/power6/fpu
+-powerpc/powerpc64/power6
+diff --git glibc-2.17-c758a686/sysdeps/unix/sysv/linux/powerpc/powerpc64/power6x/Implies glibc-2.17-c758a686/sysdeps/unix/sysv/linux/powerpc/powerpc64/power6x/Implies
+deleted file mode 100644
+index 9019778..0000000
+--- glibc-2.17-c758a686/sysdeps/unix/sysv/linux/powerpc/powerpc64/power6x/Implies
++++ /dev/null
+@@ -1,2 +0,0 @@
+-powerpc/powerpc64/power6x/fpu
+-powerpc/powerpc64/power6x
+diff --git glibc-2.17-c758a686/sysdeps/unix/sysv/linux/powerpc/powerpc64/power7/Implies glibc-2.17-c758a686/sysdeps/unix/sysv/linux/powerpc/powerpc64/power7/Implies
+deleted file mode 100644
+index 9a5e3c7..0000000
+--- glibc-2.17-c758a686/sysdeps/unix/sysv/linux/powerpc/powerpc64/power7/Implies
++++ /dev/null
+@@ -1,2 +0,0 @@
+-powerpc/powerpc64/power7/fpu
+-powerpc/powerpc64/power7
+-- 
+1.8.3.1
+

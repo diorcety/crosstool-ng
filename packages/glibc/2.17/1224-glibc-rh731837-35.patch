@@ -1,0 +1,309 @@
+From b5910d4c4976f9e1eb6c96d45dc2b7c04f5f3039 Mon Sep 17 00:00:00 2001
+From: Rajalakshmi Srinivasaraghavan <raji@linux.vnet.ibm.com>
+Date: Wed, 30 Jul 2014 12:11:18 -0500
+Subject: [PATCH] PowerPC: multiarch hypot/hypotf for PowerPC64
+
+commit 42fcb46ce6dae3a9a55176b4c82e5f07a41ca536
+Author: Adhemerval Zanella <azanella@linux.vnet.ibm.com>
+Date:   Fri Dec 13 15:38:01 2013 -0500
+
+Added the following files apart from the original commit.
+sysdeps/powerpc/powerpc32/power4/fpu/multiarch/e_hypot-power7.c
+sysdeps/powerpc/powerpc32/power4/fpu/multiarch/e_hypotf-power7.c
+---
+ .../power4/fpu/multiarch/e_hypot-power7.c          | 26 ++++++++++++++++++
+ .../power4/fpu/multiarch/e_hypotf-power7.c         | 26 ++++++++++++++++++
+ sysdeps/powerpc/powerpc64/fpu/multiarch/Makefile   |  5 +++-
+ .../powerpc64/fpu/multiarch/e_hypot-power7.c       | 19 +++++++++++++
+ .../powerpc64/fpu/multiarch/e_hypot-ppc64.c        | 26 ++++++++++++++++++
+ sysdeps/powerpc/powerpc64/fpu/multiarch/e_hypot.c  | 32 ++++++++++++++++++++++
+ .../powerpc64/fpu/multiarch/e_hypotf-power7.c      | 19 +++++++++++++
+ .../powerpc64/fpu/multiarch/e_hypotf-ppc64.c       | 26 ++++++++++++++++++
+ sysdeps/powerpc/powerpc64/fpu/multiarch/e_hypotf.c | 32 ++++++++++++++++++++++
+ 9 files changed, 210 insertions(+), 1 deletion(-)
+ create mode 100644 sysdeps/powerpc/powerpc32/power4/fpu/multiarch/e_hypot-power7.c
+ create mode 100644 sysdeps/powerpc/powerpc32/power4/fpu/multiarch/e_hypotf-power7.c
+ create mode 100644 sysdeps/powerpc/powerpc64/fpu/multiarch/e_hypot-power7.c
+ create mode 100644 sysdeps/powerpc/powerpc64/fpu/multiarch/e_hypot-ppc64.c
+ create mode 100644 sysdeps/powerpc/powerpc64/fpu/multiarch/e_hypot.c
+ create mode 100644 sysdeps/powerpc/powerpc64/fpu/multiarch/e_hypotf-power7.c
+ create mode 100644 sysdeps/powerpc/powerpc64/fpu/multiarch/e_hypotf-ppc64.c
+ create mode 100644 sysdeps/powerpc/powerpc64/fpu/multiarch/e_hypotf.c
+
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc32/power4/fpu/multiarch/e_hypot-power7.c glibc-2.17-c758a686/sysdeps/powerpc/powerpc32/power4/fpu/multiarch/e_hypot-power7.c
+new file mode 100644
+index 0000000..967b923
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc32/power4/fpu/multiarch/e_hypot-power7.c
+@@ -0,0 +1,26 @@
++/* __ieee_hypot() POWER7 version.
++   Copyright (C) 2013-2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <math.h>
++
++#undef strong_alias
++#define strong_alias(a, b)
++
++#define __ieee754_hypot __ieee754_hypot_power7
++
++#include <sysdeps/powerpc/fpu/e_hypot.c>
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc32/power4/fpu/multiarch/e_hypotf-power7.c glibc-2.17-c758a686/sysdeps/powerpc/powerpc32/power4/fpu/multiarch/e_hypotf-power7.c
+new file mode 100644
+index 0000000..d1da9f2
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc32/power4/fpu/multiarch/e_hypotf-power7.c
+@@ -0,0 +1,26 @@
++/* __ieee754_hypot POWER7 version.
++   Copyright (C) 2013-2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <math.h>
++
++#undef strong_alias
++#define strong_alias(a, b)
++
++#define __ieee754_hypotf __ieee754_hypotf_power7
++
++#include <sysdeps/powerpc/fpu/e_hypotf.c>
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/Makefile glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/Makefile
+index e152bf5..1e04f21 100644
+--- glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/Makefile
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/Makefile
+@@ -20,11 +20,14 @@ libm-sysdep_routines += s_isnan-power7 s_isnan-power6x s_isnan-power6 \
+                        s_isinf-ppc64 s_logb-power7 s_logbf-power7 \
+                        s_logbl-power7 s_logb-ppc64 s_logbf-ppc64 \
+                        s_logbl-ppc64 s_modf-power5+ s_modf-ppc64 \
+-                       s_modff-power5+ s_modff-ppc64
++                       s_modff-power5+ s_modff-ppc64 e_hypot-ppc64 \
++                       e_hypot-power7 e_hypotf-ppc64 e_hypotf-power7
+ 
+ CFLAGS-s_logbf-power7.c = -mcpu=power7
+ CFLAGS-s_logbl-power7.c = -mcpu=power7
+ CFLAGS-s_logb-power7.c = -mcpu=power7
+ CFLAGS-s_modf-power5+.c = -mcpu=power5+
+ CFLAGS-s_modff-power5+.c = -mcpu=power5+
++CFLAGS-e_hypot-power7.c = -mcpu=power7
++CFLAGS-e_hypotf-power7.c = -mcpu=power7
+ endif
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/e_hypot-power7.c glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/e_hypot-power7.c
+new file mode 100644
+index 0000000..b153753
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/e_hypot-power7.c
+@@ -0,0 +1,19 @@
++/* __ieee_hypot() POWER7 version.
++   Copyright (C) 2013-2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <sysdeps/powerpc/powerpc32/power4/fpu/multiarch/e_hypot-power7.c>
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/e_hypot-ppc64.c glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/e_hypot-ppc64.c
+new file mode 100644
+index 0000000..c418ae7
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/e_hypot-ppc64.c
+@@ -0,0 +1,26 @@
++/* __ieee_hypot() PowerPC64 version.
++   Copyright (C) 2013-2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <math.h>
++
++#undef strong_alias
++#define strong_alias(a, b)
++
++#define __ieee754_hypot __ieee754_hypot_ppc64
++
++#include <sysdeps/powerpc/fpu/e_hypot.c>
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/e_hypot.c glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/e_hypot.c
+new file mode 100644
+index 0000000..941b293
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/e_hypot.c
+@@ -0,0 +1,32 @@
++/* Multiple versions of ieee754_hypot.
++   Copyright (C) 2013-2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <math.h>
++#include <math_ldbl_opt.h>
++#include <shlib-compat.h>
++#include "init-arch.h"
++
++extern __typeof (__ieee754_hypot) __ieee754_hypot_ppc64 attribute_hidden;
++extern __typeof (__ieee754_hypot) __ieee754_hypot_power7 attribute_hidden;
++
++libc_ifunc (__ieee754_hypot,
++	    (hwcap & PPC_FEATURE_ARCH_2_06)
++	    ? __ieee754_hypot_power7
++            : __ieee754_hypot_ppc64);
++
++strong_alias (__ieee754_hypot, __hypot_finite)
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/e_hypotf-power7.c glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/e_hypotf-power7.c
+new file mode 100644
+index 0000000..2d67ee9
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/e_hypotf-power7.c
+@@ -0,0 +1,19 @@
++/* __ieee_hypotf() POWER7 version.
++   Copyright (C) 2013-2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <sysdeps/powerpc/powerpc32/power4/fpu/multiarch/e_hypotf-power7.c>
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/e_hypotf-ppc64.c glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/e_hypotf-ppc64.c
+new file mode 100644
+index 0000000..8335e19
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/e_hypotf-ppc64.c
+@@ -0,0 +1,26 @@
++/* __ieee_hypot() PowerPC64 version.
++   Copyright (C) 2013-2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <math.h>
++
++#undef strong_alias
++#define strong_alias(a, b)
++
++#define __ieee754_hypotf __ieee754_hypotf_ppc64
++
++#include <sysdeps/powerpc/fpu/e_hypotf.c>
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/e_hypotf.c glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/e_hypotf.c
+new file mode 100644
+index 0000000..3c418d3
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/e_hypotf.c
+@@ -0,0 +1,32 @@
++/* Multiple versions of ieee754_hypot.
++   Copyright (C) 2013-2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <math.h>
++#include <math_ldbl_opt.h>
++#include <shlib-compat.h>
++#include "init-arch.h"
++
++extern __typeof (__ieee754_hypotf) __ieee754_hypotf_ppc64 attribute_hidden;
++extern __typeof (__ieee754_hypotf) __ieee754_hypotf_power7 attribute_hidden;
++
++libc_ifunc (__ieee754_hypotf,
++	    (hwcap & PPC_FEATURE_ARCH_2_06)
++	    ? __ieee754_hypotf_power7
++            : __ieee754_hypotf_ppc64);
++
++strong_alias (__ieee754_hypotf, __hypotf_finite)
+-- 
+1.8.3.1
+

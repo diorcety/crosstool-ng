@@ -1,0 +1,658 @@
+From cb5e8d0ec1a4c4eb09da45015755e3d18b3a086b Mon Sep 17 00:00:00 2001
+From: Stefan Liebler <stli@linux.vnet.ibm.com>
+Date: Thu, 8 Oct 2015 12:43:56 +0200
+Subject: [PATCH 22/30] S390: Optimize strrchr and wcsrchr.
+
+upstream-commit-id: f40132d4bda984479bac89dfcd6968e9ff56e088
+https://www.sourceware.org/ml/libc-alpha/2015-07/msg00101.html
+
+This patch provides optimized versions of strrchr and wcsrchr with the z13
+vector instructions.
+
+ChangeLog:
+
+	* sysdeps/s390/multiarch/strrchr-c.c: New File.
+	* sysdeps/s390/multiarch/strrchr-vx.S: Likewise.
+	* sysdeps/s390/multiarch/strrchr.c: Likewise.
+	* sysdeps/s390/multiarch/wcsrchr-c.c: Likewise.
+	* sysdeps/s390/multiarch/wcsrchr-vx.S: Likewise.
+	* sysdeps/s390/multiarch/wcsrchr.c: Likewise.
+	* sysdeps/s390/multiarch/Makefile (sysdep_routines): Add strrchr and
+	wcsrchr functions.
+	* sysdeps/s390/multiarch/ifunc-impl-list.c
+	(__libc_ifunc_impl_list): Add ifunc test for strrchr, wcsrchr.
+	* benchtests/bench-wcsrchr.c: New File.
+	* benchtests/Makefile (wcsmbs-bench): Add wcsrchr.
+---
+ benchtests/Makefile                      |   2 +-
+ benchtests/bench-wcsrchr.c               |  20 ++++
+ string/strrchr.c                         |   6 +-
+ sysdeps/s390/multiarch/Makefile          |   6 +-
+ sysdeps/s390/multiarch/ifunc-impl-list.c |   3 +
+ sysdeps/s390/multiarch/strrchr-c.c       |  29 +++++
+ sysdeps/s390/multiarch/strrchr-vx.S      | 180 +++++++++++++++++++++++++++++
+ sysdeps/s390/multiarch/strrchr.c         |  28 +++++
+ sysdeps/s390/multiarch/wcsrchr-c.c       |  25 ++++
+ sysdeps/s390/multiarch/wcsrchr-vx.S      | 190 +++++++++++++++++++++++++++++++
+ sysdeps/s390/multiarch/wcsrchr.c         |  27 +++++
+ 11 files changed, 512 insertions(+), 4 deletions(-)
+ create mode 100644 benchtests/bench-wcsrchr.c
+ create mode 100644 sysdeps/s390/multiarch/strrchr-c.c
+ create mode 100644 sysdeps/s390/multiarch/strrchr-vx.S
+ create mode 100644 sysdeps/s390/multiarch/strrchr.c
+ create mode 100644 sysdeps/s390/multiarch/wcsrchr-c.c
+ create mode 100644 sysdeps/s390/multiarch/wcsrchr-vx.S
+ create mode 100644 sysdeps/s390/multiarch/wcsrchr.c
+
+diff --git a/benchtests/Makefile b/benchtests/Makefile
+index d34bb3d..6444394 100644
+--- a/benchtests/Makefile
++++ b/benchtests/Makefile
+@@ -39,7 +39,7 @@ string-bench := bcopy bzero memccpy memchr memcmp memcpy memmem memmove \
+ 		strncasecmp strncat strncmp strncpy strnlen strpbrk strrchr \
+ 		strspn strstr strcpy_chk stpcpy_chk memrchr strsep strtok
+ wcsmbs-bench := wcslen wcsnlen wcscpy wcpcpy wcsncpy wcpncpy wcscat wcsncat \
+-		wcsncmp wcsncmp wcschr wcschrnul
++		wcsncmp wcsncmp wcschr wcschrnul wcsrchr
+ string-bench-all := $(string-bench) ${wcsmbs-bench}
+ 
+ stdlib-bench := strtod
+diff --git a/benchtests/bench-wcsrchr.c b/benchtests/bench-wcsrchr.c
+new file mode 100644
+index 0000000..0d3923f
+--- /dev/null
++++ b/benchtests/bench-wcsrchr.c
+@@ -0,0 +1,20 @@
++/* Measure wcsrchr functions.
++   Copyright (C) 2015 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#define WIDE 1
++#include "bench-strrchr.c"
+diff --git a/string/strrchr.c b/string/strrchr.c
+index a986ff9..03f3957 100644
+--- a/string/strrchr.c
++++ b/string/strrchr.c
+@@ -19,9 +19,13 @@
+ 
+ #undef strrchr
+ 
++#ifndef STRRCHR
++# define STRRCHR strrchr
++#endif
++
+ /* Find the last occurrence of C in S.  */
+ char *
+-strrchr (const char *s, int c)
++STRRCHR (const char *s, int c)
+ {
+   register const char *found, *p;
+ 
+diff --git a/sysdeps/s390/multiarch/Makefile b/sysdeps/s390/multiarch/Makefile
+index b6b64c9..b8b141e 100644
+--- a/sysdeps/s390/multiarch/Makefile
++++ b/sysdeps/s390/multiarch/Makefile
+@@ -10,7 +10,8 @@ sysdep_routines += strlen strlen-vx strlen-c \
+ 		   strcmp strcmp-vx \
+ 		   strncmp strncmp-vx strncmp-c \
+ 		   strchr strchr-vx strchr-c \
+-		   strchrnul strchrnul-vx strchrnul-c
++		   strchrnul strchrnul-vx strchrnul-c \
++		   strrchr strrchr-vx strrchr-c
+ endif
+ 
+ ifeq ($(subdir),wcsmbs)
+@@ -25,5 +26,6 @@ sysdep_routines += wcslen wcslen-vx wcslen-c \
+ 		   wcscmp wcscmp-vx wcscmp-c \
+ 		   wcsncmp wcsncmp-vx wcsncmp-c \
+ 		   wcschr wcschr-vx wcschr-c \
+-		   wcschrnul wcschrnul-vx wcschrnul-c
++		   wcschrnul wcschrnul-vx wcschrnul-c \
++		   wcsrchr wcsrchr-vx wcsrchr-c
+ endif
+diff --git a/sysdeps/s390/multiarch/ifunc-impl-list.c b/sysdeps/s390/multiarch/ifunc-impl-list.c
+index ea474a8..ee84d80 100644
+--- a/sysdeps/s390/multiarch/ifunc-impl-list.c
++++ b/sysdeps/s390/multiarch/ifunc-impl-list.c
+@@ -115,6 +115,9 @@ __libc_ifunc_impl_list (const char *name, struct libc_ifunc_impl *array,
+   IFUNC_VX_IMPL (strchrnul);
+   IFUNC_VX_IMPL (wcschrnul);
+ 
++  IFUNC_VX_IMPL (strrchr);
++  IFUNC_VX_IMPL (wcsrchr);
++
+ #endif /* HAVE_S390_VX_ASM_SUPPORT */
+ 
+   return i;
+diff --git a/sysdeps/s390/multiarch/strrchr-c.c b/sysdeps/s390/multiarch/strrchr-c.c
+new file mode 100644
+index 0000000..b035cdc
+--- /dev/null
++++ b/sysdeps/s390/multiarch/strrchr-c.c
+@@ -0,0 +1,29 @@
++/* Default strrchr implementation for S/390.
++   Copyright (C) 2015 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#if defined HAVE_S390_VX_ASM_SUPPORT && !defined NOT_IN_libc
++# define STRRCHR  __strrchr_c
++# undef weak_alias
++# ifdef SHARED
++#  undef libc_hidden_builtin_def
++#  define libc_hidden_builtin_def(name)				\
++     __hidden_ver1 (__strrchr_c, __GI_strrchr, __strrchr_c);
++# endif /* SHARED */
++
++# include <string/strrchr.c>
++#endif /* HAVE_S390_VX_ASM_SUPPORT && !defined NOT_IN_libc */
+diff --git a/sysdeps/s390/multiarch/strrchr-vx.S b/sysdeps/s390/multiarch/strrchr-vx.S
+new file mode 100644
+index 0000000..dbc183b
+--- /dev/null
++++ b/sysdeps/s390/multiarch/strrchr-vx.S
+@@ -0,0 +1,180 @@
++/* Vector optimized 32/64 bit S/390 version of strrchr.
++   Copyright (C) 2015 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#if defined HAVE_S390_VX_ASM_SUPPORT && !defined NOT_IN_libc
++
++# include "sysdep.h"
++# include "asm-syntax.h"
++
++	.text
++
++/* char *strrchr (const char *s, int c)
++   Locate the last character c in string.
++
++   Register usage:
++   -r0=loaded bytes in first part of s.
++   -r1=pointer to last occurence of c or NULL if not found.
++   -r2=s
++   -r3=c
++   -r4=tmp
++   -r5=current_len
++   -v16=part of s
++   -v17=index of found element
++   -v18=replicated c
++   -v19=part of s with last occurence of c.
++   -v20=permute pattern
++*/
++ENTRY(__strrchr_vx)
++	.machine "z13"
++	.machinemode "zarch_nohighgprs"
++
++	vlbb	%v16,0(%r2),6	/* Load s until next 4k-byte boundary.  */
++	lcbb	%r0,0(%r2),6	/* Get bytes to 4k-byte boundary or 16.  */
++
++	vlvgb	%v18,%r3,0	/* Generate vector which elements are all c.
++				   if c > 255, c will be truncated.  */
++	vrepb	%v18,%v18,0
++
++	lghi	%r1,-1		/* Currently no c found.  */
++	lghi	%r5,0		/* current_len = 0.  */
++
++	vfeezbs	%v17,%v16,%v18	/* Find element equal or zero.  */
++	vlgvb	%r4,%v17,7	/* Load byte index of c/zero or 16.  */
++	clrjl	%r4,%r0,.Lfound_first_part /* Found c/zero in loaded bytes.  */
++.Lalign:
++	/* Align s to 16 byte.  */
++	risbgn	%r4,%r2,60,128+63,0 /* %r3 = bits 60-63 of %r2 'and' 15.  */
++	lghi	%r5,16		/* current_len = 16.  */
++	slr	%r5,%r4		/* Compute bytes to 16bytes boundary.  */
++
++.Lloop:
++	vl	%v16,0(%r5,%r2) /* Load s.  */
++	vfeezbs	%v17,%v16,%v18	/* Find element equal with zero search.  */
++	jno	.Lfound		/* Found c/zero (cc=0|1|2).  */
++	vl	%v16,16(%r5,%r2)
++	vfeezbs	%v17,%v16,%v18
++	jno	.Lfound16
++	vl	%v16,32(%r5,%r2)
++	vfeezbs	%v17,%v16,%v18
++	jno	.Lfound32
++	vl	%v16,48(%r5,%r2)
++	vfeezbs	%v17,%v16,%v18
++	jno	.Lfound48
++
++	aghi	%r5,64
++	j	.Lloop		/* No character and no zero -> loop.  */
++
++.Lfound48:
++	la	%r5,16(%r5)	/* Use la since aghi would clobber cc.  */
++.Lfound32:
++	la	%r5,16(%r5)
++.Lfound16:
++	la	%r5,16(%r5)
++.Lfound:
++	je	.Lzero		/* Found zero, but no c before that zero.  */
++	/* Save this part of s to check for further matches after reaching
++	   the end of the complete string.  */
++	vlr	%v19,%v16
++	lgr	%r1,%r5
++
++	jh	.Lzero		/* Found a zero after the found c.  */
++	aghi	%r5,16		/* Start search of next part of s.  */
++	j	.Lloop
++
++.Lfound_first_part:
++	/* This code is only executed if the found c/zero is whithin loaded
++	   bytes. If no c/zero was found (cc==3) the found index = 16, thus
++	   this code is not called.
++	   Resulting condition code of vector find element equal:
++	   cc==0: no c, found zero
++	   cc==1: c found, no zero
++	   cc==2: c found, found zero after c
++	   cc==3: no c, no zero (this case can be ignored).  */
++	je	.Lzero		/* Found zero, but no c before that zero.  */
++
++	locgrne	%r1,%r5		/* Mark c as found in first part of s.  */
++	vlr	%v19,%v16
++
++	jl	.Lalign		/* No zero (e.g. if vr was fully loaded)
++				   -> Align and loop afterwards.  */
++
++	/* Found a zero in vr. If vr was not fully loaded due to block
++	   boundary, the remaining bytes are filled with zero and we can't
++	   rely on zero indication of condition code here!  */
++
++	vfenezb	%v17,%v16,%v16	/* Find zero.  */
++	vlgvb	%r4,%v17,7	/* Load byte index of zero or 16.  */
++	clrjl	%r4,%r0,.Lzero	/* Zero within loaded bytes -> end.  */
++	j	.Lalign		/* Align and loop afterwards.  */
++
++.Lend_searched_zero:
++	vlgvb	%r4,%v17,7	/* Load byte index of zero.  */
++	algr	%r5,%r4
++	la	%r2,0(%r5,%r2)	/* Return pointer to zero.  */
++	br	%r14
++
++.Lzero:
++	/* Reached end of string. Check if one c was found before.  */
++	clije	%r3,0,.Lend_searched_zero /* Found zero and c is zero.  */
++
++	cgfi	%r1,-1		/* No c found -> return NULL.  */
++	locghie	%r2,0
++	ber	%r14
++
++	larl	%r3,.Lpermute_mask /* Load permute mask.  */
++	vl	%v20,0(%r3)
++
++	/* c was found and is part of v19.  */
++	vfenezb	%v17,%v19,%v19	/* Find zero.  */
++	vlgvb	%r4,%v17,7	/* Load byte index of zero or 16.  */
++
++	clgfi	%r5,0		/* Loaded byte count in v19 is 16, ...  */
++	lochine	%r0,16		/* ... if v19 is not the first part of s.  */
++	ahi	%r0,-1		/* Convert byte count to highest index.  */
++
++	clr	%r0,%r4
++	locrl	%r4,%r0		/* r4 = min (zero-index, highest-index).  */
++
++	/* Right-shift of v19 to mask bytes after zero.  */
++	clije	%r4,15,.Lzero_permute /* No shift is needed if highest index
++					 in vr is 15.  */
++	lhi	%r0,15
++	slr	%r0,%r4		/* Compute byte count for vector shift right.  */
++	sll	%r0,3		/* Convert to bit count.  */
++	vlvgb	%v17,%r0,7
++	vsrlb	%v19,%v19,%v17	/* Vector shift right by byte by number of bytes
++				   specified in bits 1-4 of byte 7 in v17.   */
++
++	/* Reverse bytes in v19.  */
++.Lzero_permute:
++	vperm	%v19,%v19,%v19,%v20 /* Permute v19 to reversed order.  */
++
++	/* Find c in reversed v19.  */
++	vfeeb	%v19,%v19,%v18	/* Find c.  */
++	la	%r2,0(%r1,%r2)
++	vlgvb	%r3,%v19,7	/* Load byte index of c.  */
++
++	/* Compute index in real s and return.  */
++	slgr	%r4,%r3
++	la	%r2,0(%r4,%r2)	/* Return pointer to zero.  */
++	br	%r14
++.Lpermute_mask:
++	.byte	0x0F,0x0E,0x0D,0x0C,0x0B,0x0A,0x09,0x08
++	.byte	0x07,0x06,0x05,0x04,0x03,0x02,0x01,0x00
++END(__strrchr_vx)
++#endif /* HAVE_S390_VX_ASM_SUPPORT && !defined NOT_IN_libc */
+diff --git a/sysdeps/s390/multiarch/strrchr.c b/sysdeps/s390/multiarch/strrchr.c
+new file mode 100644
+index 0000000..dc4efd3
+--- /dev/null
++++ b/sysdeps/s390/multiarch/strrchr.c
+@@ -0,0 +1,28 @@
++/* Multiple versions of strrchr.
++   Copyright (C) 2015 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#if defined HAVE_S390_VX_ASM_SUPPORT && !defined NOT_IN_libc
++# include <string.h>
++# include <ifunc-resolve.h>
++
++s390_vx_libc_ifunc2 (__strrchr, strrchr)
++weak_alias (strrchr, rindex)
++
++#else
++# include <string/strrchr.c>
++#endif /* !(defined HAVE_S390_VX_ASM_SUPPORT && !defined NOT_IN_libc) */
+diff --git a/sysdeps/s390/multiarch/wcsrchr-c.c b/sysdeps/s390/multiarch/wcsrchr-c.c
+new file mode 100644
+index 0000000..8f66600
+--- /dev/null
++++ b/sysdeps/s390/multiarch/wcsrchr-c.c
+@@ -0,0 +1,25 @@
++/* Default wcsrchr implementation for S/390.
++   Copyright (C) 2015 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#if defined HAVE_S390_VX_ASM_SUPPORT && !defined NOT_IN_libc
++# define WCSRCHR  __wcsrchr_c
++
++# include <wchar.h>
++extern __typeof (wcsrchr) __wcsrchr_c;
++# include <wcsmbs/wcsrchr.c>
++#endif
+diff --git a/sysdeps/s390/multiarch/wcsrchr-vx.S b/sysdeps/s390/multiarch/wcsrchr-vx.S
+new file mode 100644
+index 0000000..efb7701
+--- /dev/null
++++ b/sysdeps/s390/multiarch/wcsrchr-vx.S
+@@ -0,0 +1,190 @@
++/* Vector optimized 32/64 bit S/390 version of wcsrchr.
++   Copyright (C) 2015 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#if defined HAVE_S390_VX_ASM_SUPPORT && !defined NOT_IN_libc
++
++# include "sysdep.h"
++# include "asm-syntax.h"
++
++	.text
++
++/* wchar_t *wcsrchr (const wchar_t *s, wchar_t c)
++   Locate the last character c in string.
++
++   Register usage:
++   -r0=loaded bytes in first part of s.
++   -r1=pointer to last occurence of c or NULL if not found.
++   -r2=s
++   -r3=c
++   -r4=tmp
++   -r5=current_len
++   -v16=part of s
++   -v17=index of found element
++   -v18=replicated c
++   -v19=part of s with last occurence of c.
++   -v20=permute pattern
++*/
++ENTRY(__wcsrchr_vx)
++	.machine "z13"
++	.machinemode "zarch_nohighgprs"
++
++	vlbb	%v16,0(%r2),6	/* Load s until next 4k-byte boundary.  */
++	lcbb	%r0,0(%r2),6	/* Get bytes to 4k-byte boundary or 16.  */
++
++	tmll	%r2,3		/* Test if s is 4-byte aligned?   */
++	jne	.Lfallback	/* And use common-code variant if not.  */
++
++	vlvgf	%v18,%r3,0	/* Generate vector which elements are all c.  */
++	vrepf	%v18,%v18,0
++
++	lghi	%r1,-1		/* Currently no c found.  */
++	lghi	%r5,0		/* current_len = 0.  */
++
++	vfeezfs	%v17,%v16,%v18	/* Find element equal or zero.  */
++	vlgvb	%r4,%v17,7	/* Load byte index of c/zero or 16.  */
++	clrjl	%r4,%r0,.Lfound_first_part /* Found c/zero in loaded bytes.  */
++.Lalign:
++	/* Align s to 16 byte.  */
++	risbgn	%r4,%r2,60,128+63,0 /* %r3 = bits 60-63 of %r2 'and' 15.  */
++	lghi	%r5,16		/* current_len = 16.  */
++	slr	%r5,%r4		/* Compute bytes to 16bytes boundary.  */
++
++.Lloop:
++	vl	%v16,0(%r5,%r2) /* Load s.  */
++	vfeezfs	%v17,%v16,%v18	/* Find element equal with zero search.  */
++	jno	.Lfound		/* Found c/zero (cc=0|1|2).  */
++	vl	%v16,16(%r5,%r2)
++	vfeezfs	%v17,%v16,%v18
++	jno	.Lfound16
++	vl	%v16,32(%r5,%r2)
++	vfeezfs	%v17,%v16,%v18
++	jno	.Lfound32
++	vl	%v16,48(%r5,%r2)
++	vfeezfs	%v17,%v16,%v18
++	jno	.Lfound48
++
++	aghi	%r5,64
++	j	.Lloop		/* No character and no zero -> loop.  */
++
++.Lfound48:
++	la	%r5,16(%r5)	/* Use la since aghi would clobber cc.  */
++.Lfound32:
++	la	%r5,16(%r5)
++.Lfound16:
++	la	%r5,16(%r5)
++.Lfound:
++	je	.Lzero		/* Found zero, but no c before that zero.  */
++	/* Save this part of s to check for further matches after reaching
++	   the end of the complete string.  */
++	vlr	%v19,%v16
++	lgr	%r1,%r5
++
++	jh	.Lzero		/* Found a zero after the found c.  */
++	aghi	%r5,16		/* Start search of next part of s.  */
++	j	.Lloop
++
++.Lfound_first_part:
++	/* This code is only executed if the found c/zero is whithin loaded
++	   bytes. If no c/zero was found (cc==3) the found index = 16, thus
++	   this code is not called.
++	   Resulting condition code of vector find element equal:
++	   cc==0: no c, found zero
++	   cc==1: c found, no zero
++	   cc==2: c found, found zero after c
++	   cc==3: no c, no zero (this case can be ignored).  */
++	je	.Lzero		/* Found zero, but no c before that zero.  */
++
++	locgrne	%r1,%r5		/* Mark c as found in first part of s.  */
++	vlr	%v19,%v16
++
++	jl	.Lalign		/* No zero (e.g. if vr was fully loaded)
++				   -> Align and loop afterwards.  */
++
++	/* Found a zero in vr. If vr was not fully loaded due to block
++	   boundary, the remaining bytes are filled with zero and we can't
++	   rely on zero indication of condition code here!  */
++
++	vfenezf	%v17,%v16,%v16
++	vlgvb	%r4,%v17,7	/* Load byte index of zero or 16.  */
++	clrjl	%r4,%r0,.Lzero	/* Zero within loaded bytes -> end.  */
++	j	.Lalign		/* Align and loop afterwards.  */
++
++.Lend_searched_zero:
++	vlgvb	%r4,%v17,7	/* Load byte index of zero.  */
++	algr	%r5,%r4
++	la	%r2,0(%r5,%r2)	/* Return pointer to zero.  */
++	br	%r14
++
++.Lzero:
++	/* Reached end of string. Check if one c was found before.  */
++	clije	%r3,0,.Lend_searched_zero /* Found zero and c is zero.  */
++
++	cgfi	%r1,-1		/* No c found -> return NULL.  */
++	locghie	%r2,0
++	ber	%r14
++
++	larl	%r3,.Lpermute_mask /* Load permute mask.  */
++	vl	%v20,0(%r3)
++
++	/* c was found and is part of v19.  */
++	vfenezf	%v17,%v19,%v19	/* Find zero.  */
++	vlgvb	%r4,%v17,7	/* Load byte index of zero or 16.  */
++	ahi	%r4,3		/* Found zero index is first byte,
++				   thus highest byte index is last byte of
++				   wchar_t zero.  */
++
++	clgfi	%r5,0		/* Loaded byte count in v19 is 16, ...  */
++	lochine	%r0,16		/* ... if v19 is not the first part of s.  */
++	ahi	%r0,-1		/* Convert byte count to highest index.  */
++
++	clr	%r0,%r4
++	locrl	%r4,%r0		/* r4 = min (zero-index, highest-index).  */
++
++	/* Right-shift of v19 to mask bytes after zero.  */
++	clije	%r4,15,.Lzero_permute /* No shift is needed if highest index
++					 in vr is 15.  */
++	lhi	%r0,15
++	slr	%r0,%r4		/* Compute byte count for vector shift left.  */
++	sll	%r0,3		/* Convert to bit count.  */
++	vlvgb	%v17,%r0,7
++	vsrlb	%v19,%v19,%v17	/* Vector shift right by byte by number of bytes
++				   specified in bits 1-4 of byte 7 in v17.   */
++
++	/* Reverse bytes in v19.  */
++.Lzero_permute:
++	vperm	%v19,%v19,%v19,%v20 /* Permute v19 to reversed order.  */
++
++	/* Find c in reversed v19.  */
++	vfeef	%v19,%v19,%v18	/* Find c.  */
++	la	%r2,0(%r1,%r2)
++	vlgvb	%r3,%v19,7	/* Load byte index of c.  */
++
++	/* Compute index in real s and return.  */
++	slgr	%r4,%r3
++	lay	%r2,-3(%r4,%r2)	/* Return pointer to zero. -3 is needed,
++				   because the found byte index is reversed in
++				   vector-register. Thus point to first byte of
++				   wchar_t.  */
++	br	%r14
++.Lpermute_mask:
++	.byte	0x0C,0x0D,0x0E,0x0F,0x08,0x09,0x0A,0x0B
++	.byte	0x04,0x05,0x06,0x07,0x00,0x01,0x02,0x03
++.Lfallback:
++	jg	__wcsrchr_c
++END(__wcsrchr_vx)
++#endif /* HAVE_S390_VX_ASM_SUPPORT && !defined NOT_IN_libc */
+diff --git a/sysdeps/s390/multiarch/wcsrchr.c b/sysdeps/s390/multiarch/wcsrchr.c
+new file mode 100644
+index 0000000..db3f467
+--- /dev/null
++++ b/sysdeps/s390/multiarch/wcsrchr.c
+@@ -0,0 +1,27 @@
++/* Multiple versions of wcsrchr.
++   Copyright (C) 2015 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#if defined HAVE_S390_VX_ASM_SUPPORT && !defined NOT_IN_libc
++# include <wchar.h>
++# include <ifunc-resolve.h>
++
++s390_vx_libc_ifunc2 (__wcsrchr, wcsrchr)
++
++#else
++# include <wcsmbs/wcsrchr.c>
++#endif /* !(defined HAVE_S390_VX_ASM_SUPPORT && !defined NOT_IN_libc) */
+-- 
+2.3.0
+

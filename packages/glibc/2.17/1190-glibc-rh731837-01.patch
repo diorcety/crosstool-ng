@@ -1,0 +1,538 @@
+From 46450f90b70326319f8dc7f0e447e14f0cbd95e6 Mon Sep 17 00:00:00 2001
+From: Rajalakshmi Srinivasaraghavan <raji@linux.vnet.ibm.com>
+Date: Wed, 30 Jul 2014 05:01:14 -0500
+Subject: [PATCH] PowerPC: multiarch memcpy for PowerPC64
+
+commit b5beafbceec80b5a33d3383dde88196afc966e67 Author:
+ Adhemerval Zanella <azanella@linux.vnet.ibm.com> Date:   Fri Dec 13 14:31:41
+ 2013 -0500
+
+    PowerPC: multiarch memcpy for PowerPC64
+
+Added sysdeps/powerpc/powerpc32/power4/multiarch/init-arch.h which was not part
+of original commit
+---
+ .../powerpc/powerpc32/power4/multiarch/init-arch.h | 52 +++++++++++++++++
+ sysdeps/powerpc/powerpc64/multiarch/Makefile       |  4 ++
+ .../powerpc/powerpc64/multiarch/ifunc-impl-list.c  | 66 ++++++++++++++++++++++
+ sysdeps/powerpc/powerpc64/multiarch/init-arch.h    | 18 ++++++
+ sysdeps/powerpc/powerpc64/multiarch/memcpy-a2.S    | 39 +++++++++++++
+ sysdeps/powerpc/powerpc64/multiarch/memcpy-cell.S  | 39 +++++++++++++
+ .../powerpc/powerpc64/multiarch/memcpy-power4.S    | 39 +++++++++++++
+ .../powerpc/powerpc64/multiarch/memcpy-power6.S    | 39 +++++++++++++
+ .../powerpc/powerpc64/multiarch/memcpy-power7.S    | 39 +++++++++++++
+ sysdeps/powerpc/powerpc64/multiarch/memcpy-ppc64.S | 41 ++++++++++++++
+ sysdeps/powerpc/powerpc64/multiarch/memcpy.c       | 55 ++++++++++++++++++
+ 11 files changed, 431 insertions(+)
+ create mode 100644 sysdeps/powerpc/powerpc32/power4/multiarch/init-arch.h
+ create mode 100644 sysdeps/powerpc/powerpc64/multiarch/Makefile
+ create mode 100644 sysdeps/powerpc/powerpc64/multiarch/ifunc-impl-list.c
+ create mode 100644 sysdeps/powerpc/powerpc64/multiarch/init-arch.h
+ create mode 100644 sysdeps/powerpc/powerpc64/multiarch/memcpy-a2.S
+ create mode 100644 sysdeps/powerpc/powerpc64/multiarch/memcpy-cell.S
+ create mode 100644 sysdeps/powerpc/powerpc64/multiarch/memcpy-power4.S
+ create mode 100644 sysdeps/powerpc/powerpc64/multiarch/memcpy-power6.S
+ create mode 100644 sysdeps/powerpc/powerpc64/multiarch/memcpy-power7.S
+ create mode 100644 sysdeps/powerpc/powerpc64/multiarch/memcpy-ppc64.S
+ create mode 100644 sysdeps/powerpc/powerpc64/multiarch/memcpy.c
+
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc32/power4/multiarch/init-arch.h glibc-2.17-c758a686/sysdeps/powerpc/powerpc32/power4/multiarch/init-arch.h
+new file mode 100644
+index 0000000..51a34f2
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc32/power4/multiarch/init-arch.h
+@@ -0,0 +1,52 @@
++/* This file is part of the GNU C Library.
++   Copyright (C) 2013-2014 Free Software Foundation, Inc.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <ldsodefs.h>
++
++/* The code checks if _rtld_global_ro was realocated before trying to access
++   the dl_hwcap field. The assembly is to make the compiler not optimize the
++   test (&_rtld_global_ro != NULL), which is always true in ISO C (but not
++   in that case since _rtld_global_ro might not been realocated yet).  */
++#if defined(SHARED) && !defined(IS_IN_rtld)
++# define __GLRO(value) \
++  ({ volatile void **__p = (volatile void**)(&_rtld_global_ro);	\
++    unsigned long int __ret;					\
++     asm ("# x in %0" : "+r" (__p));				\
++     __ret = (__p) ? GLRO(value) : 0;				\
++     __ret; })
++#else
++# define __GLRO(value)  GLRO(value)
++#endif
++
++/* dl_hwcap contains only the latest supported ISA, the macro checks which is
++   and fills the previous ones.  */
++#define INIT_ARCH() \
++  unsigned long int hwcap = __GLRO(dl_hwcap); 			\
++  if (hwcap & PPC_FEATURE_ARCH_2_06)				\
++    hwcap |= PPC_FEATURE_ARCH_2_05 |				\
++	     PPC_FEATURE_POWER5_PLUS |				\
++	     PPC_FEATURE_POWER5 |				\
++	     PPC_FEATURE_POWER4;				\
++  else if (hwcap & PPC_FEATURE_ARCH_2_05)			\
++    hwcap |= PPC_FEATURE_POWER5_PLUS |				\
++	     PPC_FEATURE_POWER5 |				\
++	     PPC_FEATURE_POWER4;				\
++  else if (hwcap & PPC_FEATURE_POWER5_PLUS)			\
++    hwcap |= PPC_FEATURE_POWER5 |				\
++	     PPC_FEATURE_POWER4;				\
++  else if (hwcap & PPC_FEATURE_POWER5)				\
++    hwcap |= PPC_FEATURE_POWER4;
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/Makefile glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/Makefile
+new file mode 100644
+index 0000000..638c102
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/Makefile
+@@ -0,0 +1,4 @@
++ifeq ($(subdir),string)
++sysdep_routines += memcpy-power7 memcpy-a2 memcpy-power6 memcpy-cell \
++                  memcpy-power4 memcpy-ppc64
++endif
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/ifunc-impl-list.c glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/ifunc-impl-list.c
+new file mode 100644
+index 0000000..5090af4
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/ifunc-impl-list.c
+@@ -0,0 +1,66 @@
++/* Enumerate available IFUNC implementations of a function.  PowerPC64 version.
++   Copyright (C) 2013 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <assert.h>
++#include <string.h>
++#include <wchar.h>
++#include <ldsodefs.h>
++#include <ifunc-impl-list.h>
++
++/* Maximum number of IFUNC implementations.  */
++#define MAX_IFUNC      6
++
++size_t
++__libc_ifunc_impl_list (const char *name, struct libc_ifunc_impl *array,
++                       size_t max)
++{
++  assert (max >= MAX_IFUNC);
++
++  size_t i = 0;
++
++  unsigned long int hwcap = GLRO(dl_hwcap);
++  /* hwcap contains only the latest supported ISA, the code checks which is
++     and fills the previous supported ones.  */
++  if (hwcap & PPC_FEATURE_ARCH_2_06)
++    hwcap |= PPC_FEATURE_ARCH_2_05 | PPC_FEATURE_POWER5_PLUS |
++             PPC_FEATURE_POWER5 | PPC_FEATURE_POWER4;
++  else if (hwcap & PPC_FEATURE_ARCH_2_05)
++    hwcap |= PPC_FEATURE_POWER5_PLUS | PPC_FEATURE_POWER5 | PPC_FEATURE_POWER4;
++  else if (hwcap & PPC_FEATURE_POWER5_PLUS)
++    hwcap |= PPC_FEATURE_POWER5 | PPC_FEATURE_POWER4;
++  else if (hwcap & PPC_FEATURE_POWER5)
++    hwcap |= PPC_FEATURE_POWER4;
++
++#ifdef SHARED
++  /* Support sysdeps/powerpc/powerpc64/multiarch/memcpy.c.  */
++  IFUNC_IMPL (i, name, memcpy,
++             IFUNC_IMPL_ADD (array, i, memcpy, hwcap & PPC_FEATURE_HAS_VSX,
++                             __memcpy_power7)
++             IFUNC_IMPL_ADD (array, i, memcpy, hwcap & PPC_FEATURE_ARCH_2_06,
++                             __memcpy_a2)
++             IFUNC_IMPL_ADD (array, i, memcpy, hwcap & PPC_FEATURE_ARCH_2_05,
++                             __memcpy_power6)
++             IFUNC_IMPL_ADD (array, i, memcpy, hwcap & PPC_FEATURE_CELL_BE,
++                             __memcpy_cell)
++             IFUNC_IMPL_ADD (array, i, memcpy, hwcap & PPC_FEATURE_POWER4,
++                             __memcpy_power4)
++             IFUNC_IMPL_ADD (array, i, memcpy, 1, __memcpy_ppc))
++#endif
++
++  return i;
++}
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/init-arch.h glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/init-arch.h
+new file mode 100644
+index 0000000..b7d238c
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/init-arch.h
+@@ -0,0 +1,18 @@
++/* This file is part of the GNU C Library.
++   Copyright (C) 2013 Free Software Foundation, Inc.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <sysdeps/powerpc/powerpc32/power4/multiarch/init-arch.h>
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/memcpy-a2.S glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/memcpy-a2.S
+new file mode 100644
+index 0000000..2d5bfa9
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/memcpy-a2.S
+@@ -0,0 +1,39 @@
++/* Optimized memcpy implementation for PowerPC A2.
++   Copyright (C) 2013-2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <sysdep.h>
++
++#undef EALIGN
++#define EALIGN(name, alignt, words)				\
++  .section ".text";						\
++  ENTRY_2(__memcpy_a2)						\
++  .align ALIGNARG(alignt);					\
++  EALIGN_W_##words;						\
++  BODY_LABEL(__memcpy_a2):					\
++  cfi_startproc;
++
++#undef END_GEN_TB
++#define END_GEN_TB(name, mask)					\
++  cfi_endproc;							\
++  TRACEBACK_MASK(__memcpy_a2,mask)				\
++  END_2(__memcpy_a2)
++
++#undef libc_hidden_builtin_def
++#define libc_hidden_builtin_def(name)
++
++#include <sysdeps/powerpc/powerpc64/a2/memcpy.S>
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/memcpy-cell.S glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/memcpy-cell.S
+new file mode 100644
+index 0000000..92c06be
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/memcpy-cell.S
+@@ -0,0 +1,39 @@
++/* Optimized memcpy implementation for PowerPC/CELL.
++   Copyright (C) 2013-2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <sysdep.h>
++
++#undef EALIGN
++#define EALIGN(name, alignt, words)				\
++  .section ".text";						\
++  ENTRY_2(__memcpy_cell)					\
++  .align ALIGNARG(alignt);					\
++  EALIGN_W_##words;						\
++  BODY_LABEL(__memcpy_cell):					\
++  cfi_startproc;
++
++#undef END_GEN_TB
++#define END_GEN_TB(name, mask)					\
++  cfi_endproc;							\
++  TRACEBACK_MASK(__memcpy_cell,mask)				\
++  END_2(__memcpy_cell)
++
++#undef libc_hidden_builtin_def
++#define libc_hidden_builtin_def(name)
++
++#include <sysdeps/powerpc/powerpc64/cell/memcpy.S>
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/memcpy-power4.S glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/memcpy-power4.S
+new file mode 100644
+index 0000000..eb01d67
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/memcpy-power4.S
+@@ -0,0 +1,39 @@
++/* Optimized memcpy implementation for PowerPC64/POWER4.
++   Copyright (C) 2013-2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <sysdep.h>
++
++#undef EALIGN
++#define EALIGN(name, alignt, words)				\
++  .section ".text";						\
++  ENTRY_2(__memcpy_power4)					\
++  .align ALIGNARG(alignt);					\
++  EALIGN_W_##words;						\
++  BODY_LABEL(__memcpy_power4):					\
++  cfi_startproc;
++
++#undef END_GEN_TB
++#define END_GEN_TB(name, mask)					\
++  cfi_endproc;							\
++  TRACEBACK_MASK(__memcpy_power4,mask)				\
++  END_2(__memcpy_power4)
++
++#undef libc_hidden_builtin_def
++#define libc_hidden_builtin_def(name)
++
++#include <sysdeps/powerpc/powerpc64/power4/memcpy.S>
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/memcpy-power6.S glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/memcpy-power6.S
+new file mode 100644
+index 0000000..13b514d
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/memcpy-power6.S
+@@ -0,0 +1,39 @@
++/* Optimized memcpy implementation for PowerPC/POWER6.
++   Copyright (C) 2013-2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <sysdep.h>
++
++#undef EALIGN
++#define EALIGN(name, alignt, words)				\
++  .section ".text";						\
++  ENTRY_2(__memcpy_power6)					\
++  .align ALIGNARG(alignt);					\
++  EALIGN_W_##words;						\
++  BODY_LABEL(__memcpy_power6):					\
++  cfi_startproc;
++
++#undef END_GEN_TB
++#define END_GEN_TB(name, mask)					\
++  cfi_endproc;							\
++  TRACEBACK_MASK(__memcpy_power6,mask)				\
++  END_2(__memcpy_power6)
++
++#undef libc_hidden_builtin_def
++#define libc_hidden_builtin_def(name)
++
++#include <sysdeps/powerpc/powerpc64/power6/memcpy.S>
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/memcpy-power7.S glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/memcpy-power7.S
+new file mode 100644
+index 0000000..2aea73d
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/memcpy-power7.S
+@@ -0,0 +1,39 @@
++/* Optimized memcpy implementation for PowerPC/POWER7.
++   Copyright (C) 2013-2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <sysdep.h>
++
++#undef EALIGN
++#define EALIGN(name, alignt, words)				\
++  .section ".text";						\
++  ENTRY_2(__memcpy_power7)					\
++  .align ALIGNARG(alignt);					\
++  EALIGN_W_##words;						\
++  BODY_LABEL(__memcpy_power7):					\
++  cfi_startproc;
++
++#undef END_GEN_TB
++#define END_GEN_TB(name, mask)					\
++  cfi_endproc;							\
++  TRACEBACK_MASK(__memcpy_power7,mask)				\
++  END_2(__memcpy_power7)
++
++#undef libc_hidden_builtin_def
++#define libc_hidden_builtin_def(name)
++
++#include <sysdeps/powerpc/powerpc64/power7/memcpy.S>
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/memcpy-ppc64.S glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/memcpy-ppc64.S
+new file mode 100644
+index 0000000..b828915
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/memcpy-ppc64.S
+@@ -0,0 +1,41 @@
++/* Default memcpy implementation for PowerPC64.
++   Copyright (C) 2013-2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <sysdep.h>
++
++#if defined SHARED && !defined NOT_IN_libc
++# undef EALIGN
++# define EALIGN(name, alignt, words)				\
++  .section ".text";						\
++  ENTRY_2(__memcpy_ppc)						\
++  .align ALIGNARG(alignt);					\
++  EALIGN_W_##words;						\
++  BODY_LABEL(__memcpy_ppc):					\
++  cfi_startproc;
++
++# undef END_GEN_TB
++# define END_GEN_TB(name, mask)					\
++   cfi_endproc;							\
++   TRACEBACK_MASK(__memcpy_ppc,mask)				\
++   END_2(__memcpy_ppc)
++
++# undef libc_hidden_builtin_def
++# define libc_hidden_builtin_def(name)
++#endif
++
++#include <sysdeps/powerpc/powerpc64/memcpy.S>
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/memcpy.c glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/memcpy.c
+new file mode 100644
+index 0000000..305e963
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/multiarch/memcpy.c
+@@ -0,0 +1,55 @@
++/* Multiple versions of memcpy. PowerPC64 version.
++   Copyright (C) 2013-2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++/* Define multiple versions only for the definition in lib and for
++   DSO.  In static binaries we need memcpy before the initialization
++   happened.  */
++#if defined SHARED && !defined NOT_IN_libc
++/* Redefine memcpy so that the compiler won't complain about the type
++   mismatch with the IFUNC selector in strong_alias, below.  */
++# undef memcpy
++# define memcpy __redirect_memcpy
++# include <string.h>
++# include "init-arch.h"
++
++extern __typeof (__redirect_memcpy) __libc_memcpy;
++
++extern __typeof (__redirect_memcpy) __memcpy_ppc attribute_hidden;
++extern __typeof (__redirect_memcpy) __memcpy_power4 attribute_hidden;
++extern __typeof (__redirect_memcpy) __memcpy_cell attribute_hidden;
++extern __typeof (__redirect_memcpy) __memcpy_power6 attribute_hidden;
++extern __typeof (__redirect_memcpy) __memcpy_a2 attribute_hidden;
++extern __typeof (__redirect_memcpy) __memcpy_power7 attribute_hidden;
++
++libc_ifunc (__libc_memcpy,
++            (hwcap & PPC_FEATURE_HAS_VSX)
++            ? __memcpy_power7 :
++	      (hwcap & PPC_FEATURE_ARCH_2_06)
++	      ? __memcpy_a2 :
++		(hwcap & PPC_FEATURE_ARCH_2_05)
++		? __memcpy_power6 :
++		  (hwcap & PPC_FEATURE_CELL_BE)
++		  ? __memcpy_cell :
++		    (hwcap & PPC_FEATURE_POWER4)
++		    ? __memcpy_power4
++            : __memcpy_ppc);
++
++#undef memcpy
++strong_alias (__libc_memcpy, memcpy);
++libc_hidden_ver (__libc_memcpy, memcpy);
++#endif
+-- 
+1.8.3.1
+

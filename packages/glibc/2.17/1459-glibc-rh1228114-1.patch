@@ -1,0 +1,234 @@
+commit 89fb6835583088059b8d8987c86caac33e37e5ea
+Author: Siddhesh Poyarekar <siddhesh@redhat.com>
+Date:   Tue Jun 11 11:11:11 2013 +0530
+
+    Fix symbol definitions for __clock_* functions
+    
+    __clock_gettime and other __clock_* functions could result in an extra
+    PLT reference within libc.so if it actually gets used.  None of the
+    code currently uses them, which is why this probably went unnoticed.
+
+Index: b/include/time.h
+===================================================================
+--- a/include/time.h
++++ b/include/time.h
+@@ -21,6 +21,7 @@ libc_hidden_proto (strptime)
+ 
+ extern __typeof (clock_getres) __clock_getres;
+ extern __typeof (clock_gettime) __clock_gettime;
++libc_hidden_proto (__clock_gettime)
+ extern __typeof (clock_settime) __clock_settime;
+ extern __typeof (clock_nanosleep) __clock_nanosleep;
+ extern __typeof (clock_getcpuclockid) __clock_getcpuclockid;
+Index: b/rt/clock_getcpuclockid.c
+===================================================================
+--- a/rt/clock_getcpuclockid.c
++++ b/rt/clock_getcpuclockid.c
+@@ -21,7 +21,7 @@
+ #include <unistd.h>
+ 
+ int
+-clock_getcpuclockid (pid_t pid, clockid_t *clock_id)
++__clock_getcpuclockid (pid_t pid, clockid_t *clock_id)
+ {
+   /* We don't allow any process ID but our own.  */
+   if (pid != 0 && pid != getpid ())
+@@ -37,4 +37,4 @@ clock_getcpuclockid (pid_t pid, clockid_
+   return ENOENT;
+ #endif
+ }
+-strong_alias (clock_getcpuclockid, __clock_getcpuclockid)
++weak_alias (__clock_getcpuclockid, clock_getcpuclockid)
+Index: b/rt/clock_getres.c
+===================================================================
+--- a/rt/clock_getres.c
++++ b/rt/clock_getres.c
+@@ -21,10 +21,10 @@
+ 
+ /* Get resolution of clock.  */
+ int
+-clock_getres (clockid_t clock_id, struct timespec *res)
++__clock_getres (clockid_t clock_id, struct timespec *res)
+ {
+   __set_errno (ENOSYS);
+   return -1;
+ }
+-strong_alias (clock_getres, __clock_getres)
++weak_alias (__clock_getres, clock_getres)
+ stub_warning (clock_getres)
+Index: b/rt/clock_gettime.c
+===================================================================
+--- a/rt/clock_gettime.c
++++ b/rt/clock_gettime.c
+@@ -21,10 +21,11 @@
+ 
+ /* Get current value of CLOCK and store it in TP.  */
+ int
+-clock_gettime (clockid_t clock_id, struct timespec *tp)
++__clock_gettime (clockid_t clock_id, struct timespec *tp)
+ {
+   __set_errno (ENOSYS);
+   return -1;
+ }
+-strong_alias (clock_gettime, __clock_gettime)
++weak_alias (__clock_gettime, clock_gettime)
++libc_hidden_def (__clock_gettime)
+ stub_warning (clock_gettime)
+Index: b/rt/clock_nanosleep.c
+===================================================================
+--- a/rt/clock_nanosleep.c
++++ b/rt/clock_nanosleep.c
+@@ -20,8 +20,8 @@
+ #include <time.h>
+ 
+ int
+-clock_nanosleep (clockid_t clock_id, int flags, const struct timespec *req,
+-		 struct timespec *rem)
++__clock_nanosleep (clockid_t clock_id, int flags, const struct timespec *req,
++		   struct timespec *rem)
+ {
+   if (__builtin_expect (req->tv_nsec, 0) < 0
+       || __builtin_expect (req->tv_nsec, 0) >= 1000000000)
+@@ -33,5 +33,5 @@ clock_nanosleep (clockid_t clock_id, int
+   /* Not implemented.  */
+   return ENOSYS;
+ }
+-strong_alias (clock_nanosleep, __clock_nanosleep)
++weak_alias (__clock_nanosleep, clock_nanosleep)
+ stub_warning (clock_nanosleep)
+Index: b/rt/clock_settime.c
+===================================================================
+--- a/rt/clock_settime.c
++++ b/rt/clock_settime.c
+@@ -21,10 +21,10 @@
+ 
+ /* Set CLOCK to value TP.  */
+ int
+-clock_settime (clockid_t clock_id, const struct timespec *tp)
++__clock_settime (clockid_t clock_id, const struct timespec *tp)
+ {
+   __set_errno (ENOSYS);
+   return -1;
+ }
+-strong_alias (clock_settime, __clock_settime)
++weak_alias (__clock_settime, clock_settime)
+ stub_warning (clock_settime)
+Index: b/sysdeps/posix/clock_getres.c
+===================================================================
+--- a/sysdeps/posix/clock_getres.c
++++ b/sysdeps/posix/clock_getres.c
+@@ -76,7 +76,7 @@ realtime_getres (struct timespec *res)
+ 
+ /* Get resolution of clock.  */
+ int
+-clock_getres (clockid_t clock_id, struct timespec *res)
++__clock_getres (clockid_t clock_id, struct timespec *res)
+ {
+   int retval = -1;
+ 
+@@ -115,4 +115,4 @@ clock_getres (clockid_t clock_id, struct
+ 
+   return retval;
+ }
+-strong_alias (clock_getres, __clock_getres)
++weak_alias (__clock_getres, clock_getres)
+Index: b/sysdeps/unix/clock_gettime.c
+===================================================================
+--- a/sysdeps/unix/clock_gettime.c
++++ b/sysdeps/unix/clock_gettime.c
+@@ -89,7 +89,7 @@ realtime_gettime (struct timespec *tp)
+ 
+ /* Get current value of CLOCK and store it in TP.  */
+ int
+-clock_gettime (clockid_t clock_id, struct timespec *tp)
++__clock_gettime (clockid_t clock_id, struct timespec *tp)
+ {
+   int retval = -1;
+ 
+@@ -132,4 +132,5 @@ clock_gettime (clockid_t clock_id, struc
+ 
+   return retval;
+ }
+-strong_alias (clock_gettime, __clock_gettime)
++weak_alias (__clock_gettime, clock_gettime)
++libc_hidden_def (__clock_gettime)
+Index: b/sysdeps/unix/clock_nanosleep.c
+===================================================================
+--- a/sysdeps/unix/clock_nanosleep.c
++++ b/sysdeps/unix/clock_nanosleep.c
+@@ -39,8 +39,8 @@
+ /* This implementation assumes that these is only a `nanosleep' system
+    call.  So we have to remap all other activities.  */
+ int
+-clock_nanosleep (clockid_t clock_id, int flags, const struct timespec *req,
+-		 struct timespec *rem)
++__clock_nanosleep (clockid_t clock_id, int flags, const struct timespec *req,
++		   struct timespec *rem)
+ {
+   struct timespec now;
+ 
+@@ -98,4 +98,4 @@ clock_nanosleep (clockid_t clock_id, int
+ 
+   return __builtin_expect (nanosleep (req, rem), 0) ? errno : 0;
+ }
+-strong_alias (clock_nanosleep, __clock_nanosleep)
++weak_alias (__clock_nanosleep, clock_nanosleep)
+Index: b/sysdeps/unix/clock_settime.c
+===================================================================
+--- a/sysdeps/unix/clock_settime.c
++++ b/sysdeps/unix/clock_settime.c
+@@ -72,7 +72,7 @@ hp_timing_settime (clockid_t clock_id, c
+ 
+ /* Set CLOCK to value TP.  */
+ int
+-clock_settime (clockid_t clock_id, const struct timespec *tp)
++__clock_settime (clockid_t clock_id, const struct timespec *tp)
+ {
+   int retval;
+ 
+@@ -124,4 +124,4 @@ clock_settime (clockid_t clock_id, const
+ 
+   return retval;
+ }
+-strong_alias (clock_settime, __clock_settime)
++weak_alias (__clock_settime, clock_settime)
+Index: b/sysdeps/unix/sysv/linux/clock_getcpuclockid.c
+===================================================================
+--- a/sysdeps/unix/sysv/linux/clock_getcpuclockid.c
++++ b/sysdeps/unix/sysv/linux/clock_getcpuclockid.c
+@@ -23,7 +23,7 @@
+ #include "kernel-posix-cpu-timers.h"
+ 
+ int
+-clock_getcpuclockid (pid_t pid, clockid_t *clock_id)
++__clock_getcpuclockid (pid_t pid, clockid_t *clock_id)
+ {
+   /* The clockid_t value is a simple computation from the PID.
+      But we do a clock_getres call to validate it.  */
+@@ -46,4 +46,4 @@ clock_getcpuclockid (pid_t pid, clockid_
+   else
+     return INTERNAL_SYSCALL_ERRNO (r, err);
+ }
+-strong_alias (clock_getcpuclockid, __clock_getcpuclockid)
++weak_alias (__clock_getcpuclockid, clock_getcpuclockid)
+Index: b/sysdeps/unix/sysv/linux/clock_nanosleep.c
+===================================================================
+--- a/sysdeps/unix/sysv/linux/clock_nanosleep.c
++++ b/sysdeps/unix/sysv/linux/clock_nanosleep.c
+@@ -26,8 +26,8 @@
+ /* We can simply use the syscall.  The CPU clocks are not supported
+    with this function.  */
+ int
+-clock_nanosleep (clockid_t clock_id, int flags, const struct timespec *req,
+-		 struct timespec *rem)
++__clock_nanosleep (clockid_t clock_id, int flags, const struct timespec *req,
++		   struct timespec *rem)
+ {
+   INTERNAL_SYSCALL_DECL (err);
+   int r;
+@@ -52,4 +52,4 @@ clock_nanosleep (clockid_t clock_id, int
+   return (INTERNAL_SYSCALL_ERROR_P (r, err)
+ 	  ? INTERNAL_SYSCALL_ERRNO (r, err) : 0);
+ }
+-strong_alias (clock_nanosleep, __clock_nanosleep)
++weak_alias (__clock_nanosleep, clock_nanosleep)

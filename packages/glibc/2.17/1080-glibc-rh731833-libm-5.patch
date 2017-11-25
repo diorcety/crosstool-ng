@@ -1,0 +1,114 @@
+From 987322bc0b170570a7bd539480252453fcc7a6f5 Mon Sep 17 00:00:00 2001
+From: Adhemerval Zanella <azanella@linux.vnet.ibm.com>
+Date: Fri, 29 Mar 2013 18:15:28 -0500
+Subject: [PATCH 23/42] PowerPC: remove branch prediction from rint
+ implementation
+
+The branch prediction hints is actually hurts performance in this case.
+The assembly implementation make two assumptions: 1. 'fabs (x) < 2^52'
+is unlikely and 2. 'x > 0.0' is unlike (if 1. is true). Since it a
+general floating point function, expected input is not bounded and then
+it is better to let the hardware handle the branches.
+
+(backported from commit 60c414c346a1d5ef0510ffbdc0ab75f288ee4d3f)
+
+This backport does not include the benchmark tests from the original
+commit.
+---
+ sysdeps/powerpc/powerpc32/fpu/s_rint.S  | 6 +++---
+ sysdeps/powerpc/powerpc32/fpu/s_rintf.S | 6 +++---
+ sysdeps/powerpc/powerpc64/fpu/s_rint.S  | 6 +++---
+ sysdeps/powerpc/powerpc64/fpu/s_rintf.S | 6 +++---
+ 4 files changed, 12 insertions(+), 12 deletions(-)
+
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc32/fpu/s_rint.S glibc-2.17-c758a686/sysdeps/powerpc/powerpc32/fpu/s_rint.S
+index 0ab9e6c..c28e7f6 100644
+--- glibc-2.17-c758a686/sysdeps/powerpc/powerpc32/fpu/s_rint.S
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc32/fpu/s_rint.S
+@@ -45,14 +45,14 @@ ENTRY (__rint)
+ 	fsub	fp12,fp13,fp13	/* generate 0.0  */
+ 	fcmpu	cr7,fp0,fp13	/* if (fabs(x) > TWO52)  */
+ 	fcmpu	cr6,fp1,fp12	/* if (x > 0.0)  */
+-	bnllr-	cr7
+-	bng-	cr6,.L4
++	bnllr	cr7
++	bng	cr6,.L4
+ 	fadd	fp1,fp1,fp13	/* x+= TWO52;  */
+ 	fsub	fp1,fp1,fp13	/* x-= TWO52;  */
+ 	fabs	fp1,fp1		/* if (x == 0.0)  */
+ 	blr			/* x = 0.0; */
+ .L4:
+-	bnllr-	cr6		/* if (x < 0.0)  */
++	bnllr	cr6		/* if (x < 0.0)  */
+ 	fsub	fp1,fp1,fp13	/* x-= TWO52;  */
+ 	fadd	fp1,fp1,fp13	/* x+= TWO52;  */
+ 	fnabs	fp1,fp1		/* if (x == 0.0)  */
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc32/fpu/s_rintf.S glibc-2.17-c758a686/sysdeps/powerpc/powerpc32/fpu/s_rintf.S
+index ddb47db..69aed9c 100644
+--- glibc-2.17-c758a686/sysdeps/powerpc/powerpc32/fpu/s_rintf.S
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc32/fpu/s_rintf.S
+@@ -41,14 +41,14 @@ ENTRY (__rintf)
+ 	fsubs	fp12,fp13,fp13	/* generate 0.0  */
+ 	fcmpu	cr7,fp0,fp13	/* if (fabs(x) > TWO23)  */
+ 	fcmpu	cr6,fp1,fp12	/* if (x > 0.0)  */
+-	bnllr-	cr7
+-	bng-	cr6,.L4
++	bnllr	cr7
++	bng	cr6,.L4
+ 	fadds	fp1,fp1,fp13	/* x+= TWO23;  */
+ 	fsubs	fp1,fp1,fp13	/* x-= TWO23;  */
+ 	fabs	fp1,fp1		/* if (x == 0.0)  */
+ 	blr			/* x = 0.0; */
+ .L4:
+-	bnllr-	cr6		/* if (x < 0.0)  */
++	bnllr	cr6		/* if (x < 0.0)  */
+ 	fsubs	fp1,fp1,fp13	/* x-= TWO23;  */
+ 	fadds	fp1,fp1,fp13	/* x+= TWO23;  */
+ 	fnabs	fp1,fp1		/* if (x == 0.0)  */
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/s_rint.S glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/s_rint.S
+index db62405..560905a 100644
+--- glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/s_rint.S
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/s_rint.S
+@@ -34,14 +34,14 @@ EALIGN (__rint, 4, 0)
+ 	fsub	fp12,fp13,fp13	/* generate 0.0  */
+ 	fcmpu	cr7,fp0,fp13	/* if (fabs(x) > TWO52)  */
+ 	fcmpu	cr6,fp1,fp12	/* if (x > 0.0)  */
+-	bnllr-	cr7
+-	bng-	cr6,.L4
++	bnllr	cr7
++	bng	cr6,.L4
+ 	fadd	fp1,fp1,fp13	/* x+= TWO52;  */
+ 	fsub	fp1,fp1,fp13	/* x-= TWO52;  */
+ 	fabs	fp1,fp1		/* if (x == 0.0)  */
+ 	blr			/* x = 0.0; */
+ .L4:
+-	bnllr-	cr6		/* if (x < 0.0)  */
++	bnllr	cr6		/* if (x < 0.0)  */
+ 	fsub	fp1,fp1,fp13	/* x-= TWO52;  */
+ 	fadd	fp1,fp1,fp13	/* x+= TWO52;  */
+ 	fnabs	fp1,fp1		/* if (x == 0.0)  */
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/s_rintf.S glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/s_rintf.S
+index 248649d..c120d91 100644
+--- glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/s_rintf.S
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/s_rintf.S
+@@ -30,14 +30,14 @@ EALIGN (__rintf, 4, 0)
+ 	fsubs	fp12,fp13,fp13	/* generate 0.0  */
+ 	fcmpu	cr7,fp0,fp13	/* if (fabs(x) > TWO23)  */
+ 	fcmpu	cr6,fp1,fp12	/* if (x > 0.0)  */
+-	bnllr-	cr7
+-	bng-	cr6,.L4
++	bnllr	cr7
++	bng	cr6,.L4
+ 	fadds	fp1,fp1,fp13	/* x+= TWO23;  */
+ 	fsubs	fp1,fp1,fp13	/* x-= TWO23;  */
+ 	fabs	fp1,fp1		/* if (x == 0.0)  */
+ 	blr			/* x = 0.0; */
+ .L4:
+-	bnllr-	cr6		/* if (x < 0.0)  */
++	bnllr	cr6		/* if (x < 0.0)  */
+ 	fsubs	fp1,fp1,fp13	/* x-= TWO23;  */
+ 	fadds	fp1,fp1,fp13	/* x+= TWO23;  */
+ 	fnabs	fp1,fp1		/* if (x == 0.0)  */
+-- 
+1.7.11.7
+

@@ -1,0 +1,215 @@
+commit 56cf2763819d2f721c98f2b8bcc04a3c673837d3
+Author: Adhemerval Zanella <azanella@linux.vnet.ibm.com>
+Date:   Fri Nov 7 12:34:52 2014 -0500
+
+    powerpc: abort transaction in syscalls
+    
+    Linux kernel powerpc documentation states issuing a syscall inside a
+    transaction is not recommended and may lead to undefined behavior. It
+    also states syscalls does not abort transactoin neither they run in
+    transactional state.
+    
+    To avoid side-effects being visible outside transactions, GLIBC with
+    lock elision enabled will issue a transaction abort instruction just
+    before all syscalls if hardware supports hardware transactions.
+
+Index: glibc-2.17-c758a686/nptl/sysdeps/powerpc/tcb-offsets.sym
+===================================================================
+--- glibc-2.17-c758a686.orig/nptl/sysdeps/powerpc/tcb-offsets.sym
++++ glibc-2.17-c758a686/nptl/sysdeps/powerpc/tcb-offsets.sym
+@@ -15,6 +15,7 @@ MULTIPLE_THREADS_OFFSET		thread_offsetof
+ PID				thread_offsetof (pid)
+ TID				thread_offsetof (tid)
+ POINTER_GUARD			(offsetof (tcbhead_t, pointer_guard) - TLS_TCB_OFFSET - sizeof (tcbhead_t))
++TM_CAPABLE			(offsetof (tcbhead_t, tm_capable) - TLS_TCB_OFFSET - sizeof (tcbhead_t))
+ #ifndef __ASSUME_PRIVATE_FUTEX
+ PRIVATE_FUTEX_OFFSET		thread_offsetof (header.private_futex)
+ #endif
+Index: glibc-2.17-c758a686/nptl/sysdeps/powerpc/tls.h
+===================================================================
+--- glibc-2.17-c758a686.orig/nptl/sysdeps/powerpc/tls.h
++++ glibc-2.17-c758a686/nptl/sysdeps/powerpc/tls.h
+@@ -61,6 +61,15 @@ typedef union dtv
+    are private.  */
+ typedef struct
+ {
++  /* Indicate if HTM capable (ISA 2.07).  */
++  uint32_t tm_capable;
++  /* Reservation for AT_PLATFORM data - powerpc64.  */
++#ifdef __powerpc64__
++  uint32_t at_platform;
++#endif
++  /* Reservation for Dynamic System Optimizer ABI.  */
++  uintptr_t dso_slot2;
++  uintptr_t dso_slot1;
+   /* GCC split stack support.  */
+   void *__private_ss;
+   /* Reservation for the Event-Based Branching ABI.  */
+@@ -123,7 +132,11 @@ register void *__thread_register __asm__
+    special attention since 'errno' is not yet available and if the
+    operation can cause a failure 'errno' must not be touched.  */
+ # define TLS_INIT_TP(tcbp, secondcall) \
+-    (__thread_register = (void *) (tcbp) + TLS_TCB_OFFSET, NULL)
++  ({ 									      \
++    __thread_register = (void *) (tcbp) + TLS_TCB_OFFSET;		      \
++    THREAD_SET_TM_CAPABLE (GLRO (dl_hwcap2) & PPC_FEATURE2_HAS_HTM ? 1 : 0);  \
++    NULL;								      \
++  })
+ 
+ /* Return the address of the dtv for the current thread.  */
+ # define THREAD_DTV() \
+@@ -177,6 +190,13 @@ register void *__thread_register __asm__
+ 		     + TLS_PRE_TCB_SIZE))[-1].pointer_guard		      \
+      = THREAD_GET_POINTER_GUARD())
+ 
++/* tm_capable field in TCB head.  */
++# define THREAD_GET_TM_CAPABLE() \
++    (((tcbhead_t *) ((char *) __thread_register				      \
++		     - TLS_TCB_OFFSET))[-1].tm_capable)
++# define THREAD_SET_TM_CAPABLE(value) \
++    (THREAD_GET_TM_CAPABLE () = (value))
++
+ /* l_tls_offset == 0 is perfectly valid on PPC, so we have to use some
+    different value to mean unset l_tls_offset.  */
+ # define NO_TLS_OFFSET		-1
+Index: glibc-2.17-c758a686/sysdeps/powerpc/powerpc32/sysdep.h
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/powerpc/powerpc32/sysdep.h
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc32/sysdep.h
+@@ -89,7 +89,23 @@ GOT_LABEL:			;					      \
+   cfi_endproc;								      \
+   ASM_SIZE_DIRECTIVE(name)
+ 
++#if ! IS_IN(rtld) && defined (ENABLE_LOCK_ELISION)
++# define ABORT_TRANSACTION \
++    cmpwi    2,0;		\
++    beq      1f;		\
++    lwz      0,TM_CAPABLE(2);	\
++    cmpwi    0,0;		\
++    beq	     1f;		\
++    li	     0,_ABORT_SYSCALL;	\
++    tabort.  0;			\
++    .align 4;			\
++1:
++#else
++# define ABORT_TRANSACTION
++#endif
++
+ #define DO_CALL(syscall)						      \
++    ABORT_TRANSACTION							      \
+     li 0,syscall;							      \
+     sc
+ 
+Index: glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/sysdep.h
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/powerpc/powerpc64/sysdep.h
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/sysdep.h
+@@ -283,7 +283,23 @@ LT_LABELSUFFIX(name,_name_end): ; \
+   TRACEBACK_MASK(name,mask)	\
+   END_2(name)
+ 
++#if !IS_IN(rtld) && defined (ENABLE_LOCK_ELISION)
++# define ABORT_TRANSACTION \
++    cmpdi    13,0;		\
++    beq      1f;		\
++    lwz      0,TM_CAPABLE(13);	\
++    cmpwi    0,0;		\
++    beq	     1f;		\
++    li	     0,_ABORT_SYSCALL;	\
++    tabort.  0;			\
++    .align 4;                   \
++1:
++#else
++# define ABORT_TRANSACTION
++#endif
++
+ #define DO_CALL(syscall) \
++    ABORT_TRANSACTION \
+     li 0,syscall; \
+     sc
+ 
+Index: glibc-2.17-c758a686/sysdeps/powerpc/sysdep.h
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/powerpc/sysdep.h
++++ glibc-2.17-c758a686/sysdeps/powerpc/sysdep.h
+@@ -21,6 +21,10 @@
+  */
+ #define _SYS_AUXV_H 1
+ #include <bits/hwcap.h>
++#ifdef ENABLE_LOCK_ELISION
++#include <tls.h>
++#include <htm.h>
++#endif
+ 
+ #define PPC_FEATURE_970 (PPC_FEATURE_POWER4 + PPC_FEATURE_HAS_ALTIVEC)
+ 
+@@ -164,4 +168,22 @@
+ #define ALIGNARG(log2) log2
+ #define ASM_SIZE_DIRECTIVE(name) .size name,.-name
+ 
++#else
++
++/* Linux kernel powerpc documentation [1] states issuing a syscall inside a
++   transaction is not recommended and may lead to undefined behavior.  It
++   also states syscalls do not abort transactions.  To avoid such traps,
++   we abort transaction just before syscalls.
++
++   [1] Documentation/powerpc/transactional_memory.txt [Syscalls]  */
++#if !IS_IN(rtld) && defined (ENABLE_LOCK_ELISION)
++# define ABORT_TRANSACTION \
++  ({ 						\
++    if (THREAD_GET_TM_CAPABLE ())		\
++      __builtin_tabort (_ABORT_SYSCALL);	\
++  })
++#else
++# define ABORT_TRANSACTION
++#endif
++
+ #endif	/* __ASSEMBLER__ */
+Index: glibc-2.17-c758a686/sysdeps/unix/sysv/linux/powerpc/powerpc32/sysdep.h
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/unix/sysv/linux/powerpc/powerpc32/sysdep.h
++++ glibc-2.17-c758a686/sysdeps/unix/sysv/linux/powerpc/powerpc32/sysdep.h
+@@ -194,6 +194,7 @@
+     register long int r11 __asm__ ("r11");				\
+     register long int r12 __asm__ ("r12");				\
+     LOADARGS_##nr(name, args);						\
++    ABORT_TRANSACTION;							\
+     __asm__ __volatile__						\
+       ("sc   \n\t"							\
+        "mfcr %0"							\
+Index: glibc-2.17-c758a686/sysdeps/unix/sysv/linux/powerpc/powerpc64/sysdep.h
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/unix/sysv/linux/powerpc/powerpc64/sysdep.h
++++ glibc-2.17-c758a686/sysdeps/unix/sysv/linux/powerpc/powerpc64/sysdep.h
+@@ -201,6 +201,7 @@
+     register long int r7  __asm__ ("r7");				\
+     register long int r8  __asm__ ("r8");				\
+     LOADARGS_##nr (name, ##args);					\
++    ABORT_TRANSACTION;							\
+     __asm__ __volatile__						\
+       ("sc\n\t"								\
+        "mfcr  %0\n\t"							\
+Index: glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/powerpc/createthread.c
+===================================================================
+--- glibc-2.17-c758a686.orig/nptl/sysdeps/unix/sysv/linux/powerpc/createthread.c
++++ glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/powerpc/createthread.c
+@@ -16,9 +16,16 @@
+    License along with the GNU C Library; if not, see
+    <http://www.gnu.org/licenses/>.  */
+ 
++/* RHEL 7-specific changes: The functions PREPARE_CREATE and TLS_VALUE
++   are used by createthread.c to override thread setup.  In upstream
++   they appear in TLS_DEFINE_INIT_TP.  */
++# define PREPARE_CREATE \
++  void *tp = (void *) (pd) + TLS_TCB_OFFSET + TLS_PRE_TCB_SIZE;            \
++  (((tcbhead_t *) ((char *) tp - TLS_TCB_OFFSET))[-1].tm_capable) =        \
++  THREAD_GET_TM_CAPABLE ();
++
+ /* Value passed to 'clone' for initialization of the thread register.  */
+-#define TLS_VALUE ((void *) (pd) \
+-		   + TLS_TCB_OFFSET + TLS_PRE_TCB_SIZE)
++# define TLS_VALUE tp
+ 
+ /* Get the real implementation.	 */
+ #include <nptl/sysdeps/pthread/createthread.c>

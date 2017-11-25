@@ -1,0 +1,16 @@
+commit cb756c6d686242acdc942e3d4276e399a69a6f02
+Author: Marcus Shawcroft <marcus.shawcroft@linaro.org>
+Date:   Tue Dec 17 18:12:30 2013 +0000
+
+    Compile e_sqrt.c with -ffp-contract=off.
+
+diff --git a/sysdeps/ieee754/dbl-64/Makefile b/sysdeps/ieee754/dbl-64/Makefile
+index 1a7b311..35f545f 100644
+--- a/sysdeps/ieee754/dbl-64/Makefile
++++ b/sysdeps/ieee754/dbl-64/Makefile
+@@ -1,4 +1,5 @@
+ ifeq ($(subdir),math)
+ # branred depends on precise IEEE double rounding
+ CFLAGS-branred.c = $(config-cflags-nofma)
++CFLAGS-e_sqrt.c = $(config-cflags-nofma)
+ endif

@@ -1,0 +1,43 @@
+In order to ensure ABI compatibility between staged builds it was
+required that rtkaio/Makefile define both IN_MODULE=MODULE_librt
+and IS_IN_librt in order to get both the right set of versioned
+symbols and enable cancellation correctly. The changes to rtkaio/Makefile
+are Red Hat internal changes.
+
+commit 286663c34b006c1409df4a71f89d6d4d5d01df09
+Author: Siddhesh Poyarekar <siddhesh@redhat.com>
+Date:   Wed Nov 19 12:15:01 2014 +0530
+
+    Fix -Wundef warning in SHLIB_COMPAT
+    
+    Replace the IS_IN_##lib with IS_IN(lib).  Verified that the generated
+    code remains the same.
+    
+    	* include/shlib-compat.h (_SHLIB_COMPAT): Use IS_IN.
+Index: glibc-2.17-c758a686/include/shlib-compat.h
+===================================================================
+--- glibc-2.17-c758a686.orig/include/shlib-compat.h
++++ glibc-2.17-c758a686/include/shlib-compat.h
+@@ -45,7 +45,7 @@
+ # define SHLIB_COMPAT(lib, introduced, obsoleted)			      \
+   _SHLIB_COMPAT (lib, introduced, obsoleted)
+ # define _SHLIB_COMPAT(lib, introduced, obsoleted)			      \
+-  ((IS_IN_##lib - 0)							      \
++  (IS_IN (lib)								      \
+    && (!(ABI_##lib##_##obsoleted - 0)					      \
+        || ((ABI_##lib##_##introduced - 0) < (ABI_##lib##_##obsoleted - 0))))
+ 
+Index: glibc-2.17-c758a686/rtkaio/Makefile
+===================================================================
+--- glibc-2.17-c758a686.orig/rtkaio/Makefile
++++ glibc-2.17-c758a686/rtkaio/Makefile
+@@ -69,7 +69,8 @@ CFLAGS-kaio_librt-cancellation.c = -fasy
+ 
+ LDFLAGS-rtkaio.so = -Wl,-soname=lib$(libprefix)rt.so$(librt.so-version) \
+ 		    -Wl,--enable-new-dtags,-z,nodelete
+-CPPFLAGS-librtkaio += -DIS_IN_librt=1 -I$(..)rt
++CPPFLAGS-librtkaio += -UIN_MODULE -DIN_MODULE=MODULE_librt \
++		      -UIS_IN_librt -DIS_IN_librt=1 -I$(..)rt
+ 
+ rpath-dirs := $(patsubst rt,rtkaio,$(rpath-dirs))
+ 

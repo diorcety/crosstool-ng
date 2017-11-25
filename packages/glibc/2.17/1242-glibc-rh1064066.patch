@@ -1,0 +1,32 @@
+--- /var/lib/mock/glibc-2.17-79.el7/root/builddir/build/BUILD/glibc-2.17-c758a686/math/libm-test.inc	2015-04-06 17:36:33.268209956 -0400
++++ glibc-2.17-c758a686/math/libm-test.inc	2015-04-07 12:00:03.102360299 -0400
+@@ -521,7 +521,8 @@
+ }
+ 
+ 
+-static void __attribute__ ((noinline))
++/* Attributes work around suspected gcc 4.8 bug #1209619.  */
++static void __attribute__ ((noclone, noinline))
+ check_float_internal (const char *test_name, FLOAT computed, FLOAT expected,
+ 		      FLOAT max_ulp, int xfail, int exceptions,
+ 		      FLOAT *curr_max_error)
+@@ -610,7 +611,8 @@
+ }
+ 
+ 
+-static void __attribute__ ((noinline))
++/* Attributes work around suspected gcc 4.8 bug #1209619.  */
++static void __attribute__ ((noclone, noinline))
+ check_float (const char *test_name, FLOAT computed, FLOAT expected,
+ 	     FLOAT max_ulp, int xfail, int exceptions)
+ {
+@@ -619,7 +621,8 @@
+ }
+ 
+ 
+-static void __attribute__ ((noinline))
++/* Attributes work around suspected gcc 4.8 bug #1209619.  */
++static void __attribute__ ((noclone, noinline))
+ check_complex (const char *test_name, __complex__ FLOAT computed,
+ 	       __complex__ FLOAT expected,
+ 	       __complex__ FLOAT max_ulp, __complex__ int xfail,

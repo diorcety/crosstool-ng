@@ -1,0 +1,252 @@
+    Backport of:
+    commit 94c9680945369d63ef9ed266a29f28ebaaaeb5ce
+    Author: Adhemerval Zanella <azanella@linux.vnet.ibm.com>
+    Date:   Tue Dec 23 13:36:34 2014 -0500
+    
+        powerpc: Optimized strcat for POWER8/PPC64
+    
+        With new optimized strcpy for POWER8, this patch adds an optimized
+        strcat which uses it along with default implementation at strings/.
+    
+        ChangeLog:
+            2015-01-13  Adhemerval Zanella  <azanella@linux.vnet.ibm.com>
+    
+     	* sysdeps/powerpc/powerpc64/multiarch/Makefile [sysdep_routines]: Add
+    	strncat-power8 object.
+    	* sysdeps/powerpc/powerpc64/multiarch/strcat.c (strcat): Add
+    	__strcat_power8 implementation.
+    	* sysdeps/powerpc/powerpc64/multiarch/ifunc-impl-list.c
+    	(__libc_ifunc_impl_list): Add __strcat_power8 implementation.
+    	* sysdeps/powerpc/powerpc64/multiarch/strcat-power8.c: New file:
+    	optimized strcat for power8.
+    
+    and its dependency:
+    
+    commit bc8ea38590070604006399e42469087e943fc8ec
+    Author: Vidya Ranganathan <vidya@linux.vnet.ibm.com>
+    Date:   Wed Jun 11 22:21:20 2014 -0500
+    
+        PowerPC: strcat optimization for PPC64/POWER7
+    
+        This patch adds an ifunc power7 strcat symbol that uses the logic on
+        sysdeps/powerpc/strcat.c but call power7 strlen/strcpy symbols instead
+        of default ones.
+    
+        ChangeLog:
+    
+            2014-07-02  Vidya Ranganathan  <vidya@linux.vnet.ibm.com>
+                Adhemerval Zanella  <azanella@linux.vnet.ibm.com>
+    
+            * sysdeps/powerpc/strcat.c: Using macro to redefine symbol name.
+            * sysdeps/powerpc/powerpc64/multiarch/Makefile: Add strcat multiarch
+            optimizations.
+            * sysdeps/powerpc/powerpc64/multiarch/ifunc-impl-list.c:
+            (__libc_ifunc_impl_list): Likewise.
+            * sysdeps/powerpc/powerpc64/multiarch/strcat.c: New file:
+            multiarch strcat for PPC64.
+            * sysdeps/powerpc/powerpc64/multiarch/strcat-ppc64.c: New file/
+            * sysdeps/powerpc/powerpc64/multiarch/strcat-power7.c: New file.
+
+diff --git a/sysdeps/powerpc/powerpc64/multiarch/Makefile b/sysdeps/powerpc/powerpc64/multiarch/Makefile
+index 1cdd5d6..7ebfc7e 100644
+--- a/sysdeps/powerpc/powerpc64/multiarch/Makefile
++++ b/sysdeps/powerpc/powerpc64/multiarch/Makefile
+@@ -6,6 +6,7 @@ sysdep_routines += memcpy-power7 memcpy-a2 memcpy-power6 memcpy-cell \
+                   mempcpy-power7 mempcpy-ppc64 memchr-power7 memchr-ppc64 \
+                   memrchr-power7 memrchr-ppc64 rawmemchr-power7 \
+                   stpcpy-power8 stpcpy-power7 stpcpy-ppc64 \
++                  strcat-power8 strcat-power7 strcat-ppc64 \
+                   strcpy-power8 strcpy-power7 strcpy-ppc64 \
+                   rawmemchr-ppc64 strlen-power7 strlen-ppc64 strnlen-power7 \
+                   strnlen-ppc64 strcasecmp-power7 strcasecmp_l-power7 \
+diff --git a/sysdeps/powerpc/powerpc64/multiarch/ifunc-impl-list.c b/sysdeps/powerpc/powerpc64/multiarch/ifunc-impl-list.c
+index e89fd3e..4e5bb17 100644
+--- a/sysdeps/powerpc/powerpc64/multiarch/ifunc-impl-list.c
++++ b/sysdeps/powerpc/powerpc64/multiarch/ifunc-impl-list.c
+@@ -211,6 +211,17 @@ __libc_ifunc_impl_list (const char *name, struct libc_ifunc_impl *array,
+              IFUNC_IMPL_ADD (array, i, strncasecmp_l, 1,
+                              __strncasecmp_l_ppc))
+ 
++    /* Support sysdeps/powerpc/powerpc64/multiarch/strcat.c.  */
++    IFUNC_IMPL (i, name, strcat,
++                IFUNC_IMPL_ADD (array, i, strcat,
++                                hwcap2 & PPC_FEATURE2_ARCH_2_07,
++                                __strcat_power8)
++                IFUNC_IMPL_ADD (array, i, strcat,
++                                hwcap & PPC_FEATURE_HAS_VSX,
++                                __strcat_power7)
++                IFUNC_IMPL_ADD (array, i, strcat, 1,
++                                __strcat_ppc))
++
+   /* Support sysdeps/powerpc/powerpc64/multiarch/wcschr.c.  */
+   IFUNC_IMPL (i, name, wcschr,
+              IFUNC_IMPL_ADD (array, i, wcschr,
+diff --git a/sysdeps/powerpc/powerpc64/multiarch/strcat-power7.c b/sysdeps/powerpc/powerpc64/multiarch/strcat-power7.c
+new file mode 100644
+index 0000000..291a720
+--- /dev/null
++++ b/sysdeps/powerpc/powerpc64/multiarch/strcat-power7.c
+@@ -0,0 +1,31 @@
++/* Copyright (C) 2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/ >.  */
++
++#include <string.h>
++
++#define STRCAT __strcat_power7
++
++#undef libc_hidden_def
++#define libc_hidden_def(name)
++
++extern typeof (strcpy) __strcpy_power7;
++extern typeof (strlen) __strlen_power7;
++
++#define strcpy __strcpy_power7
++#define strlen __strlen_power7
++
++#include <sysdeps/powerpc/strcat.c>
+diff --git a/sysdeps/powerpc/powerpc64/multiarch/strcat-power8.c b/sysdeps/powerpc/powerpc64/multiarch/strcat-power8.c
+new file mode 100644
+index 0000000..6c7544c
+--- /dev/null
++++ b/sysdeps/powerpc/powerpc64/multiarch/strcat-power8.c
+@@ -0,0 +1,30 @@
++/* Copyright (C) 2015 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/ >.  */
++
++#include <string.h>
++
++#define STRCAT __strcat_power8
++
++#undef libc_hidden_def
++#define libc_hidden_def(name)
++
++extern typeof (strcpy) __strcpy_power8;
++extern typeof (strlen) __strlen_power7;
++
++#define strcpy __strcpy_power8
++#define strlen __strlen_power7
++#include <sysdeps/powerpc/strcat.c>
+diff --git a/sysdeps/powerpc/powerpc64/multiarch/strcat-ppc64.c b/sysdeps/powerpc/powerpc64/multiarch/strcat-ppc64.c
+new file mode 100644
+index 0000000..1245764
+--- /dev/null
++++ b/sysdeps/powerpc/powerpc64/multiarch/strcat-ppc64.c
+@@ -0,0 +1,29 @@
++/* Copyright (C) 2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/ >.  */
++
++#include <string.h>
++
++#define STRCAT __strcat_ppc
++#ifdef SHARED
++# undef libc_hidden_builtin_def
++# define libc_hidden_builtin_def(name) \
++  __hidden_ver1 (__strcat_ppc, __GI_strcat, __strcat_ppc);
++#endif
++
++extern __typeof (strcat) __strcat_ppc attribute_hidden;
++
++#include <sysdeps/powerpc/strcat.c>
+diff --git a/sysdeps/powerpc/powerpc64/multiarch/strcat.c b/sysdeps/powerpc/powerpc64/multiarch/strcat.c
+new file mode 100644
+index 0000000..847a62d
+--- /dev/null
++++ b/sysdeps/powerpc/powerpc64/multiarch/strcat.c
+@@ -0,0 +1,31 @@
++/* Multiple versions of strcat. PowerPC64 version.
++   Copyright (C) 2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#ifndef NOT_IN_libc
++# include <string.h>
++# include <shlib-compat.h>
++# include "init-arch.h"
++
++extern __typeof (strcat) __strcat_ppc attribute_hidden;
++extern __typeof (strcat) __strcat_power7 attribute_hidden;
++
++libc_ifunc (strcat,
++            (hwcap & PPC_FEATURE_HAS_VSX)
++            ? __strcat_power7
++            : __strcat_ppc);
++#endif
+diff --git a/sysdeps/powerpc/strcat.c b/sysdeps/powerpc/strcat.c
+index 28575d0..393bee6 100644
+--- a/sysdeps/powerpc/strcat.c
++++ b/sysdeps/powerpc/strcat.c
+@@ -18,13 +18,16 @@
+ 
+ #include <string.h>
+ 
+-#undef strcat
++#ifndef STRCAT
++# undef strcat
++# define STRCAT  strcat
++#endif
+ 
+ /* Append SRC on the end of DEST.  */
+ char *
+-strcat (char *dest, const char *src)
++STRCAT(char *dest, const char *src)
+ {
+   strcpy (dest + strlen (dest), src);
+   return dest;
+ }
+-libc_hidden_builtin_def (strcat)
++libc_hidden_builtin_def (STRCAT)

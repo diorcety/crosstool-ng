@@ -1,0 +1,18 @@
+commit 673659263d956f45f1ce0c66900fa7f1129db74a
+Author: Stefan Liebler <stli@linux.vnet.ibm.com>
+Date:   Mon May 26 11:14:25 2014 +0200
+
+    Disable lock elision for PTHREAD_MUTEX_NORMAL.
+Index: glibc-2.17-c758a686/nptl/pthread_mutexattr_settype.c
+===================================================================
+--- glibc-2.17-c758a686.orig/nptl/pthread_mutexattr_settype.c
++++ glibc-2.17-c758a686/nptl/pthread_mutexattr_settype.c
+@@ -32,7 +32,7 @@ __pthread_mutexattr_settype (attr, kind)
+ 
+   /* Cannot distinguish between DEFAULT and NORMAL. So any settype
+      call disables elision for now.  */
+-  if (kind == PTHREAD_MUTEX_DEFAULT)
++  if (kind == PTHREAD_MUTEX_NORMAL)
+     kind |= PTHREAD_MUTEX_NO_ELISION_NP;
+ 
+   iattr = (struct pthread_mutexattr *) attr;

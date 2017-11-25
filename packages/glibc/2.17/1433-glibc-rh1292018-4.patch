@@ -1,0 +1,41 @@
+commit 37dd6a19ca36b84cdef7e51dffcb68a2cbf54a6a
+Author: Siddhesh Poyarekar <siddhesh@redhat.com>
+Date:   Fri Aug 14 05:30:17 2015 -0700
+
+    Remove incorrect register mov in floorf/nearbyint on x86_64
+    
+    The change in 0b5395f052ee09cd7e3d219af4e805c38058afb5 replaced calls
+    to __get_cpu_features@plt followed by a mov from rax to rdx, with a
+    single macro LOAD_RTLD_GLOBAL_RO_RDX.  It is pretty clear that there
+    was a typo in s_floorf and __nearbyint due to which the (now incorrect)
+    mov was not removed.  This patch removes that mov.
+    
+        * sysdeps/x86_64/fpu/multiarch/s_floorf.S (__floorf): Remove
+        unnecessary movq.
+        * sysdeps/x86_64/fpu/multiarch/s_nearbyint.S (__nearbyint):
+        Likewise.
+
+diff --git a/sysdeps/x86_64/fpu/multiarch/s_floorf.S b/sysdeps/x86_64/fpu/multiarch/s_floorf.S
+index f60f662..9d67847 100644
+--- a/sysdeps/x86_64/fpu/multiarch/s_floorf.S
++++ b/sysdeps/x86_64/fpu/multiarch/s_floorf.S
+@@ -23,7 +23,6 @@
+ ENTRY(__floorf)
+ 	.type	__floorf, @gnu_indirect_function
+ 	LOAD_RTLD_GLOBAL_RO_RDX
+-	movq	%rax, %rdx
+ 	leaq	__floorf_sse41(%rip), %rax
+ 	HAS_CPU_FEATURE (SSE4_1)
+ 	jnz	2f
+diff --git a/sysdeps/x86_64/fpu/multiarch/s_nearbyint.S b/sysdeps/x86_64/fpu/multiarch/s_nearbyint.S
+index 109395c..2c13024 100644
+--- a/sysdeps/x86_64/fpu/multiarch/s_nearbyint.S
++++ b/sysdeps/x86_64/fpu/multiarch/s_nearbyint.S
+@@ -23,7 +23,6 @@
+ ENTRY(__nearbyint)
+ 	.type	__nearbyint, @gnu_indirect_function
+ 	LOAD_RTLD_GLOBAL_RO_RDX
+-	movq	%rax, %rdx
+ 	leaq	__nearbyint_sse41(%rip), %rax
+ 	HAS_CPU_FEATURE (SSE4_1)
+ 	jnz	2f

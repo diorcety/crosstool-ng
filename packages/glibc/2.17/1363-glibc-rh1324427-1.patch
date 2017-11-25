@@ -1,0 +1,891 @@
+commit 4603c51ef7989d7eb800cdd6f42aab206f891077
+Author: Stefan Liebler <stli@linux.vnet.ibm.com>
+Date:   Thu Mar 31 17:37:16 2016 +0200
+
+    S390: Save and restore fprs/vrs while resolving symbols.
+    
+    On s390, no fpr/vrs were saved while resolving a symbol
+    via _dl_runtime_resolve/_dl_runtime_profile.
+    
+    According to the abi, the fpr-arguments are defined as call clobbered.
+    In leaf-functions, gcc 4.9 and newer can use fprs for saving/restoring gprs
+    instead of saving them to the stack.
+    If gcc do this in one of the resolver-functions, then the floating point
+    arguments of a library-function are invalid for the first library-function-call.
+    Thus, this patch saves/restores the fprs around the resolving code.
+    
+    The same could occur for vector registers. Furthermore an ifunc-resolver
+    could also clobber the vector/floating point argument registers.
+    Thus this patch provides the further variants _dl_runtime_resolve_vx/
+    _dl_runtime_profile_vx, which are used if the kernel claims, that
+    we run on a machine with vector registers.
+    
+    Furthermore, if _dl_runtime_profile calls _dl_call_pltexit,
+    the pointers to inregs-/outregs-structs were setup invalid.
+    Now they point to the correct location in the stack-frame.
+    Before branching back to the caller, the return values are now
+    restored instead of containing the return values of the
+    _dl_call_pltexit() call.
+    On s390-32, an endless loop occurs if _dl_call_pltexit() should be called.
+    Now, this code-path branches to this function instead of just after the
+    preceding basr-instruction.
+    
+    ChangeLog:
+    
+    	* sysdeps/s390/s390-32/dl-trampoline.S: Include dl-trampoline.h twice
+    	to create a non-vector/vector version for _dl_runtime_resolve and
+    	_dl_runtime_profile. Move implementation to ...
+    	* sysdeps/s390/s390-32/dl-trampoline.h: ... here.
+    	(_dl_runtime_resolve) Save and restore fpr/vrs.
+    	(_dl_runtime_profile) Save and restore vrs and fix some issues
+    	if _dl_call_pltexit is called.
+    	* sysdeps/s390/s390-32/dl-machine.h (elf_machine_runtime_setup):
+    	Choose the correct resolver function if running on a machine with vx.
+    	* sysdeps/s390/s390-64/dl-trampoline.S: Include dl-trampoline.h twice
+    	to create a non-vector/vector version for _dl_runtime_resolve and
+    	_dl_runtime_profile. Move implementation to ...
+    	* sysdeps/s390/s390-64/dl-trampoline.h: ... here.
+    	(_dl_runtime_resolve) Save and restore fpr/vrs.
+    	(_dl_runtime_profile) Save and restore vrs and fix some issues
+    	* sysdeps/s390/s390-64/dl-machine.h: (elf_machine_runtime_setup):
+    	Choose the correct resolver function if running on a machine with vx.
+
+diff --git a/sysdeps/s390/s390-32/dl-machine.h b/sysdeps/s390/s390-32/dl-machine.h
+index 14bde3b..ec0ae4a 100644
+--- a/sysdeps/s390/s390-32/dl-machine.h
++++ b/sysdeps/s390/s390-32/dl-machine.h
+@@ -89,6 +89,11 @@
+ {
+   extern void _dl_runtime_resolve (Elf32_Word);
+   extern void _dl_runtime_profile (Elf32_Word);
++#if defined HAVE_S390_VX_ASM_SUPPORT
++  extern void _dl_runtime_resolve_vx (Elf32_Word);
++  extern void _dl_runtime_profile_vx (Elf32_Word);
++#endif
++
+ 
+   if (l->l_info[DT_JMPREL] && lazy)
+     {
+@@ -116,7 +121,14 @@
+ 	 end in this function.  */
+       if (__builtin_expect (profile, 0))
+ 	{
++#if defined HAVE_S390_VX_ASM_SUPPORT
++	  if (GLRO(dl_hwcap) & HWCAP_S390_VX)
++	    got[2] = (Elf32_Addr) &_dl_runtime_profile_vx;
++	  else
++	    got[2] = (Elf32_Addr) &_dl_runtime_profile;
++#else
+ 	  got[2] = (Elf32_Addr) &_dl_runtime_profile;
++#endif
+ 
+ 	  if (GLRO(dl_profile) != NULL
+ 	      && _dl_name_match_p (GLRO(dl_profile), l))
+@@ -125,9 +137,18 @@
+ 	    GL(dl_profile_map) = l;
+ 	}
+       else
+-	/* This function will get called to fix up the GOT entry indicated by
+-	   the offset on the stack, and then jump to the resolved address.  */
+-	got[2] = (Elf32_Addr) &_dl_runtime_resolve;
++	{
++	  /* This function will get called to fix up the GOT entry indicated by
++	     the offset on the stack, and then jump to the resolved address.  */
++#if defined HAVE_S390_VX_ASM_SUPPORT
++	  if (GLRO(dl_hwcap) & HWCAP_S390_VX)
++	    got[2] = (Elf32_Addr) &_dl_runtime_resolve_vx;
++	  else
++	    got[2] = (Elf32_Addr) &_dl_runtime_resolve;
++#else
++	  got[2] = (Elf32_Addr) &_dl_runtime_resolve;
++#endif
++	}
+     }
+ 
+   return lazy;
+diff --git a/sysdeps/s390/s390-32/dl-trampoline.S b/sysdeps/s390/s390-32/dl-trampoline.S
+index 1645610..859183c 100644
+--- a/sysdeps/s390/s390-32/dl-trampoline.S
++++ b/sysdeps/s390/s390-32/dl-trampoline.S
+@@ -16,130 +16,18 @@
+    License along with the GNU C Library; if not, see
+    <http://www.gnu.org/licenses/>.  */
+ 
+-/* This code is used in dl-runtime.c to call the `fixup' function
+-   and then redirect to the address it returns.  */
+-
+-/* The PLT stubs will call _dl_runtime_resolve/_dl_runtime_profile
+- * with the following linkage:
+- *   r2 - r6 : parameter registers
+- *   f0, f2 : floating point parameter registers
+- *   24(r15), 28(r15) : PLT arguments PLT1, PLT2
+- *   96(r15) : additional stack parameters
+- * The normal clobber rules for function calls apply:
+- *   r0 - r5 : call clobbered
+- *   r6 - r13 :	 call saved
+- *   r14 : return address (call clobbered)
+- *   r15 : stack pointer (call saved)
+- *   f4, f6 : call saved
+- *   f0 - f3, f5, f7 - f15 : call clobbered
+- */
+-
+ #include <sysdep.h>
+ 
+ 	.text
+-	.globl _dl_runtime_resolve
+-	.type _dl_runtime_resolve, @function
+-	cfi_startproc
+-	.align 16
+-_dl_runtime_resolve:
+-	stm    %r2,%r5,32(%r15)		# save registers
+-	st     %r14,8(%r15)
+-	cfi_offset (r14, -88)
+-	lr     %r0,%r15			# create stack frame
+-	ahi    %r15,-96
+-	cfi_adjust_cfa_offset (96)
+-	st     0,0(%r15)
+-	lm     %r2,%r3,120(%r15)	# load args saved by PLT
+-	basr   %r1,0
+-0:	l      %r14,1f-0b(%r1)
+-	bas    %r14,0(%r14,%r1)		# call resolver
+-	lr     %r1,%r2			# function addr returned in r2
+-	ahi    %r15,96			# remove stack frame
+-	cfi_adjust_cfa_offset (-96)
+-	l      %r14,8(15)		# restore registers
+-	lm     %r2,%r5,32(%r15)
+-	br     %r1
+-1:	.long  _dl_fixup - 0b
+-	cfi_endproc
+-	.size _dl_runtime_resolve, .-_dl_runtime_resolve
+-
+-
+-#ifndef PROF
+-	.globl _dl_runtime_profile
+-	.type _dl_runtime_profile, @function
+-	cfi_startproc
+-	.align 16
+-_dl_runtime_profile:
+-	stm    %r2,%r6,32(%r15)		# save registers
+-	std    %f0,56(%r15)
+-	std    %f2,64(%r15)
+-	st     %r6,8(%r15)
+-	st     %r12,12(%r15)
+-	st     %r14,16(%r15)
+-	cfi_offset (r6, -64)
+-	cfi_offset (f0, -40)
+-	cfi_offset (f2, -32)
+-	cfi_offset (r12, -84)
+-	cfi_offset (r14, -80)
+-	lr     %r12,%r15		# create stack frame
+-	cfi_def_cfa_register (12)
+-	ahi    %r15,-96
+-	st     %r12,0(%r15)
+-	lm     %r2,%r3,24(%r12)		# load arguments saved by PLT
+-	lr     %r4,%r14			# return address as third parameter
+-	basr   %r1,0
+-0:	l      %r14,6f-0b(%r1)
+-	la     %r5,32(%r12)		# pointer to struct La_s390_32_regs
+-	la     %r6,20(%r12)		# long int * framesize
+-	bas    %r14,0(%r14,%r1)		# call resolver
+-	lr     %r1,%r2			# function addr returned in r2
+-	icm    %r0,15,20(%r12)		# load & test framesize
+-	jnm    2f
+-
+-	lm     %r2,%r6,32(%r12)
+-	ld     %f0,56(%r12)
+-	ld     %f2,64(%r12)
+-	lr     %r15,%r12		# remove stack frame
+-	cfi_def_cfa_register (15)
+-	l      %r14,16(%r15)		# restore registers
+-	l      %r12,12(%r15)
+-	br     %r1			# tail-call to the resolved function
+-
+-	cfi_def_cfa_register (12)
+-2:	jz     4f			# framesize == 0 ?
+-	ahi    %r0,7			# align framesize to 8
+-	lhi    %r2,-8
+-	nr     %r0,%r2
+-	slr    %r15,%r0			# make room for framesize bytes
+-	st     %r12,0(%r15)
+-	la     %r2,96(%r15)
+-	la     %r3,96(%r12)
+-	srl    %r0,3
+-3:	mvc    0(8,%r2),0(%r3)		# copy additional parameters
+-	la     %r2,8(%r2)
+-	la     %r3,8(%r3)
+-	brct   %r0,3b
+-4:	lm     %r2,%r6,32(%r12)		# load register parameters
+-	ld     %f0,56(%r12)
+-	ld     %f2,64(%r12)
+-	basr   %r14,%r1			# call resolved function
+-	stm    %r2,%r3,72(%r12)
+-	std    %f0,80(%r12)
+-	lm     %r2,%r3,24(%r12)		# load arguments saved by PLT
+-	basr   %r1,0
+-5:	l      %r14,7f-5b(%r1)
+-	la     %r4,32(%r12)		# pointer to struct La_s390_32_regs
+-	la     %r5,72(%r12)		# pointer to struct La_s390_32_retval
+-	basr   %r14,%r1			# call _dl_call_pltexit
+-
+-	lr     %r15,%r12		# remove stack frame
+-	cfi_def_cfa_register (15)
+-	l      %r14,16(%r15)		# restore registers
+-	l      %r12,12(%r15)
+-	br     %r14
+-
+-6:	.long  _dl_profile_fixup - 0b
+-7:	.long  _dl_call_pltexit - 5b
+-	cfi_endproc
+-	.size _dl_runtime_profile, .-_dl_runtime_profile
++/* Create variant of _dl_runtime_resolve/profile for machines before z13.
++   No vector registers are saved/restored.  */
++#include <dl-trampoline.h>
++
++#if defined HAVE_S390_VX_ASM_SUPPORT
++/* Create variant of _dl_runtime_resolve/profile for z13 and newer.
++   The vector registers are saved/restored, too.*/
++# define _dl_runtime_resolve _dl_runtime_resolve_vx
++# define _dl_runtime_profile _dl_runtime_profile_vx
++# define RESTORE_VRS
++# include <dl-trampoline.h>
+ #endif
+diff --git a/sysdeps/s390/s390-32/dl-trampoline.h b/sysdeps/s390/s390-32/dl-trampoline.h
+new file mode 100644
+index 0000000..a152a7b
+--- /dev/null
++++ b/sysdeps/s390/s390-32/dl-trampoline.h
+@@ -0,0 +1,215 @@
++/* PLT trampolines.  s390 version.
++   Copyright (C) 2016 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++/* This code is used in dl-runtime.c to call the `fixup' function
++   and then redirect to the address it returns.  */
++
++/* The PLT stubs will call _dl_runtime_resolve/_dl_runtime_profile
++ * with the following linkage:
++ *   r2 - r6 : parameter registers
++ *   f0, f2 : floating point parameter registers
++ *   v24, v26, v28, v30, v25, v27, v29, v31 : vector parameter registers
++ *   24(r15), 28(r15) : PLT arguments PLT1, PLT2
++ *   96(r15) : additional stack parameters
++ * The normal clobber rules for function calls apply:
++ *   r0 - r5 : call clobbered
++ *   r6 - r13 :	call saved
++ *   r14 : return address (call clobbered)
++ *   r15 : stack pointer (call saved)
++ *   f4, f6 : call saved
++ *   f0 - f3, f5, f7 - f15 : call clobbered
++ *   v0 - v3, v5, v7 - v15 : bytes 0-7 overlap with fprs: call clobbered
++               bytes 8-15: call clobbered
++ *   v4, v6 : bytes 0-7 overlap with f4, f6: call saved
++              bytes 8-15: call clobbered
++ *   v16 - v31 : call clobbered
++ */
++
++
++	.globl _dl_runtime_resolve
++	.type _dl_runtime_resolve, @function
++	cfi_startproc
++	.align 16
++_dl_runtime_resolve:
++	stm    %r2,%r5,32(%r15)		# save registers
++	cfi_offset (r2, -64)
++	cfi_offset (r3, -60)
++	cfi_offset (r4, -56)
++	cfi_offset (r5, -52)
++	std    %f0,56(%r15)
++	cfi_offset (f0, -40)
++	std    %f2,64(%r15)
++	cfi_offset (f2, -32)
++	st     %r14,8(%r15)
++	cfi_offset (r14, -88)
++	lr     %r0,%r15
++	lm     %r2,%r3,24(%r15)		# load args saved by PLT
++#ifdef RESTORE_VRS
++	ahi    %r15,-224		# create stack frame
++	cfi_adjust_cfa_offset (224)
++	.machine push
++	.machine "z13"
++	.machinemode "zarch_nohighgprs"
++	vstm   %v24,%v31,96(%r15)	# store call-clobbered vr arguments
++	cfi_offset (v24, -224)
++	cfi_offset (v25, -208)
++	cfi_offset (v26, -192)
++	cfi_offset (v27, -176)
++	cfi_offset (v28, -160)
++	cfi_offset (v29, -144)
++	cfi_offset (v30, -128)
++	cfi_offset (v31, -112)
++	.machine pop
++#else
++	ahi    %r15,-96			# create stack frame
++	cfi_adjust_cfa_offset (96)
++#endif
++	st     %r0,0(%r15)		# write backchain
++	basr   %r1,0
++0:	l      %r14,1f-0b(%r1)
++	bas    %r14,0(%r14,%r1)		# call _dl_fixup
++	lr     %r1,%r2			# function addr returned in r2
++#ifdef RESTORE_VRS
++	.machine push
++	.machine "z13"
++	.machinemode "zarch_nohighgprs"
++	vlm    %v24,%v31,96(%r15)	# restore vector registers
++	.machine pop
++	aghi   %r15,224			# remove stack frame
++	cfi_adjust_cfa_offset (-224)
++#else
++	ahi    %r15,96			# remove stack frame
++	cfi_adjust_cfa_offset (-96)
++#endif
++	l      %r14,8(15)		# restore registers
++	ld     %f0,56(%r15)
++	ld     %f2,64(%r15)
++	lm     %r2,%r5,32(%r15)
++	br     %r1
++1:	.long  _dl_fixup - 0b
++	cfi_endproc
++	.size _dl_runtime_resolve, .-_dl_runtime_resolve
++
++
++#ifndef PROF
++	.globl _dl_runtime_profile
++	.type _dl_runtime_profile, @function
++	cfi_startproc
++	.align 16
++_dl_runtime_profile:
++	stm    %r2,%r6,32(%r15)		# save registers
++	cfi_offset (r2, -64)		# + r6 needed as arg for
++	cfi_offset (r3, -60)		#  _dl_profile_fixup
++	cfi_offset (r4, -56)
++	cfi_offset (r5, -52)
++	cfi_offset (r6, -48)
++	std    %f0,56(%r15)
++	cfi_offset (f0, -40)
++	std    %f2,64(%r15)
++	cfi_offset (f2, -32)
++	st     %r12,12(%r15)		# r12 is used as backup of r15
++	cfi_offset (r12, -84)
++	st     %r14,16(%r15)
++	cfi_offset (r14, -80)
++	lr     %r12,%r15		# backup stack pointer
++	cfi_def_cfa_register (12)
++#ifdef RESTORE_VRS
++	ahi    %r15,-224		# create stack frame
++	.machine push
++	.machine "z13"
++	.machinemode "zarch_nohighgprs"
++	vstm   %v24,%v31,96(%r15)	# store call-clobbered vr arguments
++	cfi_offset (v24, -224)
++	cfi_offset (v25, -208)
++	cfi_offset (v26, -192)
++	cfi_offset (v27, -176)
++	cfi_offset (v28, -160)
++	cfi_offset (v29, -144)
++	cfi_offset (v30, -128)
++	cfi_offset (v31, -112)
++	.machine pop
++#else
++	ahi    %r15,-96			# create stack frame
++#endif
++	st     %r12,0(%r15)		# save backchain
++	lm     %r2,%r3,24(%r12)		# load arguments saved by PLT
++	lr     %r4,%r14			# return address as third parameter
++	basr   %r1,0
++0:	l      %r14,6f-0b(%r1)
++	la     %r5,32(%r12)		# pointer to struct La_s390_32_regs
++	la     %r6,20(%r12)		# long int * framesize
++	bas    %r14,0(%r14,%r1)		# call resolver
++	lr     %r1,%r2			# function addr returned in r2
++	ld     %f0,56(%r12)		# restore call-clobbered arg fprs
++	ld     %f2,64(%r12)
++#ifdef RESTORE_VRS
++	.machine push
++	.machine "z13"
++	.machinemode "zarch_nohighgprs"
++	vlm    %v24,%v31,96(%r15)	# restore call-clobbered arg vrs
++	.machine pop
++#endif
++	icm    %r0,15,20(%r12)		# load & test framesize
++	jnm    2f
++
++	lm     %r2,%r6,32(%r12)
++	lr     %r15,%r12		# remove stack frame
++	cfi_def_cfa_register (15)
++	l      %r14,16(%r15)		# restore registers
++	l      %r12,12(%r15)
++	br     %r1			# tail-call to the resolved function
++
++	cfi_def_cfa_register (12)
++2:	jz     4f			# framesize == 0 ?
++	ahi    %r0,7			# align framesize to 8
++	lhi    %r2,-8
++	nr     %r0,%r2
++	slr    %r15,%r0			# make room for framesize bytes
++	st     %r12,0(%r15)		# save backchain
++	la     %r2,96(%r15)
++	la     %r3,96(%r12)
++	srl    %r0,3
++3:	mvc    0(8,%r2),0(%r3)		# copy additional parameters
++	la     %r2,8(%r2)
++	la     %r3,8(%r3)
++	brct   %r0,3b
++4:	lm     %r2,%r6,32(%r12)		# load register parameters
++	basr   %r14,%r1			# call resolved function
++	stm    %r2,%r3,72(%r12)		# store return values r2, r3, f0
++	std    %f0,80(%r12)		# to struct La_s390_32_retval
++	lm     %r2,%r3,24(%r12)		# load arguments saved by PLT
++	basr   %r1,0
++5:	l      %r14,7f-5b(%r1)
++	la     %r4,32(%r12)		# pointer to struct La_s390_32_regs
++	la     %r5,72(%r12)		# pointer to struct La_s390_32_retval
++	bas    %r14,0(%r14,%r1)		# call _dl_call_pltexit
++
++	lr     %r15,%r12		# remove stack frame
++	cfi_def_cfa_register (15)
++	l      %r14,16(%r15)		# restore registers
++	l      %r12,12(%r15)
++	l      %r2,72(%r15)		# restore return values
++	l      %r3,76(%r15)
++	ld     %f0,80(%r15)
++	br     %r14
++
++6:	.long  _dl_profile_fixup - 0b
++7:	.long  _dl_call_pltexit - 5b
++	cfi_endproc
++	.size _dl_runtime_profile, .-_dl_runtime_profile
++#endif
+diff --git a/sysdeps/s390/s390-64/dl-machine.h b/sysdeps/s390/s390-64/dl-machine.h
+index cb81aaf..9ee7c92 100644
+--- a/sysdeps/s390/s390-64/dl-machine.h
++++ b/sysdeps/s390/s390-64/dl-machine.h
+@@ -26,6 +26,7 @@
+ #include <sys/param.h>
+ #include <string.h>
+ #include <link.h>
++#include <sysdeps/s390/dl-procinfo.h>
+ #include <dl-irel.h>
+ 
+ #define ELF_MACHINE_IRELATIVE       R_390_IRELATIVE
+@@ -78,6 +79,10 @@ elf_machine_runtime_setup (struct link_map *l, int lazy, int profile)
+ {
+   extern void _dl_runtime_resolve (Elf64_Word);
+   extern void _dl_runtime_profile (Elf64_Word);
++#if defined HAVE_S390_VX_ASM_SUPPORT
++  extern void _dl_runtime_resolve_vx (Elf64_Word);
++  extern void _dl_runtime_profile_vx (Elf64_Word);
++#endif
+ 
+   if (l->l_info[DT_JMPREL] && lazy)
+     {
+@@ -105,7 +110,14 @@ elf_machine_runtime_setup (struct link_map *l, int lazy, int profile)
+ 	 end in this function.	*/
+       if (__builtin_expect (profile, 0))
+ 	{
++#if defined HAVE_S390_VX_ASM_SUPPORT
++	  if (GLRO(dl_hwcap) & HWCAP_S390_VX)
++	    got[2] = (Elf64_Addr) &_dl_runtime_profile_vx;
++	  else
++	    got[2] = (Elf64_Addr) &_dl_runtime_profile;
++#else
+ 	  got[2] = (Elf64_Addr) &_dl_runtime_profile;
++#endif
+ 
+ 	  if (GLRO(dl_profile) != NULL
+ 	      && _dl_name_match_p (GLRO(dl_profile), l))
+@@ -114,9 +126,18 @@ elf_machine_runtime_setup (struct link_map *l, int lazy, int profile)
+ 	    GL(dl_profile_map) = l;
+ 	}
+       else
+-	/* This function will get called to fix up the GOT entry indicated by
+-	   the offset on the stack, and then jump to the resolved address.  */
+-	got[2] = (Elf64_Addr) &_dl_runtime_resolve;
++	{
++	  /* This function will get called to fix up the GOT entry indicated by
++	     the offset on the stack, and then jump to the resolved address.  */
++#if defined HAVE_S390_VX_ASM_SUPPORT
++	  if (GLRO(dl_hwcap) & HWCAP_S390_VX)
++	    got[2] = (Elf64_Addr) &_dl_runtime_resolve_vx;
++	  else
++	    got[2] = (Elf64_Addr) &_dl_runtime_resolve;
++#else
++	  got[2] = (Elf64_Addr) &_dl_runtime_resolve;
++#endif
++	}
+     }
+ 
+   return lazy;
+diff --git a/sysdeps/s390/s390-64/dl-trampoline.S b/sysdeps/s390/s390-64/dl-trampoline.S
+index 6919ed0..1b0c9e2 100644
+--- a/sysdeps/s390/s390-64/dl-trampoline.S
++++ b/sysdeps/s390/s390-64/dl-trampoline.S
+@@ -16,126 +16,18 @@
+    License along with the GNU C Library; if not, see
+    <http://www.gnu.org/licenses/>.  */
+ 
+-/* The PLT stubs will call _dl_runtime_resolve/_dl_runtime_profile
+- * with the following linkage:
+- *   r2 - r6 : parameter registers
+- *   f0, f2, f4, f6 : floating point parameter registers
+- *   48(r15), 56(r15) : PLT arguments PLT1, PLT2
+- *   160(r15) : additional stack parameters
+- * The normal clobber rules for function calls apply:
+- *   r0 - r5 : call clobbered
+- *   r6 - r13 :	 call saved
+- *   r14 : return address (call clobbered)
+- *   r15 : stack pointer (call saved)
+- *   f1, f3, f5, f7 : call saved
+- *   f0 - f3, f5, f7 - f15 : call clobbered
+- */
+-
+ #include <sysdep.h>
+ 
+ 	.text
+-	.globl _dl_runtime_resolve
+-	.type _dl_runtime_resolve, @function
+-	cfi_startproc
+-	.align 16
+-_dl_runtime_resolve:
+-	stmg   %r2,%r5,64(15)	# save call-clobbered argument registers
+-	stg    %r14,96(15)
+-	cfi_offset (r14, -64)
+-	lgr    %r0,%r15
+-	aghi   %r15,-160	# create stack frame
+-	cfi_adjust_cfa_offset (160)
+-	stg    %r0,0(%r15)      # write backchain
+-	lmg    %r2,%r3,208(%r15)# load args saved by PLT
+-	brasl  %r14,_dl_fixup	# call fixup
+-	lgr    %r1,%r2		# function addr returned in r2
+-	aghi   %r15,160		# remove stack frame
+-	cfi_adjust_cfa_offset (-160)
+-	lg     %r14,96(15)	# restore registers
+-	lmg    %r2,%r5,64(15)
+-	br     %r1
+-	cfi_endproc
+-	.size _dl_runtime_resolve, .-_dl_runtime_resolve
+-
+-
+-#ifndef PROF
+-	.globl _dl_runtime_profile
+-	.type _dl_runtime_profile, @function
+-	cfi_startproc
+-	.align 16
+-_dl_runtime_profile:
+-	stmg   %r2,%r6,64(%r15)		# save call-clobbered arg regs
+-	std    %f0,104(%r15)		# + r6 needed as arg for
+-	std    %f2,112(%r15)		#  _dl_profile_fixup
+-	std    %f4,120(%r15)
+-	std    %f6,128(%r15)
+-	stg    %r12,24(%r15)		# r12 is used as backup of r15
+-	stg    %r14,32(%r15)
+-	cfi_offset (r6, -96)
+-	cfi_offset (f0, -56)
+-	cfi_offset (f2, -48)
+-	cfi_offset (f4, -40)
+-	cfi_offset (f6, -32)
+-	cfi_offset (r12, -136)
+-	cfi_offset (r14, -128)
+-	lgr    %r12,%r15		# backup stack pointer
+-	cfi_def_cfa_register (12)
+-	aghi   %r15,-160		# create stack frame
+-	stg    %r12,0(%r15)		# save backchain
+-	lmg    %r2,%r3,48(%r12)		# load arguments saved by PLT
+-	lgr    %r4,%r14			# return address as third parameter
+-	la     %r5,64(%r12)		# pointer to struct La_s390_32_regs
+-	la     %r6,40(%r12)		# long int * framesize
+-	brasl  %r14,_dl_profile_fixup	# call resolver
+-	lgr    %r1,%r2			# function addr returned in r2
+-	lg     %r0,40(%r12)		# load framesize
+-	ltgr   %r0,%r0
+-	jnm    1f
+-
+-	lmg    %r2,%r6,64(%r12)		# framesize < 0 means no pltexit call
+-	ld     %f0,104(%r12)		# so we can do a tail call without
+-	ld     %f2,112(%r12)		# copying the arg overflow area
+-	ld     %f4,120(%r12)
+-	ld     %f6,128(%r12)
+-
+-	lgr    %r15,%r12		# remove stack frame
+-	cfi_def_cfa_register (15)
+-	lg     %r14,32(%r15)		# restore registers
+-	lg     %r12,24(%r15)
+-	br     %r1			# tail-call to resolved function
+-
+-	cfi_def_cfa_register (12)
+-1:	jz     4f			# framesize == 0 ?
+-	aghi   %r0,7			# align framesize to 8
+-	nill   %r0,0xfff8
+-	slgr   %r15,%r0			# make room for framesize bytes
+-	stg    %r12,0(%r15)
+-	la     %r2,160(%r15)
+-	la     %r3,160(%r12)
+-	srlg   %r0,%r0,3
+-3:	mvc    0(8,%r2),0(%r3)		# copy additional parameters
+-	la     %r2,8(%r2)
+-	la     %r3,8(%r3)
+-	brctg  %r0,3b
+-4:	lmg    %r2,%r6,64(%r12)		# load register parameters
+-	ld     %f0,104(%r12)            # restore call-clobbered arg regs
+-	ld     %f2,112(%r12)
+-	ld     %f4,120(%r12)
+-	ld     %f6,128(%r12)
+-	basr   %r14,%r1			# call resolved function
+-	stg    %r2,136(%r12)
+-	std    %f0,144(%r12)
+-	lmg    %r2,%r3,48(%r12)		# load arguments saved by PLT
+-	la     %r4,32(%r12)		# pointer to struct La_s390_32_regs
+-	la     %r5,72(%r12)		# pointer to struct La_s390_32_retval
+-	brasl  %r14,_dl_call_pltexit
+-
+-	lgr    %r15,%r12		# remove stack frame
+-	cfi_def_cfa_register (15)
+-	lg     %r14,32(%r15)		# restore registers
+-	lg     %r12,24(%r15)
+-	br     %r14
+-
+-	cfi_endproc
+-	.size _dl_runtime_profile, .-_dl_runtime_profile
++/* Create variant of _dl_runtime_resolve/profile for machines before z13.
++   No vector registers are saved/restored.  */
++#include <dl-trampoline.h>
++
++#if defined HAVE_S390_VX_ASM_SUPPORT
++/* Create variant of _dl_runtime_resolve/profile for z13 and newer.
++   The vector registers are saved/restored, too.*/
++# define _dl_runtime_resolve _dl_runtime_resolve_vx
++# define _dl_runtime_profile _dl_runtime_profile_vx
++# define RESTORE_VRS
++# include <dl-trampoline.h>
+ #endif
+diff --git a/sysdeps/s390/s390-64/dl-trampoline.h b/sysdeps/s390/s390-64/dl-trampoline.h
+new file mode 100644
+index 0000000..658e3a3
+--- /dev/null
++++ b/sysdeps/s390/s390-64/dl-trampoline.h
+@@ -0,0 +1,211 @@
++/* PLT trampolines.  s390x version.
++   Copyright (C) 2016 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++/* The PLT stubs will call _dl_runtime_resolve/_dl_runtime_profile
++ * with the following linkage:
++ *   r2 - r6 : parameter registers
++ *   f0, f2, f4, f6 : floating point parameter registers
++ *   v24, v26, v28, v30, v25, v27, v29, v31 : vector parameter registers
++ *   48(r15), 56(r15) : PLT arguments PLT1, PLT2
++ *   160(r15) : additional stack parameters
++ * The normal clobber rules for function calls apply:
++ *   r0 - r5 : call clobbered
++ *   r6 - r13 :	 call saved
++ *   r14 : return address (call clobbered)
++ *   r15 : stack pointer (call saved)
++ *   f0 - f7 : call clobbered
++ *   f8 - f15 : call saved
++ *   v0 - v7 : bytes 0-7 overlap with f0-f7: call clobbered
++               bytes 8-15: call clobbered
++ *   v8 - v15 : bytes 0-7 overlap with f8-f15: call saved
++                bytes 8-15: call clobbered
++ *   v16 - v31 : call clobbered
++ */
++
++	.globl _dl_runtime_resolve
++	.type _dl_runtime_resolve, @function
++	cfi_startproc
++	.align 16
++_dl_runtime_resolve:
++	stmg   %r2,%r5,64(%r15)	# save call-clobbered argument registers
++	cfi_offset (r2, -96)
++	cfi_offset (r3, -88)
++	cfi_offset (r4, -80)
++	cfi_offset (r5, -72)
++	std    %f0,104(%r15)
++	cfi_offset (f0, -56)
++	std    %f2,112(%r15)
++	cfi_offset (f2, -48)
++	std    %f4,120(%r15)
++	cfi_offset (f4, -40)
++	std    %f6,128(%r15)
++	cfi_offset (f6, -32)
++	stg    %r14,96(15)
++	cfi_offset (r14, -64)
++	lmg    %r2,%r3,48(%r15) # load args for fixup saved by PLT
++	lgr    %r0,%r15
++#ifdef RESTORE_VRS
++	aghi   %r15,-288        # create stack frame
++	cfi_adjust_cfa_offset (288)
++	.machine push
++	.machine "z13"
++	vstm   %v24,%v31,160(%r15)# store call-clobbered vector argument registers
++	cfi_offset (v24, -288)
++	cfi_offset (v25, -272)
++	cfi_offset (v26, -256)
++	cfi_offset (v27, -240)
++	cfi_offset (v28, -224)
++	cfi_offset (v29, -208)
++	cfi_offset (v30, -192)
++	cfi_offset (v31, -176)
++	.machine pop
++#else
++	aghi   %r15,-160        # create stack frame
++	cfi_adjust_cfa_offset (160)
++#endif
++	stg    %r0,0(%r15)      # write backchain
++	brasl  %r14,_dl_fixup	# call _dl_fixup
++	lgr    %r1,%r2		# function addr returned in r2
++#ifdef RESTORE_VRS
++	.machine push
++	.machine "z13"
++	vlm    %v24,%v31,160(%r15)# restore vector registers
++	.machine pop
++	aghi   %r15,288         # remove stack frame
++	cfi_adjust_cfa_offset (-288)
++#else
++	aghi   %r15,160         # remove stack frame
++	cfi_adjust_cfa_offset (-160)
++#endif
++	lg     %r14,96(%r15)	# restore registers
++	ld     %f0,104(%r15)
++	ld     %f2,112(%r15)
++	ld     %f4,120(%r15)
++	ld     %f6,128(%r15)
++	lmg    %r2,%r5,64(%r15)
++	br     %r1
++	cfi_endproc
++	.size _dl_runtime_resolve, .-_dl_runtime_resolve
++
++
++#ifndef PROF
++	.globl _dl_runtime_profile
++	.type _dl_runtime_profile, @function
++	cfi_startproc
++	.align 16
++_dl_runtime_profile:
++	stmg   %r2,%r6,64(%r15)		# save call-clobbered arg regs
++	cfi_offset (r2, -96)		# + r6 needed as arg for
++	cfi_offset (r3, -88)		#  _dl_profile_fixup
++	cfi_offset (r4, -80)
++	cfi_offset (r5, -72)
++	cfi_offset (r6, -64)
++	std    %f0,104(%r15)
++	cfi_offset (f0, -56)
++	std    %f2,112(%r15)
++	cfi_offset (f2, -48)
++	std    %f4,120(%r15)
++	cfi_offset (f4, -40)
++	std    %f6,128(%r15)
++	cfi_offset (f6, -32)
++	stg    %r12,24(%r15)		# r12 is used as backup of r15
++	cfi_offset (r12, -136)
++	stg    %r14,32(%r15)
++	cfi_offset (r14, -128)
++	lgr    %r12,%r15		# backup stack pointer
++	cfi_def_cfa_register (12)
++#ifdef RESTORE_VRS
++	aghi   %r15,-288		# create stack frame
++	.machine push
++	.machine "z13"
++	vstm   %v24,%v31,160(%r15)# store call-clobbered vector argument registers
++	cfi_offset (v24, -288)
++	cfi_offset (v25, -272)
++	cfi_offset (v26, -256)
++	cfi_offset (v27, -240)
++	cfi_offset (v28, -224)
++	cfi_offset (v29, -208)
++	cfi_offset (v30, -192)
++	cfi_offset (v31, -176)
++	.machine pop
++#else
++	aghi   %r15,-160		# create stack frame
++#endif
++	stg    %r12,0(%r15)		# save backchain
++	lmg    %r2,%r3,48(%r12)		# load arguments saved by PLT
++	lgr    %r4,%r14			# return address as third parameter
++	la     %r5,64(%r12)		# pointer to struct La_s390_64_regs
++	la     %r6,40(%r12)		# long int * framesize
++	brasl  %r14,_dl_profile_fixup	# call resolver
++	lgr    %r1,%r2			# function addr returned in r2
++	ld     %f0,104(%r12)		# restore call-clobbered arg fprs
++	ld     %f2,112(%r12)
++	ld     %f4,120(%r12)
++	ld     %f6,128(%r12)
++#ifdef RESTORE_VRS
++	.machine push
++	.machine "z13"
++	vlm    %v24,%v31,160(%r15)	# restore call-clobbered arg vrs
++	.machine pop
++#endif
++	lg     %r0,40(%r12)		# load framesize
++	ltgr   %r0,%r0
++	jnm    1f
++
++	lmg    %r2,%r6,64(%r12)		# framesize < 0 means no pltexit call
++					# so we can do a tail call without
++					# copying the arg overflow area
++	lgr    %r15,%r12		# remove stack frame
++	cfi_def_cfa_register (15)
++	lg     %r14,32(%r15)		# restore registers
++	lg     %r12,24(%r15)
++	br     %r1			# tail-call to resolved function
++
++	cfi_def_cfa_register (12)
++1:	jz     4f			# framesize == 0 ?
++	aghi   %r0,7			# align framesize to 8
++	nill   %r0,0xfff8
++	slgr   %r15,%r0			# make room for framesize bytes
++	stg    %r12,0(%r15)		# save backchain
++	la     %r2,160(%r15)
++	la     %r3,160(%r12)
++	srlg   %r0,%r0,3
++3:	mvc    0(8,%r2),0(%r3)		# copy additional parameters
++	la     %r2,8(%r2)		# depending on framesize
++	la     %r3,8(%r3)
++	brctg  %r0,3b
++4:	lmg    %r2,%r6,64(%r12)		# restore call-clobbered arg gprs
++	basr   %r14,%r1			# call resolved function
++	stg    %r2,136(%r12)		# store return values r2, f0
++	std    %f0,144(%r12)		# to struct La_s390_64_retval
++	lmg    %r2,%r3,48(%r12)		# load arguments saved by PLT
++	la     %r4,64(%r12)		# pointer to struct La_s390_64_regs
++	la     %r5,136(%r12)		# pointer to struct La_s390_64_retval
++	brasl  %r14,_dl_call_pltexit
++
++	lgr    %r15,%r12		# remove stack frame
++	cfi_def_cfa_register (15)
++	lg     %r14,32(%r15)		# restore registers
++	lg     %r12,24(%r15)
++	lg     %r2,136(%r15)		# restore return values
++	ld     %f0,144(%r15)
++	br     %r14			# Jump back to caller
++
++	cfi_endproc
++	.size _dl_runtime_profile, .-_dl_runtime_profile
++#endif

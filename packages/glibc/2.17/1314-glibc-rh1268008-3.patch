@@ -1,0 +1,644 @@
+From 6b9ad27fafd9c09aee186f2630b1c54348335040 Mon Sep 17 00:00:00 2001
+From: Stefan Liebler <stli@linux.vnet.ibm.com>
+Date: Thu, 8 Oct 2015 10:29:17 +0200
+Subject: [PATCH 03/30] S390: Get rid of linknamespace failures for string
+ functions.
+
+upstream-commit-id: 1d53248326dbd3c620a2bca16d35eff3019d900a
+https://www.sourceware.org/ml/libc-alpha/2015-01/msg00310.html
+
+This patch is needed to prepare for the optimized string function patchset.
+This patch prefixes the ifunc-resolvers, the specific functions
+and helper functions with '__' on s390-32/s390-64.
+---
+ sysdeps/s390/s390-32/memcmp.S                  |  4 ++--
+ sysdeps/s390/s390-32/memcpy.S                  | 10 +++++-----
+ sysdeps/s390/s390-32/memset.S                  |  4 ++--
+ sysdeps/s390/s390-32/multiarch/ifunc-resolve.c | 16 ++++++++--------
+ sysdeps/s390/s390-32/multiarch/memcmp.S        | 12 ++++++------
+ sysdeps/s390/s390-32/multiarch/memcpy.S        | 14 +++++++-------
+ sysdeps/s390/s390-32/multiarch/memset.S        | 18 +++++++++---------
+ sysdeps/s390/s390-64/memcmp.S                  |  4 ++--
+ sysdeps/s390/s390-64/memcpy.S                  | 10 +++++-----
+ sysdeps/s390/s390-64/memset.S                  |  4 ++--
+ sysdeps/s390/s390-64/multiarch/ifunc-resolve.c | 18 +++++++++---------
+ sysdeps/s390/s390-64/multiarch/memcmp.S        | 12 ++++++------
+ sysdeps/s390/s390-64/multiarch/memcpy.S        | 14 +++++++-------
+ sysdeps/s390/s390-64/multiarch/memset.S        | 18 +++++++++---------
+ 14 files changed, 79 insertions(+), 79 deletions(-)
+
+diff --git a/sysdeps/s390/s390-32/memcmp.S b/sysdeps/s390/s390-32/memcmp.S
+index 9ff84a3..b6eabe5 100644
+--- a/sysdeps/s390/s390-32/memcmp.S
++++ b/sysdeps/s390/s390-32/memcmp.S
+@@ -27,7 +27,7 @@
+ 
+        .text
+ #ifdef USE_MULTIARCH
+-ENTRY(memcmp_g5)
++ENTRY(__memcmp_g5)
+ #else
+ ENTRY(memcmp)
+ #endif
+@@ -58,7 +58,7 @@ ENTRY(memcmp)
+ .L_G5_17:
+         clc     0(1,%r3),0(%r2)
+ #ifdef USE_MULTIARCH
+-END(memcmp_g5)
++END(__memcmp_g5)
+ #else
+ END(memcmp)
+ libc_hidden_builtin_def (memcmp)
+diff --git a/sysdeps/s390/s390-32/memcpy.S b/sysdeps/s390/s390-32/memcpy.S
+index 90cc4cb..a3b1ace 100644
+--- a/sysdeps/s390/s390-32/memcpy.S
++++ b/sysdeps/s390/s390-32/memcpy.S
+@@ -26,7 +26,7 @@
+      %r4 = number of bytes to copy.  */
+ 
+ #ifdef USE_MULTIARCH
+-ENTRY(memcpy_g5)
++ENTRY(__memcpy_g5)
+ #else
+ ENTRY(memcpy)
+ #endif
+@@ -49,7 +49,7 @@ ENTRY(memcpy)
+         br      %r14
+ .L_G5_13:
+         chi	%r5,4096             # Switch to mvcle for copies >1MB
+-        jh	memcpy_mvcle
++        jh	__memcpy_mvcle
+ .L_G5_12:
+         mvc     0(256,%r1),0(%r3)
+         la      %r1,256(%r1)
+@@ -60,13 +60,13 @@ ENTRY(memcpy)
+ .L_G5_17:
+         mvc     0(1,%r1),0(%r3)
+ #ifdef USE_MULTIARCH
+-END(memcpy_g5)
++END(__memcpy_g5)
+ #else
+ END(memcpy)
+ libc_hidden_builtin_def (memcpy)
+ #endif
+ 
+-ENTRY(memcpy_mvcle)
++ENTRY(__memcpy_mvcle)
+        # Using as standalone function will result in unexpected
+        # results since the length field is incremented by 1 in order to
+        # compensate the changes already done in the functions above.
+@@ -79,4 +79,4 @@ ENTRY(memcpy_mvcle)
+        jo      .L_MVCLE_1
+        lr      %r2,%r1             # return destination address
+        br      %r14
+-END(memcpy_mvcle)
++END(__memcpy_mvcle)
+diff --git a/sysdeps/s390/s390-32/memset.S b/sysdeps/s390/s390-32/memset.S
+index 31a70f0..a73dc6c 100644
+--- a/sysdeps/s390/s390-32/memset.S
++++ b/sysdeps/s390/s390-32/memset.S
+@@ -28,7 +28,7 @@
+        .text
+ 
+ #ifdef USE_MULTIARCH
+-ENTRY(memset_g5)
++ENTRY(__memset_g5)
+ #else
+ ENTRY(memset)
+ #endif
+@@ -58,7 +58,7 @@ ENTRY(memset)
+ .L_G5_20:
+         mvc     1(1,%r1),0(%r1)
+ #ifdef USE_MULTIARCH
+-END(memset_g5)
++END(__memset_g5)
+ #else
+ END(memset)
+ libc_hidden_builtin_def (memset)
+diff --git a/sysdeps/s390/s390-32/multiarch/ifunc-resolve.c b/sysdeps/s390/s390-32/multiarch/ifunc-resolve.c
+index 42ca8da..522c63c 100644
+--- a/sysdeps/s390/s390-32/multiarch/ifunc-resolve.c
++++ b/sysdeps/s390/s390-32/multiarch/ifunc-resolve.c
+@@ -28,17 +28,17 @@
+ #define IFUNC_RESOLVE(FUNC)						\
+   asm (".globl " #FUNC "\n\t"						\
+        ".type  " #FUNC ",@gnu_indirect_function\n\t"			\
+-       ".set   " #FUNC ",resolve_" #FUNC "\n\t"				\
++       ".set   " #FUNC ",__resolve_" #FUNC "\n\t"			\
+        ".globl __GI_" #FUNC "\n\t"					\
+        ".set   __GI_" #FUNC "," #FUNC "\n");				\
+ 									\
+   /* Make the declarations of the optimized functions hidden in order
+      to prevent GOT slots being generated for them. */			\
+-  extern void *FUNC##_z196 attribute_hidden;				\
+-  extern void *FUNC##_z10 attribute_hidden;				\
+-  extern void *FUNC##_g5 attribute_hidden;				\
++  extern void *__##FUNC##_z196 attribute_hidden;			\
++  extern void *__##FUNC##_z10 attribute_hidden;				\
++  extern void *__##FUNC##_g5 attribute_hidden;				\
+ 									\
+-  void *resolve_##FUNC (unsigned long int dl_hwcap)			\
++  void *__resolve_##FUNC (unsigned long int dl_hwcap)			\
+   {									\
+     if ((dl_hwcap & HWCAP_S390_STFLE)					\
+ 	&& (dl_hwcap & HWCAP_S390_ZARCH)				\
+@@ -53,11 +53,11 @@
+ 		     : : "cc");						\
+ 									\
+ 	if ((stfle_bits & (1ULL << (63 - STFLE_BITS_Z196))) != 0)	\
+-	  return &FUNC##_z196;						\
++	  return &__##FUNC##_z196;					\
+ 	else if ((stfle_bits & (1ULL << (63 - STFLE_BITS_Z10))) != 0)	\
+-	  return &FUNC##_z10;						\
++	  return &__##FUNC##_z10;					\
+       }									\
+-    return &FUNC##_g5;							\
++    return &__##FUNC##_g5;						\
+   }
+ 
+ IFUNC_RESOLVE(memset)
+diff --git a/sysdeps/s390/s390-32/multiarch/memcmp.S b/sysdeps/s390/s390-32/multiarch/memcmp.S
+index 9ca8891..c654d19 100644
+--- a/sysdeps/s390/s390-32/multiarch/memcmp.S
++++ b/sysdeps/s390/s390-32/multiarch/memcmp.S
+@@ -29,7 +29,7 @@
+ 
+ #ifndef NOT_IN_libc
+ 
+-ENTRY(memcmp_z196)
++ENTRY(__memcmp_z196)
+ 	.machine "z196"
+ 	.machinemode "zarch_nohighgprs"
+         ltr     %r4,%r4
+@@ -61,9 +61,9 @@ ENTRY(memcmp_z196)
+         br      %r14
+ .L_Z196_14:
+         clc     0(1,%r3),0(%r2)
+-END(memcmp_z196)
++END(__memcmp_z196)
+ 
+-ENTRY(memcmp_z10)
++ENTRY(__memcmp_z10)
+ 	.machine "z10"
+ 	.machinemode "zarch_nohighgprs"
+         ltr     %r4,%r4
+@@ -90,7 +90,7 @@ ENTRY(memcmp_z10)
+         j       .L_Z10_3
+ .L_Z10_15:
+         clc     0(1,%r3),0(%r2)
+-END(memcmp_z10)
++END(__memcmp_z10)
+ 
+ #endif
+ 
+@@ -98,7 +98,7 @@ END(memcmp_z10)
+ 
+ #ifdef NOT_IN_libc
+ .globl   memcmp
+-.set     memcmp,memcmp_g5
++.set     memcmp,__memcmp_g5
+ .weak    bcmp
+-.set	 bcmp,memcmp_g5
++.set	 bcmp,__memcmp_g5
+ #endif
+diff --git a/sysdeps/s390/s390-32/multiarch/memcpy.S b/sysdeps/s390/s390-32/multiarch/memcpy.S
+index 7b85602..5c2113f 100644
+--- a/sysdeps/s390/s390-32/multiarch/memcpy.S
++++ b/sysdeps/s390/s390-32/multiarch/memcpy.S
+@@ -29,7 +29,7 @@
+ 
+ #if defined SHARED && !defined NOT_IN_libc
+ 
+-ENTRY(memcpy_z196)
++ENTRY(__memcpy_z196)
+ 	.machine "z196"
+ 	.machinemode "zarch_nohighgprs"
+         llgfr   %r4,%r4
+@@ -46,7 +46,7 @@ ENTRY(memcpy_z196)
+         br      %r14
+ .L_Z196_5:
+         cgfi    %r5,262144      # Switch to mvcle for copies >64MB
+-        jh      memcpy_mvcle
++        jh      __memcpy_mvcle
+ .L_Z196_2:
+         pfd     1,768(%r3)
+         pfd     2,768(%r1)
+@@ -58,9 +58,9 @@ ENTRY(memcpy_z196)
+         j       .L_Z196_3
+ .L_Z196_14:
+         mvc     0(1,%r1),0(%r3)
+-END(memcpy_z196)
++END(__memcpy_z196)
+ 
+-ENTRY(memcpy_z10)
++ENTRY(__memcpy_z10)
+ 	.machine "z10"
+ 	.machinemode "zarch_nohighgprs"
+         llgfr   %r4,%r4
+@@ -75,7 +75,7 @@ ENTRY(memcpy_z10)
+         br      %r14
+ .L_Z10_13:
+         cgfi    %r5,65535	# Switch to mvcle for copies >16MB
+-        jh      memcpy_mvcle
++        jh      __memcpy_mvcle
+ .L_Z10_12:
+         pfd     1,768(%r3)
+         pfd     2,768(%r1)
+@@ -86,7 +86,7 @@ ENTRY(memcpy_z10)
+         j       .L_Z10_3
+ .L_Z10_15:
+         mvc     0(1,%r1),0(%r3)
+-END(memcpy_z10)
++END(__memcpy_z10)
+ 
+ #endif
+ 
+@@ -94,5 +94,5 @@ END(memcpy_z10)
+ 
+ #if !defined SHARED || defined NOT_IN_libc
+ .globl   memcpy
+-.set     memcpy,memcpy_g5
++.set     memcpy,__memcpy_g5
+ #endif
+diff --git a/sysdeps/s390/s390-32/multiarch/memset.S b/sysdeps/s390/s390-32/multiarch/memset.S
+index ba43d67..54aa028 100644
+--- a/sysdeps/s390/s390-32/multiarch/memset.S
++++ b/sysdeps/s390/s390-32/multiarch/memset.S
+@@ -29,7 +29,7 @@
+ 
+ #ifndef NOT_IN_libc
+ 
+-ENTRY(memset_z196)
++ENTRY(__memset_z196)
+ 	.machine "z196"
+ 	.machinemode "zarch_nohighgprs"
+         llgfr   %r4,%r4
+@@ -49,7 +49,7 @@ ENTRY(memset_z196)
+         br      %r14
+ .L_Z196_1:
+ 	cgfi	%r5,1048576
+-	jh	memset_mvcle	   # Switch to mvcle for >256MB
++	jh	__memset_mvcle	   # Switch to mvcle for >256MB
+ .L_Z196_2:
+         pfd     2,1024(%r1)
+         mvc     1(256,%r1),0(%r1)
+@@ -59,9 +59,9 @@ ENTRY(memset_z196)
+         j       .L_Z196_3
+ .L_Z196_17:
+         mvc     1(1,%r1),0(%r1)
+-END(memset_z196)
++END(__memset_z196)
+ 
+-ENTRY(memset_z10)
++ENTRY(__memset_z10)
+ 	.machine "z10"
+ 	.machinemode "zarch_nohighgprs"
+         llgfr   %r4,%r4
+@@ -78,7 +78,7 @@ ENTRY(memset_z10)
+         br      %r14
+ .L_Z10_15:
+ 	cgfi	%r5,163840          # Switch to mvcle for >40MB
+-	jh	memset_mvcle
++	jh	__memset_mvcle
+ .L_Z10_14:
+         pfd     2,1024(%r1)
+         mvc     1(256,%r1),0(%r1)
+@@ -87,9 +87,9 @@ ENTRY(memset_z10)
+         j       .L_Z10_3
+ .L_Z10_18:
+         mvc     1(1,%r1),0(%r1)
+-END(memset_z10)
++END(__memset_z10)
+ 
+-ENTRY(memset_mvcle)
++ENTRY(__memset_mvcle)
+ 	ahi	%r4,2               # take back the change done by the caller
+ 	lr      %r0,%r2             # save source address
+ 	lr      %r1,%r3             # move pad byte to R1
+@@ -101,7 +101,7 @@ ENTRY(memset_mvcle)
+ 	lr      %r2,%r0             # return value is source address
+ .L1:
+ 	br      %r14
+-END(memset_mvcle)
++END(__memset_mvcle)
+ 
+ #endif
+ 
+@@ -109,5 +109,5 @@ END(memset_mvcle)
+ 
+ #ifdef NOT_IN_libc
+ .globl   memset
+-.set     memset,memset_g5
++.set     memset,__memset_g5
+ #endif
+diff --git a/sysdeps/s390/s390-64/memcmp.S b/sysdeps/s390/s390-64/memcmp.S
+index 1b43440..eb5370f 100644
+--- a/sysdeps/s390/s390-64/memcmp.S
++++ b/sysdeps/s390/s390-64/memcmp.S
+@@ -27,7 +27,7 @@
+ 
+        .text
+ #ifdef USE_MULTIARCH
+-ENTRY(memcmp_z900)
++ENTRY(__memcmp_z900)
+ #else
+ ENTRY(memcmp)
+ #endif
+@@ -56,7 +56,7 @@ ENTRY(memcmp)
+ .L_Z900_15:
+         clc     0(1,%r3),0(%r2)
+ #ifdef USE_MULTIARCH
+-END(memcmp_z900)
++END(__memcmp_z900)
+ #else
+ END(memcmp)
+ libc_hidden_builtin_def (memcmp)
+diff --git a/sysdeps/s390/s390-64/memcpy.S b/sysdeps/s390/s390-64/memcpy.S
+index bae8836..61fca0b 100644
+--- a/sysdeps/s390/s390-64/memcpy.S
++++ b/sysdeps/s390/s390-64/memcpy.S
+@@ -29,7 +29,7 @@
+        .text
+ 
+ #ifdef USE_MULTIARCH
+-ENTRY(memcpy_z900)
++ENTRY(__memcpy_z900)
+ #else
+ ENTRY(memcpy)
+ #endif
+@@ -48,7 +48,7 @@ ENTRY(memcpy)
+         br      %r14
+ .L_Z900_13:
+         chi	%r5,4096             # Switch to mvcle for copies >1MB
+-        jh      memcpy_mvcle
++        jh      __memcpy_mvcle
+ .L_Z900_12:
+         mvc     0(256,%r1),0(%r3)
+         la      %r1,256(%r1)
+@@ -59,13 +59,13 @@ ENTRY(memcpy)
+         mvc     0(1,%r1),0(%r3)
+ 
+ #ifdef USE_MULTIARCH
+-END(memcpy_z900)
++END(__memcpy_z900)
+ #else
+ END(memcpy)
+ libc_hidden_builtin_def (memcpy)
+ #endif
+ 
+-ENTRY(memcpy_mvcle)
++ENTRY(__memcpy_mvcle)
+        # Using as standalone function will result in unexpected
+        # results since the length field is incremented by 1 in order to
+        # compensate the changes already done in the functions above.
+@@ -78,4 +78,4 @@ ENTRY(memcpy_mvcle)
+        jo      .L_MVCLE_1
+        lgr     %r2,%r1             # return destination address
+        br      %r14
+-END(memcpy_mvcle)
++END(__memcpy_mvcle)
+diff --git a/sysdeps/s390/s390-64/memset.S b/sysdeps/s390/s390-64/memset.S
+index 4edfb4e..8185e94 100644
+--- a/sysdeps/s390/s390-64/memset.S
++++ b/sysdeps/s390/s390-64/memset.S
+@@ -29,7 +29,7 @@
+        .text
+ 
+ #ifdef USE_MULTIARCH
+-ENTRY(memset_z900)
++ENTRY(__memset_z900)
+ #else
+ ENTRY(memset)
+ #endif
+@@ -57,7 +57,7 @@ ENTRY(memset)
+ .L_Z900_18:
+         mvc     1(1,%r1),0(%r1)
+ #ifdef USE_MULTIARCH
+-END(memset_z900)
++END(__memset_z900)
+ #else
+ END(memset)
+ libc_hidden_builtin_def (memset)
+diff --git a/sysdeps/s390/s390-64/multiarch/ifunc-resolve.c b/sysdeps/s390/s390-64/multiarch/ifunc-resolve.c
+index 8db2c38..b6be970 100644
+--- a/sysdeps/s390/s390-64/multiarch/ifunc-resolve.c
++++ b/sysdeps/s390/s390-64/multiarch/ifunc-resolve.c
+@@ -28,17 +28,17 @@
+ #define IFUNC_RESOLVE(FUNC)						\
+   asm (".globl " #FUNC "\n\t"						\
+        ".type  " #FUNC ",@gnu_indirect_function\n\t"			\
+-       ".set   " #FUNC ",resolve_" #FUNC "\n\t"				\
++       ".set   " #FUNC ",__resolve_" #FUNC "\n\t"			\
+        ".globl __GI_" #FUNC "\n\t"					\
+        ".set   __GI_" #FUNC "," #FUNC "\n");				\
+ 									\
+   /* Make the declarations of the optimized functions hidden in order
+      to prevent GOT slots being generated for them. */			\
+-  extern void *FUNC##_z196 attribute_hidden;				\
+-  extern void *FUNC##_z10 attribute_hidden;				\
+-  extern void *FUNC##_z900 attribute_hidden;				\
++  extern void *__##FUNC##_z196 attribute_hidden;			\
++  extern void *__##FUNC##_z10 attribute_hidden;				\
++  extern void *__##FUNC##_z900 attribute_hidden;			\
+ 									\
+-  void *resolve_##FUNC (unsigned long int dl_hwcap)			\
++  void *__resolve_##FUNC (unsigned long int dl_hwcap)			\
+   {									\
+     if (dl_hwcap & HWCAP_S390_STFLE)					\
+       {									\
+@@ -54,14 +54,14 @@
+ 		     : : "cc");						\
+ 									\
+ 	if ((stfle_bits & (1UL << (63 - STFLE_BITS_Z196))) != 0)	\
+-	  return &FUNC##_z196;						\
++	  return &__##FUNC##_z196;					\
+ 	else if ((stfle_bits & (1UL << (63 - STFLE_BITS_Z10))) != 0)	\
+-	  return &FUNC##_z10;						\
++	  return &__##FUNC##_z10;					\
+ 	else								\
+-	  return &FUNC##_z900;						\
++	  return &__##FUNC##_z900;					\
+       }									\
+     else								\
+-      return &FUNC##_z900;						\
++      return &__##FUNC##_z900;						\
+   }
+ 
+ IFUNC_RESOLVE(memset)
+diff --git a/sysdeps/s390/s390-64/multiarch/memcmp.S b/sysdeps/s390/s390-64/multiarch/memcmp.S
+index f40a3c1..9a8cba8 100644
+--- a/sysdeps/s390/s390-64/multiarch/memcmp.S
++++ b/sysdeps/s390/s390-64/multiarch/memcmp.S
+@@ -29,7 +29,7 @@
+ 
+ #ifndef NOT_IN_libc
+ 
+-ENTRY(memcmp_z196)
++ENTRY(__memcmp_z196)
+ 	.machine "z196"
+         ltgr    %r4,%r4
+         je      .L_Z196_4
+@@ -60,9 +60,9 @@ ENTRY(memcmp_z196)
+         br      %r14
+ .L_Z196_14:
+         clc     0(1,%r3),0(%r2)
+-END(memcmp_z196)
++END(__memcmp_z196)
+ 
+-ENTRY(memcmp_z10)
++ENTRY(__memcmp_z10)
+ 	.machine "z10"
+         ltgr    %r4,%r4
+         je      .L_Z10_4
+@@ -87,7 +87,7 @@ ENTRY(memcmp_z10)
+         j       .L_Z10_3
+ .L_Z10_15:
+         clc     0(1,%r3),0(%r2)
+-END(memcmp_z10)
++END(__memcmp_z10)
+ 
+ #endif
+ 
+@@ -95,7 +95,7 @@ END(memcmp_z10)
+ 
+ #ifdef NOT_IN_libc
+ .globl   memcmp
+-.set     memcmp,memcmp_z900
++.set     memcmp,__memcmp_z900
+ .weak    bcmp
+-.set	 bcmp,memcmp_z900
++.set	 bcmp,__memcmp_z900
+ #endif
+diff --git a/sysdeps/s390/s390-64/multiarch/memcpy.S b/sysdeps/s390/s390-64/multiarch/memcpy.S
+index b00ffc1..525588f 100644
+--- a/sysdeps/s390/s390-64/multiarch/memcpy.S
++++ b/sysdeps/s390/s390-64/multiarch/memcpy.S
+@@ -29,7 +29,7 @@
+ 
+ #if defined SHARED && !defined NOT_IN_libc
+ 
+-ENTRY(memcpy_z196)
++ENTRY(__memcpy_z196)
+         .machine "z196"
+         ltgr    %r4,%r4
+         je      .L_Z196_4
+@@ -44,7 +44,7 @@ ENTRY(memcpy_z196)
+         br      %r14
+ .L_Z196_5:
+         cgfi    %r5,262144      # Switch to mvcle for copies >64MB
+-        jh      memcpy_mvcle
++        jh      __memcpy_mvcle
+ .L_Z196_2:
+         pfd     1,768(%r3)
+         pfd     2,768(%r1)
+@@ -56,9 +56,9 @@ ENTRY(memcpy_z196)
+         j       .L_Z196_3
+ .L_Z196_14:
+         mvc     0(1,%r1),0(%r3)
+-END(memcpy_z196)
++END(__memcpy_z196)
+ 
+-ENTRY(memcpy_z10)
++ENTRY(__memcpy_z10)
+ 	.machine "z10"
+         cgije   %r4,0,.L_Z10_4
+         aghi    %r4,-1
+@@ -71,7 +71,7 @@ ENTRY(memcpy_z10)
+         br      %r14
+ .L_Z10_13:
+         cgfi    %r5,65535	# Switch to mvcle for copies >16MB
+-        jh      memcpy_mvcle
++        jh      __memcpy_mvcle
+ .L_Z10_12:
+         pfd     1,768(%r3)
+         pfd     2,768(%r1)
+@@ -82,7 +82,7 @@ ENTRY(memcpy_z10)
+         j       .L_Z10_3
+ .L_Z10_15:
+         mvc     0(1,%r1),0(%r3)
+-END(memcpy_z10)
++END(__memcpy_z10)
+ 
+ #endif
+ 
+@@ -90,5 +90,5 @@ END(memcpy_z10)
+ 
+ #if !defined SHARED || defined NOT_IN_libc
+ .globl   memcpy
+-.set     memcpy,memcpy_z900
++.set     memcpy,__memcpy_z900
+ #endif
+diff --git a/sysdeps/s390/s390-64/multiarch/memset.S b/sysdeps/s390/s390-64/multiarch/memset.S
+index 1f9064d..8dbb3cb 100644
+--- a/sysdeps/s390/s390-64/multiarch/memset.S
++++ b/sysdeps/s390/s390-64/multiarch/memset.S
+@@ -29,7 +29,7 @@
+ 
+ #ifndef NOT_IN_libc
+ 
+-ENTRY(memset_z196)
++ENTRY(__memset_z196)
+ 	.machine "z196"
+         ltgr    %r4,%r4
+         je      .L_Z196_4
+@@ -47,7 +47,7 @@ ENTRY(memset_z196)
+         br      %r14
+ .L_Z196_1:
+ 	cgfi	%r5,1048576
+-	jh	memset_mvcle	   # Switch to mvcle for >256MB
++	jh	__memset_mvcle	   # Switch to mvcle for >256MB
+ .L_Z196_2:
+         pfd     2,1024(%r1)
+         mvc     1(256,%r1),0(%r1)
+@@ -57,9 +57,9 @@ ENTRY(memset_z196)
+         j       .L_Z196_3
+ .L_Z196_17:
+         mvc     1(1,%r1),0(%r1)
+-END(memset_z196)
++END(__memset_z196)
+ 
+-ENTRY(memset_z10)
++ENTRY(__memset_z10)
+ 	.machine "z10"
+         cgije   %r4,0,.L_Z10_4
+         stc     %r3,0(%r2)
+@@ -74,7 +74,7 @@ ENTRY(memset_z10)
+         br      %r14
+ .L_Z10_15:
+ 	cgfi	%r5,163840          # Switch to mvcle for >40MB
+-	jh	memset_mvcle
++	jh	__memset_mvcle
+ .L_Z10_14:
+         pfd     2,1024(%r1)
+         mvc     1(256,%r1),0(%r1)
+@@ -83,9 +83,9 @@ ENTRY(memset_z10)
+         j       .L_Z10_3
+ .L_Z10_18:
+         mvc     1(1,%r1),0(%r1)
+-END(memset_z10)
++END(__memset_z10)
+ 
+-ENTRY(memset_mvcle)
++ENTRY(__memset_mvcle)
+ 	aghi	%r4,2               # take back the change done by the caller
+ 	lgr	%r0,%r2		    # save source address
+ 	lgr	%r1,%r3		    # move pad byte to R1
+@@ -97,7 +97,7 @@ ENTRY(memset_mvcle)
+ 	lgr	%r2,%r0		    # return value is source address
+ .L1:
+ 	br	%r14
+-END(memset_mvcle)
++END(__memset_mvcle)
+ 
+ #endif
+ 
+@@ -105,5 +105,5 @@ END(memset_mvcle)
+ 
+ #ifdef NOT_IN_libc
+ .globl   memset
+-.set     memset,memset_z900
++.set     memset,__memset_z900
+ #endif
+-- 
+2.3.0
+

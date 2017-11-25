@@ -1,0 +1,48 @@
+commit 657c084cd6f69d6cc880c2ae65129a0723d053c5
+Author: Andreas Schwab <schwab@suse.de>
+Date:   Mon Dec 5 12:06:46 2016 +0100
+
+    Get rid of __elision_available
+
+Index: glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/x86/elision-conf.c
+===================================================================
+--- glibc-2.17-c758a686.orig/nptl/sysdeps/unix/sysv/linux/x86/elision-conf.c
++++ glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/x86/elision-conf.c
+@@ -52,11 +52,6 @@ int __rwlock_rtm_enabled attribute_hidde
+ 
+ int __rwlock_rtm_read_retries attribute_hidden = 3;
+ 
+-/* Set when the CPU supports elision.  When false elision is never attempted.
+- */
+-
+-int __elision_available attribute_hidden;
+-
+ /* Force elision for all new locks.  This is used to decide whether existing
+    DEFAULT locks should be automatically upgraded to elision in
+    pthread_mutex_lock().  Disabled for suid programs.  Only used when elision
+@@ -71,10 +66,10 @@ elision_init (int argc __attribute__ ((u
+ 	      char **argv  __attribute__ ((unused)),
+ 	      char **environ)
+ {
+-  __elision_available = HAS_CPU_FEATURE (RTM);
++  int elision_available = HAS_CPU_FEATURE (RTM);
+ #ifdef ENABLE_LOCK_ELISION
+-  __pthread_force_elision = __libc_enable_secure ? 0 : __elision_available;
+-  __rwlock_rtm_enabled = __libc_enable_secure ? 0 : __elision_available;
++  __pthread_force_elision = __libc_enable_secure ? 0 : elision_available;
++  __rwlock_rtm_enabled = __libc_enable_secure ? 0 : elision_available;
+ #endif
+ }
+ 
+Index: glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/x86/elision-conf.h
+===================================================================
+--- glibc-2.17-c758a686.orig/nptl/sysdeps/unix/sysv/linux/x86/elision-conf.h
++++ glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/x86/elision-conf.h
+@@ -35,7 +35,6 @@ struct elision_config
+ extern struct elision_config __elision_aconf attribute_hidden;
+ 
+ extern int __rwlock_rtm_enabled attribute_hidden;
+-extern int __elision_available attribute_hidden;
+ extern int __pthread_force_elision attribute_hidden;
+ 
+ /* Tell the test suite to test elision for this architecture.  */

@@ -1,0 +1,190 @@
+commit d0df3cfd9ffa32b85abae180127dc2a57db51f03
+Author: Siddhesh Poyarekar <siddhesh@redhat.com>
+Date:   Tue Sep 16 21:57:25 2014 +0530
+
+    Make __extern_always_inline usable on clang++ again
+    
+    The fix for BZ #17266 (884ddc5081278f488ef8cd49951f41cfdbb480ce)
+    removed changes that had gone into cdefs.h to make
+    __extern_always_inline usable with clang++.  This patch adds back
+    support for clang to detect if GNU inlining semantics are available,
+    this time without breaking the gcc use case.  The check put here is
+    based on the earlier patch and assertion[1] that checking if
+    __GNUC_STDC_INLINE__ or __GNUC_GNU_INLINE__ is defined is sufficient
+    to determine that clang++ suports GNU inlining semantics.
+    
+    Tested with a simple program that builds with __extern_always_inline
+    with the patch and fails compilation without it.
+    
+     #include <stdio.h>
+     #include <sys/cdefs.h>
+    
+    extern void foo_alias (void) __asm ("foo");
+    
+    __extern_always_inline void
+    foo (void)
+    {
+      puts ("hi oh world!");
+      return foo_alias ();
+    }
+    
+    void
+    foo_alias (void)
+    {
+      puts ("hell oh world");
+    }
+    
+    int
+    main ()
+    {
+      foo ();
+    }
+    
+    [1] https://sourceware.org/ml/libc-alpha/2012-12/msg00306.html
+    
+    	[BZ #17266]
+    	* misc/sys/cdefs.h: Define __extern_always_inline for clang
+    	4.2 and newer.
+
+commit 884ddc5081278f488ef8cd49951f41cfdbb480ce
+Author: Siddhesh Poyarekar <siddhesh@redhat.com>
+Date:   Tue Sep 16 14:08:48 2014 +0530
+
+    Revert to defining __extern_inline only for gcc-4.3+ (BZ #17266)
+    
+    The check for only __GNUC_STDC_INLINE__ and __GNUC_GNU_INLINE__ may
+    not be sufficient since those flags were added during initial support
+    for C99 inlining semantics.  There is also a problem with always
+    defining __extern_inline and __extern_always_inline, since it enables
+    inline wrapper functions even when GNU inlining semantics are not
+    guaranteed.  This, along with the possibility of such wrappers using
+    redirection (btowc for example) could result in compiler generating an
+    infinitely recusrive call to the function.
+    
+    In fact it was such a recursion that led to this code being written
+    the way it was; see:
+    
+    https://bugzilla.redhat.com/show_bug.cgi?id=186410
+    
+    The initial change was to fix bugs 14530 and 13741, but they can be
+    resolved by checking if __fortify_function and/or
+    __extern_always_inline are defined, as it has been done in this patch.
+    In addition, I have audited uses of __extern_always_inline to make
+    sure that none of the uses result in compilation errors.
+    
+    There is however a regression in this patch for llvm, since it reverts
+    the llvm expectation that __GNUC_STDC_INLINE__ or __GNUC_GNU_INLINE__
+    definition imply proper extern inline semantics.
+    
+    2014-09-16  Siddhesh Poyarekar  <siddhesh@redhat.com>
+    	    Jakub Jelinek  <jakub@redhat.com>
+    
+    	[BZ #17266]
+    	* libio/stdio.h: Check definition of __fortify_function
+    	instead of __extern_always_inline to include bits/stdio2.h.
+    	* math/bits/math-finite.h [__USE_XOPEN || __USE_ISOC99]: Also
+    	check if __extern_always_inline is defined.
+    	[__USE_MISC || __USE_XOPEN]: Likewise.
+    	[__USE_ISOC99] Likewise.
+    	* misc/sys/cdefs.h (__fortify_function): Define only if
+    	__extern_always_inline is defined.
+    	[!__cplusplus || __GNUC_PREREQ (4,3)]: Revert to defining
+    	__extern_always_inline and __extern_inline only for g++-4.3
+    	and newer or a compatible gcc.
+
+diff --git glibc-2.17-c758a686/libio/stdio.h glibc-2.17-c758a686/libio/stdio.h
+index d8c0bdb..1f4f837 100644
+--- glibc-2.17-c758a686/libio/stdio.h
++++ glibc-2.17-c758a686/libio/stdio.h
+@@ -932,7 +932,7 @@ extern void funlockfile (FILE *__stream) __THROW;
+ #ifdef __USE_EXTERN_INLINES
+ # include <bits/stdio.h>
+ #endif
+-#if __USE_FORTIFY_LEVEL > 0 && defined __extern_always_inline
++#if __USE_FORTIFY_LEVEL > 0 && defined __fortify_function
+ # include <bits/stdio2.h>
+ #endif
+ #ifdef __LDBL_COMPAT
+diff --git glibc-2.17-c758a686/math/bits/math-finite.h glibc-2.17-c758a686/math/bits/math-finite.h
+index aa755de..0656645 100644
+--- glibc-2.17-c758a686/math/bits/math-finite.h
++++ glibc-2.17-c758a686/math/bits/math-finite.h
+@@ -251,7 +251,8 @@ extern long double __REDIRECT_NTH (lgammal_r, (long double, int *),
+ # endif
+ #endif
+ 
+-#if defined __USE_MISC || defined __USE_XOPEN || defined __USE_ISOC99
++#if ((defined __USE_MISC || defined __USE_XOPEN || defined __USE_ISOC99) \
++     && defined __extern_always_inline)
+ /* lgamma.  */
+ __extern_always_inline double __NTH (lgamma (double __d))
+ {
+@@ -284,7 +285,8 @@ __extern_always_inline long double __NTH (lgammal (long double __d))
+ # endif
+ #endif
+ 
+-#if defined __USE_MISC || defined __USE_XOPEN
++#if ((defined __USE_MISC || defined __USE_XOPEN) \
++     && defined __extern_always_inline)
+ /* gamma.  */
+ __extern_always_inline double __NTH (gamma (double __d))
+ {
+@@ -422,7 +424,7 @@ extern long double __REDIRECT_NTH (sqrtl, (long double), __sqrtl_finite);
+ # endif
+ #endif
+ 
+-#ifdef __USE_ISOC99
++#if defined __USE_ISOC99 && defined __extern_always_inline
+ /* tgamma.  */
+ extern double __gamma_r_finite (double, int *);
+ __extern_always_inline double __NTH (tgamma (double __d))
+diff --git glibc-2.17-c758a686/misc/sys/cdefs.h glibc-2.17-c758a686/misc/sys/cdefs.h
+index 04db956..01e81ba 100644
+--- glibc-2.17-c758a686/misc/sys/cdefs.h
++++ glibc-2.17-c758a686/misc/sys/cdefs.h
+@@ -131,7 +131,6 @@
+ /* Fortify support.  */
+ #define __bos(ptr) __builtin_object_size (ptr, __USE_FORTIFY_LEVEL > 1)
+ #define __bos0(ptr) __builtin_object_size (ptr, 0)
+-#define __fortify_function __extern_always_inline __attribute_artificial__
+ 
+ #if __GNUC_PREREQ (4,3)
+ # define __warndecl(name, msg) \
+@@ -319,8 +318,17 @@
+ #endif
+ 
+ /* GCC 4.3 and above with -std=c99 or -std=gnu99 implements ISO C99
+-   inline semantics, unless -fgnu89-inline is used.  */
+-#if (!defined __cplusplus || __GNUC_PREREQ (4,3)) && defined __GNUC__
++   inline semantics, unless -fgnu89-inline is used.  Using __GNUC_STDC_INLINE__
++   or __GNUC_GNU_INLINE is not a good enough check for gcc because gcc versions
++   older than 4.3 may define these macros and still not guarantee GNU inlining
++   semantics.
++
++   clang++ identifies itself as gcc-4.2, but has support for GNU inlining
++   semantics, that can be checked fot by using the __GNUC_STDC_INLINE_ and
++   __GNUC_GNU_INLINE__ macro definitions.  */
++#if (!defined __cplusplus || __GNUC_PREREQ (4,3) \
++     || (defined __clang__ && (defined __GNUC_STDC_INLINE__ \
++			       || defined __GNUC_GNU_INLINE__)))
+ # if defined __GNUC_STDC_INLINE__ || defined __cplusplus
+ #  define __extern_inline extern __inline __attribute__ ((__gnu_inline__))
+ #  define __extern_always_inline \
+@@ -329,13 +337,10 @@
+ #  define __extern_inline extern __inline
+ #  define __extern_always_inline extern __always_inline
+ # endif
+-#elif defined __GNUC__ /* C++ and GCC <4.3.  */
+-# define __extern_inline extern __inline
+-# define __extern_always_inline \
+-  extern __always_inline
+-#else /* Not GCC.  */
+-# define __extern_inline  /* Ignore */
+-# define __extern_always_inline /* Ignore */
++#endif
++
++#ifdef __extern_always_inline
++# define __fortify_function __extern_always_inline __attribute_artificial__
+ #endif
+ 
+ /* GCC 4.3 and above allow passing all anonymous arguments of an

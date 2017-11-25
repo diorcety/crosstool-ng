@@ -1,0 +1,63 @@
+Description: Make trimming logic consistent.
+Author: Carlos O'Donell
+Origin: git://sourceware.org/git/glibc.git
+Bug-RHEL: N/A
+Bug-Fedora: N/A
+Bug-Upstream: #17195
+Upstream status: committed
+
+commit e4bc326dbbf7328775fe7dd39de1178821363e0a
+Author: Carlos O'Donell <carlos@systemhalted.org>
+Date:   Wed Oct 7 22:21:36 2015 -0400
+
+    malloc: Consistently apply trim_threshold to all heaps (Bug 17195)
+    
+    In the per-thread arenas we apply trim_threshold-based checks
+    to the extra space between the pad and the top_area. This isn't
+    quite accurate and instead we should be harmonizing with the way
+    in which trim_treshold is applied everywhere else like sysrtim
+    and _int_free. The trimming check should be based on the size of
+    the top chunk and only the size of the top chunk. The following
+    patch harmonizes the trimming and make it consistent for the main
+    arena and thread arenas.
+    
+    In the old code a large padding request might have meant that
+    trimming was not triggered. Now trimming is considered first based
+    on the chunk, then the pad is subtracted, and the remainder trimmed.
+    This is how all the other trimmings operate. I didn't measure the
+    performance difference of this change because it corrects what I
+    consider to be a behavioural anomaly. We'll need some profile driven
+    optimization to make this code better, and even there Ondrej and
+    others have better ideas on how to speedup malloc.
+    
+    Tested on x86_64 with no regressions. Already reviewed by Siddhesh
+    Poyarekar and Mel Gorman here and discussed here:
+    https://sourceware.org/ml/libc-alpha/2015-05/msg00002.html
+
+Index: glibc-2.17-c758a686/malloc/arena.c
+===================================================================
+--- glibc-2.17-c758a686.orig/malloc/arena.c
++++ glibc-2.17-c758a686/malloc/arena.c
+@@ -697,14 +697,20 @@ heap_trim(heap_info *heap, size_t pad)
+   }
+ 
+   /* Uses similar logic for per-thread arenas as the main arena with systrim
+-     by preserving the top pad and at least a page.  */
++     and _int_free by preserving the top pad and rounding down to the nearest
++     page.  */
+   top_size = chunksize(top_chunk);
++  if ((unsigned long)(top_size) <
++      (unsigned long)(mp_.trim_threshold))
++    return 0;
++
+   top_area = top_size - MINSIZE - 1;
+   if (top_area <= pad)
+     return 0;
+ 
++  /* Release in pagesize units and round down to the nearest page.  */
+   extra = ALIGN_DOWN(top_area - pad, pagesz);
+-  if ((unsigned long) extra < mp_.trim_threshold)
++  if (extra == 0)
+     return 0;
+   /* Try to shrink. */
+   if(shrink_heap(heap, extra) != 0)

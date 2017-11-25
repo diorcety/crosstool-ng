@@ -1,0 +1,49 @@
+From 8b42b08a1bce2899c0f66ce66ef5fc75745c8f38 Mon Sep 17 00:00:00 2001
+From: Stefan Liebler <stli@linux.vnet.ibm.com>
+Date: Mon, 7 Nov 2016 16:19:30 +0100
+Subject: [PATCH 10/17] S390: Fix build error with gcc6 in utf8_utf16-z9.c.
+
+upstream commit 808d70228891ab4d4795ab3dd1e015bf63ba18d6
+
+This patch fixes the build error with gcc6:
+array subscript is above array bounds [-Werror=array-bounds]
+
+While including loop.c to construct the SINGLE(LOOPFCT) method
+for converting from UTF-16 to UTF-8, the bytebuf array with length
+MAX_NEEDED_INPUT is used as inptr. MAX_NEEDED_INPUT defaults to
+MIN_NEEDED_INPUT if not defined before including loop.c.
+Thus bytebuf has a length of 2.
+This patch defines MAX_NEEDED_INPUT to MAX_NEEDED_TO, which is 4.
+
+ChangeLog:
+
+	* sysdeps/s390/s390-64/utf8-utf16-z9.c
+	(MAX_NEEDED_INPUT): New define.
+	(MAX_NEEDED_OUTPUT): New define.
+---
+ sysdeps/s390/s390-64/utf8-utf16-z9.c | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/sysdeps/s390/s390-64/utf8-utf16-z9.c b/sysdeps/s390/s390-64/utf8-utf16-z9.c
+index 6dad1c2..590a149 100644
+--- a/sysdeps/s390/s390-64/utf8-utf16-z9.c
++++ b/sysdeps/s390/s390-64/utf8-utf16-z9.c
+@@ -183,6 +183,7 @@ gconv_end (struct __gconv_step *data)
+ #define MIN_NEEDED_INPUT	MIN_NEEDED_FROM
+ #define MAX_NEEDED_INPUT	MAX_NEEDED_FROM
+ #define MIN_NEEDED_OUTPUT	MIN_NEEDED_TO
++#define MAX_NEEDED_OUTPUT	MAX_NEEDED_TO
+ #define LOOPFCT			FROM_LOOP
+ /* The software implementation is based on the code in gconv_simple.c.  */
+ #define BODY								\
+@@ -340,6 +341,7 @@ gconv_end (struct __gconv_step *data)
+ /* Conversion from UTF-16 to UTF-8.  */
+ 
+ #define MIN_NEEDED_INPUT	MIN_NEEDED_TO
++#define MAX_NEEDED_INPUT	MAX_NEEDED_TO
+ #define MIN_NEEDED_OUTPUT	MIN_NEEDED_FROM
+ #define MAX_NEEDED_OUTPUT	MAX_NEEDED_FROM
+ #define LOOPFCT			TO_LOOP
+-- 
+1.8.3.1
+

@@ -1,0 +1,1272 @@
+    Backport of:
+    
+    commit f06a4faf8a2b4d046eb40e94b47948cc47d79902
+    Author: Adhemerval Zanella <azanella@linux.vnet.ibm.com>
+    Date:   Wed Dec 31 11:47:41 2014 -0500
+    
+        powerpc: Optimized st{r,p}ncpy for POWER8/PPC64
+    
+        This patch adds an optimized POWER8 st{r,p}ncpy using unaligned accesses.
+        It shows 10%-80% improvement over the optimized POWER7 one that uses
+        only aligned accesses, specially on unaligned inputs.
+    
+        The algorithm first read and check 16 bytes (if inputs do not cross a 4K
+        page size).  The it realign source to 16-bytes and issue a 16 bytes read
+        and compare loop to speedup null byte checks for large strings.  Also,
+        different from POWER7 optimization, the null pad is done inline in the
+        implementation using possible unaligned accesses, instead of realying on
+        a memset call.  Special case is added for page cross reads.
+    
+        ChangeLog:
+    	2015-01-13  Adhemerval Zanella  <azanella@linux.vnet.ibm.com>
+    
+    	* sysdeps/powerpc/powerpc64/multiarch/Makefile [sysdep_routines]:
+    	Add strncpy-power8 and stpncpy-power8 objects.
+    	* sysdeps/powerpc/powerpc64/multiarch/ifunc-impl-list.c
+    	(__libc_ifunc_impl_list): Add __strncpy_power8 and stpncpy_power8
+    	implementations.
+    	* sysdeps/powerpc/powerpc64/multiarch/stpncpy-power8.S: New file.
+    	* sysdeps/powerpc/powerpc64/multiarch/stpncpy.c (__stpncpy): Add
+    	__stpncpy_power8 implementation.
+    	* sysdeps/powerpc/powerpc64/multiarch/strncpy-power8.S: New file.
+    	* sysdeps/powerpc/powerpc64/multiarch/strncpy.c (strncpy): Add
+    	__strncpy_power8 implementation.
+    	* sysdeps/powerpc/powerpc64/power8/stpncpy.S: New file.
+    	* sysdeps/powerpc/powerpc64/power8/strncpy.S: New file.
+    	* NEWS: Update.
+    
+    and its dependency:
+    
+    commit f360f94a05570045be615649e9a411cefba2e210
+    Author: Vidya Ranganathan <vidya@linux.vnet.ibm.com>
+    Date:   Mon May 5 19:10:45 2014 -0500
+    
+        PowerPC: strncpy/stpncpy optimization for PPC64/POWER7
+    
+        The optimization is achieved by following techniques:
+          > data alignment [gain from aligned memory access on read/write]
+          > POWER7 gains performance with loop unrolling/unwinding
+            [gain by reduction of branch penalty].
+          > zero padding done by calling optimized memset
+
+diff --git a/sysdeps/powerpc/powerpc64/multiarch/Makefile b/sysdeps/powerpc/powerpc64/multiarch/Makefile
+index 74ae710..ef39917 100644
+--- a/sysdeps/powerpc/powerpc64/multiarch/Makefile
++++ b/sysdeps/powerpc/powerpc64/multiarch/Makefile
+@@ -8,6 +8,8 @@ sysdep_routines += memcpy-power7 memcpy-a2 memcpy-power6 memcpy-cell \
+                   stpcpy-power8 stpcpy-power7 stpcpy-ppc64 \
+                   strcat-power8 strcat-power7 strcat-ppc64 \
+                   strcpy-power8 strcpy-power7 strcpy-ppc64 \
++                  stpncpy-power8 stpncpy-power7 stpncpy-ppc64 \
++                  strncpy-power8 strncpy-power7 strncpy-ppc64 
+                   strncat-power7 \
+                   rawmemchr-ppc64 strlen-power7 strlen-ppc64 strnlen-power7 \
+                   strnlen-ppc64 strcasecmp-power7 strcasecmp_l-power7 \
+diff --git a/sysdeps/powerpc/powerpc64/multiarch/ifunc-impl-list.c b/sysdeps/powerpc/powerpc64/multiarch/ifunc-impl-list.c
+index 4e5bb17..23bf5dc 100644
+--- a/sysdeps/powerpc/powerpc64/multiarch/ifunc-impl-list.c
++++ b/sysdeps/powerpc/powerpc64/multiarch/ifunc-impl-list.c
+@@ -255,5 +255,27 @@ __libc_ifunc_impl_list (const char *name, struct libc_ifunc_impl *array,
+              IFUNC_IMPL_ADD (array, i, wcscpy, 1,
+                              __wcscpy_ppc))
+ 
++  /* Support sysdeps/powerpc/powerpc64/multiarch/strncpy.c.  */
++  IFUNC_IMPL (i, name, strncpy,
++	      IFUNC_IMPL_ADD (array, i, strncpy,
++			      hwcap2 & PPC_FEATURE2_ARCH_2_07,
++			      __strncpy_power8)
++	      IFUNC_IMPL_ADD (array, i, strncpy,
++			      hwcap & PPC_FEATURE_HAS_VSX,
++			      __strncpy_power7)
++	      IFUNC_IMPL_ADD (array, i, strncpy, 1,
++			     __strncpy_ppc))
++
++  /* Support sysdeps/powerpc/powerpc64/multiarch/stpncpy.c.  */
++  IFUNC_IMPL (i, name, stpncpy,
++	      IFUNC_IMPL_ADD (array, i, stpncpy,
++			      hwcap2 & PPC_FEATURE2_ARCH_2_07,
++			      __stpncpy_power8)
++	      IFUNC_IMPL_ADD (array, i, stpncpy,
++			      hwcap & PPC_FEATURE_HAS_VSX,
++			      __stpncpy_power7)
++	      IFUNC_IMPL_ADD (array, i, stpncpy, 1,
++			     __stpncpy_ppc))
++
+   return i;
+ }
+diff --git a/sysdeps/powerpc/powerpc64/multiarch/stpncpy-power7.S b/sysdeps/powerpc/powerpc64/multiarch/stpncpy-power7.S
+new file mode 100644
+index 0000000..e29674f
+--- /dev/null
++++ b/sysdeps/powerpc/powerpc64/multiarch/stpncpy-power7.S
+@@ -0,0 +1,44 @@
++/* Optimized stpncpy implementation for POWER7.
++   Copyright (C) 2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <sysdep.h>
++
++#define USE_AS_STPNCPY
++
++#undef EALIGN
++#define EALIGN(name, alignt, words)				\
++  .section ".text";						\
++  ENTRY_2(__stpncpy_power7)					\
++  .align ALIGNARG(alignt);					\
++  EALIGN_W_##words;						\
++  BODY_LABEL(__stpncpy_power7):					\
++  cfi_startproc;						\
++  LOCALENTRY(__stpncpy_power7)
++
++#undef END
++#define END(name)						\
++  cfi_endproc;							\
++  TRACEBACK(__stpncpy_power7)					\
++  END_2(__stpncpy_power7)
++
++#undef libc_hidden_builtin_def
++#define libc_hidden_builtin_def(name)
++
++#define MEMSET __memset_power7
++
++#include <sysdeps/powerpc/powerpc64/power7/stpncpy.S>
+diff --git a/sysdeps/powerpc/powerpc64/multiarch/stpncpy-power8.S b/sysdeps/powerpc/powerpc64/multiarch/stpncpy-power8.S
+new file mode 100644
+index 0000000..d5d835d
+--- /dev/null
++++ b/sysdeps/powerpc/powerpc64/multiarch/stpncpy-power8.S
+@@ -0,0 +1,39 @@
++/* Optimized stpncpy implementation for POWER8.
++   Copyright (C) 2015 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <sysdep.h>
++
++#define USE_AS_STPNCPY
++
++#undef EALIGN
++#define EALIGN(name, alignt, words)				\
++  .section ".text";						\
++  ENTRY_2(__stpncpy_power8)					\
++  .align ALIGNARG(alignt);					\
++  EALIGN_W_##words;						\
++  BODY_LABEL(__stpncpy_power8):					\
++  cfi_startproc;						\
++  LOCALENTRY(__stpncpy_power8)
++
++#undef END
++#define END(name)						\
++  cfi_endproc;							\
++  TRACEBACK(__stpncpy_power8)					\
++  END_2(__stpncpy_power8)
++
++#include <sysdeps/powerpc/powerpc64/power8/stpncpy.S>
+diff --git a/sysdeps/powerpc/powerpc64/multiarch/stpncpy-ppc64.c b/sysdeps/powerpc/powerpc64/multiarch/stpncpy-ppc64.c
+new file mode 100644
+index 0000000..74f47a7
+--- /dev/null
++++ b/sysdeps/powerpc/powerpc64/multiarch/stpncpy-ppc64.c
+@@ -0,0 +1,26 @@
++/* Default stpncpy implementation for PowerPC64.
++   Copyright (C) 2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#define STPNCPY __stpncpy_ppc
++#ifdef SHARED
++#undef libc_hidden_def
++#define libc_hidden_def(name) \
++  __hidden_ver1 (__stpncpy_ppc, __GI___stpncpy, __stpncpy_ppc);
++#endif
++
++#include <string/stpncpy.c>
+diff --git a/sysdeps/powerpc/powerpc64/multiarch/stpncpy.c b/sysdeps/powerpc/powerpc64/multiarch/stpncpy.c
+new file mode 100644
+index 0000000..3ee50e5
+--- /dev/null
++++ b/sysdeps/powerpc/powerpc64/multiarch/stpncpy.c
+@@ -0,0 +1,36 @@
++/* Multiple versions of stpncpy. PowerPC64 version.
++   Copyright (C) 2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#ifndef NOT_IN_libc
++# include <string.h>
++# include <shlib-compat.h>
++# include "init-arch.h"
++
++extern __typeof (__stpncpy) __stpncpy_ppc attribute_hidden;
++extern __typeof (__stpncpy) __stpncpy_power7 attribute_hidden;
++extern __typeof (__stpncpy) __stpncpy_power8 attribute_hidden;
++
++libc_ifunc (__stpncpy,
++            (hwcap2 & PPC_FEATURE2_ARCH_2_07)
++            ? __stpncpy_power8 :
++              (hwcap & PPC_FEATURE_HAS_VSX)
++              ? __stpncpy_power7
++            : __stpncpy_ppc);
++
++weak_alias (__stpncpy, stpncpy)
++#endif
+diff --git a/sysdeps/powerpc/powerpc64/multiarch/strncpy-power7.S b/sysdeps/powerpc/powerpc64/multiarch/strncpy-power7.S
+new file mode 100644
+index 0000000..be349f9
+--- /dev/null
++++ b/sysdeps/powerpc/powerpc64/multiarch/strncpy-power7.S
+@@ -0,0 +1,42 @@
++/* Optimized strncpy implementation for POWER7.
++   Copyright (C) 2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <sysdep.h>
++
++#undef EALIGN
++#define EALIGN(name, alignt, words)				\
++  .section ".text";						\
++  ENTRY_2(__strncpy_power7)					\
++  .align ALIGNARG(alignt);					\
++  EALIGN_W_##words;						\
++  BODY_LABEL(__strncpy_power7):					\
++  cfi_startproc;						\
++  LOCALENTRY(__strncpy_power7)
++
++#undef END
++#define END(name)						\
++  cfi_endproc;							\
++  TRACEBACK(__strncpy_power7)					\
++  END_2(__strncpy_power7)
++
++#undef libc_hidden_builtin_def
++#define libc_hidden_builtin_def(name)
++
++#define MEMSET __memset_power7
++
++#include <sysdeps/powerpc/powerpc64/power7/strncpy.S>
+diff --git a/sysdeps/powerpc/powerpc64/multiarch/strncpy-power8.S b/sysdeps/powerpc/powerpc64/multiarch/strncpy-power8.S
+new file mode 100644
+index 0000000..ed906a4
+--- /dev/null
++++ b/sysdeps/powerpc/powerpc64/multiarch/strncpy-power8.S
+@@ -0,0 +1,40 @@
++/* Optimized strncpy implementation for POWER8.
++   Copyright (C) 2015 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <sysdep.h>
++
++#undef EALIGN
++#define EALIGN(name, alignt, words)				\
++  .section ".text";						\
++  ENTRY_2(__strncpy_power8)					\
++  .align ALIGNARG(alignt);					\
++  EALIGN_W_##words;						\
++  BODY_LABEL(__strncpy_power8):					\
++  cfi_startproc;						\
++  LOCALENTRY(__strncpy_power8)
++
++#undef END
++#define END(name)						\
++  cfi_endproc;							\
++  TRACEBACK(__strncpy_power8)					\
++  END_2(__strncpy_power8)
++
++#undef libc_hidden_builtin_def
++#define libc_hidden_builtin_def(name)
++
++#include <sysdeps/powerpc/powerpc64/power8/strncpy.S>
+diff --git a/sysdeps/powerpc/powerpc64/multiarch/strncpy-ppc64.c b/sysdeps/powerpc/powerpc64/multiarch/strncpy-ppc64.c
+new file mode 100644
+index 0000000..e3111d2
+--- /dev/null
++++ b/sysdeps/powerpc/powerpc64/multiarch/strncpy-ppc64.c
+@@ -0,0 +1,33 @@
++/* Copyright (C) 2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <string.h>
++
++#define STRNCPY __strncpy_ppc
++#undef weak_alias
++#define weak_alias(name, aliasname) \
++  extern __typeof (__strncpy_ppc) aliasname \
++    __attribute__ ((weak, alias ("__strncpy_ppc")));
++#if !defined(NOT_IN_libc) && defined(SHARED)
++# undef libc_hidden_builtin_def
++# define libc_hidden_builtin_def(name) \
++  __hidden_ver1(__strncpy_ppc, __GI_strncpy, __strncpy_ppc);
++#endif
++
++extern __typeof (strncpy) __strncpy_ppc attribute_hidden;
++
++#include <string/strncpy.c>
+diff --git a/sysdeps/powerpc/powerpc64/multiarch/strncpy.c b/sysdeps/powerpc/powerpc64/multiarch/strncpy.c
+new file mode 100644
+index 0000000..19927bc
+--- /dev/null
++++ b/sysdeps/powerpc/powerpc64/multiarch/strncpy.c
+@@ -0,0 +1,38 @@
++/* Multiple versions of strncpy.
++   Copyright (C) 2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/ >.  */
++
++/* Define multiple versions only for definition in libc. */
++#ifndef NOT_IN_libc
++# include <string.h>
++# include <shlib-compat.h>
++# include "init-arch.h"
++
++extern __typeof (strncpy) __strncpy_ppc attribute_hidden;
++extern __typeof (strncpy) __strncpy_power7 attribute_hidden;
++extern __typeof (strncpy) __strncpy_power8 attribute_hidden;
++
++/* Avoid DWARF definition DIE on ifunc symbol so that GDB can handle
++ ifunc symbol properly. */
++libc_ifunc (strncpy,
++            (hwcap2 & PPC_FEATURE2_ARCH_2_07)
++            ? __strncpy_power8 :
++              (hwcap & PPC_FEATURE_HAS_VSX)
++              ? __strncpy_power7
++            : __strncpy_ppc);
++
++#endif
+diff --git a/sysdeps/powerpc/powerpc64/power7/stpncpy.S b/sysdeps/powerpc/powerpc64/power7/stpncpy.S
+new file mode 100644
+index 0000000..a539093
+--- /dev/null
++++ b/sysdeps/powerpc/powerpc64/power7/stpncpy.S
+@@ -0,0 +1,24 @@
++/* Optimized stpncpy implementation for PowerPC64/POWER7.
++   Copyright (C) 2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#define USE_AS_STPNCPY
++#include <sysdeps/powerpc/powerpc64/power7/strncpy.S>
++
++weak_alias (__stpncpy, stpncpy)
++libc_hidden_def (__stpncpy)
++libc_hidden_builtin_def (stpncpy)
+diff --git a/sysdeps/powerpc/powerpc64/power7/strncpy.S b/sysdeps/powerpc/powerpc64/power7/strncpy.S
+new file mode 100644
+index 0000000..51860df
+--- /dev/null
++++ b/sysdeps/powerpc/powerpc64/power7/strncpy.S
+@@ -0,0 +1,338 @@
++/* Copyright (C) 2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <sysdep.h>
++
++/* Implements the functions
++
++   char * [r3] strncpy (char *dst [r3], const char *src [r4], size_t n [r5])
++
++   AND
++
++   char * [r3] stpncpy (char *dst [r3], const char *src [r4], size_t n [r5])
++
++   The algorithm is as follows:
++   > if src and dest are 8 byte aligned, perform double word copy
++     else
++   > copy byte by byte on unaligned addresses.
++
++   The aligned comparison are made using cmpb instructions.  */
++
++/* The focus on optimization for performance improvements are as follows:
++   1. data alignment [gain from aligned memory access on read/write]
++   2. POWER7 gains performance with loop unrolling/unwinding
++      [gain by reduction of branch penalty].
++   3. The final pad with null bytes is done by calling an optimized
++      memset.  */
++
++#ifdef USE_AS_STPNCPY
++# define FUNC_NAME __stpncpy
++#else
++# define FUNC_NAME strncpy
++#endif
++
++#define		FRAMESIZE	(FRAME_MIN_SIZE+32)
++
++#ifndef MEMSET
++/* For builds with no IFUNC support, local calls should be made to internal
++   GLIBC symbol (created by libc_hidden_builtin_def).  */
++# ifdef SHARED
++#  define MEMSET   __GI_memset
++# else
++#  define MEMSET   memset
++# endif
++#endif
++
++	.machine  power7
++EALIGN(FUNC_NAME, 4, 0)
++	CALL_MCOUNT 3
++
++	mflr r0			/* load link register LR to r0  */
++	or r10, r3, r4		/* to verify source and destination  */
++	rldicl. r8, r10, 0, 61	/* is double word aligned .. ?  */
++
++	std r19, -8(r1)		/* save callers register , r19  */
++	std r18, -16(r1)	/* save callers register , r18  */
++	std r0, 16(r1)		/* store the link register  */
++	stdu r1, -FRAMESIZE(r1)	/* create the stack frame  */
++
++	mr r9, r3		/* save r3 into r9 for use  */
++	mr r18, r3		/* save r3 for retCode of strncpy  */
++	bne 0, L(byte_by_byte)
++
++
++	srdi r11, r5, 3		/* compute count for CTR ; count = n/8  */
++	cmpldi cr7, r11, 3	/* if count > 4 ; perform unrolling 4 times  */
++	ble 7, L(update1)
++
++	ld r10, 0(r4)		/* load doubleWord from src  */
++	cmpb r8, r10, r8	/* compare src with NULL ,we read just now  */
++	cmpdi cr7, r8, 0	/* if cmpb returned NULL ; we continue  */
++	bne cr7, L(update3)
++
++	std r10, 0(r3)		/* copy doubleword at offset=0  */
++	ld r10, 8(r4)		/* load next doubleword from offset=8  */
++	cmpb r8, r10, r8	/* compare src with NULL , we read just now  */
++	cmpdi cr7, r8, 0	/* if cmpb returned NULL ; we continue  */
++	bne 7,L(HopBy8)
++
++	addi r8, r11, -4
++	mr r7, r3
++	srdi r8, r8, 2
++	mr r6, r4
++	addi r8, r8, 1
++	li r12, 0
++	mtctr r8
++	b L(dwordCopy)
++
++	.p2align 4
++L(dWordUnroll):
++	std r8, 16(r9)
++	ld r8, 24(r4)		/* load dword,perform loop unrolling again  */
++	cmpb r10, r8, r10
++	cmpdi cr7, r10, 0
++	bne cr7, L(HopBy24)
++
++	std r8, 24(r7)		/* copy dword at offset=24  */
++	addi r9, r9, 32
++	addi r4, r4, 32
++	bdz  L(leftDwords)	/* continue with loop on counter  */
++
++	ld r3, 32(r6)
++	cmpb r8, r3, r10
++	cmpdi cr7, r8, 0
++	bne cr7, L(update2)
++
++	std r3, 32(r7)
++	ld r10, 40(r6)
++	cmpb r8, r10, r8
++	cmpdi cr7, r8, 0
++	bne cr7, L(HopBy40)
++
++	mr r6, r4		/* update values  */
++	mr r7, r9
++	mr r11, r0
++	mr r5, r19
++
++L(dwordCopy):
++	std r10, 8(r9)		/* copy dword at offset=8  */
++	addi r19, r5, -32
++	addi r0, r11, -4
++	ld r8, 16(r4)
++	cmpb r10, r8, r12
++	cmpdi cr7, r10, 0
++	beq cr7, L(dWordUnroll)
++
++	addi r9, r9, 16		/* increment dst by 16  */
++	addi r4, r4, 16		/* increment src by 16  */
++	addi r5, r5, -16	/* decrement length 'n' by 16  */
++	addi r0, r11, -2	/* decrement loop counter  */
++
++L(dWordUnrollOFF):
++	ld r10, 0(r4)		/* load first dword  */
++	li r8, 0		/* load mask  */
++	cmpb r8, r10, r8
++	cmpdi cr7, r8, 0
++	bne cr7, L(byte_by_byte)
++	mtctr r0
++	li r7, 0
++	b L(CopyDword)
++
++	.p2align 4
++L(loadDWordandCompare):
++	ld r10, 0(r4)
++	cmpb r8, r10, r7
++	cmpdi cr7, r8, 0
++	bne cr7, L(byte_by_byte)
++
++L(CopyDword):
++	addi r9, r9, 8
++	std r10, -8(r9)
++	addi r4, r4, 8
++	addi r5, r5, -8
++	bdnz L(loadDWordandCompare)
++
++L(byte_by_byte):
++	cmpldi cr7, r5, 3
++	ble cr7, L(verifyByte)
++	srdi r10, r5, 2
++	mr r19, r9
++	mtctr r10
++	b L(firstByteUnroll)
++
++	.p2align 4
++L(bytes_unroll):
++	lbz r10, 1(r4)		/* load byte from src  */
++	cmpdi cr7, r10, 0	/* compare for NULL  */
++	stb r10, 1(r19)		/* store byte to dst  */
++	beq cr7, L(updtDestComputeN2ndByte)
++
++	addi r4, r4, 4		/* advance src  */
++
++	lbz r10, -2(r4)		/* perform loop unrolling for byte r/w  */
++	cmpdi cr7, r10, 0
++	stb r10, 2(r19)
++	beq cr7, L(updtDestComputeN3rdByte)
++
++	lbz r10, -1(r4)		/* perform loop unrolling for byte r/w  */
++	addi r19, r19, 4
++	cmpdi cr7, r10, 0
++	stb r10, -1(r19)
++	beq cr7, L(ComputeNByte)
++
++	bdz L(update0)
++
++L(firstByteUnroll):
++	lbz r10, 0(r4)		/* perform loop unrolling for byte r/w  */
++	cmpdi cr7, 10, 0
++	stb r10, 0(r19)
++	bne cr7, L(bytes_unroll)
++	addi r19, r19, 1
++
++L(ComputeNByte):
++	subf r9, r19, r9	/* compute 'n'n bytes to fill  */
++	add r8, r9, r5
++
++L(zeroFill):
++	cmpdi cr7, r8, 0	/* compare if length is zero  */
++	beq cr7, L(update3return)
++
++	mr r3, r19		/* fill buffer with  */
++	li r4, 0		/* zero fill buffer  */
++	mr r5, r8		/* how many bytes to fill buffer with  */
++	bl MEMSET		/* call optimized memset  */
++	nop
++
++L(update3return):
++#ifdef USE_AS_STPNCPY
++	addi r3, r19, -1	/* update return value  */
++#endif
++
++L(hop2return):
++#ifndef USE_AS_STPNCPY
++	mr r3, r18		/* set return value  */
++#endif
++	addi r1, r1, FRAMESIZE	/* restore stack pointer  */
++	ld r0, 16(r1)		/* read the saved link register  */
++	ld r18, -16(r1)		/* restore callers save register, r18  */
++	ld r19, -8(r1)		/* restore callers save register, r19  */
++	mtlr r0			/* branch to link register  */
++	blr			/* return  */
++
++	.p2align 4
++L(update0):
++	mr r9, r19
++
++	.p2align 4
++L(verifyByte):
++	rldicl. r8, r5, 0, 62
++#ifdef USE_AS_STPNCPY
++	mr r3, r9
++#endif
++	beq cr0, L(hop2return)
++	mtctr r8
++	addi r4, r4, -1
++	mr r19, r9
++	b L(oneBYone)
++
++	.p2align 4
++L(proceed):
++	bdz L(done)
++
++L(oneBYone):
++	lbzu r10, 1(r4)		/* copy byte  */
++	addi r19, r19, 1
++	addi r8, r8, -1
++	cmpdi cr7, r10, 0
++	stb r10, -1(r19)
++	bne cr7, L(proceed)
++	b L(zeroFill)
++
++	.p2align 4
++L(done):
++	addi r1, r1, FRAMESIZE	/* restore stack pointer  */
++#ifdef USE_AS_STPNCPY
++	mr r3, r19		/* set the return value  */
++#else
++	mr r3, r18		/* set the return value  */
++#endif
++	ld r0, 16(r1)		/* read the saved link register  */
++	ld r18, -16(r1)		/* restore callers save register, r18  */
++	ld r19, -8(r1)		/* restore callers save register, r19  */
++	mtlr r0			/* branch to link register  */
++	blr			/* return  */
++
++L(update1):
++	mr r0, r11
++	mr r19, r5
++
++	.p2align 4
++L(leftDwords):
++	cmpdi cr7, r0, 0
++	mr r5, r19
++	bne cr7, L(dWordUnrollOFF)
++	b L(byte_by_byte)
++
++	.p2align 4
++L(updtDestComputeN2ndByte):
++	addi r19, r19, 2	/* update dst by 2  */
++	subf r9, r19, r9	/* compute distance covered  */
++	add r8, r9, r5
++	b L(zeroFill)
++
++	.p2align 4
++L(updtDestComputeN3rdByte):
++	addi r19, r19, 3	/* update dst by 3  */
++	subf r9, r19, r9	/* compute distance covered  */
++	add r8, r9, r5
++	b L(zeroFill)
++
++	.p2align 4
++L(HopBy24):
++	addi r9, r9, 24		/* increment dst by 24  */
++	addi r4, r4, 24		/* increment src by 24  */
++	addi r5, r5, -24	/* decrement length 'n' by 24  */
++	addi r0, r11, -3	/* decrement loop counter  */
++	b L(dWordUnrollOFF)
++
++	.p2align 4
++L(update2):
++	mr r5, r19
++	b L(dWordUnrollOFF)
++
++	.p2align 4
++L(HopBy40):
++	addi r9, r7, 40		/* increment dst by 40  */
++	addi r4, r6, 40		/* increment src by 40  */
++	addi r5, r5, -40	/* decrement length 'n' by 40  */
++	addi r0, r11, -5	/* decrement loop counter  */
++	b L(dWordUnrollOFF)
++
++L(update3):
++	mr r0, r11
++	b L(dWordUnrollOFF)
++
++L(HopBy8):
++	addi r9, r3, 8		/* increment dst by 8  */
++	addi r4, r4, 8		/* increment src by 8  */
++	addi r5, r5, -8		/* decrement length 'n' by 8  */
++	addi r0, r11, -1	/* decrement loop counter  */
++	b L(dWordUnrollOFF)
++END(FUNC_NAME)
++#ifndef USE_AS_STPNCPY
++libc_hidden_builtin_def (strncpy)
++#endif
+diff --git a/sysdeps/powerpc/powerpc64/power8/stpncpy.S b/sysdeps/powerpc/powerpc64/power8/stpncpy.S
+new file mode 100644
+index 0000000..76a1466
+--- /dev/null
++++ b/sysdeps/powerpc/powerpc64/power8/stpncpy.S
+@@ -0,0 +1,20 @@
++/* Optimized stpncpy implementation for PowerPC64/POWER8.
++   Copyright (C) 2015 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#define USE_AS_STPNCPY
++#include <sysdeps/powerpc/powerpc64/power8/strncpy.S>
+diff --git a/sysdeps/powerpc/powerpc64/power8/strncpy.S b/sysdeps/powerpc/powerpc64/power8/strncpy.S
+new file mode 100644
+index 0000000..5fda953
+--- /dev/null
++++ b/sysdeps/powerpc/powerpc64/power8/strncpy.S
+@@ -0,0 +1,424 @@
++/* Optimized strncpy/stpncpy implementation for PowerPC64/POWER8.
++   Copyright (C) 2015 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <sysdep.h>
++
++#ifdef USE_AS_STPNCPY
++# define FUNC_NAME __stpncpy
++#else
++# define FUNC_NAME strncpy
++#endif
++
++/* Implements the function
++
++   char * [r3] strncpy (char *dest [r3], const char *src [r4], size_t n [r5])
++
++   or
++
++   char * [r3] stpncpy (char *dest [r3], const char *src [r4], size_t n [r5])
++
++   if USE_AS_STPCPY is defined.
++
++   The implementation uses unaligned doubleword access to avoid specialized
++   code paths depending of data alignment.  Although recent powerpc64 uses
++   64K as default, the page cross handling assumes minimum page size of
++   4k.  */
++
++	.machine  power7
++EALIGN (FUNC_NAME, 4, 0)
++
++        /* Check if the [src]+15 will cross a 4K page by checking if the bit
++           indicating the page size changes.  Basically:
++
++           uint64_t srcin = (uint64_t)src;
++           uint64_t ob = srcin & 4096UL;
++           uint64_t nb = (srcin+15UL) & 4096UL;
++           if (ob ^ nb)
++             goto pagecross;  */
++
++	addi	r10,r4,16
++	rlwinm	r9,r4,0,19,19
++
++	/* Since it is a leaf function, save some non-volatile registers on the
++	   protected/red zone.  */
++	std	r26,-48(r1)
++	std	r27,-40(r1)
++
++	rlwinm	r8,r10,0,19,19
++
++	std	r28,-32(r1)
++	std	r29,-24(r1)
++
++	cmpld	r7,r9,r8
++
++	std	r30,-16(r1)
++	std	r31,-8(r1)
++
++	beq	cr7,L(unaligned_lt_16)
++	rldicl	r9,r4,0,61
++	subfic	r8,r9,8
++	cmpld	cr7,r5,r8
++	bgt 	cr7,L(pagecross)
++
++	/* At this points there is 1 to 15 bytes to check and write.  Since it could
++	   be either from first unaligned 16 bytes access or from bulk copy, the code
++	   uses an unrolled byte read/write instead of trying to analyze the cmpb
++	   results.  */
++L(short_path):
++	mr	r9,r3
++L(short_path_1):
++	cmpdi	cr7,r5,0
++	beq	cr7,L(short_path_loop_end_1)
++L(short_path_2):
++	lbz	r10,0(r4)
++	cmpdi	cr7,r10,0
++	stb	r10,0(r9)
++	beq	cr7,L(zero_pad_start_1)
++	cmpdi	cr0,r5,1
++	addi	r8,r9,1
++	addi	r6,r5,-1
++	beq	cr0,L(short_path_loop_end_0)
++	lbz	r10,1(r4)
++	cmpdi	cr7,r10,0
++	stb	r10,1(r9)
++	beq	cr7,L(zero_pad_start_prepare_1)
++	addi	r10,r5,-3
++	b	L(short_path_loop_1)
++
++	.align	4
++L(short_path_loop):
++	lbz	r8,0(r4)
++	addi	r7,r10,-2
++	cmpdi	cr5,r8,0
++	stb	r8,0(r9)
++	beq	cr5,L(zero_pad_start_1)
++	beq	r7,L(short_path_loop_end_0)
++	lbz	r8,1(r4)
++	cmpdi	cr7,r8,0
++	stb	r8,1(r9)
++	beq	cr7,L(zero_pad_start)
++	mr	r10,r7
++L(short_path_loop_1):
++	addic.	r5,r5,-2
++	addi	r9,r9,2
++	cmpdi	cr7,r10,0
++	addi	r4,r4,2
++	addi	r6,r9,1
++	bne	cr0,L(short_path_loop)
++#ifdef USE_AS_STPNCPY
++	mr	r3,r9
++	b	L(short_path_loop_end)
++#endif
++
++L(short_path_loop_end_0):
++#ifdef USE_AS_STPNCPY
++	addi	r3,r9,1
++	b	L(short_path_loop_end)
++#endif
++L(short_path_loop_end_1):
++#ifdef USE_AS_STPNCPY
++	mr	r3,r9
++#endif
++L(short_path_loop_end):
++	/* Restore non-volatile registers.  */
++	ld	r26,-48(r1)
++	ld	r27,-40(r1)
++	ld	r28,-32(r1)
++	ld	r29,-24(r1)
++	ld	r30,-16(r1)
++	ld	r31,-8(r1)
++	blr
++
++	/* This code pads the remainder dest with NULL bytes.  The algorithm
++	   calculate the remanining size and issues a doubleword unrolled
++	   loops followed by a byte a byte set.  */
++	.align	4
++L(zero_pad_start):
++	mr	r5,r10
++	mr	r9,r6
++L(zero_pad_start_1):
++	srdi.	r8,r5,r3
++	mr	r10,r9
++#ifdef USE_AS_STPNCPY
++	mr	r3,r9
++#endif
++	beq-	cr0,L(zero_pad_loop_b_start)
++	cmpldi	cr7,r8,1
++	li	cr7,0
++	std	r7,0(r9)
++	beq	cr7,L(zero_pad_loop_b_prepare)
++	addic.	r8,r8,-2
++	addi	r10,r9,r16
++	std	r7,8(r9)
++	beq	cr0,L(zero_pad_loop_dw_2)
++	std	r7,16(r9)
++	li	r9,0
++	b	L(zero_pad_loop_dw_1)
++
++	.align	4
++L(zero_pad_loop_dw):
++	addi	r10,r10,16
++	std	r9,-8(r10)
++	beq	cr0,L(zero_pad_loop_dw_2)
++	std	r9,0(r10)
++L(zero_pad_loop_dw_1):
++	cmpldi	cr7,r8,1
++	std	r9,0(r10)
++	addic.	r8,r8,-2
++	bne	cr7,L(zero_pad_loop_dw)
++	addi	r10,r10,8
++L(zero_pad_loop_dw_2):
++	rldicl	r5,r5,0,61
++L(zero_pad_loop_b_start):
++	cmpdi	cr7,r5,0
++	addi	r5,r5,-1
++	addi	r9,r10,-1
++	add	r10,r10,5
++	subf	r10,r9,r10
++	li	r8,0
++	beq-	cr7,L(short_path_loop_end)
++
++	/* Write remaining 1-8 bytes.  */
++        .align  4
++	addi	r9,r9,1
++	mtocrf	0x1,r10
++	bf	29,4f
++        stw     r8,0(r9)
++        addi	r9,r9,4
++
++        .align  4
++4:      bf      30,2f
++        sth     r8,0(r9)
++        addi	r9,r9,2
++
++        .align  4
++2:      bf	31,1f
++        stb	r8,0(r9)
++
++	/* Restore non-volatile registers.  */
++1:	ld	r26,-48(r1)
++	ld	r27,-40(r1)
++	ld	r28,-32(r1)
++	ld	r29,-24(r1)
++	ld	r30,-16(r1)
++	ld	r31,-8(r1)
++	blr
++
++	/* The common case where [src]+16 will not cross a 4K page boundary.
++	   In this case the code fast check the first 16 bytes by using doubleword
++	   read/compares and update destiny if neither total size or null byte
++	   is found in destiny. */
++	.align	4
++L(unaligned_lt_16):
++	cmpldi	cr7,r5,7
++	ble	cr7,L(short_path)
++	ld	r7,0(r4)
++	li	r8,0
++	cmpb	r8,r7,r8
++	cmpdi	cr7,r8,0
++	bne	cr7,L(short_path_prepare_2)
++	addi	r6,r5,-8
++	std	r7,0(r3)
++	addi	r9,r3,r8
++	cmpldi	cr7,r6,7
++	addi	r7,r4,8
++	ble	cr7,L(short_path_prepare_1_1)
++	ld	r4,8(r4)
++	cmpb	r8,r4,r8
++	cmpdi	cr7,r8,0
++	bne	cr7,L(short_path_prepare_2_1)
++	std	r4,8(r3)
++	addi	r29,r3,16
++	addi	r5,r5,-16
++	/* Neither the null byte was found or total length was reached,
++	   align to 16 bytes and issue a bulk copy/compare.  */
++	b	L(align_to_16b)
++
++	/* In the case of 4k page boundary cross, the algorithm first align
++	   the address to a doubleword, calculate a mask based on alignment
++	   to ignore the bytes and continue using doubleword.  */
++	.align	4
++L(pagecross):
++	rldicr	r11,r4,0,59	/* Align the address to 8 bytes boundary.  */
++	li	r6,-1		/* MASK = 0xffffffffffffffffUL.  */
++	sldi	r9,r9,3		/* Calculate padding.  */
++	ld	r7,0(r11)	/* Load doubleword from memory.  */
++#ifdef __LITTLE_ENDIAN__
++	sld	r9,r6,r9	/* MASK = MASK << padding.  */
++#else
++	srd	r9,r6,r9	/* MASK = MASK >> padding.  */
++#endif
++	orc	r9,r7,r9	/* Mask bits that are not part of the
++				   string.  */
++	li	cr7,0
++	cmpb	r9,r9,r7	/* Check for null bytes in DWORD1.  */
++	cmpdi	cr7,r9,0
++	bne	cr7,L(short_path_prepare_2)
++	subf	r8,r8,r5	/* Adjust total length.  */
++	cmpldi	cr7,r8,8	/* Check if length was reached.  */
++	ble	cr7,L(short_path_prepare_2)
++
++	/* For next checks we have aligned address, so we check for more
++	   three doublewords to make sure we can read 16 unaligned bytes
++	   to start the bulk copy with 16 aligned addresses.  */
++	ld	cr7,8(r11)
++	cmpb	r9,r7,r9
++	cmpdi	cr7,r9,0
++	bne	cr7,L(short_path_prepare_2)
++	addi	cr7,r8,-8
++	cmpldi	cr7,r7,8
++	ble	cr7,L(short_path_prepare_2)
++	ld	cr7,16(r11)
++	cmpb	r9,r7,r9
++	cmpdi	cr7,r9,0
++	bne	cr7,L(short_path_prepare_2)
++	addi	r8,r8,-16
++	cmpldi	r7,r8,8
++	ble	cr7,L(short_path_prepare_2)
++	ld	r8,24(r11)
++	cmpb	r9,r8,r9
++	cmpdi	r7,r9,0
++	bne	cr7,L(short_path_prepare_2)
++
++	/* No null byte found in the 32 bytes readed and length not reached,
++	   read source again using unaligned loads and store them.  */
++	ld	r9,0(r4)
++	addi	r29,r3,16
++	addi	r5,r5,-16
++	std	r9,0(r3)
++	ld	r9,8(r4)
++	std	r9,8(r3)
++
++	/* Align source to 16 bytes and adjust destiny and size.  */
++L(align_to_16b):
++	rldicl	r9,r10,0,60
++	rldicr	r28,r10,0,59
++	add	r12,r5,r9
++	subf	r29,r9,r29
++
++	/* The bulk read/compare/copy loads two doublewords, compare and merge
++	   in a single register for speed.  This is an attempt to speed up the
++	   null-checking process for bigger strings.  */
++
++	cmpldi	cr7,r12,15
++	ble	cr7,L(short_path_prepare_1_2)
++
++	/* Main loop for large sizes, unrolled 2 times to get better use of
++	   pipeline.  */
++	ld	r8,0(28)
++	ld	r10,8(28)
++	li	r9,0
++	cmpb	r7,r8,r9
++	cmpb	r9,r10,r9
++	or.	r6,r9,r7
++	bne	cr0,L(short_path_prepare_2_3)
++	addi	r5,r12,-16
++	addi	r4,r28,16
++	std	r8,0(r29)
++	std	r10,8(r29)
++	cmpldi	cr7,r5,15
++	addi	r9,r29,16
++	ble	cr7,L(short_path_1)
++	mr	r11,r28
++	mr	r6,r29
++	li	r30,0
++	subfic	r26,r4,48
++	subfic	r27,r9,48
++
++	b	L(loop_16b)
++
++	.align	4
++L(loop_start):
++	ld	r31,0(r11)
++	ld	r10,8(r11)
++	cmpb	r0,r31,r7
++	cmpb	r8,r10,r7
++	or.	r7,r0,r8
++	addi	r5,r5,-32
++	cmpldi	cr7,r5,15
++	add	r4,r4,r26
++	add	r9,r9,r27
++	bne	cr0,L(short_path_prepare_2_2)
++	add	r4,r28,r4
++	std	r31,0(r6)
++	add	r9,r29,r9
++	std	r10,8(r6)
++	ble	cr7,L(short_path_1)
++
++L(loop_16b):
++	ld	r10,16(r11)
++	ld	r0,24(r11)
++	cmpb	r8,r10,r30
++	cmpb	r7,r0,r30
++	or.	r7,r8,r7
++	addi	r12,r12,-32
++	cmpldi	r7,r12,15
++	addi	r11,r11,32
++	bne	cr0,L(short_path_2)
++	std	r10,16(r6)
++	addi	r6,r6,32
++	std	r0,-8(r6)
++	bgt	cr7,L(loop_start)
++
++	mr	r5,r12
++	mr	r4,r11
++	mr	r9,r6
++	b	L(short_path_1)
++
++	.align	4
++L(short_path_prepare_1_1):
++	mr	r5,r6
++	mr	r4,r7
++	b	L(short_path_1)
++L(short_path_prepare_1_2):
++	mr	r5,r12
++	mr	r4,r28
++	mr	r9,r29
++	b	L(short_path_1)
++L(short_path_prepare_2):
++	mr	r9,r3
++	b	L(short_path_2)
++L(short_path_prepare_2_1):
++	mr	r5,r6
++	mr	r4,r7
++	b	L(short_path_2)
++L(short_path_prepare_2_2):
++	mr	r5,r12
++	mr	r4,r11
++	mr	r9,r6
++	b	L(short_path_2)
++L(short_path_prepare_2_3):
++	mr	r5,r12
++	mr	r4,r28
++	mr	r9,r29
++	b	L(short_path_2)
++L(zero_pad_loop_b_prepare):
++	addi	r10,r9,8
++	rldicl	r5,r5,0,61
++	b	L(zero_pad_loop_b_start)
++L(zero_pad_start_prepare_1):
++	mr	r5,r6
++	mr	r9,r8
++	b	L(zero_pad_start_1)
++END (FUNC_NAME)
++
++#ifdef USE_AS_STPNCPY
++libc_hidden_def (__stpncpy)
++#else
++libc_hidden_builtin_def (strncpy)
++#endif

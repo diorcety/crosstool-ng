@@ -1,0 +1,123 @@
+diff --git glibc-2.17-c758a686/elf/tst-stackguard1.c glibc-2.17-c758a686/elf/tst-stackguard1.c
+index 2b4fd9a..fba60bd 100644
+--- glibc-2.17-c758a686/elf/tst-stackguard1.c
++++ glibc-2.17-c758a686/elf/tst-stackguard1.c
+@@ -23,6 +23,7 @@
+ #include <string.h>
+ #include <sys/wait.h>
+ #include <stackguard-macros.h>
++#include <tls.h>
+ #include <unistd.h>
+ 
+ static const char *command;
+diff --git glibc-2.17-c758a686/include/errno.h glibc-2.17-c758a686/include/errno.h
+index 98c6080..f1b93a8 100644
+--- glibc-2.17-c758a686/include/errno.h
++++ glibc-2.17-c758a686/include/errno.h
+@@ -17,7 +17,7 @@
+ #  define errno rtld_errno
+ extern int rtld_errno attribute_hidden;
+ 
+-# else
++# elif !defined NOT_IN_libc || defined IN_LIB
+ 
+ #  include <tls.h>
+ 
+@@ -29,7 +29,7 @@ extern int rtld_errno attribute_hidden;
+ #  endif
+ extern __thread int errno attribute_tls_model_ie;
+ 
+-# endif	/* RTLD_PRIVATE_ERRNO */
++# endif	/* !NOT_IN_libc || IN_LIB */
+ 
+ # define __set_errno(val) (errno = (val))
+ 
+diff --git glibc-2.17-c758a686/include/netdb.h glibc-2.17-c758a686/include/netdb.h
+index 3f2ae06..8a569ba 100644
+--- glibc-2.17-c758a686/include/netdb.h
++++ glibc-2.17-c758a686/include/netdb.h
+@@ -3,18 +3,20 @@
+ 
+ #ifndef _ISOMAC
+ /* Macros for accessing h_errno from inside libc.  */
+-# undef  h_errno
+-# ifdef _LIBC_REENTRANT
+-#  include <tls.h>
+-#  ifndef NOT_IN_libc
+-#   define h_errno __libc_h_errno
+-#  else
+-#   define h_errno h_errno	/* For #ifndef h_errno tests.  */
+-#  endif
++# if !defined NOT_IN_libc || defined IN_LIB
++#  undef  h_errno
++#  ifdef _LIBC_REENTRANT
++#   include <tls.h>
++#   ifndef NOT_IN_libc
++#    define h_errno __libc_h_errno
++#   else
++#    define h_errno h_errno	/* For #ifndef h_errno tests.  */
++#   endif
+ extern __thread int h_errno attribute_tls_model_ie;
+-# else
++#  else
+ extern int h_errno;
+-# endif	/* _LIBC_REENTRANT */
++#  endif	/* _LIBC_REENTRANT */
++# endif /* !NOT_IN_libc || IN_LIB */
+ # define __set_h_errno(x) (h_errno = (x))
+ 
+ libc_hidden_proto (hstrerror)
+diff --git glibc-2.17-c758a686/nptl/tst-cancel14.c glibc-2.17-c758a686/nptl/tst-cancel14.c
+index fbaed49..ca9042d 100644
+--- glibc-2.17-c758a686/nptl/tst-cancel14.c
++++ glibc-2.17-c758a686/nptl/tst-cancel14.c
+@@ -23,6 +23,7 @@
+ #include <stdlib.h>
+ #include <string.h>
+ #include <unistd.h>
++#include <sys/time.h>
+ 
+ 
+ static pthread_barrier_t bar;
+diff --git glibc-2.17-c758a686/nptl/tst-cancel15.c glibc-2.17-c758a686/nptl/tst-cancel15.c
+index 0119cc7..3f320ad 100644
+--- glibc-2.17-c758a686/nptl/tst-cancel15.c
++++ glibc-2.17-c758a686/nptl/tst-cancel15.c
+@@ -23,6 +23,7 @@
+ #include <stdlib.h>
+ #include <string.h>
+ #include <unistd.h>
++#include <sys/time.h>
+ 
+ 
+ static pthread_barrier_t bar;
+diff --git glibc-2.17-c758a686/nptl/tst-mutex9.c glibc-2.17-c758a686/nptl/tst-mutex9.c
+index adb3b61..1d689bd 100644
+--- glibc-2.17-c758a686/nptl/tst-mutex9.c
++++ glibc-2.17-c758a686/nptl/tst-mutex9.c
+@@ -18,10 +18,13 @@
+ 
+ #include <errno.h>
+ #include <pthread.h>
++#include <stdint.h>
+ #include <stdio.h>
++#include <stdlib.h>
+ #include <string.h>
+ #include <unistd.h>
+ #include <sys/mman.h>
++#include <sys/time.h>
+ #include <sys/wait.h>
+ 
+ 
+diff --git glibc-2.17-c758a686/nptl/tst-stackguard1.c glibc-2.17-c758a686/nptl/tst-stackguard1.c
+index f0f707f..57a48ad 100644
+--- glibc-2.17-c758a686/nptl/tst-stackguard1.c
++++ glibc-2.17-c758a686/nptl/tst-stackguard1.c
+@@ -24,6 +24,7 @@
+ #include <string.h>
+ #include <sys/wait.h>
+ #include <stackguard-macros.h>
++#include <tls.h>
+ #include <unistd.h>
+ 
+ static const char *command;

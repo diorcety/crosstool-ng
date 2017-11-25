@@ -1,0 +1,56 @@
+diff -pruN glibc-2.17-c758a686/nptl/pt-crti.S glibc-2.17-c758a686/nptl/pt-crti.S
+--- glibc-2.17-c758a686/nptl/pt-crti.S	2012-12-25 08:32:13.000000000 +0530
++++ glibc-2.17-c758a686/nptl/pt-crti.S	2013-07-30 15:53:08.416386853 +0530
+@@ -39,5 +39,6 @@
+ 
+ #define PREINIT_FUNCTION __pthread_initialize_minimal_internal
+ #define PREINIT_FUNCTION_WEAK 0
++#define PREINIT_FUNCTION_HAS_ARGS 1
+ 
+ #include <crti.S>
+diff -pruN glibc-2.17-c758a686/sysdeps/i386/crti.S glibc-2.17-c758a686/sysdeps/i386/crti.S
+--- glibc-2.17-c758a686/sysdeps/i386/crti.S	2012-12-25 08:32:13.000000000 +0530
++++ glibc-2.17-c758a686/sysdeps/i386/crti.S	2013-07-30 16:38:41.085291690 +0530
+@@ -49,6 +49,13 @@
+ # define PREINIT_FUNCTION_WEAK 1
+ #endif
+ 
++/* If the preinit function takes the argc, argv and envp arguments, push them
++   again on top before making the call.  This is only used by for pt-crti for
++   nptl.  */
++#ifndef PREINIT_FUNCTION_HAS_ARGS
++# define PREINIT_FUNCTION_HAS_ARGS 0
++#endif
++
+ #if PREINIT_FUNCTION_WEAK
+ 	weak_extern (PREINIT_FUNCTION)
+ #else
+@@ -64,6 +68,18 @@ _init:
+ 	/* Maintain 16-byte stack alignment for called functions.  */
+ 	subl $8, %esp
+ 	LOAD_PIC_REG (bx)
++#if PREINIT_FUNCTION_HAS_ARGS
++/* Get argc, argv and envp from the stack and push them again on top so that
++   the called function can access them.  Maintain 16-byte alignment for value
++   in %esp for called functions.  */
++	movl 16(%esp), %eax
++	movl 20(%esp), %ecx
++	movl 24(%esp), %edx
++	subl $4, %esp
++	pushl %edx
++	pushl %ecx
++	pushl %eax
++#endif
+ #if PREINIT_FUNCTION_WEAK
+ 	movl PREINIT_FUNCTION@GOT(%ebx), %eax
+ 	testl %eax, %eax
+@@ -73,6 +89,9 @@ _init:
+ #else
+ 	call PREINIT_FUNCTION
+ #endif
++#if PREINIT_FUNCTION_HAS_ARGS
++	addl $16, %esp
++#endif
+ 
+ 	.section .fini,"ax",@progbits
+ 	.p2align 2

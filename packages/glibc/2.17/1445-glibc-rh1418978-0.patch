@@ -1,0 +1,108 @@
+This patch backports the makefile changes related to the support/
+framework.  It is based on upstream commits
+c23de0aacbeaa7a091609b35764bed931475a16d (support: Introduce new
+subdirectory for test infrastructure) and
+76dcbf42df83c970c13c786d287f1ec69e1b91eb (Expose linking against
+libsupport as make dependency).
+
+The actual contents of the support/ subdirectory is kept in a separate
+patch, so that it can be updated separately.
+
+Index: b/Makeconfig
+===================================================================
+--- a/Makeconfig
++++ b/Makeconfig
+@@ -384,6 +384,9 @@ LDFLAGS.so += $(hashstyle-LDFLAGS)
+ LDFLAGS-rtld += $(hashstyle-LDFLAGS)
+ endif
+ 
++# Additional libraries to link into every test.
++link-extra-libs-tests = $(libsupport)
++
+ # Command for linking PIE programs with the C library.
+ ifndef +link-pie
+ +link-pie = $(CC) -pie -Wl,-O1 -nostdlib -nostartfiles -o $@ \
+@@ -464,7 +467,7 @@ link-libc-before-gnulib = -Wl,-rpath-lin
+ link-libc = $(link-libc-before-gnulib) $(gnulib)
+ link-libc-tests = $(link-libc-before-gnulib) $(gnulib-tests)
+ # This is how to find at build-time things that will be installed there.
+-rpath-dirs = math elf dlfcn nss nis rt resolv crypt
++rpath-dirs = math elf dlfcn nss nis rt resolv crypt support
+ rpath-link = \
+ $(common-objdir):$(subst $(empty) ,:,$(patsubst ../$(subdir),.,$(rpath-dirs:%=$(common-objpfx)%)))
+ else
+@@ -732,7 +735,7 @@ libio-include = -I$(..)libio
+ # List of non-library modules that we build.
+ built-modules = iconvprogs iconvdata ldconfig lddlibc4 libmemusage \
+ 		libSegFault libpcprofile librpcsvc locale-programs \
+-		memusagestat nonlib nscd extramodules libnldbl
++		memusagestat nonlib nscd extramodules libnldbl libsupport
+ 
+ in-module = $(subst -,_,$(firstword $(libof-$(basename $(@F))) \
+ 				    $(libof-$(<F)) \
+@@ -1022,6 +1025,12 @@ else
+ libm = $(common-objpfx)math/libm.a
+ endif
+ 
++ifeq ($(build-shared),yes)
++libsupport = $(common-objpfx)support/libsupport_nonshared.a
++else
++libsupport = $(common-objpfx)support/libsupport.a
++endif
++
+ # These are the subdirectories containing the library source.  The order
+ # is more or less arbitrary.  The sorting step will take care of the
+ # dependencies.
+@@ -1029,7 +1038,7 @@ all-subdirs = csu assert ctype locale in
+ 	      stdlib stdio-common libio malloc string wcsmbs time dirent    \
+ 	      grp pwd posix io termios resource misc socket sysvipc gmon    \
+ 	      gnulib iconv iconvdata wctype manual shadow gshadow po argp   \
+-	      crypt nss localedata timezone rt conform debug		    \
++	      crypt nss localedata timezone rt conform debug support	    \
+ 	      $(add-on-subdirs) dlfcn elf
+ 
+ ifndef avoid-generated
+Index: b/Rules
+===================================================================
+--- a/Rules
++++ b/Rules
+@@ -142,6 +142,7 @@ endif
+ 
+ ifneq "$(strip $(binaries-shared-tests))" ""
+ $(addprefix $(objpfx),$(binaries-shared-tests)): %: %.o \
++  $(link-extra-libs-tests) \
+   $(sort $(filter $(common-objpfx)lib%,$(link-libc))) \
+   $(addprefix $(csu-objpfx),start.o) $(+preinit) $(+postinit)
+ 	$(+link-tests)
+@@ -163,6 +164,7 @@ endif
+ 
+ ifneq "$(strip $(binaries-static-tests))" ""
+ $(addprefix $(objpfx),$(binaries-static-tests)): %: %.o \
++  $(link-extra-libs-tests) \
+   $(sort $(filter $(common-objpfx)lib%,$(link-libc-static-tests))) \
+   $(addprefix $(csu-objpfx),start.o) $(+preinit) $(+postinit)
+ 	$(+link-static-tests)
+Index: b/extra-lib.mk
+===================================================================
+--- a/extra-lib.mk
++++ b/extra-lib.mk
+@@ -5,6 +5,9 @@
+ # The variable $($(lib)-routines) defines the list of modules
+ # to be included in that library.  A sysdep Makefile can add to
+ # $(lib)-sysdep_routines to include additional modules.
++#
++# Libraries listed in $(extra-libs-noinstall) are built, but not
++# installed.
+ 
+ lib := $(firstword $(extra-libs-left))
+ extra-libs-left := $(filter-out $(lib),$(extra-libs-left))
+@@ -28,7 +31,9 @@ extra-objs := $(extra-objs)
+ all-$(lib)-routines := $($(lib)-routines) $($(lib)-sysdep_routines)
+ 
+ # Add each flavor of library to the lists of things to build and install.
++ifeq (,$(filter $(lib), $(extra-libs-noinstall)))
+ install-lib += $(foreach o,$(object-suffixes-$(lib)),$(lib:lib%=$(libtype$o)))
++endif
+ extra-objs += $(foreach o,$(filter-out .os .oS,$(object-suffixes-$(lib))),\
+ 			$(patsubst %,%$o,$(filter-out \
+ 					   $($(lib)-shared-only-routines),\

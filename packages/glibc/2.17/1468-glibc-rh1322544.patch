@@ -1,0 +1,21 @@
+commit 217a74a85cdd60df236c296ad88142b78d35eccf
+Author: Andreas Schwab <schwab@suse.de>
+Date:   Mon Dec 8 15:13:38 2014 +0100
+
+    Don't touch user-controlled stdio locks in forked child (bug 12847)
+    
+    The stdio locks for streams with the _IO_USER_LOCK flag should not be
+    touched by internal code.
+
+--- glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/fork.c
++++ glibc-2.17-c758a686/nptl/sysdeps/unix/sysv/linux/fork.c
+@@ -45,7 +45,8 @@
+   _IO_ITER i;
+ 
+   for (i = _IO_iter_begin(); i != _IO_iter_end(); i = _IO_iter_next(i))
+-    _IO_lock_init (*((_IO_lock_t *) _IO_iter_file(i)->_lock));
++    if ((_IO_iter_file (i)->_flags & _IO_USER_LOCK) == 0)
++      _IO_lock_init (*((_IO_lock_t *) _IO_iter_file(i)->_lock));
+ }
+ 
+ 

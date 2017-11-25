@@ -1,0 +1,37 @@
+Remove the "power8" AT_PLATFORM directory
+
+Index: b/releng/glibc_post_upgrade.c
+===================================================================
+--- a/releng/glibc_post_upgrade.c
++++ b/releng/glibc_post_upgrade.c
+@@ -73,14 +73,23 @@ main (void)
+   int i, j, fd;
+   off_t base;
+   ssize_t ret;
++  const char *remove_dirs[] = {
+ #ifdef __i386__
+-  const char *remove_dirs[] = { "/lib/tls", "/lib/i686", "/lib/tls/i486", "/lib/tls/i586", "/lib/tls/i686" };
+-#else
+-#ifndef LIBTLS
+-#define LIBTLS "/lib/tls"
+-#endif
+-  const char *remove_dirs[] = { LIBTLS };
+-#endif
++    "/lib/tls", "/lib/i686", "/lib/tls/i486", "/lib/tls/i586", "/lib/tls/i686"
++#else /* !__i386__ */
++# ifndef LIBTLS
++#  define LIBTLS "/lib/tls"
++# endif
++# if defined (__powerpc64__)
++    /* Covers both big endian and little endian.  */
++    "/lib64/power8",
++# elif defined (__powerpc__)
++    /* Covers 32-bit only (because of the previous conditional).  */
++    "/lib/power8",
++# endif
++    LIBTLS
++#endif /* !__i386__ */
++  };
+   for (j = 0; j < sizeof (remove_dirs) / sizeof (remove_dirs[0]); ++j)
+     {
+       size_t rmlen = strlen (remove_dirs[j]);

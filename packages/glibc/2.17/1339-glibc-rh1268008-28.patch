@@ -1,0 +1,738 @@
+From f0954299ecdccf6a70cf904b8f499d15a5af3928 Mon Sep 17 00:00:00 2001
+From: Stefan Liebler <stli@linux.vnet.ibm.com>
+Date: Thu, 8 Oct 2015 13:22:47 +0200
+Subject: [PATCH 28/30] S390: Optimize wmemset.
+
+upstream-commit-id: 2e9e166761fed5dfaa53480412bef0656f1b5306
+https://www.sourceware.org/ml/libc-alpha/2015-07/msg00078.html
+
+This patch provides optimized version of wmemset with the z13 vector
+instructions.
+
+ChangeLog:
+
+	* sysdeps/s390/multiarch/wmemset-c.c: New File.
+	* sysdeps/s390/multiarch/wmemset-vx.S: Likewise.
+	* sysdeps/s390/multiarch/wmemset.c: Likewise.
+	* sysdeps/s390/multiarch/Makefile
+	(sysdep_routines): Add wmemset functions.
+	* sysdeps/s390/multiarch/ifunc-impl-list-common.c
+	(__libc_ifunc_impl_list_common): Add ifunc test for wmemset.
+	* wcsmbs/wmemset.c: Use WMEMSET if defined.
+	* string/test-memset.c: Add wmemset support.
+	* wcsmbs/test-wmemset.c: New File.
+	* wcsmbs/Makefile (strop-tests): Add wmemset.
+	* benchtests/bench-memset.c: Add wmemset support.
+	* benchtests/bench-wmemset.c: New File.
+	* benchtests/Makefile (wcsmbs-bench): Add wmemset.
+---
+ benchtests/Makefile                      |   2 +-
+ benchtests/bench-memset.c                |  63 +++++++++-----
+ benchtests/bench-wmemset.c               |  20 +++++
+ string/test-memset.c                     |  88 ++++++++++++-------
+ sysdeps/s390/multiarch/Makefile          |   3 +-
+ sysdeps/s390/multiarch/ifunc-impl-list.c |   2 +
+ sysdeps/s390/multiarch/wmemset-c.c       |  31 +++++++
+ sysdeps/s390/multiarch/wmemset-vx.S      | 142 +++++++++++++++++++++++++++++++
+ sysdeps/s390/multiarch/wmemset.c         |  27 ++++++
+ wcsmbs/Makefile                          |   2 +-
+ wcsmbs/test-wmemset-ifunc.c              |  20 +++++
+ wcsmbs/test-wmemset.c                    |  20 +++++
+ wcsmbs/wmemset.c                         |   3 +
+ 13 files changed, 368 insertions(+), 55 deletions(-)
+ create mode 100644 benchtests/bench-wmemset.c
+ create mode 100644 sysdeps/s390/multiarch/wmemset-c.c
+ create mode 100644 sysdeps/s390/multiarch/wmemset-vx.S
+ create mode 100644 sysdeps/s390/multiarch/wmemset.c
+ create mode 100644 wcsmbs/test-wmemset-ifunc.c
+ create mode 100644 wcsmbs/test-wmemset.c
+
+diff --git a/benchtests/Makefile b/benchtests/Makefile
+index b4b3127..b5edfdd 100644
+--- a/benchtests/Makefile
++++ b/benchtests/Makefile
+@@ -40,7 +40,7 @@ string-bench := bcopy bzero memccpy memchr memcmp memcpy memmem memmove \
+ 		strspn strstr strcpy_chk stpcpy_chk memrchr strsep strtok
+ wcsmbs-bench := wcslen wcsnlen wcscpy wcpcpy wcsncpy wcpncpy wcscat wcsncat \
+ 		wcsncmp wcsncmp wcschr wcschrnul wcsrchr wcsspn wcspbrk wcscspn \
+-		wmemchr
++		wmemchr wmemset
+ string-bench-all := $(string-bench) ${wcsmbs-bench}
+ 
+ stdlib-bench := strtod
+diff --git a/benchtests/bench-memset.c b/benchtests/bench-memset.c
+index 9786ce7..66c3c45 100644
+--- a/benchtests/bench-memset.c
++++ b/benchtests/bench-memset.c
+@@ -20,12 +20,29 @@
+ #ifdef TEST_BZERO
+ # define TEST_NAME "bzero"
+ #else
+-# define TEST_NAME "memset"
+-#endif
++# ifndef WIDE
++#  define TEST_NAME "memset"
++# else
++#  define TEST_NAME "wmemset"
++# endif /* WIDE */
++#endif /* !TEST_BZERO */
+ #define MIN_PAGE_SIZE 131072
+ #include "bench-string.h"
+ 
+-char *simple_memset (char *, int, size_t);
++#ifndef WIDE
++# define MEMSET memset
++# define CHAR char
++# define SIMPLE_MEMSET simple_memset
++# define MEMCMP memcmp
++#else
++# include <wchar.h>
++# define MEMSET wmemset
++# define CHAR wchar_t
++# define SIMPLE_MEMSET simple_wmemset
++# define MEMCMP wmemcmp
++#endif /* WIDE */
++
++CHAR *SIMPLE_MEMSET (CHAR *, int, size_t);
+ 
+ #ifdef TEST_BZERO
+ typedef void (*proto_t) (char *, size_t);
+@@ -39,7 +56,7 @@ IMPL (bzero, 1)
+ void
+ simple_bzero (char *s, size_t n)
+ {
+-  simple_memset (s, 0, n);
++  SIMPLE_MEMSET (s, 0, n);
+ }
+ 
+ void
+@@ -48,46 +65,50 @@ builtin_bzero (char *s, size_t n)
+   __builtin_bzero (s, n);
+ }
+ #else
+-typedef char *(*proto_t) (char *, int, size_t);
+-char *builtin_memset (char *, int, size_t);
++typedef CHAR *(*proto_t) (CHAR *, int, size_t);
+ 
+-IMPL (simple_memset, 0)
++IMPL (SIMPLE_MEMSET, 0)
++# ifndef WIDE
++char *builtin_memset (char *, int, size_t);
+ IMPL (builtin_memset, 0)
+-IMPL (memset, 1)
++# endif /* !WIDE */
++IMPL (MEMSET, 1)
+ 
++# ifndef WIDE
+ char *
+ builtin_memset (char *s, int c, size_t n)
+ {
+   return __builtin_memset (s, c, n);
+ }
+-#endif
++# endif /* !WIDE */
++#endif /* !TEST_BZERO */
+ 
+-char *
++CHAR *
+ inhibit_loop_to_libcall
+-simple_memset (char *s, int c, size_t n)
++SIMPLE_MEMSET (CHAR *s, int c, size_t n)
+ {
+-  char *r = s, *end = s + n;
++  CHAR *r = s, *end = s + n;
+   while (r < end)
+     *r++ = c;
+   return s;
+ }
+ 
+ static void
+-do_one_test (impl_t *impl, char *s, int c __attribute ((unused)), size_t n)
++do_one_test (impl_t *impl, CHAR *s, int c __attribute ((unused)), size_t n)
+ {
+   size_t i, iters = INNER_LOOP_ITERS;
+   timing_t start, stop, cur;
+-  char tstbuf[n];
++  CHAR tstbuf[n];
+ #ifdef TEST_BZERO
+   simple_bzero (tstbuf, n);
+   CALL (impl, s, n);
+   if (memcmp (s, tstbuf, n) != 0)
+ #else
+-  char *res = CALL (impl, s, c, n);
++  CHAR *res = CALL (impl, s, c, n);
+   if (res != s
+-      || simple_memset (tstbuf, c, n) != tstbuf
+-      || memcmp (s, tstbuf, n) != 0)
+-#endif
++      || SIMPLE_MEMSET (tstbuf, c, n) != tstbuf
++      || MEMCMP (s, tstbuf, n) != 0)
++#endif /* !TEST_BZERO */
+     {
+       error (0, 0, "Wrong result in function %s", impl->name);
+       ret = 1;
+@@ -101,7 +122,7 @@ do_one_test (impl_t *impl, char *s, int c __attribute ((unused)), size_t n)
+       CALL (impl, s, n);
+ #else
+       CALL (impl, s, c, n);
+-#endif
++#endif /* !TEST_BZERO */
+     }
+   TIMING_NOW (stop);
+ 
+@@ -114,13 +135,13 @@ static void
+ do_test (size_t align, int c, size_t len)
+ {
+   align &= 7;
+-  if (align + len > page_size)
++  if ((align + len) * sizeof (CHAR) > page_size)
+     return;
+ 
+   printf ("Length %4zd, alignment %2zd, c %2d:", len, align, c);
+ 
+   FOR_EACH_IMPL (impl, 0)
+-    do_one_test (impl, (char *) buf1 + align, c, len);
++    do_one_test (impl, (CHAR *) (buf1) + align, c, len);
+ 
+   putchar ('\n');
+ }
+diff --git a/benchtests/bench-wmemset.c b/benchtests/bench-wmemset.c
+new file mode 100644
+index 0000000..540829c
+--- /dev/null
++++ b/benchtests/bench-wmemset.c
+@@ -0,0 +1,20 @@
++/* Measure wmemset functions.
++   Copyright (C) 2015 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#define WIDE 1
++#include "bench-memset.c"
+diff --git a/string/test-memset.c b/string/test-memset.c
+index e556a88..99fc282 100644
+--- a/string/test-memset.c
++++ b/string/test-memset.c
+@@ -21,12 +21,33 @@
+ #ifdef TEST_BZERO
+ # define TEST_NAME "bzero"
+ #else
+-# define TEST_NAME "memset"
+-#endif
++# ifndef WIDE
++#  define TEST_NAME "memset"
++# else
++#  define TEST_NAME "wmemset"
++# endif /* WIDE */
++#endif /* !TEST_BZERO */
+ #define MIN_PAGE_SIZE 131072
+ #include "test-string.h"
+ 
+-char *simple_memset (char *, int, size_t);
++#ifndef WIDE
++# define MEMSET memset
++# define CHAR char
++# define UCHAR unsigned char
++# define SIMPLE_MEMSET simple_memset
++# define MEMCMP memcmp
++# define BIG_CHAR CHAR_MAX
++#else
++# include <wchar.h>
++# define MEMSET wmemset
++# define CHAR wchar_t
++# define UCHAR wchar_t
++# define SIMPLE_MEMSET simple_wmemset
++# define MEMCMP wmemcmp
++# define BIG_CHAR WCHAR_MAX
++#endif /* WIDE */
++
++CHAR *SIMPLE_MEMSET (CHAR *, int, size_t);
+ 
+ #ifdef TEST_BZERO
+ typedef void (*proto_t) (char *, size_t);
+@@ -40,7 +61,7 @@ IMPL (bzero, 1)
+ void
+ simple_bzero (char *s, size_t n)
+ {
+-  simple_memset (s, 0, n);
++  SIMPLE_MEMSET (s, 0, n);
+ }
+ 
+ void
+@@ -49,44 +70,48 @@ builtin_bzero (char *s, size_t n)
+   __builtin_bzero (s, n);
+ }
+ #else
+-typedef char *(*proto_t) (char *, int, size_t);
+-char *builtin_memset (char *, int, size_t);
++typedef CHAR *(*proto_t) (CHAR *, int, size_t);
+ 
+-IMPL (simple_memset, 0)
++IMPL (SIMPLE_MEMSET, 0)
++# ifndef WIDE
++char *builtin_memset (char *, int, size_t);
+ IMPL (builtin_memset, 0)
+-IMPL (memset, 1)
++# endif /* !WIDE */
++IMPL (MEMSET, 1)
+ 
++# ifndef WIDE
+ char *
+ builtin_memset (char *s, int c, size_t n)
+ {
+   return __builtin_memset (s, c, n);
+ }
+-#endif
++# endif /* !WIDE */
++#endif /* !TEST_BZERO */
+ 
+-char *
++CHAR *
+ inhibit_loop_to_libcall
+-simple_memset (char *s, int c, size_t n)
++SIMPLE_MEMSET (CHAR *s, int c, size_t n)
+ {
+-  char *r = s, *end = s + n;
++  CHAR *r = s, *end = s + n;
+   while (r < end)
+     *r++ = c;
+   return s;
+ }
+ 
+ static void
+-do_one_test (impl_t *impl, char *s, int c __attribute ((unused)), size_t n)
++do_one_test (impl_t *impl, CHAR *s, int c __attribute ((unused)), size_t n)
+ {
+-  char tstbuf[n];
++  CHAR tstbuf[n];
+ #ifdef TEST_BZERO
+   simple_bzero (tstbuf, n);
+   CALL (impl, s, n);
+   if (memcmp (s, tstbuf, n) != 0)
+ #else
+-  char *res = CALL (impl, s, c, n);
++  CHAR *res = CALL (impl, s, c, n);
+   if (res != s
+-      || simple_memset (tstbuf, c, n) != tstbuf
+-      || memcmp (s, tstbuf, n) != 0)
+-#endif
++      || SIMPLE_MEMSET (tstbuf, c, n) != tstbuf
++      || MEMCMP (s, tstbuf, n) != 0)
++#endif /* !TEST_BZERO */
+     {
+       error (0, 0, "Wrong result in function %s", impl->name);
+       ret = 1;
+@@ -98,11 +123,11 @@ static void
+ do_test (size_t align, int c, size_t len)
+ {
+   align &= 7;
+-  if (align + len > page_size)
++  if ((align + len) * sizeof (CHAR) > page_size)
+     return;
+ 
+   FOR_EACH_IMPL (impl, 0)
+-    do_one_test (impl, (char *) buf1 + align, c, len);
++    do_one_test (impl, (CHAR *) (buf1) + align, c, len);
+ }
+ 
+ #ifndef TEST_BZERO
+@@ -111,18 +136,19 @@ do_random_tests (void)
+ {
+   size_t i, j, k, n, align, len, size;
+   int c, o;
+-  unsigned char *p, *res;
++  UCHAR *p, *res;
++  UCHAR *p2 = (UCHAR *) buf2;
+ 
+-  for (i = 0; i < 65536; ++i)
+-    buf2[i] = random () & 255;
++  for (i = 0; i < 65536 / sizeof (CHAR); ++i)
++    p2[i] = random () & BIG_CHAR;
+ 
+   for (n = 0; n < ITERATIONS; n++)
+     {
+       if ((random () & 31) == 0)
+-	size = 65536;
++	size = 65536 / sizeof (CHAR);
+       else
+ 	size = 512;
+-      p = buf1 + page_size - size;
++      p = (UCHAR *) (buf1 + page_size) - size;
+       len = random () & (size - 1);
+       align = size - len - (random () & 31);
+       if (align > size)
+@@ -132,10 +158,10 @@ do_random_tests (void)
+       if ((random () & 7) == 0)
+ 	c = 0;
+       else
+-	c = random () & 255;
+-      o = random () & 255;
++	c = random () & BIG_CHAR;
++      o = random () & BIG_CHAR;
+       if (o == c)
+-        o = (c + 1) & 255;
++	o = (c + 1) & BIG_CHAR;
+       j = len + align + 128;
+       if (j > size)
+ 	j = size;
+@@ -152,11 +178,11 @@ do_random_tests (void)
+ 	{
+ 	  for (i = 0; i < len; ++i)
+ 	    {
+-	      p[i + align] = buf2[i];
++	      p[i + align] = p2[i];
+ 	      if (p[i + align] == c)
+ 		p[i + align] = o;
+ 	    }
+-	  res = (unsigned char *) CALL (impl, (char *) p + align, c, len);
++	  res = (UCHAR *) CALL (impl, (CHAR *) p + align, c, len);
+ 	  if (res != p + align)
+ 	    {
+ 	      error (0, 0, "Iteration %zd - wrong result in function %s (%zd, %d, %zd) %p != %p",
+@@ -190,7 +216,7 @@ do_random_tests (void)
+ 	}
+     }
+ }
+-#endif
++#endif /* !TEST_BZERO */
+ 
+ int
+ test_main (void)
+diff --git a/sysdeps/s390/multiarch/Makefile b/sysdeps/s390/multiarch/Makefile
+index 87dff0f..eac88e0 100644
+--- a/sysdeps/s390/multiarch/Makefile
++++ b/sysdeps/s390/multiarch/Makefile
+@@ -37,5 +37,6 @@ sysdep_routines += wcslen wcslen-vx wcslen-c \
+ 		   wcsspn wcsspn-vx wcsspn-c \
+ 		   wcspbrk wcspbrk-vx wcspbrk-c \
+ 		   wcscspn wcscspn-vx wcscspn-c \
+-		   wmemchr wmemchr-vx wmemchr-c
++		   wmemchr wmemchr-vx wmemchr-c \
++		   wmemset wmemset-vx wmemset-c
+ endif
+diff --git a/sysdeps/s390/multiarch/ifunc-impl-list.c b/sysdeps/s390/multiarch/ifunc-impl-list.c
+index c90fb6b..44d534b 100644
+--- a/sysdeps/s390/multiarch/ifunc-impl-list.c
++++ b/sysdeps/s390/multiarch/ifunc-impl-list.c
+@@ -133,6 +133,8 @@ __libc_ifunc_impl_list (const char *name, struct libc_ifunc_impl *array,
+ 
+   IFUNC_VX_IMPL (memccpy);
+ 
++  IFUNC_VX_IMPL (wmemset);
++
+ #endif /* HAVE_S390_VX_ASM_SUPPORT */
+ 
+   return i;
+diff --git a/sysdeps/s390/multiarch/wmemset-c.c b/sysdeps/s390/multiarch/wmemset-c.c
+new file mode 100644
+index 0000000..59c9a7e
+--- /dev/null
++++ b/sysdeps/s390/multiarch/wmemset-c.c
+@@ -0,0 +1,31 @@
++/* Default wmemset implementation for S/390.
++   Copyright (C) 2015 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#if defined HAVE_S390_VX_ASM_SUPPORT && !defined NOT_IN_libc
++# define WMEMSET  __wmemset_c
++
++# include <wchar.h>
++extern __typeof (wmemset) __wmemset_c;
++# ifdef SHARED
++#  undef libc_hidden_def
++#  define libc_hidden_def(name)					\
++  __hidden_ver1 (__wmemset_c, __GI_wmemset, __wmemset_c);
++# endif /* SHARED */
++
++# include <wcsmbs/wmemset.c>
++#endif /* HAVE_S390_VX_ASM_SUPPORT && !defined NOT_IN_libc */
+diff --git a/sysdeps/s390/multiarch/wmemset-vx.S b/sysdeps/s390/multiarch/wmemset-vx.S
+new file mode 100644
+index 0000000..dae2c29
+--- /dev/null
++++ b/sysdeps/s390/multiarch/wmemset-vx.S
+@@ -0,0 +1,142 @@
++/* Vector Optimized 32/64 bit S/390 version of wmemset.
++   Copyright (C) 2015 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#if defined HAVE_S390_VX_ASM_SUPPORT && !defined NOT_IN_libc
++
++# include "sysdep.h"
++# include "asm-syntax.h"
++
++	.text
++
++/* wchar_t *wmemset(wchar_t *dest, wchar_t wc, size_t n)
++   Fill an array of wide-characters with a constant wide character
++   and returns dest.
++
++   Register usage:
++   -r0=tmp
++   -r1=tmp
++   -r2=dest or current-pointer
++   -r3=wc
++   -r4=n
++   -r5=tmp
++   -v16=replicated wc
++   -v17,v18,v19=copy of v16 for vstm
++   -v31=saved dest for return
++*/
++ENTRY(__wmemset_vx)
++	.machine "z13"
++	.machinemode "zarch_nohighgprs"
++
++# if !defined __s390x__
++	llgfr	%r4,%r4
++# endif /* !defined __s390x__ */
++
++	vlvgg	%v31,%r2,0	/* Save destination pointer for return.  */
++	clgije	%r4,0,.Lend
++
++	vlvgf	%v16,%r3,0	/* Generate vector with wchar_t wc.  */
++	vrepf	%v16,%v16,0
++
++	/* Check range of maxlen and convert to byte-count.  */
++# ifdef __s390x__
++	tmhh	%r4,49152	/* Test bit 0 or 1 of maxlen.  */
++	lghi	%r5,-4		/* Max byte-count is 18446744073709551612.  */
++# else
++	tmlh	%r4,49152	/* Test bit 0 or 1 of maxlen.  */
++	llilf	%r5,4294967292	/* Max byte-count is 4294967292.  */
++# endif /* !__s390x__ */
++	sllg	%r4,%r4,2	/* Convert character-count to byte-count.  */
++	locgrne	%r4,%r5		/* Use max byte-count, if bit 0/1 was one.  */
++
++	/* Align dest to 16 byte.  */
++	risbg	%r0,%r2,60,128+63,0 /* Test if s is aligned and
++				       %r3 = bits 60-63 'and' 15.  */
++	je	.Lpreloop	/* If s is aligned, loop aligned.  */
++	tmll	%r2,3		/* Test if s is 4-byte aligned?  */
++	jne	.Lfallback	/* And use common-code variant if not.  */
++	lghi	%r1,16
++	slr	%r1,%r0		/* Compute byte count to load (16-x).  */
++	clgr	%r1,%r4
++	locgrh	%r1,%r4		/* min (byte count, n)  */
++	aghik	%r5,%r1,-1	/* vstl needs highest index.  */
++	vstl	%v16,%r5,0(%r2)	/* Store remaining bytes.  */
++	clgrje	%r1,%r4,.Lend	/* Return if n bytes where set.  */
++	slgr	%r4,%r1		/* Compute remaining byte count.  */
++	la	%r2,0(%r1,%r2)
++
++.Lpreloop:
++	/* Now we are 16-byte aligned.  */
++	clgijl	%r4,17,.Lremaining
++	srlg	%r1,%r4,8	/* Split into 256byte blocks */
++	clgije	%r1,0,.Lpreloop64
++	vlr	%v17,%v16
++	vlr	%v18,%v16
++	vlr	%v19,%v16
++
++.Lloop256:
++	vstm	%v16,%v19,0(%r2)
++	vstm	%v16,%v19,64(%r2)
++	vstm	%v16,%v19,128(%r2)
++	vstm	%v16,%v19,192(%r2)
++	la	%r2,256(%r2)
++	brctg	%r1,.Lloop256	/* Loop until all blocks are processed.  */
++
++	llgfr	%r4,%r4
++	nilf	%r4,255		/* Get remaining bytes */
++	je	.Lend		/* Skip store remaining bytes if zero.  */
++
++.Lpreloop64:
++	clgijl	%r4,17,.Lremaining
++	clgijl	%r4,33,.Lpreloop16
++	srlg	%r1,%r4,5	/* Split into 32byte blocks */
++
++.Lloop32:
++	vst	%v16,0(%r2)
++	vst	%v16,16(%r2)
++	la	%r2,32(%r2)
++	brctg	%r1,.Lloop32	/* Loop until all blocks are processed.  */
++
++	llgfr	%r4,%r4
++	nilf	%r4,31		/* Get remaining bytes */
++	je	.Lend		/* Skip store remaining bytes if zero.  */
++
++.Lpreloop16:
++	clgijl	%r4,17,.Lremaining
++	srlg	%r1,%r4,4	/* Split into 16byte blocks */
++
++.Lloop16:
++	vst	%v16,0(%r2)
++	la	%r2,16(%r2)
++	brctg	%r1,.Lloop16	/* Loop until all blocks are processed.  */
++
++	llgfr	%r4,%r4
++	nilf	%r4,15		/* Get remaining bytes */
++	je	.Lend		/* Skip store remaining bytes if zero.  */
++
++.Lremaining:
++	aghi	%r4,-1		/* vstl needs highest index.  */
++	vstl	%v16,%r4,0(%r2)
++
++.Lend:
++	vlgvg	%r2,%v31,0	/* Load saved dest for return value.  */
++	br	%r14
++.Lfallback:
++	srlg	%r4,%r4,2	/* Convert byte-count to character-count.  */
++	jg	__wmemset_c
++END(__wmemset_vx)
++#endif /* HAVE_S390_VX_ASM_SUPPORT && !defined NOT_IN_libc */
+diff --git a/sysdeps/s390/multiarch/wmemset.c b/sysdeps/s390/multiarch/wmemset.c
+new file mode 100644
+index 0000000..1225fc1
+--- /dev/null
++++ b/sysdeps/s390/multiarch/wmemset.c
+@@ -0,0 +1,27 @@
++/* Multiple versions of wmemset.
++   Copyright (C) 2015 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#if defined HAVE_S390_VX_ASM_SUPPORT && !defined NOT_IN_libc
++# include <wchar.h>
++# include <ifunc-resolve.h>
++
++s390_vx_libc_ifunc2 (__wmemset, wmemset)
++
++#else
++# include <wcsmbs/wmemset.c>
++#endif /* !(defined HAVE_S390_VX_ASM_SUPPORT && !defined NOT_IN_libc) */
+diff --git a/wcsmbs/Makefile b/wcsmbs/Makefile
+index f8bc401..1ca3ace 100644
+--- a/wcsmbs/Makefile
++++ b/wcsmbs/Makefile
+@@ -43,7 +43,7 @@ routines := wcscat wcschr wcscmp wcscpy wcscspn wcsdup wcslen wcsncat \
+ 
+ strop-tests :=  wcscmp wcsncmp wmemcmp wcslen wcschr wcsrchr wcscpy wcsnlen \
+ 		wcpcpy wcsncpy wcpncpy wcscat wcsncat wcschrnul wcsspn wcspbrk \
+-		wcscspn wmemchr
++		wcscspn wmemchr wmemset
+ tests := tst-wcstof wcsmbs-tst1 tst-wcsnlen tst-btowc tst-mbrtowc \
+ 	 tst-wcrtomb tst-wcpncpy tst-mbsrtowcs tst-wchar-h tst-mbrtowc2 \
+ 	 tst-c16c32-1 wcsatcliff $(addprefix test-,$(strop-tests))
+diff --git a/wcsmbs/test-wmemset-ifunc.c b/wcsmbs/test-wmemset-ifunc.c
+new file mode 100644
+index 0000000..b58b6bd
+--- /dev/null
++++ b/wcsmbs/test-wmemset-ifunc.c
+@@ -0,0 +1,20 @@
++/* Test and measure IFUNC implementations of wmemset function.
++   Copyright (C) 2015 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#define TEST_IFUNC 1
++#include "test-wmemset.c"
+diff --git a/wcsmbs/test-wmemset.c b/wcsmbs/test-wmemset.c
+new file mode 100644
+index 0000000..c03c759
+--- /dev/null
++++ b/wcsmbs/test-wmemset.c
+@@ -0,0 +1,20 @@
++/* Test wmemset functions.
++   Copyright (C) 2015 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#define WIDE 1
++#include "../string/test-memset.c"
+diff --git a/wcsmbs/wmemset.c b/wcsmbs/wmemset.c
+index cc9a725..8049bb8 100644
+--- a/wcsmbs/wmemset.c
++++ b/wcsmbs/wmemset.c
+@@ -18,6 +18,9 @@
+ 
+ #include <wchar.h>
+ 
++#ifdef WMEMSET
++# define wmemset WMEMSET
++#endif
+ 
+ wchar_t *
+ wmemset (s, c, n)
+-- 
+2.3.0
+

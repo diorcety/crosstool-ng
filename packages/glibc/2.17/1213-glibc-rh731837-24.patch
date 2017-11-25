@@ -1,0 +1,220 @@
+From 925c1856c2c73401df1bed739f2f3e89b62bee89 Mon Sep 17 00:00:00 2001
+From: Rajalakshmi Srinivasaraghavan <raji@linux.vnet.ibm.com>
+Date: Wed, 30 Jul 2014 10:45:21 -0500
+Subject: [PATCH] PowerPC: multiarch llround/lround for PowerPC64
+
+commit c3627f6e965834c7998184a55653ca016b1ff663
+Author: Adhemerval Zanella <azanella@linux.vnet.ibm.com>
+Date:   Fri Dec 13 15:01:54 2013 -0500
+---
+ sysdeps/powerpc/powerpc64/fpu/multiarch/Makefile   |  3 +-
+ .../powerpc64/fpu/multiarch/s_llround-power5+.S    | 32 ++++++++++++
+ .../powerpc64/fpu/multiarch/s_llround-power6x.S    | 32 ++++++++++++
+ .../powerpc64/fpu/multiarch/s_llround-ppc64.S      | 28 ++++++++++
+ .../powerpc/powerpc64/fpu/multiarch/s_llround.c    | 60 ++++++++++++++++++++++
+ sysdeps/powerpc/powerpc64/fpu/multiarch/s_lround.c |  1 +
+ 6 files changed, 155 insertions(+), 1 deletion(-)
+ create mode 100644 sysdeps/powerpc/powerpc64/fpu/multiarch/s_llround-power5+.S
+ create mode 100644 sysdeps/powerpc/powerpc64/fpu/multiarch/s_llround-power6x.S
+ create mode 100644 sysdeps/powerpc/powerpc64/fpu/multiarch/s_llround-ppc64.S
+ create mode 100644 sysdeps/powerpc/powerpc64/fpu/multiarch/s_llround.c
+ create mode 100644 sysdeps/powerpc/powerpc64/fpu/multiarch/s_lround.c
+
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/Makefile glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/Makefile
+index b57ddc9..a4636b0 100644
+--- glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/Makefile
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/Makefile
+@@ -3,5 +3,6 @@ sysdep_routines += s_isnan-power7 s_isnan-power6x s_isnan-power6 \
+                   s_isnan-power5 s_isnan-ppc64
+ 
+ libm-sysdep_routines += s_isnan-power7 s_isnan-power6x s_isnan-power6 \
+-                       s_isnan-power5 s_isnan-ppc64
++                       s_isnan-power5 s_isnan-ppc64 s_llround-power6x \
++                       s_llround-power5+ s_llround-ppc64
+ endif
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_llround-power5+.S glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_llround-power5+.S
+new file mode 100644
+index 0000000..ba0b65c
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_llround-power5+.S
+@@ -0,0 +1,32 @@
++/* llround().  PowerPC64 default version.
++   Copyright (C) 2013-2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <sysdep.h>
++#include <math_ldbl_opt.h>
++
++#undef weak_alias
++#define weak_alias(name, alias)
++#undef strong_alias
++#define strong_alias(name, alias)
++#undef compat_symbol
++#define compat_symbol(a,b,c,d)
++
++#define __llround __llround_power5plus
++#define __lround __lround_power5plus
++
++#include <sysdeps/powerpc/powerpc64/power5+/fpu/s_llround.S>
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_llround-power6x.S glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_llround-power6x.S
+new file mode 100644
+index 0000000..bd1c22a
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_llround-power6x.S
+@@ -0,0 +1,32 @@
++/* llround().  PowerPC64 default version.
++   Copyright (C) 2013-2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <sysdep.h>
++#include <math_ldbl_opt.h>
++
++#undef weak_alias
++#define weak_alias(name, alias)
++#undef strong_alias
++#define strong_alias(name, alias)
++#undef compat_symbol
++#define compat_symbol(lib, name, alias, ver)
++
++#define __llround __llround_power6x
++#define __lround __lround_power6x
++
++#include <sysdeps/powerpc/powerpc64/power6x/fpu/s_llround.S>
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_llround-ppc64.S glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_llround-ppc64.S
+new file mode 100644
+index 0000000..2316da2
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_llround-ppc64.S
+@@ -0,0 +1,28 @@
++/* llround().  PowerPC64 default version.
++   Copyright (C) 2013-2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include <sysdep.h>
++#include <math_ldbl_opt.h>
++
++#undef compat_symbol
++#define compat_symbol(a,b,c,d)
++
++#define __llround __llround_ppc64
++#define __lround __lround_ppc64
++
++#include <sysdeps/powerpc/powerpc64/fpu/s_llround.S>
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_llround.c glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_llround.c
+new file mode 100644
+index 0000000..a4d1bf3
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_llround.c
+@@ -0,0 +1,60 @@
++/* Multiple versions of llround.
++   Copyright (C) 2013-2014 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#define lround __hidden_lround
++#define __lround __hidden___lround
++
++#include <math.h>
++#include <math_ldbl_opt.h>
++#include <shlib-compat.h>
++#include "init-arch.h"
++
++extern __typeof (__llround) __llround_ppc64 attribute_hidden;
++extern __typeof (__llround) __llround_power5plus attribute_hidden;
++extern __typeof (__llround) __llround_power6x attribute_hidden;
++
++libc_ifunc (__llround,
++	    (hwcap & PPC_FEATURE_POWER6_EXT)
++	    ? __llround_power6x :
++	      (hwcap & PPC_FEATURE_POWER5_PLUS)
++	      ? __llround_power5plus
++            : __llround_ppc64);
++
++weak_alias (__llround, llround)
++
++#ifdef NO_LONG_DOUBLE
++weak_alias (__llround, llroundl)
++strong_alias (__llround, __llroundl)
++#endif
++#if LONG_DOUBLE_COMPAT(libm, GLIBC_2_1)
++compat_symbol (libm, __llround, llroundl, GLIBC_2_1);
++compat_symbol (libm, llround, lroundl, GLIBC_2_1);
++#endif
++
++/* long has the same width as long long on PPC64.  */
++#undef lround
++#undef __lround
++strong_alias (__llround, __lround)
++weak_alias (__llround, lround)
++#ifdef NO_LONG_DOUBLE
++strong_alias (__llround, __llroundl)
++weak_alias (__llround, llroundl)
++#endif
++#if LONG_DOUBLE_COMPAT(libm, GLIBC_2_1)
++compat_symbol (libm, __lround, lroundl, GLIBC_2_1);
++#endif
+diff --git glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_lround.c glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_lround.c
+new file mode 100644
+index 0000000..0dab544
+--- /dev/null
++++ glibc-2.17-c758a686/sysdeps/powerpc/powerpc64/fpu/multiarch/s_lround.c
+@@ -0,0 +1 @@
++/* __lround is in s_llround.c  */
+-- 
+1.8.3.1
+

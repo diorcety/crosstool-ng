@@ -1,0 +1,53 @@
+From 0d53b09f7052ae07d4e1dd96908a406d7841eab2 Mon Sep 17 00:00:00 2001
+From: Stefan Liebler <stli@linux.vnet.ibm.com>
+Date: Thu, 8 Oct 2015 10:28:40 +0200
+Subject: [PATCH 02/30] S/390: Use attribute_hidden in ifunc-resolve.c
+
+upstream-commit-id: 5f67c04f5e076d3cfc4d810e7f5d65ce1788b749
+https://sourceware.org/ml/libc-alpha/2013-03/msg00085.html
+
+This patch is needed to prepare for the optimized string function patchset.
+Make the declarations of the optimized functions hidden in order to prevent
+GOT slots being generated for them.
+---
+ sysdeps/s390/s390-32/multiarch/ifunc-resolve.c | 6 +++---
+ sysdeps/s390/s390-64/multiarch/ifunc-resolve.c | 6 +++---
+ 2 files changed, 6 insertions(+), 6 deletions(-)
+
+diff --git a/sysdeps/s390/s390-32/multiarch/ifunc-resolve.c b/sysdeps/s390/s390-32/multiarch/ifunc-resolve.c
+index f1bf8a3..42ca8da 100644
+--- a/sysdeps/s390/s390-32/multiarch/ifunc-resolve.c
++++ b/sysdeps/s390/s390-32/multiarch/ifunc-resolve.c
+@@ -34,9 +34,9 @@
+ 									\
+   /* Make the declarations of the optimized functions hidden in order
+      to prevent GOT slots being generated for them. */			\
+-  extern __attribute__((visibility("hidden"))) void *FUNC##_z196;	\
+-  extern __attribute__((visibility("hidden"))) void *FUNC##_z10;	\
+-  extern __attribute__((visibility("hidden"))) void *FUNC##_g5;		\
++  extern void *FUNC##_z196 attribute_hidden;				\
++  extern void *FUNC##_z10 attribute_hidden;				\
++  extern void *FUNC##_g5 attribute_hidden;				\
+ 									\
+   void *resolve_##FUNC (unsigned long int dl_hwcap)			\
+   {									\
+diff --git a/sysdeps/s390/s390-64/multiarch/ifunc-resolve.c b/sysdeps/s390/s390-64/multiarch/ifunc-resolve.c
+index 5f56764..8db2c38 100644
+--- a/sysdeps/s390/s390-64/multiarch/ifunc-resolve.c
++++ b/sysdeps/s390/s390-64/multiarch/ifunc-resolve.c
+@@ -34,9 +34,9 @@
+ 									\
+   /* Make the declarations of the optimized functions hidden in order
+      to prevent GOT slots being generated for them. */			\
+-  extern __attribute__((visibility("hidden"))) void *FUNC##_z196;	\
+-  extern __attribute__((visibility("hidden"))) void *FUNC##_z10;	\
+-  extern __attribute__((visibility("hidden"))) void *FUNC##_z900;	\
++  extern void *FUNC##_z196 attribute_hidden;				\
++  extern void *FUNC##_z10 attribute_hidden;				\
++  extern void *FUNC##_z900 attribute_hidden;				\
+ 									\
+   void *resolve_##FUNC (unsigned long int dl_hwcap)			\
+   {									\
+-- 
+2.3.0
+

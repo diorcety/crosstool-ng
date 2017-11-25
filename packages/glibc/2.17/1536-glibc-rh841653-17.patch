@@ -1,0 +1,83 @@
+commit 2702856bf45c82cf8e69f2064f5aa15c0ceb6359
+Author: Andrew Senkevich <andrew.senkevich@intel.com>
+Date:   Mon Dec 19 13:20:31 2016 +0300
+
+    Disable TSX on some Haswell processors.
+    
+    Patch disables Intel TSX on some Haswell processors to avoid TSX
+    on kernels that weren't updated with the latest microcode package
+    (which disables broken feature by default).
+    
+        * sysdeps/x86/cpu-features.c (get_common_indeces): Add
+        stepping identification.
+        (init_cpu_features): Add handle of Haswell.
+
+Index: glibc-2.17-c758a686/sysdeps/x86/cpu-features.c
+===================================================================
+--- glibc-2.17-c758a686.orig/sysdeps/x86/cpu-features.c
++++ glibc-2.17-c758a686/sysdeps/x86/cpu-features.c
+@@ -21,7 +21,8 @@
+ 
+ static inline void
+ get_common_indeces (struct cpu_features *cpu_features,
+-		    unsigned int *family, unsigned int *model)
++		    unsigned int *family, unsigned int *model,
++		    unsigned int *stepping)
+ {
+   unsigned int eax;
+   __cpuid (1, eax, cpu_features->cpuid[COMMON_CPUID_INDEX_1].ebx,
+@@ -30,6 +31,7 @@ get_common_indeces (struct cpu_features
+   GLRO(dl_x86_cpu_features).cpuid[COMMON_CPUID_INDEX_1].eax = eax;
+   *family = (eax >> 8) & 0x0f;
+   *model = (eax >> 4) & 0x0f;
++  *stepping = eax & 0x0f;
+ }
+ 
+ static inline void
+@@ -45,9 +47,11 @@ init_cpu_features (struct cpu_features *
+   /* This spells out "GenuineIntel".  */
+   if (ebx == 0x756e6547 && ecx == 0x6c65746e && edx == 0x49656e69)
+     {
++      unsigned int stepping;
++
+       kind = arch_kind_intel;
+ 
+-      get_common_indeces (cpu_features, &family, &model);
++      get_common_indeces (cpu_features, &family, &model, &stepping);
+ 
+       /* Intel processors prefer SSE instruction for memory/string
+         routines if they are available.  */
+@@ -128,6 +132,20 @@ init_cpu_features (struct cpu_features *
+ 		    | bit_Fast_Unaligned_Load
+ 		    | bit_Prefer_PMINUB_for_stringop);
+ 	      break;
++
++	    case 0x3f:
++	      /* Xeon E7 v3 with stepping >= 4 has working TSX.  */
++	      if (stepping >= 4)
++		break;
++	    case 0x3c:
++	    case 0x45:
++	    case 0x46:
++	      /* Disable Intel TSX on Haswell processors (except Xeon E7 v3
++		 with stepping >= 4) to avoid TSX on kernels that weren't
++		 updated with the latest microcode package (which disables
++		 broken feature by default).  */
++	      cpu_features->cpuid[COMMON_CPUID_INDEX_7].ebx &= ~(bit_RTM);
++	      break;
+ 	    }
+ 	}
+ 
+@@ -148,9 +166,11 @@ init_cpu_features (struct cpu_features *
+   /* This spells out "AuthenticAMD".  */
+   else if (ebx == 0x68747541 && ecx == 0x444d4163 && edx == 0x69746e65)
+     {
++      unsigned int stepping;
++
+       kind = arch_kind_amd;
+ 
+-      get_common_indeces (cpu_features, &family, &model);
++      get_common_indeces (cpu_features, &family, &model, &stepping);
+ 
+       ecx = cpu_features->cpuid[COMMON_CPUID_INDEX_1].ecx;
+ 

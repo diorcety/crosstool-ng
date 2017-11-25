@@ -1,0 +1,36 @@
+diff -pruN glibc-2.17-c758a686/nptl/tst-join7mod.c glibc-2.17-c758a686.new/nptl/tst-join7mod.c
+--- glibc-2.17-c758a686/nptl/tst-join7mod.c	2015-08-13 17:06:56.505685552 +0530
++++ glibc-2.17-c758a686.new/nptl/tst-join7mod.c	2015-08-14 12:42:10.446315345 +0530
+@@ -18,6 +18,7 @@
+    <http://www.gnu.org/licenses/>.  */
+ 
+ #include <stdio.h>
++#include <string.h>
+ #include <pthread.h>
+ #include <atomic.h>
+ 
+@@ -27,7 +28,14 @@ static int running = 1;
+ static void *
+ test_run (void *p)
+ {
+-  while (atomic_load_relaxed (&running))
++  /* Spin on the value of RUNNING till it is 1.  The RHEL-7 version of atomic.h
++     does not yet have an atomic_load.  We don't need an acquire/release
++     barrier either since there is no ordering to worry about, but again,
++     atomic.h does not have relaxed atomic operations.  */
++  int oldval;
++  do
++    oldval = atomic_compare_and_exchange_val_acq (&running, 0, 0);
++  while (oldval == 1);
+     printf ("Test running\n");
+   printf ("Test finished\n");
+   return NULL;
+@@ -48,7 +56,7 @@ do_init (void)
+ static void __attribute__ ((destructor))
+ do_end (void)
+ {
+-  atomic_store_relaxed (&running, 0);
++  atomic_exchange_rel (&running, 0);
+   int ret = pthread_join (th, NULL);
+ 
+   if (ret != 0)

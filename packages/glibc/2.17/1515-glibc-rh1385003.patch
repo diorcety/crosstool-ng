@@ -1,0 +1,41 @@
+commit 26011b5cfa6a1a8d8005d65f11d97498444a4e95
+Author: Stefan Liebler <stli@linux.vnet.ibm.com>
+Date:   Mon Mar 24 16:46:51 2014 +0100
+
+    S390: Define SIZE_MAX as unsigned long (BZ #16712).
+
+--- glibc-2.17-c758a686/sysdeps/generic/stdint.h
++++ glibc-2.17-c758a686/sysdeps/generic/stdint.h
+@@ -264,7 +264,11 @@
+ # if __WORDSIZE == 64
+ #  define SIZE_MAX		(18446744073709551615UL)
+ # else
+-#  define SIZE_MAX		(4294967295U)
++#  ifdef __WORDSIZE32_SIZE_ULONG
++#   define SIZE_MAX            (4294967295UL)
++#  else
++#   define SIZE_MAX            (4294967295U)
++#  endif
+ # endif
+ 
+ /* Limits of `wchar_t'.  */
+--- glibc-2.17-c758a686/sysdeps/s390/s390-32/bits/wordsize.h
++++ glibc-2.17-c758a686/sysdeps/s390/s390-32/bits/wordsize.h
+@@ -4,6 +4,7 @@
+ # define __WORDSIZE	64
+ #else
+ # define __WORDSIZE	32
++# define __WORDSIZE32_SIZE_ULONG       1
+ #endif
+ 
+ #if !defined __NO_LONG_DOUBLE_MATH && !defined __LONG_DOUBLE_MATH_OPTIONAL
+--- glibc-2.17-c758a686/sysdeps/s390/s390-64/bits/wordsize.h
++++ glibc-2.17-c758a686/sysdeps/s390/s390-64/bits/wordsize.h
+@@ -4,6 +4,7 @@
+ # define __WORDSIZE	64
+ #else
+ # define __WORDSIZE	32
++# define __WORDSIZE32_SIZE_ULONG       1
+ #endif
+ 
+ #if !defined __NO_LONG_DOUBLE_MATH && !defined __LONG_DOUBLE_MATH_OPTIONAL

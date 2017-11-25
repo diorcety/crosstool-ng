@@ -1,0 +1,51 @@
+commit d330b980e9ee2349492087a279a9c7bf294f6b47
+Author: Siddhesh Poyarekar <siddhesh@redhat.com>
+Date:   Tue Sep 16 22:20:45 2014 +0530
+
+    Remove CFLAGS for interp.c
+    
+    Replace it with including an auto-generated linker-runtime.h.
+    Build-tested on x86_64 and found that there was no change in the
+    generated code.
+    
+    	* elf/Makefile (CFLAGS-interp.c): Remove.
+    	($(elf-objpfx)runtime-linker.h): Generate header with linker
+    	path string.
+    	* elf/interp.c: Include generated runtime-linker.h
+
+Index: glibc-2.17-c758a686/elf/Makefile
+===================================================================
+--- glibc-2.17-c758a686.orig/elf/Makefile
++++ glibc-2.17-c758a686/elf/Makefile
+@@ -344,9 +344,16 @@ $(objpfx)ld.so: $(objpfx)librtld.os $(ld
+ 	$(READELF) -s $@ \
+ 	  | $(AWK) '($$7 ~ /^UND(|EF)$$/ && $$1 != "0:" && $$4 != "REGISTER") { print; p=1 } END { exit p != 0 }'
+ 
+-# interp.c exists just to get this string into the libraries.
+-CFLAGS-interp.c = -D'RUNTIME_LINKER="$(rtlddir)/$(rtld-installed-name)"'
+-$(objpfx)interp.os: $(common-objpfx)config.make
++# interp.c exists just to get the runtime linker path into libc.so.
++$(objpfx)interp.os: $(elf-objpfx)runtime-linker.h
++
++$(elf-objpfx)runtime-linker.h: $(elf-objpfx)runtime-linker.st; @:
++$(elf-objpfx)runtime-linker.st: $(common-objpfx)config.make
++	$(name-target-directory)
++	echo '#define RUNTIME_LINKER "$(rtlddir)/$(rtld-installed-name)"' \
++		> ${@:st=T}
++	$(move-if-change) ${@:st=T} ${@:st=h}
++	touch $@
+ 
+ ifneq (ld.so,$(rtld-installed-name))
+ # Make sure ld.so.1 exists in the build directory so we can link
+Index: glibc-2.17-c758a686/elf/interp.c
+===================================================================
+--- glibc-2.17-c758a686.orig/elf/interp.c
++++ glibc-2.17-c758a686/elf/interp.c
+@@ -16,5 +16,7 @@
+    License along with the GNU C Library; if not, see
+    <http://www.gnu.org/licenses/>.  */
+ 
++#include <elf/runtime-linker.h>
++
+ const char __invoke_dynamic_linker__[] __attribute__ ((section (".interp")))
+   = RUNTIME_LINKER;

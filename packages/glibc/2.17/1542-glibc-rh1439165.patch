@@ -1,0 +1,339 @@
+Posted upstream at:
+
+  https://sourceware.org/ml/libc-alpha/2017-04/msg00082.html
+
+sysdeps/unix/sysv/linux/syscall-names.list is stored as a separate
+file (syscall-names.list) in the source RPM for easier updates.
+
+Author: Florian Weimer <fweimer@redhat.com>
+
+    <bits/syscall.h>: Use an arch-independent system call list on Linux
+    
+    This commit changes the way the list of SYS_* system call macros
+    is created on Linux.  glibc now contains a list of all known system
+    calls, and the generated <bits/syscall.h> file defines the SYS_
+    macro only if the correspnding __NR_ macro is defined by the kernel
+    headers.
+    
+    As a result, there glibc does not have to be rebuilt to pick up
+    system calls if the glibc sources already know about them.  This
+    means that glibc can be built with older kernel headers, and if
+    the installed kernel headers are upgraded afterwards, additional
+    SYS_ macros become available as long as glibc has a record for
+    those system calls.
+
+Index: b/sysdeps/unix/sysv/linux/Makefile
+===================================================================
+--- a/sysdeps/unix/sysv/linux/Makefile
++++ b/sysdeps/unix/sysv/linux/Makefile
+@@ -39,75 +39,46 @@ sysdep_headers += sys/mount.h sys/acct.h
+ 
+ tests += tst-clone
+ 
+-# Generate the list of SYS_* macros for the system calls (__NR_* macros).
++# Generate the list of SYS_* macros for the system calls (__NR_*
++# macros).  The file syscall-names.list contains all possible system
++# call names, and the generated header file produces SYS_* macros for
++# the __NR_* macros which are actually defined.
++
++generated += bits/syscall.h
++$(objpfx)bits/syscall.h: \
++  ../sysdeps/unix/sysv/linux/gen-syscall-h.awk \
++  ../sysdeps/unix/sysv/linux/syscall-names.list
++	$(make-target-directory)
++	$(AWK) -f $^ > $@-tmp
++	$(move-if-change) $@-tmp $@
+ 
+-# If there is more than one syscall list for different architecture
+-# variants, the CPU/Makefile defines abi-variants to be a list of names
+-# for those variants (e.g. 32 64), and, for each variant, defines
+-# abi-$(variant)-options to be compiler options to cause <asm/unistd.h>
+-# to define the desired list of syscalls and abi-$(variant)-condition to
+-# be the condition for those options to use in a C #if condition.
+-# abi-includes may be defined to a list of headers to include
+-# in the generated header, if the default does not suffice.
+-#
+-# The generated header is compiled with `-ffreestanding' to avoid any
+-# circular dependencies against the installed implementation headers.
+-# Such a dependency would require the implementation header to be
+-# installed before the generated header could be built (See bug 15711).
+-# In current practice the generated header dependencies do not include
+-# any of the implementation headers removed by the use of `-ffreestanding'.
++# All macros defined by <sys/syscall.h>.  Include <bits/syscall.h>
++# explicitly because <sys/sycall.h> skips it if _LIBC is defined.
++$(objpfx)tst-syscall-list-macros.list: \
++  $(objpfx)bits/syscall.h ../sysdeps/unix/sysv/linux/sys/syscall.h
++	printf '#include <sys/syscall.h>\n#include <bits/syscall.h>\n' | \
++	  $(CC) -E -o $@-tmp $(CFLAGS) $(CPPFLAGS) -x c - -dM
++	$(move-if-change) $@-tmp $@
++
++# __NR_* system call names.  Used by the test below.
++$(objpfx)tst-syscall-list-nr.list: \
++  ../sysdeps/unix/sysv/linux/filter-nr-syscalls.awk \
++  $(objpfx)tst-syscall-list-macros.list
++	$(AWK) -f $^ > $@-tmp
++	$(move-if-change) $@-tmp $@
++
++# SYS_* system call names.  Used by the test below.
++$(objpfx)tst-syscall-list-sys.list: $(objpfx)tst-syscall-list-macros.list
++	$(AWK) '/^#define SYS_/ { print substr($$2, 5) }' $< > $@-tmp
++	$(move-if-change) $@-tmp $@
++
++tests: $(objpfx)tst-syscall-list.out
++$(objpfx)tst-syscall-list.out: \
++  ../sysdeps/unix/sysv/linux/tst-syscall-list.sh \
++  $(objpfx)tst-syscall-list-nr.list $(objpfx)tst-syscall-list-sys.list
++	$(BASH) $^ > $@
+ 
+-$(objpfx)bits/syscall%h $(objpfx)bits/syscall%d: ../sysdeps/unix/sysv/linux/sys/syscall.h
+-	$(make-target-directory)
+-	{ \
+-	 echo '/* Generated at libc build time from kernel syscall list.  */';\
+-	 echo ''; \
+-	 echo '#ifndef _SYSCALL_H'; \
+-	 echo '# error "Never use <bits/syscall.h> directly; include <sys/syscall.h> instead."'; \
+-	 echo '#endif'; \
+-	 echo ''; \
+-	 $(foreach h,$(abi-includes), echo '#include <$(h)>';) \
+-	 echo ''; \
+-	 $(if $(abi-variants), \
+-	 $(foreach v,$(abi-variants),\
+-	 $(CC) -ffreestanding -E -MD -MP -MF $(@:.h=.d)-t$(v) -MT '$(@:.d=.h) $(@:.h=.d)' \
+-	       -x c $(sysincludes) $< $(abi-$(v)-options) \
+-	       -D_LIBC -dM | \
+-	 sed -n 's@^#define __NR_\([^ ]*\) .*$$@#define SYS_\1 __NR_\1@p' | \
+-	 LC_ALL=C sort > $(@:.d=.h).new$(v); \
+-	 $(if $(abi-$(v)-condition),\
+-	 echo '#if $(abi-$(v)-condition)';) \
+-	 cat $(@:.d=.h).new$(v); \
+-	 $(if $(abi-$(v)-condition),echo '#endif';) \
+-	 rm -f $(@:.d=.h).new$(v); \
+-	 ), \
+-	 $(CC) -ffreestanding -E -MD -MP -MF $(@:.h=.d)-t$(v) -MT '$(@:.d=.h) $(@:.h=.d)' \
+-	       -x c $(sysincludes) $< \
+-	       -D_LIBC -dM | \
+-	 sed -n 's@^#define __NR_\([^ ]*\) .*$$@#define SYS_\1 __NR_\1@p' | \
+-	 LC_ALL=C sort;) \
+-	} > $(@:.d=.h).new
+-	mv -f $(@:.d=.h).new $(@:.d=.h)
+-ifdef abi-variants
+-ifneq (,$(objpfx))
+-	sed $(sed-remove-objpfx) \
+-	 $(foreach v,$(abi-variants),$(@:.h=.d)-t$(v)) > $(@:.h=.d)-t3
+-else
+-	cat $(foreach v,$(abi-variants),$(@:.h=.d)-t$(v)) \
+-	 > $(@:.h=.d)-t3
+-endif
+-	rm -f $(foreach v,$(abi-variants),$(@:.h=.d)-t$(v))
+-	mv -f $(@:.h=.d)-t3 $(@:.h=.d)
+-else
+-	mv -f $(@:.h=.d)-t $(@:.h=.d)
+-endif
+-
+-ifndef no_deps
+-# Get the generated list of dependencies (probably /usr/include/asm/unistd.h).
+--include $(objpfx)bits/syscall.d
+-endif
+-generated += bits/syscall.h bits/syscall.d
+-endif
++endif # $(subdir) == misc
+ 
+ ifeq ($(subdir),time)
+ sysdep_headers += sys/timex.h bits/timex.h
+Index: b/sysdeps/unix/sysv/linux/filter-nr-syscalls.awk
+===================================================================
+--- /dev/null
++++ b/sysdeps/unix/sysv/linux/filter-nr-syscalls.awk
+@@ -0,0 +1,35 @@
++# Filter preprocessor __NR_* macros and extract system call names.
++# Copyright (C) 2017 Free Software Foundation, Inc.
++# This file is part of the GNU C Library.
++#
++# The GNU C Library is free software; you can redistribute it and/or
++# modify it under the terms of the GNU Lesser General Public
++# License as published by the Free Software Foundation; either
++# version 2.1 of the License, or (at your option) any later version.
++#
++# The GNU C Library is distributed in the hope that it will be useful,
++# but WITHOUT ANY WARRANTY; without even the implied warranty of
++# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++# Lesser General Public License for more details.
++#
++# You should have received a copy of the GNU Lesser General Public
++# License along with the GNU C Library; if not, see
++# <http://www.gnu.org/licenses/>.
++
++# Skip reserved system calls.
++/^#define __NR_(unused|reserved)[0-9]+ / {
++    next;
++}
++
++# Skip pseudo-system calls which describe ranges.
++/^#define __NR_(syscalls|arch_specific_syscall|(OABI_)?SYSCALL_BASE) / {
++    next;
++}
++/^#define __NR_(|64_|[NO]32_)Linux(_syscalls)? / {
++    next;
++}
++
++# Print the remaining _NR_* macros as system call names.
++/^#define __NR_/ {
++    print substr($2, 6);
++}
+Index: b/sysdeps/unix/sysv/linux/gen-syscall-h.awk
+===================================================================
+--- /dev/null
++++ b/sysdeps/unix/sysv/linux/gen-syscall-h.awk
+@@ -0,0 +1,75 @@
++# Generate SYS_* macros from a list in a text file.
++# Copyright (C) 2017 Free Software Foundation, Inc.
++# This file is part of the GNU C Library.
++#
++# The GNU C Library is free software; you can redistribute it and/or
++# modify it under the terms of the GNU Lesser General Public
++# License as published by the Free Software Foundation; either
++# version 2.1 of the License, or (at your option) any later version.
++#
++# The GNU C Library is distributed in the hope that it will be useful,
++# but WITHOUT ANY WARRANTY; without even the implied warranty of
++# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++# Lesser General Public License for more details.
++#
++# You should have received a copy of the GNU Lesser General Public
++# License along with the GNU C Library; if not, see
++# <http://www.gnu.org/licenses/>.
++
++# Emit a conditional definition for SYS_NAME.
++function emit(name) {
++    print "#ifdef __NR_" name;
++    print "# define SYS_" name " __NR_" name;
++    print "#endif";
++    print "";
++}
++
++# Bail out with an error.
++function fatal(message) {
++    print FILENAME ":" FNR ": " message > "/dev/stderr";
++    exit 1;
++}
++
++BEGIN {
++    name = "";
++    kernel = "";
++}
++
++# Skip empty lines and comments.
++/^\s*(|#.*)$/ {
++    next;
++}
++
++# Kernel version.  Used for documentation purposes only.
++/^kernel [0-9.]+$/ {
++    if (kernel != "") {
++        fatal("duplicate kernel directive");
++    }
++    kernel = $2;
++    print "/* Generated at libc build time from syscall list.  */";
++    print "/* The system call list corresponds to kernel " kernel ".  */";
++    print "";
++    print "#ifndef _SYSCALL_H"
++    print "# error \"Never use <bits/syscall.h> directly; include <sys/syscall.h> instead.\"";
++    print "#endif";
++    print "";
++    next;
++}
++
++# If there is just one word, it is a system call.
++/^[a-zA-Z_][a-zA-Z0-9_]+$/ {
++    if (kernel == "") {
++        fatal("expected kernel directive before this line");
++    }
++    if ($1 <= name) {
++        fatal("name " name " violates ordering");
++    }
++    emit($1);
++    name = $1;
++    next;
++}
++
++# The rest has to be syntax errors.
++// {
++    fatal("unrecognized syntax");
++}
+Index: b/sysdeps/unix/sysv/linux/tst-syscall-list.sh
+===================================================================
+--- /dev/null
++++ b/sysdeps/unix/sysv/linux/tst-syscall-list.sh
+@@ -0,0 +1,72 @@
++#!/bin/bash
++# Consistency checks for the system call list
++# Copyright (C) 2017 Free Software Foundation, Inc.
++# This file is part of the GNU C Library.
++#
++# The GNU C Library is free software; you can redistribute it and/or
++# modify it under the terms of the GNU Lesser General Public
++# License as published by the Free Software Foundation; either
++# version 2.1 of the License, or (at your option) any later version.
++#
++# The GNU C Library is distributed in the hope that it will be useful,
++# but WITHOUT ANY WARRANTY; without even the implied warranty of
++# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++# Lesser General Public License for more details.
++#
++# You should have received a copy of the GNU Lesser General Public
++# License along with the GNU C Library; if not, see
++# <http://www.gnu.org/licenses/>.
++
++export LC_ALL=C
++set -e
++set -o pipefail
++
++if test $# != 2 ; then
++    echo "error: wrong number of arguments: $#"
++    exit 1
++fi
++
++list_nr="$1"
++list_sys="$2"
++
++errors=0
++
++# Use getpid as a system call which is expected to be always defined.
++# alpha uses getxpid instead, so it is permitted as an alternative.
++if ! grep -E -q '^getx?pid$' -- "$list_nr" ; then
++    echo "error: __NR_getpid not defined"
++    errors=1
++fi
++if ! grep -E -q '^getx?pid$' -- "$list_sys" ; then
++    echo "error: SYS_getpid not defined"
++    errors=1
++fi
++
++comm_1="$(mktemp)"
++comm_2="$(mktemp)"
++comm_result="$(mktemp)"
++cleanup () {
++    rm -f -- "$comm_1" "$comm_2" "$comm_result"
++}
++trap cleanup 0
++
++sort -o "$comm_1" -- "$list_nr"
++sort -o "$comm_2" -- "$list_sys"
++
++# Check for missing SYS_* macros.
++comm --check-order -2 -3 -- "$comm_1" "$comm_2" > "$comm_result"
++if test -s "$comm_result"; then
++    echo "error: These system calls need to be added to syscall-names.list:"
++    cat -- "$comm_result"
++    errors=1
++fi
++
++# Check for additional SYS_* macros.
++comm --check-order -1 -3 -- "$comm_1" "$comm_2" > "$comm_result"
++if test -s "$comm_result"; then
++    echo "error: The following system calls have unexpected SYS_* macros:"
++    cat -- "$comm_result"
++    errors=1
++fi
++
++exit "$errors"
