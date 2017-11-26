@@ -15,28 +15,10 @@ instructions (specifically, the four-argument form of the mtfsf insn).
 A similar problem had occurred in the past (bug 10118) but the fix that
 was committed for it didn't anticipate this new problem.
 ---
- ChangeLog                                          |  9 ++++++
  .../unix/sysv/linux/powerpc/powerpc64/setcontext.S | 30 ++++++++++++++----
  .../sysv/linux/powerpc/powerpc64/swapcontext.S     | 36 +++++++++++++++++-----
- 3 files changed, 61 insertions(+), 14 deletions(-)
+ 2 files changed, 52 insertions(+), 14 deletions(-)
 
-diff --git a/ChangeLog b/ChangeLog
-index 6d295e7..239a0e6 100644
---- a/ChangeLog
-+++ b/ChangeLog
-@@ -1,3 +1,12 @@
-+2015-03-11  Martin Sebor  <msebor@redhat.com>
-+
-+	[BZ #18116]
-+        * sysdeps/unix/sysv/linux/powerpc/powerpc64/setcontext.S
-+        (__setcontext): Use extended four-operand version of mtsf whenever
-+	possible.
-+        * sysdeps/unix/sysv/linux/powerpc/powerpc64/swapcontext.S
-+        (__novec_swapcontext): Likewise.
-+
- 2015-06-01  Siddhesh Poyarekar  <siddhesh@redhat.com>
- 
- 	* benchtests/scripts/compare_bench.py: New file.
 diff --git a/sysdeps/unix/sysv/linux/powerpc/powerpc64/setcontext.S b/sysdeps/unix/sysv/linux/powerpc/powerpc64/setcontext.S
 index e47a57a..8a08dc4 100644
 --- a/sysdeps/unix/sysv/linux/powerpc/powerpc64/setcontext.S
