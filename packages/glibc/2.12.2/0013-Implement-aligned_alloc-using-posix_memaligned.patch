@@ -1,0 +1,34 @@
+From 28c5a93f4afd4e179efd2235eaebe1d8f0c12774 Mon Sep 17 00:00:00 2001
+From: Nehal J Wani <nehaljw.kkd1@gmail.com>
+Date: Mon, 11 Jun 2018 19:57:24 +0000
+Subject: [PATCH] Implement aligned_alloc using posix_memaligned
+
+---
+ stdlib/stdlib.h | 11 +++++++++++
+ 1 file changed, 11 insertions(+)
+
+diff --git a/stdlib/stdlib.h b/stdlib/stdlib.h
+index d1f3841f1b..051495db85 100644
+--- a/stdlib/stdlib.h
++++ b/stdlib/stdlib.h
+@@ -507,6 +507,17 @@ extern void *valloc (size_t __size) __THROW __attribute_malloc__ __wur;
+ /* Allocate memory of SIZE bytes with an alignment of ALIGNMENT.  */
+ extern int posix_memalign (void **__memptr, size_t __alignment, size_t __size)
+      __THROW __nonnull ((1)) __wur;
++static inline void* aligned_alloc (size_t al, size_t sz)
++{
++  void *ptr = NULL;
++  // The value of alignment shall be a power of two multiple of sizeof(void *).
++  if (al < sizeof(void*))
++    al = sizeof(void*);
++  int ret = posix_memalign (&ptr, al, sz);
++  if (ret == 0)
++    return ptr;
++  return NULL;
++}
+ #endif
+ 
+ __BEGIN_NAMESPACE_STD
+-- 
+2.17.0
+
