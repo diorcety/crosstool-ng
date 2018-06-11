@@ -29,7 +29,11 @@ do_cc_extract() {
 
     # Patching all the versions for this would be painful.
     if [ "${CT_DISABLE_MULTILIB_LIB_OSDIRNAMES}" = "y" ]; then
-        CT_Pushd "${CT_SRC_DIR}/gcc-${CT_CC_GCC_VERSION}"
+        if [ -d "${CT_SRC_DIR}/gcc-${CT_CC_GCC_VERSION}" ]; then
+            CT_Pushd "${CT_SRC_DIR}/gcc-${CT_CC_GCC_VERSION}"
+        elif [ -d "${CT_SRC_DIR}/gcc" ]; then
+            CT_Pushd "${CT_SRC_DIR}/gcc"
+        fi
         TINFO_FILES=$(find . -path "*/config/*/t-*")
         for TINFO_FILE in ${TINFO_FILES}; do
             echo TINFO_FILE ${TINFO_FILE}
