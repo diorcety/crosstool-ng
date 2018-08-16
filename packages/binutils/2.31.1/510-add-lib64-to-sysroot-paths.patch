@@ -1,0 +1,13 @@
+--- a/gold/options.cc	2018-03-03 09:08:26.834617068 +0000
++++ b/gold/options.cc	2018-03-03 09:17:07.222030190 +0000
+@@ -1227,6 +1227,10 @@
+ 	       || this->user_set_sysroot()
+ 	       || *TARGET_SYSTEM_ROOT != '\0')
+ 	{
++#if GOLD_DEFAULT_SIZE==64
++	  this->add_to_library_path_with_sysroot("/lib64");
++	  this->add_to_library_path_with_sysroot("/usr/lib64");
++#endif
+ 	  this->add_to_library_path_with_sysroot("/lib");
+ 	  this->add_to_library_path_with_sysroot("/usr/lib");
+ 	}
